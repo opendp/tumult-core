@@ -1,0 +1,401 @@
+"""Transformations for performing groupby on Spark dataframes."""
+
+# <placeholder: boilerplate>
+
+import itertools
+from functools import reduce
+from typing import Dict, List, Tuple, Union
+
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.types import LongType, StringType, StructField, StructType
+from typeguard import typechecked
+
+from tmlt.core.domains.spark_domains import (
+    SparkDataFrameDomain,
+    SparkGroupedDataFrameDomain,
+)
+from tmlt.core.metrics import (
+    HammingDistance,
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+)
+from tmlt.core.transformations.base import Transformation
+from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+from tmlt.core.utils.validation import validate_groupby_domains
+
+
+class GroupBy(Transformation):
+    """Groups a Spark DataFrame by given group keys.
+
+    Example:
+        ..
+            >>> from pyspark.sql import SparkSession
+            >>> from pyspark.sql.functions import count
+            >>> import pandas as pd
+            >>> from tmlt.core.domains.spark_domains import (
+            ...     SparkDataFrameDomain,
+            ...     SparkStringColumnDescriptor,
+            ... )
+            >>> from tmlt.core.utils.misc import print_sdf
+            >>> spark = SparkSession.builder.getOrCreate()
+            >>> spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "A": ["a1", "a2", "a3", "a3"],
+            ...             "B": ["b1", "b1", "b2", "b2"],
+            ...         }
+            ...     )
+            ... )
+
+        >>> # Example input
+        >>> print_sdf(spark_dataframe)
+            A   B
+        0  a1  b1
+        1  a2  b1
+        2  a3  b2
+        3  a3  b2
+        >>> groupby_B = GroupBy(
+        ...     input_domain=SparkDataFrameDomain(
+        ...         {
+        ...             "A": SparkStringColumnDescriptor(),
+        ...             "B": SparkStringColumnDescriptor(),
+        ...         }
+        ...     ),
+        ...     input_metric=SymmetricDifference(),
+        ...     output_metric=SumOf(SymmetricDifference()),
+        ...     group_keys=spark.createDataFrame(
+        ...         pd.DataFrame(
+        ...             {
+        ...                 "B":["b1", "b2"]
+        ...             }
+        ...         )
+        ...     )
+        ... )
+        >>> # Apply transformation to data
+        >>> grouped_dataframe = groupby_B(spark_dataframe)
+        >>> counts_df = grouped_dataframe.agg(count("*").alias("count"), fill_value=0)
+        >>> print(counts_df.toPandas())
+            B  count
+        0  b1      2
+        1  b2      2
+
+    Transformation Contract:
+        * Input domain - :class:`~.SparkDataFrameDomain`
+        * Output domain - :class:`~.SparkGroupedDataFrameDomain`
+        * Input metric - :class:`~.SymmetricDifference` or :class:`~.HammingDistance`
+          or :class:`~.IfGroupedBy` (with inner metric :class:`~.SymmetricDifference`)
+        * Output metric - :class:`~.SumOf` or :class:`~.RootSumOfSquared` of
+          :class:`~.SymmetricDifference`
+
+        >>> groupby_B.input_domain
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
+        >>> groupby_B.output_domain
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)}, group_keys=DataFrame[B: string])
+        >>> groupby_B.input_metric
+        SymmetricDifference()
+        >>> groupby_B.output_metric
+        SumOf(inner_metric=SymmetricDifference())
+
+        Stability Guarentee:
+            :class:`~.GroupBy`'s :meth:`~stability_function` returns the `d_in` if the
+            `input_metric` is :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`, otherwise it returns `d_in` times `2`.
+
+            >>> groupby_B.stability_function(1)
+            1
+    """  # pylint: disable=line-too-long
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: SparkDataFrameDomain,
+        input_metric: Union[HammingDistance, SymmetricDifference, IfGroupedBy],
+        output_metric: Union[SumOf, RootSumOfSquared],
+        group_keys: DataFrame,
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: Input domain.
+            input_metric: Input metric.
+            output_metric: Output metric.
+            group_keys: DataFrame where rows correspond to group keys.
+
+        Note:
+            `group_keys` must be public.
+        """
+        if isinstance(input_metric, IfGroupedBy):
+            if input_metric.inner_metric.inner_metric != SymmetricDifference():
+                raise ValueError(
+                    "Inner metric for IfGroupedBy must be SymmetricDifference."
+                )
+            if input_metric.column not in group_keys.columns:
+                raise ValueError(
+                    f"Must group by IfGroupedBy metric column: {input_metric.column}"
+                )
+            if output_metric != input_metric.inner_metric:
+                raise ValueError(
+                    f"Invalid output metric: Expected {input_metric.inner_metric}"
+                    f" not {output_metric}"
+                )
+        if output_metric.inner_metric != SymmetricDifference():
+            raise ValueError(
+                f"Output metric ({output_metric}) is invalid for "
+                f"given input metric ({input_metric})"
+            )
+        output_domain = SparkGroupedDataFrameDomain(
+            schema=input_domain.schema, group_keys=group_keys
+        )
+        if not group_keys.count():
+            if group_keys.columns:
+                raise ValueError(
+                    "Group keys cannot have no rows, unless it also has no columns"
+                )
+        self._group_keys = group_keys
+        self._groupby_columns = group_keys.columns
+        super().__init__(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            output_domain=output_domain,
+            output_metric=output_metric,
+        )
+
+    @property
+    def group_keys(self):
+        """Returns DataFrame containing group keys."""
+        return self._group_keys
+
+    @property
+    def groupby_columns(self):
+        """Returns list of columns to groupby."""
+        return self._groupby_columns.copy()
+
+    def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
+        """Returns the smallest d_out satisfied by the transformation.
+
+        Args:
+            d_in: Distance between inputs under `input_metric`.
+        """
+        self.input_metric.validate(d_in)
+        d_in = ExactNumber(d_in)
+        if self.input_metric == HammingDistance():
+            return d_in * 2
+        return d_in
+
+    def __call__(self, sdf: DataFrame) -> GroupedDataFrame:
+        """Performs groupby."""
+        return GroupedDataFrame(dataframe=sdf, group_keys=self.group_keys)
+
+
+def create_groupby_from_column_domains(
+    input_domain: SparkDataFrameDomain,
+    input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
+    output_metric: Union[SumOf, RootSumOfSquared],
+    column_domains: Dict[str, Union[List[int], List[str]]],
+) -> GroupBy:
+    """Returns GroupBy transformation with Cartesian product of column domains as keys.
+
+    Example:
+        ..
+            >>> from pyspark.sql import SparkSession
+            >>> from pyspark.sql.functions import count
+            >>> import pandas as pd
+            >>> from tmlt.core.domains.spark_domains import (
+            ...     SparkDataFrameDomain,
+            ...     SparkStringColumnDescriptor,
+            ... )
+            >>> from tmlt.core.utils.misc import print_sdf
+            >>> spark = SparkSession.builder.getOrCreate()
+            >>> spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "A": ["a1", "a2", "a3", "a3"],
+            ...             "B": ["b1", "b1", "b2", "b2"],
+            ...             "C": ["c1", "c2", "c1", "c1"],
+            ...         }
+            ...     )
+            ... )
+
+        >>> # Example input
+        >>> print_sdf(spark_dataframe)
+            A   B   C
+        0  a1  b1  c1
+        1  a2  b1  c2
+        2  a3  b2  c1
+        3  a3  b2  c1
+        >>> groupby_B_C = create_groupby_from_column_domains(
+        ...     input_domain=SparkDataFrameDomain(
+        ...         {
+        ...             "A": SparkStringColumnDescriptor(),
+        ...             "B": SparkStringColumnDescriptor(),
+        ...             "C": SparkStringColumnDescriptor(),
+        ...         }
+        ...     ),
+        ...     input_metric=SymmetricDifference(),
+        ...     output_metric=SumOf(SymmetricDifference()),
+        ...     column_domains={
+        ...         "B": ["b1", "b2"],
+        ...         "C": ["c1", "c2"],
+        ...     }
+        ... )
+        >>> # Apply transformation to data
+        >>> grouped_dataframe = groupby_B_C(spark_dataframe)
+        >>> groups_df = grouped_dataframe.agg(count("*").alias("count"), fill_value=0)
+        >>> print(groups_df.toPandas().sort_values(["B", "C"], ignore_index=True))
+            B   C  count
+        0  b1  c1      1
+        1  b1  c2      1
+        2  b2  c1      2
+        3  b2  c2      0
+        >>> # Note that the group key ("b2", "c2") does not appear in the DataFrame
+        >>> # but appears in the aggregation output with the given fill value.
+
+    Args:
+        input_domain: Domain of input DataFrames.
+        input_metric: Metric on input DataFrames.
+        output_metric: Metric on output GroupedDataFrames.
+        column_domains: Mapping from column name to list of distinct values.
+
+    Note:
+        `column_domains` must be public.
+    """
+    validate_groupby_domains(column_domains, input_domain)
+    return GroupBy(
+        input_domain=input_domain,
+        input_metric=input_metric,
+        output_metric=output_metric,
+        group_keys=compute_full_domain_df(column_domains),
+    )
+
+
+def create_groupby_from_list_of_keys(
+    input_domain: SparkDataFrameDomain,
+    input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
+    output_metric: Union[SumOf, RootSumOfSquared],
+    groupby_columns: List[str],
+    keys: List[Tuple[Union[str, int], ...]],
+) -> GroupBy:
+    """Returns a GroupBy transformation using user-supplied list of group keys.
+
+    Example:
+        ..
+            >>> from pyspark.sql import SparkSession
+            >>> from pyspark.sql.functions import count
+            >>> import pandas as pd
+            >>> from tmlt.core.domains.spark_domains import (
+            ...     SparkDataFrameDomain,
+            ...     SparkStringColumnDescriptor,
+            ... )
+            >>> from tmlt.core.utils.misc import print_sdf
+            >>> spark = SparkSession.builder.getOrCreate()
+            >>> spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "A": ["a1", "a2", "a3", "a3"],
+            ...             "B": ["b1", "b1", "b2", "b2"],
+            ...             "C": ["c1", "c2", "c1", "c1"],
+            ...         }
+            ...     )
+            ... )
+
+        >>> # Example input
+        >>> print_sdf(spark_dataframe)
+            A   B   C
+        0  a1  b1  c1
+        1  a2  b1  c2
+        2  a3  b2  c1
+        3  a3  b2  c1
+        >>> groupby_B_C = create_groupby_from_list_of_keys(
+        ...     input_domain=SparkDataFrameDomain(
+        ...         {
+        ...             "A": SparkStringColumnDescriptor(),
+        ...             "B": SparkStringColumnDescriptor(),
+        ...             "C": SparkStringColumnDescriptor(),
+        ...         }
+        ...     ),
+        ...     input_metric=SymmetricDifference(),
+        ...     output_metric=SumOf(SymmetricDifference()),
+        ...     groupby_columns=["B", "C"],
+        ...     keys=[("b1", "c1"), ("b2", "c2")]
+        ... )
+        >>> # Apply transformation to data
+        >>> grouped_dataframe = groupby_B_C(spark_dataframe)
+        >>> groups_df = grouped_dataframe.agg(count("*").alias("count"), fill_value=0)
+        >>> print(groups_df.toPandas().sort_values(["B", "C"], ignore_index=True))
+            B   C  count
+        0  b1  c1      1
+        1  b2  c2      0
+        >>> # Note that there is no record corresponding to the key ("b1", "c2")
+        >>> # since we did not specify this key while constructing the GroupBy even
+        >>> # though this key appears in the input DataFrame.
+
+    Args:
+        input_domain: Domain of input DataFrames.
+        input_metric: Metric on input DataFrames.
+        output_metric: Metric on output GroupedDataFrames.
+        groupby_columns: List of column names to groupby.
+        keys: List of distinct tuples corresponding to group keys.
+
+    Note:
+        `keys` must be public list of tuples with no duplicates.
+    """
+    spark = SparkSession.builder.getOrCreate()
+    return GroupBy(
+        input_domain=input_domain,
+        input_metric=input_metric,
+        output_metric=output_metric,
+        group_keys=spark.createDataFrame(
+            keys, schema=input_domain.project(groupby_columns).spark_schema
+        ),
+    )
+
+
+def compute_full_domain_df(column_domains: Dict[str, Union[List[int], List[str]]]):
+    """Returns a DataFrame containing the Cartesian product of given column domains."""
+    spark = SparkSession.builder.getOrCreate()
+    if not column_domains:
+        return SparkSession.builder.getOrCreate().createDataFrame([], StructType())
+    full_domain_size = reduce(lambda acc, x: acc * len(x), column_domains.values(), 1)
+    domain_spark_types = {
+        column: StringType() if isinstance(values[0], str) else LongType()
+        for column, values in column_domains.items()
+    }
+    if full_domain_size <= 10 ** 6:
+        # Perform in-memory crossjoin using itertools if fewer than 1m rows
+        return spark.createDataFrame(
+            spark.sparkContext.parallelize(
+                itertools.product(*column_domains.values()),
+                numSlices=2 + full_domain_size // 10000,
+            ),
+            schema=StructType(
+                [
+                    StructField(column, spark_type)
+                    for column, spark_type in domain_spark_types.items()
+                ]
+            ),
+        )
+    cores_per_executor = spark.conf.get("spark.executor.cores", "2")
+    num_executors = spark.conf.get("spark.executor.instances", "8")
+    num_cores = int(cores_per_executor) * int(num_executors) * 3
+    full_domain_columns = [
+        spark.createDataFrame(
+            spark.sparkContext.parallelize(
+                [(value,) for value in values], numSlices=2 + len(values) // 10000
+            ),
+            schema=StructType([StructField(column, domain_spark_types[column])]),
+        )
+        for column, values in column_domains.items()
+    ]
+
+    def crossjoin_with_partition_control(
+        left: DataFrame, right: DataFrame
+    ) -> DataFrame:
+        """Cross Join and repartition DataFrames."""
+        joined_df = left.crossJoin(right)
+        if joined_df.rdd.getNumPartitions() > num_cores:
+            joined_df = joined_df.repartition(num_cores)
+        return joined_df
+
+    return reduce(crossjoin_with_partition_control, full_domain_columns)

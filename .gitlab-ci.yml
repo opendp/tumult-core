@@ -1,0 +1,66 @@
+.core:
+  variables:
+    PACKAGE_DIR: "core"
+    SOURCE_DIR: "tmlt/core"
+    TAG_PREFIX: "tmlt.core"
+
+    SPHINX_EXTRA_OPTS: "-n -W --keep-going"
+    SPHINX_LINKCHECK: "true"
+
+core_lint:
+  extends: [.lint, .core]
+core_test:
+  extends: [.test, .core]
+  needs:
+    - job: core_lint
+      artifacts: false
+      optional: true
+  tags: [aws-large]
+core_examples:
+  extends: [.examples, .core]
+  needs:
+    - job: core_lint
+      artifacts: false
+      optional: true
+
+core_package:
+  extends: [.package, .core]
+  needs:
+    - job: core_test
+      artifacts: false
+      optional: true
+core_publish:
+  extends: [.publish, .core]
+  dependencies: [core_package]
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^tmlt.core-/'
+
+core_docs:
+  extends: [.docs, .core]
+  artifacts:
+    paths:
+      - core/public/
+    expose_as: 'Tumult Core - documentation'
+  needs:
+    - job: core_test
+      artifacts: false
+      optional: true
+core_publish_docs:
+  extends: [.publish_docs, .core]
+  dependencies: [core_docs]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^tmlt.core-/'
+core_deploy_docs:
+  extends: [.deploy_docs, .core]
+  dependencies: [core_publish_docs]
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^tmlt.core-\d+\.\d+.\d+(-(beta|rc)\.\d+)?/'
+
+core_weekly:
+  extends: [.weekly, .core]
+  tags: [aws-highmem]
+core_benchmark:
+  extends: [.weekly_benchmark, .core]
