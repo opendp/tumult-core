@@ -1127,6 +1127,8 @@ def create_standard_deviation_measurement(
     upper = ExactNumber(upper)
     d_in = ExactNumber(d_in)
     d_out = ExactNumber(d_out)
+    if not standard_deviation_column:
+        standard_deviation_column = f"stddev({measure_column})"
     variance_measurement = create_variance_measurement(
         input_domain=input_domain,
         input_metric=input_metric,

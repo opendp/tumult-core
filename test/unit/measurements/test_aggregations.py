@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.measurements.aggregations`."""
 
 # <placeholder: boilerplate>
-from typing import List, Tuple, Union, cast
+from typing import List, Optional, Tuple, Union, cast
 
 import sympy as sp
 from parameterized import parameterized, parameterized_class
@@ -306,7 +306,13 @@ class TestGroupByAggregationMeasurements(PySparkTest):
 
     @parameterized.expand(
         [
-            (input_metric, groupby_output_metric, output_measure, noise_mechanism)
+            (
+                input_metric,
+                groupby_output_metric,
+                output_measure,
+                noise_mechanism,
+                output_column,
+            )
             for noise_mechanism, groupby_output_metric in [
                 (NoiseMechanism.LAPLACE, SumOf(SymmetricDifference())),
                 (NoiseMechanism.GEOMETRIC, SumOf(SymmetricDifference())),
@@ -323,6 +329,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 ),
             ]
             for output_measure in [PureDP(), RhoZCDP()]
+            for output_column in ["XYZ", None]
             if not (
                 noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
@@ -335,6 +342,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         groupby_output_metric: Union[SumOf, RootSumOfSquared],
         output_measure: Union[PureDP, RhoZCDP],
         noise_mechanism: NoiseMechanism,
+        output_column: Optional[str] = None,
     ):
         """Tests that create_standard_deviation_measurement works correctly."""
         if self.groupby_columns == [] and isinstance(input_metric, IfGroupedBy):
@@ -356,7 +364,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 group_keys=self.group_keys,
             ),
             keep_intermediates=False,
-            standard_deviation_column="STDDEV(B)",
+            standard_deviation_column=output_column,
         )
         self.assertEqual(standard_deviation_measurement.input_domain, self.input_domain)
         self.assertEqual(standard_deviation_measurement.output_measure, output_measure)
@@ -366,11 +374,20 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         )
         answer = standard_deviation_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
-        self.assertEqual(answer.columns, self.groupby_columns + ["STDDEV(B)"])
+        if not output_column:
+            output_column = "stddev(B)"
+        self.assertEqual(answer.columns, self.groupby_columns + [output_column])
+        answer.first()
 
     @parameterized.expand(
         [
-            (input_metric, groupby_output_metric, output_measure, noise_mechanism)
+            (
+                input_metric,
+                groupby_output_metric,
+                output_measure,
+                noise_mechanism,
+                output_column,
+            )
             for noise_mechanism, groupby_output_metric in [
                 (NoiseMechanism.LAPLACE, SumOf(SymmetricDifference())),
                 (NoiseMechanism.GEOMETRIC, SumOf(SymmetricDifference())),
@@ -387,6 +404,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 ),
             ]
             for output_measure in [PureDP(), RhoZCDP()]
+            for output_column in [None, "XYZ"]
             if not (
                 noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
@@ -399,6 +417,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         groupby_output_metric: Union[SumOf, RootSumOfSquared],
         output_measure: Union[PureDP, RhoZCDP],
         noise_mechanism: NoiseMechanism,
+        output_column: Optional[str] = None,
     ):
         """Tests that create_variance_measurement works correctly with groupby."""
         if self.groupby_columns == [] and isinstance(input_metric, IfGroupedBy):
@@ -420,7 +439,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 group_keys=self.group_keys,
             ),
             keep_intermediates=False,
-            variance_column="VAR(B)",
+            variance_column=output_column,
         )
         self.assertEqual(variance_measurement.input_domain, self.input_domain)
         self.assertEqual(variance_measurement.output_measure, output_measure)
@@ -429,7 +448,10 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         )
         answer = variance_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
-        self.assertEqual(answer.columns, self.groupby_columns + ["VAR(B)"])
+        if not output_column:
+            output_column = "var(B)"
+        self.assertEqual(answer.columns, self.groupby_columns + [output_column])
+        answer.first()
 
     @parameterized.expand(
         [

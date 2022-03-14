@@ -9,5 +9,3 @@ The following tutorials display the functionality of Tumult Core.
    :maxdepth: 1
 
    first-tutorial
-   groupby-aggregation
-   interactive-querying

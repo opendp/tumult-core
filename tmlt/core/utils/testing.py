@@ -1,30 +1,38 @@
 """Utilities for testing."""
-# TODO(#1218): Move dummy aggregate class back to the test.
 
 # <placeholder: boilerplate>
+
+# TODO(#1218): Move dummy aggregate class back to the test.
+
 import logging
 import shutil
 import sys
 import unittest
+from dataclasses import dataclass
 from types import FunctionType
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple, Union, overload
 from unittest.mock import Mock, create_autospec
 
 import numpy as np
 import pandas as pd
 import sympy as sp
+from nose.tools import nottest
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import DataType, DoubleType, StringType, StructField, StructType
+from scipy.stats import chisquare, kstest, laplace
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
+    SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
+    SparkIntegerColumnDescriptor,
     SparkRowDomain,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.measurements.aggregations import NoiseMechanism
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.interactive_measurements import (
     PrivacyAccountant,
@@ -33,10 +41,23 @@ from tmlt.core.measurements.interactive_measurements import (
 )
 from tmlt.core.measurements.pandas_measurements.dataframe import Aggregate
 from tmlt.core.measures import Measure, PureDP
-from tmlt.core.metrics import AbsoluteDifference, Metric, SymmetricDifference
+from tmlt.core.metrics import (
+    AbsoluteDifference,
+    Metric,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+)
 from tmlt.core.transformations.base import Transformation
+from tmlt.core.transformations.spark_transformations.groupby import GroupBy
 from tmlt.core.transformations.spark_transformations.map import RowToRowsTransformation
 from tmlt.core.utils.cleanup import cleanup
+from tmlt.core.utils.distributions import (
+    discrete_gaussian_cmf,
+    discrete_gaussian_pmf,
+    double_sided_geometric_cmf,
+    double_sided_geometric_pmf,
+)
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
@@ -436,3 +457,430 @@ def skip(reason):
     if "--no-skip" in sys.argv:
         return lambda fn: fn
     return unittest.skip(reason)
+
+
+@dataclass
+class FixedGroupDataSet:
+    """Encapsulates a Spark DataFrame with specified number of identical groups.
+
+    The DataFrame contains columns A and B -- column 'A' corresponds to group index
+    and column 'B' corresponds to the measure column (to be aggregated).
+    """
+
+    group_vals: Union[List[float], List[int]]
+    """Values for each group."""
+
+    num_groups: int
+    """Number of identical groups."""
+
+    float_measure_column: bool = False
+    """If True, measure column has floating point values."""
+
+    def __post_init__(self):
+        """Create groupby transformations and dataframe."""
+        spark = SparkSession.builder.getOrCreate()
+        self.group_keys = spark.createDataFrame(
+            [(i,) for i in range(self.num_groups)], schema=["A"]
+        )
+        self._dataframe = spark.createDataFrame(
+            [(x, val) for x in range(self.num_groups) for val in self.group_vals],
+            schema=["A", "B"],
+        )
+
+    def groupby(self, noise_mechanism: NoiseMechanism) -> GroupBy:
+        """Returns appropriate GroupBy transformation."""
+        output_metric: Union[SumOf, RootSumOfSquared] = (
+            RootSumOfSquared(SymmetricDifference())
+            if noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+            else SumOf(SymmetricDifference())
+        )
+        return GroupBy(
+            input_domain=self.domain,
+            input_metric=SymmetricDifference(),
+            output_metric=output_metric,
+            group_keys=self.group_keys,
+        )
+
+    @property
+    def domain(self) -> SparkDataFrameDomain:
+        """Return dataframe domain."""
+        return SparkDataFrameDomain(
+            {
+                "A": SparkIntegerColumnDescriptor(),
+                "B": SparkFloatColumnDescriptor()
+                if self.float_measure_column
+                else SparkIntegerColumnDescriptor(),
+            }
+        )
+
+    @property
+    def lower(self) -> ExactNumber:
+        """Returns a lower bound on the values in B."""
+        return ExactNumber.from_float(min(self.group_vals), round_up=False)
+
+    @property
+    def upper(self) -> ExactNumber:
+        """Returns an upper bound on the values in B."""
+        return ExactNumber.from_float(max(self.group_vals), round_up=True)
+
+    def get_dataframe(self) -> DataFrame:
+        """Returns dataframe."""
+        return self._dataframe
+
+
+class KSTestCase:
+    """Test case for :func:`run_test_using_chi_squared_test`."""
+
+    sampler: Callable[[], Dict[str, np.ndarray]]
+    locations: Dict[str, Union[str, float]]
+    scales: Dict[str, ExactNumberInput]
+    cdfs: Dict[str, Callable]
+
+    def __init__(self, sampler=None, locations=None, scales=None, cdfs=None):
+        """Constructor."""
+        self.sampler = sampler
+        self.locations = locations
+        self.scales = scales
+        self.cdfs = cdfs
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "KSTestCase":
+        """Transform a dictionary into an KSTestCase."""
+        return cls(
+            sampler=d["sampler"],
+            locations=d["locations"],
+            scales=d["scales"],
+            cdfs=d["cdfs"],
+        )
+
+
+class ChiSquaredTestCase:
+    """Test case for :func:`run_test_using_ks_test`."""
+
+    sampler: Callable[[], Dict[str, np.ndarray]]
+    locations: Dict[str, int]
+    scales: Dict[str, ExactNumberInput]
+    cmfs: Dict[str, Callable]
+    pmfs: Dict[str, Callable]
+
+    def __init__(self, sampler=None, locations=None, scales=None, cmfs=None, pmfs=None):
+        """Constructor."""
+        self.sampler = sampler
+        self.locations = locations
+        self.scales = scales
+        self.cmfs = cmfs
+        self.pmfs = pmfs
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "ChiSquaredTestCase":
+        """Turns a dictionary into a ChiSquaredTestCase."""
+        return cls(
+            sampler=d["sampler"],
+            locations=d["locations"],
+            scales=d["scales"],
+            cmfs=d["cmfs"],
+            pmfs=d["pmfs"],
+        )
+
+
+def _run_ks_tests(
+    sample: np.ndarray, conjectured_scale: float, cdf: Callable, fudge_factor: float
+) -> Tuple[float, float, float]:
+    """Run KS test on the sample."""
+    (_, good_p) = kstest(sample, cdf=lambda value: cdf(value, conjectured_scale))
+    (_, less_noise_p) = kstest(
+        sample, cdf=lambda value: cdf(value, conjectured_scale * (1 - fudge_factor))
+    )
+    (_, more_noise_p) = kstest(
+        sample, cdf=lambda value: cdf(value, conjectured_scale * (1 - fudge_factor))
+    )
+    return (good_p, less_noise_p, more_noise_p)
+
+
+def _run_chi_squared_tests(
+    sample: np.ndarray,
+    loc: int,
+    conjectured_scale: float,
+    cmf: Callable,
+    pmf: Callable,
+    fudge_factor: float,
+) -> Tuple[float, float, float]:
+    """Performs a Chi-squared test on the sample.
+
+    Since chi2 tests don't work well for infinite bins, this test groups all values
+    of k with an expected number of samples less than 5 into one of two bins:
+    one bin is for small k values, and the other is for large k values.
+    """
+    sample_size = len(sample)
+    # Find the minimum/maximum k values where the expected number of counts is > 5.
+    max_k = loc
+    while sample_size * pmf(max_k, conjectured_scale) >= 5:
+        max_k += 1
+    min_k = loc - (max_k - loc)
+
+    # Calculate the actual and expected counts for all bins
+    less_noise_noise_scale = conjectured_scale * (1 - fudge_factor)
+    more_noise_noise_scale = conjectured_scale * (1 + fudge_factor)
+
+    actual_counts = []
+    good_expected_counts = []
+    less_noise_expected_counts = []
+    more_noise_expected_counts = []
+
+    # Less than or equal to min_k
+    actual_counts.append(np.sum(sample <= min_k))
+    good_expected_counts.append(sample_size * cmf(min_k, conjectured_scale))
+    less_noise_expected_counts.append(sample_size * cmf(min_k, less_noise_noise_scale))
+    more_noise_expected_counts.append(sample_size * cmf(min_k, more_noise_noise_scale))
+
+    # Each k between min_k, max_k (exclusive)
+    for k in range(min_k + 1, max_k):
+        actual_counts.append(np.sum(sample == k))
+        good_expected_counts.append(sample_size * pmf(k, conjectured_scale))
+        less_noise_expected_counts.append(sample_size * pmf(k, less_noise_noise_scale))
+        more_noise_expected_counts.append(sample_size * pmf(k, more_noise_noise_scale))
+
+    # Greater than or equal to max_k
+    actual_counts.append(np.sum(sample >= max_k))
+    good_expected_counts.append(sample_size * (1 - cmf(max_k - 1, conjectured_scale)))
+    less_noise_expected_counts.append(
+        sample_size * (1 - cmf(max_k - 1, less_noise_noise_scale))
+    )
+    more_noise_expected_counts.append(
+        sample_size * (1 - cmf(max_k - 1, more_noise_noise_scale))
+    )
+
+    # Sanity check for actual/expected counts
+    assert sum(actual_counts) == sample_size
+    assert np.allclose(sum(good_expected_counts), sample_size)
+    assert np.allclose(sum(less_noise_expected_counts), sample_size)
+    assert np.allclose(sum(more_noise_expected_counts), sample_size)
+
+    # Calculate and check p values
+    (_, good_p) = chisquare(actual_counts, good_expected_counts)
+    (_, less_noise_p) = chisquare(actual_counts, less_noise_expected_counts)
+    (_, more_noise_p) = chisquare(actual_counts, more_noise_expected_counts)
+    return good_p, less_noise_p, more_noise_p
+
+
+@nottest
+def run_test_using_ks_test(
+    case: KSTestCase, p_threshold: float, noise_scale_fudge_factor: float
+):
+    """Runs given :class:`~.KSTestCase`."""
+    samples = case.sampler()  # type: ignore
+    for sample_name, sample in samples.items():
+        good_p, less_noise_p, more_noise_p = _run_ks_tests(
+            sample=sample,
+            conjectured_scale=ExactNumber(case.scales[sample_name]).to_float(
+                round_up=True
+            ),
+            cdf=case.cdfs[sample_name],
+            fudge_factor=noise_scale_fudge_factor,
+        )
+        assert good_p > p_threshold
+        assert less_noise_p < p_threshold
+        assert more_noise_p < p_threshold
+
+
+@nottest
+def run_test_using_chi_squared_test(
+    case: ChiSquaredTestCase, p_threshold: float, noise_scale_fudge_factor: float
+):
+    """Runs given :class:`~.ChiSquaredTestCase`."""
+    samples = case.sampler()  # type: ignore
+    for sample_name, sample in samples.items():
+        good_p, less_noise_p, more_noise_p = _run_chi_squared_tests(
+            sample=sample,
+            loc=case.locations[sample_name],
+            conjectured_scale=ExactNumber(case.scales[sample_name]).to_float(
+                round_up=True
+            ),
+            cmf=case.cmfs[sample_name],
+            pmf=case.pmfs[sample_name],
+            fudge_factor=noise_scale_fudge_factor,
+        )
+        assert good_p > p_threshold
+        assert less_noise_p < p_threshold
+        assert more_noise_p < p_threshold
+
+
+@overload
+def get_values_summing_to_loc(loc: int, n: int) -> List[int]:
+    ...
+
+
+@overload
+def get_values_summing_to_loc(loc: float, n: int) -> List[float]:
+    ...
+
+
+def get_values_summing_to_loc(
+    loc, n
+):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    """Returns a list of n values that sum to loc.
+
+    Args:
+        loc: Value to which the return list adds up to. If this is a float,
+            a list of floats will be returned, otherwise this must be an int,
+            and a list of ints will be returned.
+        n: Desired list size.
+    """
+    assert n > 0
+    if n % 2 == 0:
+        shifts = [sign * shift for sign in [-1, 1] for shift in range(1, n // 2 + 1)]
+    else:
+        shifts = list(range(-(n // 2), n // 2 + 1))
+    if isinstance(loc, float):
+        return [loc / n + shift for shift in shifts]
+    assert isinstance(loc, int)
+    int_values = [loc // n + shift for shift in shifts]
+    int_values[-1] += loc % n
+    return int_values
+
+
+def get_sampler(
+    measurement: Measurement,
+    dataset: FixedGroupDataSet,
+    post_processor: Callable[[DataFrame], DataFrame],
+    iterations: int = 1,
+) -> Callable[[], Dict[str, np.ndarray]]:
+    """Returns a sampler function.
+
+    A sampler function takes 0 arguments and produces a numpy array containing samples
+    obtaining by performing groupby-agg on the given dataset.
+
+    Args:
+        measurement: Measurement to sample from.
+        dataset: FixedGroupDataSet object containing DataFrame to perform measurement
+            on.
+        post_processor: Function to process measurement's output DataFrame and select
+            relevant columns.
+        iterations: Number of iterations of groupby-agg.
+    """
+
+    def sampler() -> Dict[str, np.ndarray]:
+        samples = []
+        df = dataset.get_dataframe().repartition(200)
+        # This is to make sure we catch any correlations across
+        # chunks when spark.applyInPandas is called.
+        for _ in range(iterations):
+            raw_output_df = measurement(df)
+            processed_df = post_processor(
+                raw_output_df
+            ).toPandas()  # Produce columns to be sampled.
+            samples.append(
+                {col: processed_df[col].values for col in processed_df.columns}
+            )
+        cols = samples[0].keys()
+        return {
+            col: np.concatenate([sample_dict[col] for sample_dict in samples])
+            for col in cols
+        }
+
+    return sampler
+
+
+def get_noise_scales(
+    agg: str,
+    budget: ExactNumberInput,
+    dataset: FixedGroupDataSet,
+    noise_mechanism: NoiseMechanism,
+) -> Dict[str, ExactNumber]:
+    """Get noise scale per output column for an aggregation."""
+    budget = ExactNumber(budget)
+    assert budget > 0
+    second_if_dgauss = (
+        lambda s1, s2: s1 if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN else s2
+    )
+    if agg == "count":
+        scale = second_if_dgauss(1 / budget, 1 / (2 * budget))
+        return {"count": scale}
+    if agg == "sum":
+        scale = second_if_dgauss(
+            dataset.upper / budget, dataset.upper ** 2 / (2 * budget)
+        )
+        return {"sum": scale}
+    if agg == "average":
+        sod_sensitivity = (dataset.upper - dataset.lower) / 2
+        budget_per_subagg = budget / 2
+        sod_scale = second_if_dgauss(
+            sod_sensitivity / budget_per_subagg,
+            sod_sensitivity ** 2 / (2 * budget_per_subagg),
+        )
+        count_scale = second_if_dgauss(
+            1 / budget_per_subagg, 1 / (2 * budget_per_subagg)
+        )
+        return {"sum": sod_scale, "count": count_scale}
+    if agg in ("standard deviation", "variance"):
+        sod_sensitivity = (dataset.upper - dataset.lower) / 2
+        sos_sensitivity = (dataset.upper ** 2 - dataset.lower ** 2) / 2
+        budget_per_subagg = budget / 3
+        sod_scale = second_if_dgauss(
+            sod_sensitivity / budget_per_subagg,
+            sod_sensitivity ** 2 / (2 * budget_per_subagg),
+        )
+        sos_scale = second_if_dgauss(
+            sos_sensitivity / budget_per_subagg,
+            sos_sensitivity ** 2 / (2 * budget_per_subagg),
+        )
+        count_scale = second_if_dgauss(
+            1 / budget_per_subagg, 1 / (2 * budget_per_subagg)
+        )
+        return {"sum": sod_scale, "count": count_scale, "sum_of_squares": sos_scale}
+    raise ValueError(agg)
+
+
+def _create_laplace_cdf(loc: float):
+    return lambda value, noise_scale: laplace.cdf(value, loc=loc, scale=noise_scale)
+
+
+def _create_two_sided_geometric_cmf(loc: int):
+    return lambda k, noise_scale: double_sided_geometric_cmf(k - loc, noise_scale)
+
+
+def _create_two_sided_geometric_pmf(loc: int):
+    return lambda k, noise_scale: double_sided_geometric_pmf(k - loc, noise_scale)
+
+
+def _create_discrete_gaussian_cmf(loc: int):
+    return lambda k, noise_scale: discrete_gaussian_cmf(k - loc, noise_scale)
+
+
+def _create_discrete_gaussian_pmf(loc: int):
+    return lambda k, noise_scale: discrete_gaussian_pmf(k - loc, noise_scale)
+
+
+def get_prob_functions(
+    noise_mechanism: NoiseMechanism, locations: Dict[str, Union[float, int]]
+) -> Dict[str, Dict[str, Callable]]:
+    """Returns probability mass/density functions for different noise mechanisms."""
+    if noise_mechanism == NoiseMechanism.LAPLACE:
+        return {
+            "cdfs": {col: _create_laplace_cdf(loc) for col, loc in locations.items()}
+        }
+    if noise_mechanism == NoiseMechanism.GEOMETRIC:
+        assert all(isinstance(val, int) for val in locations.values())
+        return {
+            "pmfs": {
+                col: _create_two_sided_geometric_pmf(int(loc))
+                for col, loc in locations.items()
+            },
+            "cmfs": {
+                col: _create_two_sided_geometric_cmf(int(loc))
+                for col, loc in locations.items()
+            },
+        }
+    if noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
+        assert all(isinstance(val, int) for val in locations.values())
+        return {
+            "pmfs": {
+                col: _create_discrete_gaussian_pmf(int(loc))
+                for col, loc in locations.items()
+            },
+            "cmfs": {
+                col: _create_discrete_gaussian_cmf(int(loc))
+                for col, loc in locations.items()
+            },
+        }
+    raise ValueError("This should be unreachable.")

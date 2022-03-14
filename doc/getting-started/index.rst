@@ -12,14 +12,6 @@ and can automatically verify the privacy properties of algorithms constructed
 from Tumult Core components. Tumult Core is scalable, includes a wide variety of components,
 and supports multiple privacy definitions.
 
-To see a more detailed description of Tumult Core's architecture and learn how it
-automatically protects privacy, see :ref:`Architecture`.
-
-Why Tumult Core?
-^^^^^^^^^^^^^^^^
-
-TODO(#1321) The purpose of this page is sell Tumult Core. Summarize why Tumult Core is great and list some major features. Additionally, include a high level section that compares Tumult Core to other tools.
-
 Intended Users
 ^^^^^^^^^^^^^^
 

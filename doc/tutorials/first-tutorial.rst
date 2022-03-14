@@ -26,8 +26,7 @@ Transformations are functions that transform the data, but are not
 private on their own. Measurements are randomized mechanisms with
 privacy properties. We can build complex measurements by combining
 transformations with simple measurements. Additionally we can combine
-transformations to produce more complex transformations. See the
-:ref:`Architecture` explanation for more details.
+transformations to produce more complex transformations.
 
 To compute the number of records with age over 18, we combine the
 following 3 components:

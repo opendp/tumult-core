@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - Fixed a bug where create_quantile_measurement would always be created with PureDP as the output measure.
 - `PySparkTest` now runs `tmlt.core.utils.cleanup.cleanup()` during `tearDownClass`.
+- Refactored noise distribution tests.
+
+### Removed
+- Removed `ExponentialMechanism` and `PermuteAndFlip` components.
 
 ## 0.1.0 - 2022-02-14
 ### Added
