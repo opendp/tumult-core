@@ -27,8 +27,6 @@ suppressed_versions = []
 
 # TODO(#1256): Fix cannot resolve import of unknown module: `tmlt.common`
 suppress_warnings = ["autoapi.python_import_resolution"]
-# TODO(#1256): Fix NotebookError caused due to ModuleNotFoundError
-nbsphinx_allow_errors = True
 
 
 # Build information
@@ -52,7 +50,6 @@ linkcheck_mode_url_prefix = os.getenv("BASE_URL_OVERRIDE")
 
 extensions = [
     "autoapi.extension",
-    "nbsphinx",
     "scanpydoc.elegant_typehints",
     "sphinx_copybutton",
     "sphinx.ext.autodoc",
