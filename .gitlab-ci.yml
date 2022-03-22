@@ -12,8 +12,8 @@ workflow:
 # Define the potential stages that can be run in a GitLab CI pipeline job
 stages:
   - setup
-  - test
   - lint
+  - test
   - docs
 
 variables:
@@ -117,6 +117,19 @@ test_nightly:
     - when: manual
       allow_failure: true
   timeout: 23h
+
+trigger_analytics_with_core_commit_hash_nightly:
+  stage: test
+  needs:
+    - job: test_nightly
+      artifacts: false
+  trigger:
+    project: tumult-labs/analytics
+    branch: dev
+  variables:
+    CORE_COMMIT_HASH: "$CI_COMMIT_SHA"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
 docs:
   extends: .base
