@@ -22,7 +22,7 @@ variables:
   TAG_PREFIX: "core"
 
 .base:
-  image: registry.gitlab.com/tumult-labs/tumult/ci-full:latest
+  image: https://registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest 
   before_script:
     - java -version
     - python --version
@@ -246,7 +246,7 @@ docs:
       EOF
     - echo "IMAGE_TAG=$IMAGE_TAG" > .env
     - /kaniko/executor --cleanup
-        --dockerfile "$CI_PROJECT_DIR/ops/docs/Dockerfile"
+        --dockerfile "$CI_PROJECT_DIR/doc/Dockerfile"
         --context "$CI_PROJECT_DIR/$PACKAGE_DIR"
         --destination "registry.gitlab.com/tumult-labs/tumult-docs/$TAG_PREFIX:$IMAGE_TAG"
         --label "git-version=$CI_COMMIT_REF_NAME"
