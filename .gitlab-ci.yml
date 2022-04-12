@@ -22,7 +22,7 @@ variables:
   TAG_PREFIX: "core"
 
 .base:
-  image: https://registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest 
+  image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest 
   before_script:
     - java -version
     - python --version
