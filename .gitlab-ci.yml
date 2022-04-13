@@ -19,7 +19,7 @@ stages:
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   POETRY_VIRTUALENVS_IN_PROJECT: "true"
-  TAG_PREFIX: "core"
+  PACKAGE_NAME: "core"
 
 .base:
   image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest 
@@ -248,7 +248,7 @@ docs:
     - /kaniko/executor --cleanup
         --dockerfile "$CI_PROJECT_DIR/doc/Dockerfile"
         --context "$CI_PROJECT_DIR/$PACKAGE_DIR"
-        --destination "registry.gitlab.com/tumult-labs/tumult-docs/$TAG_PREFIX:$IMAGE_TAG"
+        --destination "registry.gitlab.com/tumult-labs/tumult-docs/$PACKAGE_NAME:$IMAGE_TAG"
         --label "git-version=$CI_COMMIT_REF_NAME"
         --label "git-commit=$CI_COMMIT_SHORT_SHA"
   artifacts:
