@@ -15,6 +15,7 @@ test-examples
 benchmark
 package
 docs-fast
+prepare-release
 endef
 
 define make-target
