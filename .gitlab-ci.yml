@@ -227,7 +227,7 @@ docs:
 # the name and token of a project access token from the tumult/tumult-docs
 # project with the read_registry and write_registry permissions.
 publish_docs:
-  stage: publish
+  stage:  package
   image:
     name: gcr.io/kaniko-project/executor:v1.6.0-debug
     entrypoint: [""]
