@@ -389,7 +389,7 @@ release_handler:
             "type": "section",
             "text": {
               "type": "mrkdwn",
-              "text": "*Analytics Release $CI_COMMIT_TAG*\n<https://gitlab.com/tumult-labs/analytics/-/packages|:package: Package Registry>    <$CI_PIPELINE_URL|:factory: Pipeline>"
+              "text": "*Core Release $CI_COMMIT_TAG*\n<https://gitlab.com/tumult-labs/core/-/packages|:package: Package Registry>    <$CI_PIPELINE_URL|:factory: Pipeline>"
             }
           }
         ]
