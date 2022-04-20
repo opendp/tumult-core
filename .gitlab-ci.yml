@@ -290,7 +290,7 @@ publish_docs:
     name: gcr.io/kaniko-project/executor:v1.6.0-debug
     entrypoint: [""]
   variables:
-    pACKAGE_NAME: "core"
+    PACKAGE_NAME: "core"
   before_script:
     - if [ "$CI_COMMIT_TAG" ] ; then
         IMAGE_TAG="release-$(date +%Y%m%d%H%M%S)" ;
