@@ -1,6 +1,8 @@
 """Utilities for checking the inputs to components."""
 
 # <placeholder: boilerplate>
+
+import datetime
 from typing import Dict, List, Optional, Union
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
@@ -8,7 +10,7 @@ from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
 def validate_groupby_domains(
-    groupby_domains: Dict[str, Union[List[str], List[int]]],
+    groupby_domains: Dict[str, Union[List[str], List[int], List[datetime.date]]],
     input_domain: SparkDataFrameDomain,
 ):
     """Raises error if groupby domains are invalid.

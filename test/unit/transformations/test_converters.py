@@ -3,7 +3,7 @@
 # <placeholder: boilerplate>
 
 # pylint: disable=no-self-use
-
+import re
 from typing import Union
 
 import sympy as sp
@@ -87,3 +87,18 @@ class TestUnwrapIfGroupedBy(TestComponent):
         self.assert_frame_equal_with_sort(
             unwrapper(self.df_a).toPandas(), self.df_a.toPandas()
         )
+
+    def test_invalid_metric(self):
+        """Tests the UnwrapIfGroupedby raises an error invalid input metrics."""
+        with self.assertRaisesRegex(
+            ValueError,
+            re.escape(
+                "Inner metric for IfGroupedBy metric must be "
+                "SumOf(SymmetricDifference()), or "
+                "RootSumOfSquared(SymmetricDifference())"
+            ),
+        ):
+            UnwrapIfGroupedBy(
+                domain=SparkDataFrameDomain(self.schema_a),
+                input_metric=IfGroupedBy("B", SymmetricDifference()),
+            )

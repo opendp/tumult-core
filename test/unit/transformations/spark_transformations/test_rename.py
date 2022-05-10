@@ -8,7 +8,13 @@ import pandas as pd
 from parameterized import parameterized
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import IfGroupedBy, SumOf, SymmetricDifference
+from tmlt.core.metrics import (
+    HammingDistance,
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+)
 from tmlt.core.transformations.spark_transformations.rename import Rename
 from tmlt.core.utils.testing import (
     TestComponent,
@@ -67,8 +73,13 @@ class TestRename(TestComponent):
                 {"A": "AA"},
             ),
             (
-                IfGroupedBy("B", SumOf(SymmetricDifference())),
-                IfGroupedBy("BB", SumOf(SymmetricDifference())),
+                IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy("BB", RootSumOfSquared(SymmetricDifference())),
+                {"B": "BB"},
+            ),
+            (
+                IfGroupedBy("B", SymmetricDifference()),
+                IfGroupedBy("BB", SymmetricDifference()),
                 {"B": "BB"},
             ),
         ]
@@ -106,14 +117,34 @@ class TestRename(TestComponent):
                 rename_mapping=rename_mapping,
             )
 
-    @parameterized.expand([({"A": "AA"}, "D", "D not in input domain")])
+    @parameterized.expand(
+        [
+            (
+                {"A": "AA"},
+                "D",
+                SumOf(SymmetricDifference()),
+                "Input metric .* and input domain .* are not compatible",
+            ),
+            (
+                {"A": "AA"},
+                "D",
+                RootSumOfSquared(SymmetricDifference()),
+                "Input metric .* and input domain .* are not compatible",
+            ),
+            ({"A": "AA"}, "A", SumOf(HammingDistance()), "must be SymmetricDifference"),
+        ]
+    )
     def test_if_grouped_by_metric_invalid_parameters(
-        self, rename_mapping: Dict[str, str], groupby_col: str, error_msg: str
+        self,
+        rename_mapping: Dict[str, str],
+        groupby_col: str,
+        inner_metric: Union[SumOf, RootSumOfSquared, SymmetricDifference],
+        error_msg: str,
     ):
         """Tests that Rename raises appropriate errors with invalid params."""
         with self.assertRaisesRegex(ValueError, error_msg):
             Rename(
                 input_domain=SparkDataFrameDomain(self.schema_a),
-                metric=IfGroupedBy(groupby_col, SumOf(SymmetricDifference())),
+                metric=IfGroupedBy(groupby_col, inner_metric),
                 rename_mapping=rename_mapping,
             )

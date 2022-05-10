@@ -58,10 +58,23 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx_multiversion",
-    "sphinx_tabs.tabs",
     "sphinxcontrib.bibtex",
     "sphinx_autodoc_typehints",
+    "sphinx_panels",
 ]
+
+# Prevent sphinx_panels from loading bootstrap a second time
+panels_add_bootstrap_css = False
+# Change colors & contrast to inactive tab labels so they pass WCAG AA; all
+# other colors are the same as the defaults:
+#   https://sphinx-panels.readthedocs.io/en/latest/#tabbed-content
+panels_css_variables = {
+    "tabs-color-label-active": "hsla(231, 99%, 66%, 1)",
+    "tabs-color-label-inactive": "rgba(135, 138, 150, 1)",
+    "tabs-color-overline": "rgb(207, 236, 238)",
+    "tabs-color-underline": "rgb(207, 236, 238)",
+    "tabs-size-label": "1rem",
+}
 
 
 # sphinx-multiversion configuration
@@ -220,6 +233,7 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/pandas-docs/version/1.2.0/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
     "pyspark": ("https://spark.apache.org/docs/3.0.0/api/python/", None),
+    "flint": ("https://fredrikj.net/python-flint/", None),
 }
 
 

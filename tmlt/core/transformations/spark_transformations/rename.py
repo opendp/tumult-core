@@ -11,7 +11,13 @@ from pyspark.sql import functions as sf
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import HammingDistance, IfGroupedBy, SymmetricDifference
+from tmlt.core.metrics import (
+    HammingDistance,
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+)
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
@@ -116,9 +122,15 @@ class Rename(Transformation):
                 raise ValueError(f"Cannot rename {new} to {old}. {old} already exists.")
         output_metric = metric
         if isinstance(metric, IfGroupedBy):
-            if metric.column not in input_domain.schema:
+            if metric.inner_metric not in (
+                SymmetricDifference(),
+                SumOf(SymmetricDifference()),
+                RootSumOfSquared(SymmetricDifference()),
+            ):
                 raise ValueError(
-                    f"Invalid IfGroupedBy metric: {metric.column} not in input domain."
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "SumOf(SymmetricDifference()), or "
+                    "RootSumOfSquared(SymmetricDifference())"
                 )
             if metric.column in rename_mapping:
                 output_metric = IfGroupedBy(

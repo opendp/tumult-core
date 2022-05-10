@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`tmlt.ektelo.utils.configuration`."""
+"""Unit tests for :mod:`tmlt.core.utils.configuration`."""
 
 from string import ascii_letters, digits
 from unittest import TestCase

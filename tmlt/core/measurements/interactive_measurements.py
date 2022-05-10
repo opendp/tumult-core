@@ -6,7 +6,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, List, Optional, Union, cast
+from typing import Any, Callable, List, Optional, Union, cast
 from warnings import warn
 
 from typeguard import check_type, typechecked
@@ -17,19 +17,17 @@ from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import Metric, RootSumOfSquared, SumOf
 from tmlt.core.transformations.base import Transformation
+from tmlt.core.transformations.chaining import ChainTT
+from tmlt.core.transformations.identity import Identity
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
 class Queryable(ABC):
     """Base class for Queryables.
 
-    TODO (#1639): Move this to tmlt.core.measurements.base once the old Queryable
-    base class is no longer required.
-
     Note:
         All subclasses of Queryable should have exactly one public
         method: `__call__`.
-
     """
 
     @abstractmethod
@@ -148,6 +146,7 @@ class RetirableQueryable(Queryable):
 
     """
 
+    @typechecked
     def __init__(self, queryable: Queryable):
         """Constructor.
 
@@ -191,6 +190,7 @@ class SequentialQueryable(Queryable):
     can be answered.
     """
 
+    @typechecked
     def __init__(
         self,
         input_domain: Domain,
@@ -245,7 +245,16 @@ class SequentialQueryable(Queryable):
                     " measure of SequentialQueryable."
                 )
 
-            privacy_loss = query.measurement.privacy_function(self._d_in)
+            if query.d_out:
+                if not query.measurement.privacy_relation(self._d_in, query.d_out):
+                    raise ValueError(
+                        "Measurement's privacy relation cannot be satisfied with given"
+                        f" d_out ({query.d_out})"
+                    )
+                privacy_loss = query.d_out
+            else:
+                privacy_loss = query.measurement.privacy_function(self._d_in)
+
             if not self._output_measure.compare(privacy_loss, self._remaining_budget):
                 raise ValueError(
                     "Cannot answer query without exceeding available privacy budget."
@@ -274,7 +283,15 @@ class SequentialQueryable(Queryable):
                 )
 
             self._data = query.transformation(self._data)
-            self._d_in = query.transformation.stability_function(self._d_in)
+            if query.d_out:
+                if not query.transformation.stability_relation(self._d_in, query.d_out):
+                    raise ValueError(
+                        "Transformation's stability relation cannot be satisfied with"
+                        f" given d_out ({query.d_out})"
+                    )
+                self._d_in = query.d_out
+            else:
+                self._d_in = query.transformation.stability_function(self._d_in)
             self._input_domain = query.transformation.output_domain
             self._input_metric = query.transformation.output_metric
             return None
@@ -283,6 +300,7 @@ class SequentialQueryable(Queryable):
 class ParallelQueryable(Queryable):
     """Answers index queries on partitions."""
 
+    @typechecked
     def __init__(self, data: List, measurements: List[Measurement]):
         """Constructor.
 
@@ -316,6 +334,7 @@ class ParallelQueryable(Queryable):
 class GetAnswerQueryable(Queryable):
     """Returns answer obtained from a non-interactive measurement."""
 
+    @typechecked
     def __init__(self, measurement: Measurement, data: Any):
         """Constructor."""
         if measurement.is_interactive:
@@ -325,6 +344,106 @@ class GetAnswerQueryable(Queryable):
     def __call__(self, query: None):
         """Returns answer."""
         return self._answer
+
+
+class DecoratedQueryable(Queryable):
+    """Allows modifying the query to and the answer from a Queryable.
+
+    The privacy guarantee for :class:`~.DecoratedQueryable` depends on the passed
+    function `postprocess_answer` satisfying certain properties. In particular,
+    `postprocess_answer` should not use distinguishing psuedo-side channel information,
+    and should be well-defined on its abstract domain. See
+    :ref:`postprocessing-udf-assumptions`.
+    """
+
+    @typechecked
+    def __init__(
+        self,
+        queryable: Queryable,
+        preprocess_query: Callable[[Any], Any],
+        postprocess_answer: Callable[[Any], Any],
+    ):
+        """Constructor.
+
+        Args:
+            queryable: :class:`~.Queryable` to decorate.
+            preprocess_query: Function to preprocess queries to this
+                :class:`~.DecoratedQueryable`.
+            postprocess_answer: Function to postprocess answers from this
+                :class:`~.DecoratedQueryable`.
+        """
+        self._queryable = queryable
+        self._preprocess_query = preprocess_query
+        self._postprocess_answer = postprocess_answer
+
+    def __call__(self, query: Any) -> Any:
+        """Answers query."""
+        return self._postprocess_answer(self._queryable(self._preprocess_query(query)))
+
+
+class DecorateQueryable(Measurement):
+    """Creates a :class:`~.DecoratedQueryable`.
+
+    This class allows preprocessing queries to a :class:`~.Queryable` launched by
+    another interactive measurement as well as post-processing answers produced by the
+    :class:`~.Queryable`.
+    """
+
+    @typechecked
+    def __init__(
+        self,
+        measurement: Measurement,
+        preprocess_query: Callable[[Any], Any],
+        postprocess_answer: Callable[[Any], Any],
+    ):
+        """Constructor.
+
+        Args:
+            measurement: Interactive measurement to decorate.
+            preprocess_query: Function to preprocess queries submitted to the
+                Queryable obtained by running this measurement.
+            postprocess_answer: Function to process answers produced by the
+                Queryable returned by this measurement.
+        """
+        if not measurement.is_interactive:
+            raise ValueError("TODO")
+        self._preprocess_query = preprocess_query
+        self._postprocess_answer = postprocess_answer
+        self._measurement = measurement
+        super().__init__(
+            input_domain=measurement.input_domain,
+            input_metric=measurement.input_metric,
+            output_measure=measurement.output_measure,
+            is_interactive=True,
+        )
+
+    @property
+    def measurement(self) -> Measurement:
+        """Returns wrapped :class:`~.Measurement`."""
+        return self._measurement
+
+    @property
+    def preprocess_query(self) -> Callable[[Any], Any]:
+        """Returns function to preprocess queries."""
+        return self._preprocess_query
+
+    @property
+    def postprocess_answer(self) -> Callable[[Any], Any]:
+        """Returns function to postprocess answers."""
+        return self._postprocess_answer
+
+    @typechecked
+    def privacy_function(self, d_in: Any) -> Any:
+        """Returns the smallest d_out satisfied by the measurement."""
+        return self._measurement.privacy_function(d_in)
+
+    def __call__(self, data: Any) -> DecoratedQueryable:
+        """Returns a :class:`~.DecoratedQueryable`."""
+        return DecoratedQueryable(
+            queryable=self._measurement(data),
+            preprocess_query=self._preprocess_query,
+            postprocess_answer=self._postprocess_answer,
+        )
 
 
 class SequentialComposition(Measurement):
@@ -559,6 +678,11 @@ class MakeInteractive(Measurement):
         """Returns the smallest d_out satisfied by the measurement."""
         return self._measurement.privacy_function(d_in)
 
+    @typechecked
+    def privacy_relation(self, d_in: Any, d_out: Any) -> Any:
+        """Returns True only if wrapped measurement's privacy relation is satisfied."""
+        return self._measurement.privacy_relation(d_in, d_out)
+
     @property
     def measurement(self) -> Measurement:
         """Returns wrapped non-interactive measurement."""
@@ -652,6 +776,22 @@ class PrivacyAccountantState(Enum):
     """
 
 
+class InsufficientBudgetError(ValueError):
+    """Exception raised when there is not enough budget to perform an operation.
+
+    PrivacyAccountant will raise this exception when asked to perform an
+    operation that exceeds its budget.
+    """
+
+
+class InactiveAccountantError(RuntimeError):
+    """Raised when trying to perform operations on an accountant that is not ACTIVE.
+
+    PrivacyAccountant will raise this exception if you attempt an operation
+    and the accountant is not ACTIVE.
+    """
+
+
 class PrivacyAccountant:
     r"""An interface for adaptively composing measurements across transformed datasets.
 
@@ -731,6 +871,7 @@ class PrivacyAccountant:
             if not parent
             else PrivacyAccountantState.WAITING_FOR_SIBLING
         )
+        self._pending_transformation: Optional[Transformation] = None
 
     @property
     def input_domain(self) -> Domain:
@@ -930,10 +1071,14 @@ class PrivacyAccountant:
                 :meth:`~.Transformation.stability_function`.
 
         Raises:
-            RuntimeError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
+            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
         """  # pylint: disable=line-too-long
         if self.state != PrivacyAccountantState.ACTIVE:
-            raise RuntimeError(f"PrivacyAccountant must be ACTIVE not {self.state}.")
+            raise InactiveAccountantError(
+                f"PrivacyAccountant must be ACTIVE not {self.state}. To queue a"
+                " transformation that will be executed when this accountant becomes"
+                " active, use PrivacyAccountant.queue_transformation."
+            )
 
         assert self._queryable is not None
         if transformation.input_domain != self.input_domain:
@@ -948,7 +1093,9 @@ class PrivacyAccountant:
                 " metric."
             )
 
-        if d_out is not None and transformation.stability_relation(self.d_in, d_out):
+        if d_out is not None and not transformation.stability_relation(
+            self._d_in, d_out
+        ):
             raise ValueError(
                 f"Given d_out {(d_out)} does not satisfy transformation's stability"
                 f" relation w.r.t PrivacyAccountant's d_in {(self.d_in)}."
@@ -957,7 +1104,7 @@ class PrivacyAccountant:
         self._queryable(TransformationQuery(transformation=transformation, d_out=d_out))
         self._input_domain = transformation.output_domain
         self._input_metric = transformation.output_metric
-        self._d_in = d_out if d_out else transformation.stability_function(self.d_in)
+        self._d_in = d_out if d_out else transformation.stability_function(self._d_in)
 
     def measure(
         self, measurement: Measurement, d_out: Optional[ExactNumberInput] = None
@@ -1050,10 +1197,12 @@ class PrivacyAccountant:
                 :meth:`~.Measurement.privacy_function`.
 
         Raises:
-            RuntimeError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
+            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
         """  # pylint: disable=line-too-long
         if self.state != PrivacyAccountantState.ACTIVE:
-            raise RuntimeError(f"PrivacyAccountant must be ACTIVE not {(self.state)}.")
+            raise InactiveAccountantError(
+                f"PrivacyAccountant must be ACTIVE not {(self.state)}."
+            )
         if self._queryable is None:
             raise AssertionError(
                 "This is probably a bug; please let us know so we can fix it!"
@@ -1091,8 +1240,8 @@ class PrivacyAccountant:
         else:
             d_out = measurement.privacy_function(self.d_in)
 
-        if self.output_measure.compare(self.privacy_budget, d_out):
-            raise ValueError(
+        if not self.output_measure.compare(d_out, self.privacy_budget):
+            raise InsufficientBudgetError(
                 f"PrivacyAccountant's remaining privacy budget ({self.privacy_budget})"
                 " is insufficient to answer given measurement."
             )
@@ -1285,10 +1434,10 @@ class PrivacyAccountant:
                does not implement a :meth:`~.Transformation.stability_function`.
 
         Raises:
-            RuntimeError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
+            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
         """  # pylint: disable=line-too-long
         if self.state != PrivacyAccountantState.ACTIVE:
-            raise RuntimeError("PrivacyAccountant must be ACTIVE")
+            raise InactiveAccountantError("PrivacyAccountant must be ACTIVE")
         if self._queryable is None:
             raise AssertionError(
                 "This is probably a bug; please let us know so we can fix it!"
@@ -1335,8 +1484,8 @@ class PrivacyAccountant:
         assert isinstance(
             splitting_transformation.output_metric, (SumOf, RootSumOfSquared)
         )
-        if self.output_measure.compare(self.privacy_budget, privacy_budget):
-            raise ValueError(
+        if not self.output_measure.compare(privacy_budget, self.privacy_budget):
+            raise InsufficientBudgetError(
                 f"PrivacyAccountant's privacy budget ({self.privacy_budget}) is"
                 " insufficient for this operation."
             )
@@ -1409,6 +1558,7 @@ class PrivacyAccountant:
                     "This is probably a bug; please let us know so we can fix it!"
                 )
             self.parent._retire_preceding_siblings(self)
+        self._execute_pending_transformation()
 
     def retire(self, force: bool = False) -> None:
         r"""Set this :class:`~.PrivacyAccountant`'s state to RETIRED.
@@ -1463,6 +1613,104 @@ class PrivacyAccountant:
             # the next sibling is activated.
             self.parent._activate_next(self)
 
+    def queue_transformation(
+        self, transformation: Transformation, d_out: Optional[Any] = None
+    ) -> None:
+        # pylint: disable=line-too-long
+        """Queue `transformation` to be executed when this :class:`~.PrivacyAccountant` becomes ACTIVE.
+
+        If this :class:`~.PrivacyAccountant` is ACTIVE, this has
+        the same behavior as :meth:`~.transform_in_place`.
+
+        If this :class:`~.PrivacyAccountant` is WAITING_FOR_CHILDREN or
+        WAITING_FOR_SIBLING, `transformation` will be applied to the private data
+        when this :class:`~.PrivacyAccountant` becomes ACTIVE, but otherwise it
+        has the same behavior as :meth:`~.transform_in_place`
+        (:attr:`~.input_domain`, :attr:`~.input_metric`, and :attr:`~.d_in` are
+        updated immediately).
+
+        Note that multiple transformations can be queued.
+
+        Args:
+            transformation: The transformation to apply.
+            d_out: An optional value for the output metric for `transformation`. It is
+                only used if `transformation` does not implement a
+                :meth:`~.Transformation.stability_function`.
+        """
+        # pylint: enable=line-too-long
+
+        if self.state == PrivacyAccountantState.RETIRED:
+            raise RuntimeError(
+                "You cannot queue transformations on a "
+                "PrivacyAccountant that is "
+                "PrivacyAccountantState.RETIRED"
+            )
+        if self.state == PrivacyAccountantState.ACTIVE:
+            self.transform_in_place(transformation, d_out=d_out)
+        else:
+            # Keep track of whether there was already a pending transformation,
+            # so that we can give friendlier error messages
+            no_transformation = False
+            if self._pending_transformation is None:
+                self._pending_transformation = Identity(
+                    self.input_metric, self.input_domain
+                )
+                no_transformation = True
+            # if you don't do this, mypy will complain about the if-statements below
+            assert self._pending_transformation is not None
+            if (
+                transformation.input_domain
+                != self._pending_transformation.output_domain
+            ):
+                if no_transformation:
+                    raise ValueError(
+                        "Transformation's input domain does not match"
+                        " PrivacyAccountant's input domain."
+                    )
+                raise ValueError(
+                    "Transformation's input domain does not match the"
+                    " output domain of the last transformation."
+                )
+            if (
+                transformation.input_metric
+                != self._pending_transformation.output_metric
+            ):
+                if no_transformation:
+                    raise ValueError(
+                        "Transformation's input metric does not match"
+                        " PrivacyAccountant's input metric."
+                    )
+                raise ValueError(
+                    "Transformation's input metric does not match the"
+                    " output metric of the last transformation."
+                )
+
+            new_transformation = ChainTT(
+                self._pending_transformation, transformation, hint=lambda _, __: d_out
+            )
+            if d_out is not None and new_transformation.stability_relation(
+                self.d_in, d_out
+            ):
+                raise ValueError(
+                    f"Given d_out {(d_out)} does not satisfy transformation's"
+                    " stability relation w.r.t PrivacyAccountant's d_in"
+                    f" {(self.d_in)}."
+                )
+            self._pending_transformation = new_transformation
+            self._d_in = (
+                d_out if d_out else transformation.stability_function(self.d_in)
+            )
+            self._input_domain = transformation.output_domain
+            self._input_metric = transformation.output_metric
+
+    def _execute_pending_transformation(self) -> None:
+        if self._pending_transformation is not None:
+            assert self._queryable is not None
+            self._queryable(
+                TransformationQuery(transformation=self._pending_transformation)
+            )
+            self._pending_transformation = None
+
     def _activate_next(self, child: "PrivacyAccountant"):
         r"""Activates next child or self.
 
@@ -1479,6 +1727,7 @@ class PrivacyAccountant:
         index = self.children.index(child)
         if index == len(self.children) - 1:
             self._state = PrivacyAccountantState.ACTIVE
+            self._execute_pending_transformation()
         else:
             self._activate_child(index + 1)
 
@@ -1504,3 +1753,67 @@ class PrivacyAccountant:
         self.children[index]._state = PrivacyAccountantState.ACTIVE
         self.children[index]._queryable = self._parallel_queryable(IndexQuery(index))
         self._active_child_index = index
+        self.children[index]._execute_pending_transformation()
+
+
+@typechecked
+def create_adaptive_composition(
+    input_domain: Domain,
+    input_metric: Metric,
+    d_in: Any,
+    privacy_budget: ExactNumberInput,
+    output_measure: Union[PureDP, RhoZCDP],
+) -> DecorateQueryable:
+    r"""Returns a measurement to launch a :class:`~.DecoratedQueryable`.
+
+    Returned :class:`~.DecoratedQueryable` allows transforming the private data
+    and answering non-interactive :class:`~.MeasurementQuery`\ s as long as the
+    cumulative privacy budget spent does not exceed `privacy_budget`.
+
+    Args:
+        input_domain: Domain of input datasets.
+        input_metric: Distance metric for input datasets.
+        d_in: Input metric value for inputs.
+        privacy_budget: Total privacy budget across all measurements.
+        output_measure: Distance measure for measurement's output.
+    """
+
+    def preprocess_query(query: Union[MeasurementQuery, TransformationQuery]) -> Any:
+        """Wraps non-interactive measurement in a MakeInteractive measurement.
+
+        Args:
+            query: Query to be answered. If this is a
+             :class:`~tmlt.core.measurements.interactive_measurements.MeasurementQuery`
+             , it must be non-interactive.
+        """
+        if isinstance(query, MeasurementQuery):
+            if query.measurement.is_interactive:
+                raise ValueError("Cannot answer interactive measurement query.")
+            return MeasurementQuery(
+                MakeInteractive(query.measurement), d_out=query.d_out
+            )
+        else:
+            assert isinstance(query, TransformationQuery)
+            return query
+
+    def postprocess_answer(answer: Any) -> Any:
+        """Obtains answer from GetAnswerQueryable.
+
+        Args:
+            answer: Answer to be post-processed.
+        """
+        if isinstance(answer, Queryable):
+            return answer(None)
+        return answer
+
+    return DecorateQueryable(
+        measurement=SequentialComposition(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            d_in=d_in,
+            privacy_budget=privacy_budget,
+            output_measure=output_measure,
+        ),
+        preprocess_query=preprocess_query,
+        postprocess_answer=postprocess_answer,
+    )

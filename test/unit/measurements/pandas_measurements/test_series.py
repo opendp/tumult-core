@@ -3,10 +3,10 @@
 # <placeholder: boilerplate>
 
 # pylint: disable=no-self-use
-
-from typing import List, Tuple
+import re
+from typing import Any, Dict, Tuple, Union
 from unittest.case import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 import numpy as np
 import pandas as pd
@@ -14,14 +14,20 @@ import sympy as sp
 from parameterized import parameterized
 from pyspark.sql.types import DoubleType
 
-from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
+from tmlt.core.domains.numpy_domains import (
+    NumpyFloatDomain,
+    NumpyIntegerDomain,
+    NumpyStringDomain,
+)
 from tmlt.core.domains.pandas_domains import PandasSeriesDomain
-from tmlt.core.measurements.pandas_measurements.series import (
+from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,
     AddGeometricNoise,
     AddLaplaceNoise,
+)
+from tmlt.core.measurements.pandas_measurements.series import (
+    AddNoiseToSeries,
     NoisyQuantile,
-    _get_quantile_probabilities,
 )
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import (
@@ -30,18 +36,11 @@ from tmlt.core.metrics import (
     SumOf,
     SymmetricDifference,
 )
-from tmlt.core.utils.testing import (
-    TestComponent,
-    assert_property_immutability,
-    get_all_props,
-)
+from tmlt.core.utils.testing import assert_property_immutability, get_all_props
 
 
-class TestQuantile(TestCase):
-    """Tests for class NoisyQuantile.
-
-    Tests :class:~tmlt.core.measurements.pandas_measurements.series.NoisyQuantile`.
-    """
+class TestNoisyQuantile(TestCase):
+    """Tests for class :class:`~.NoisyQuantile`."""
 
     @parameterized.expand(get_all_props(NoisyQuantile))
     def test_property_immutability(self, prop_name: str):
@@ -109,6 +108,43 @@ class TestQuantile(TestCase):
 
     @parameterized.expand(
         [
+            ({"quantile": 1.1}, "Quantile must be between 0 and 1."),
+            (
+                {"lower": float("-inf")},
+                "Lower clamping bound must be finite and non-nan",
+            ),
+            (
+                {"upper": float("inf")},
+                "Upper clamping bound must be finite and non-nan",
+            ),
+            (
+                {"upper": 0, "lower": 1},
+                "Lower bound (1) can not be greater than the upper bound (0).",
+            ),
+            ({"epsilon": -1}, "Invalid PureDP measure value (epsilon) -1"),
+            (
+                {"input_domain": PandasSeriesDomain(NumpyStringDomain())},
+                "input_domain.element_domain must be NumpyIntegerDomain or "
+                "NumpyFloatDomain, not NumpyStringDomain",
+            ),
+        ]
+    )
+    def test_bad_inputs(self, bad_kwargs: Dict[str, Any], message: str):
+        """Tests that bad inputs are rejected."""
+        kwargs = {
+            "input_domain": PandasSeriesDomain(NumpyIntegerDomain()),
+            "output_measure": PureDP(),
+            "quantile": 0.5,
+            "lower": 0,
+            "upper": 1,
+            "epsilon": 1,
+        }
+        kwargs.update(bad_kwargs)
+        with self.assertRaisesRegex(ValueError, re.escape(message)):
+            NoisyQuantile(**kwargs)  # type: ignore
+
+    @parameterized.expand(
+        [
             (pd.Series([28, 26, 27, 29]), 0),
             (pd.Series([28, 26, 27, 29]), 0.5),
             (pd.Series([28, 26, 27, 29]), 1),
@@ -126,17 +162,17 @@ class TestQuantile(TestCase):
         )(data)
         self.assertTrue(16 <= output <= 19)
 
-    def test_equal_clamping_bounds(self):  # TODO(#693)
+    def test_equal_clamping_bounds(self):
         """Tests that quantile aggregation works when clamping bounds are equal."""
         actual = NoisyQuantile(
             input_domain=PandasSeriesDomain(NumpyFloatDomain()),
             output_measure=PureDP(),
             quantile=0.5,
-            lower=sp.Rational(1, 7),
-            upper=sp.Rational(1, 7),
+            lower=1 / 7,
+            upper=1 / 7,
             epsilon=10000000,
         )(pd.Series([10.0, 155.0, -9.0]))
-        self.assertAlmostEqual(actual, 1 / 7)  # TODO(#1023)
+        self.assertEqual(actual, 1 / 7)
 
     def test_privacy_function_and_relation(self):
         """Test that the privacy relation and function are computed correctly."""
@@ -178,282 +214,58 @@ class TestQuantile(TestCase):
         self.assertTrue(measurement.privacy_relation(1, 1))
         self.assertTrue(22 <= measurement(pd.Series([23, 25])) <= 29)
 
+
+class TestAddNoiseToSeries(TestCase):
+    """Tests for :class:`~.AddNoiseToSeries`."""
+
+    @parameterized.expand(get_all_props(AddNoiseToSeries))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        measurement = AddNoiseToSeries(
+            noise_measurement=AddDiscreteGaussianNoise(sigma_squared=1)
+        )
+        assert_property_immutability(measurement, prop_name)
+
     @parameterized.expand(
         [
-            (0.5, [2], 1, 3, 2, [0.5, 0.5]),  # 2 equiwidth intervals median
-            (0.5, [2], 2, 3, 1, [0, 1]),  # First interval has width 0.
+            (AddGeometricNoise(alpha=1), PureDP(), SumOf(AbsoluteDifference())),
             (
-                0.5,
-                [1, 2, 3, 4],
-                0,
-                5,
-                float("inf"),
-                [0, 0, 1, 0, 0],
-            ),  # eps=inf (n even)
-            (0.5, [1, 2, 3], 0, 4, float("inf"), [0, 0.5, 0.5, 0]),  # eps=inf (n odd)
-            (0.9, [4, 4, 4], 2, 4, 10, [1, 0, 0, 0]),
-            (0.25, [4, 5], 3, 7, 0, [0.25, 0.25, 0.50]),  # eps=0 (samples uniformly)
+                AddDiscreteGaussianNoise(sigma_squared=1),
+                RhoZCDP(),
+                RootSumOfSquared(AbsoluteDifference()),
+            ),
             (
-                0.25,
-                [4, 6, 7],
-                2,
-                9,
-                1.5,
-                [
-                    0.3149490476621088,
-                    0.5192631940672673,
-                    0.09551312682718223,
-                    0.07027463144344179,
-                ],
-            ),  # hand computed probabilities
-            (
-                0,
-                [1, 5],
-                0,
-                20,
-                2,
-                [0.22214585276126372, 0.32689156868946884, 0.4509625785492673],
-            ),  # q=0
+                AddLaplaceNoise(scale=1, input_domain=NumpyFloatDomain()),
+                PureDP(),
+                SumOf(AbsoluteDifference()),
+            ),
         ]
     )
-    def test_get_quantile_probabilities_correctness(
+    def test_properties(
         self,
-        quantile: float,
-        data: List,
-        lower: float,
-        upper: float,
-        epsilon: float,
-        expected: List,
+        noise_measurement: Union[
+            AddGeometricNoise, AddDiscreteGaussianNoise, AddLaplaceNoise
+        ],
+        expected_output_measure: Union[PureDP, RhoZCDP],
+        expected_input_metric: Union[RootSumOfSquared, SumOf],
     ):
-        """Tests that `_get_quantile_probabilities`."""
-        actual = _get_quantile_probabilities(
-            quantile=quantile, data=data, lower=lower, upper=upper, epsilon=epsilon
-        )
-        np.testing.assert_almost_equal(actual, expected, decimal=9)
-
-
-class TestAddDiscreteGaussianNoise(TestComponent):
-    """Tests for class AddDiscreteGaussianNoise.
-
-    Tests :class:`~tmlt.core.measurements.pandas_measurements.series.
-    AddDiscreteGaussiaNoise`.
-    """
-
-    @parameterized.expand(get_all_props(AddDiscreteGaussianNoise))
-    def test_property_immutability(self, prop_name: str):
-        """Tests that given property is immutable."""
-        measurement = AddDiscreteGaussianNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            sigma_squared=10,
-        )
-        assert_property_immutability(measurement, prop_name)
-
-    def test_properties(self):
-        """AddDiscreteGaussianNoise's properties have the expected values."""
-        measurement = AddDiscreteGaussianNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            sigma_squared="0.5",
-        )
+        """AddNoiseToSeries's properties have the expected values."""
+        measurement = AddNoiseToSeries(noise_measurement=noise_measurement)
         self.assertEqual(
-            measurement.input_domain, PandasSeriesDomain(NumpyIntegerDomain())
+            measurement.input_domain, PandasSeriesDomain(noise_measurement.input_domain)
         )
-        self.assertEqual(
-            measurement.input_metric, RootSumOfSquared(AbsoluteDifference())
-        )
-        self.assertEqual(measurement.output_measure, RhoZCDP())
+        self.assertEqual(measurement.input_metric, expected_input_metric)
+        self.assertEqual(measurement.output_measure, expected_output_measure)
         self.assertEqual(measurement.is_interactive, False)
-        self.assertEqual(measurement.sigma_squared, "0.5")
+        self.assertEqual(measurement.noise_measurement, noise_measurement)
 
-    @parameterized.expand([(-0.4,), (np.nan,), ("invalid",)])
-    def test_sigma_squared_validity(self, sigma_squared):
-        """Tests that invalid sigma_squared values are rejected."""
-        with self.assertRaises((ValueError, TypeError)):
-            AddDiscreteGaussianNoise(
-                input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-                sigma_squared=sigma_squared,
-            )
-
-    def test_no_noise(self):
-        """Works correctly with no noise."""
-        measurement = AddDiscreteGaussianNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            sigma_squared=0,
-        )
-        self.assertEqual(measurement.privacy_function(1), sp.oo)
-        self.assertTrue(measurement.privacy_relation(1, sp.oo))
-        self.assertFalse(measurement.privacy_relation(1, sp.Pow(10, 7)))
-        pd.testing.assert_series_equal(measurement(pd.Series([5])), pd.Series([5]))
-
-    def test_some_noise(self):
-        """Works correctly with some noise."""
-        measurement = AddDiscreteGaussianNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            sigma_squared=2,
-        )
-        self.assertEqual(measurement.privacy_function(1), "0.25")
-        self.assertTrue(measurement.privacy_relation(1, "0.25"))
-        self.assertFalse(measurement.privacy_relation(1, "0.2499"))
-
-    def test_infinite_noise(self):
-        """Raises an error with infinite noise."""
-        with self.assertRaisesRegex(
-            ValueError, "Invalid sigma_squared: oo is not strictly less than inf"
-        ):
-            AddDiscreteGaussianNoise(
-                sigma_squared=sp.oo,
-                input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            )
-
-    def test_detailed_fraction(self):
-        """Works correctly with fractions that have high numerators/denominators.
-
-        Test for bug #964.
-        """
-        for _ in range(10):  # Unfortunately, the failure was somewhat flaky.
-            AddDiscreteGaussianNoise(
-                sigma_squared="0.9999999999999999",
-                input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            )(pd.Series([0, 0, 0]))
-
-
-class TestAddLaplaceNoise(TestComponent):
-    """Tests for class AddLaplaceNoise.
-
-    Tests :class:`~tmlt.core.measurements.pandas_measurements.series.AddLaplaceNoise`.
-    """
-
-    @parameterized.expand(get_all_props(AddLaplaceNoise))
-    def test_property_immutability(self, prop_name: str):
-        """Tests that given property is immutable."""
-        measurement = AddLaplaceNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyFloatDomain()), scale=2
-        )
-        assert_property_immutability(measurement, prop_name)
-
-    def test_properties(self):
-        """AddLaplaceNoise's properties have the expected values."""
-        measurement = AddLaplaceNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            scale="0.5",
-        )
-        self.assertEqual(
-            measurement.input_domain,
-            PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-        )
-        self.assertEqual(measurement.input_metric, SumOf(AbsoluteDifference()))
-        self.assertEqual(measurement.output_measure, PureDP())
-        self.assertEqual(measurement.is_interactive, False)
-        self.assertEqual(measurement.scale, sp.Rational(1, 2))
-
-    @parameterized.expand([(-0.4,), (np.nan,), ("invalid",)])
-    def test_scale_validity(self, scale):
-        """Tests that invalid scale values are rejected."""
-        with self.assertRaises((ValueError, TypeError)):
-            AddLaplaceNoise(
-                input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-                scale=scale,
-            )
-
-    def test_no_noise(self):
-        """Works correctly with no noise."""
-        measurement = AddLaplaceNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            scale=0,
-        )
-        self.assertEqual(measurement.privacy_function(1), sp.oo)
-        self.assertTrue(measurement.privacy_relation(1, sp.oo))
-        self.assertFalse(measurement.privacy_relation(1, sp.Pow(10, 6)))
-        pd.testing.assert_series_equal(measurement(pd.Series([5])), pd.Series([5.0]))
-
-    def test_some_noise(self):
-        """Works correctly with some noise."""
-        measurement = AddLaplaceNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyFloatDomain()), scale=2
-        )
-        self.assertEqual(measurement.privacy_function(1), "0.5")
-        self.assertTrue(measurement.privacy_relation(1, "0.5"))
-        self.assertFalse(measurement.privacy_relation(1, "0.49"))
-
-    def test_infinite_noise(self):
-        """Works correctly with infinite noise."""
-        measurement = AddLaplaceNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyFloatDomain()),
-            scale=sp.oo,
-        )
-        self.assertEqual(measurement.privacy_function(1), 0)
-        self.assertTrue(measurement.privacy_relation(1, 0))
-        self.assertTrue(measurement.privacy_relation(1, 1))
-        # Equally likely to return -inf or inf
-        self.assertTrue(np.all(np.isinf(measurement(pd.Series([5.0, 5.0])))))
-
-
-class TestAddGeometricNoise(TestComponent):
-    """Tests for class AddGeometricNoise.
-
-    Tests
-    :class:`~tmlt.core.measurements.pandas_measurements.series.AddGeometricNoise`.
-    """
-
-    @parameterized.expand(get_all_props(AddGeometricNoise))
-    def test_property_immutability(self, prop_name: str):
-        """Tests that given property is immutable."""
-        measurement = AddGeometricNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            alpha=2,
-        )
-        assert_property_immutability(measurement, prop_name)
-
-    def test_properties(self):
-        """AddGeometricNoise's properties have the expected values."""
-        measurement = AddGeometricNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            alpha="0.5",
-        )
-        self.assertEqual(
-            measurement.input_domain,
-            PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-        )
-        self.assertEqual(measurement.input_metric, SumOf(AbsoluteDifference()))
-        self.assertEqual(measurement.output_measure, PureDP())
-        self.assertEqual(measurement.is_interactive, False)
-        self.assertEqual(measurement.alpha, "0.5")
-
-    @parameterized.expand([(-0.4,), (np.nan,), ("invalid",)])
-    def test_sigma_validity(self, alpha):
-        """Tests that invalid alpha values are rejected."""
-        with self.assertRaises((ValueError, TypeError)):
-            AddGeometricNoise(
-                input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-                alpha=alpha,
-            )
-
-    def test_no_noise(self):
-        """Works correctly with no noise."""
-        measurement = AddGeometricNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            alpha=0,
-        )
-        self.assertEqual(measurement.privacy_function(1), sp.oo)
-        self.assertTrue(measurement.privacy_relation(1, sp.oo))
-        self.assertFalse(measurement.privacy_relation(1, sp.Pow(10, 6)))
-        pd.testing.assert_series_equal(measurement(pd.Series([5])), pd.Series([5]))
-
-    def test_some_noise(self):
-        """Works correctly with some noise."""
-        measurement = AddGeometricNoise(
-            input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            alpha=2,
-        )
-        self.assertEqual(measurement.privacy_function(1), "0.5")
-        self.assertTrue(measurement.privacy_relation(1, "0.5"))
-        self.assertFalse(measurement.privacy_relation(1, "0.49"))
-
-    def test_infinite_noise(self):
-        """Raises an error with infinite noise."""
-        with self.assertRaisesRegex(
-            ValueError, "Invalid alpha: oo is not strictly less than inf"
-        ):
-            AddGeometricNoise(
-                input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-                alpha=sp.oo,
-            )
+    def test_correctness(self):
+        """AddNoiseToSeries calls noise_measurement as expected."""
+        noise_measurement = Mock(AddLaplaceNoise)
+        noise_measurement.output_measure = PureDP()
+        noise_measurement.input_domain = NumpyIntegerDomain()
+        noise_measurement.return_value = 0
+        add_noise_to_series = AddNoiseToSeries(noise_measurement)
+        actual = add_noise_to_series(pd.Series([1, 2, 3]))
+        self.assertEqual(noise_measurement.call_args_list, [call(1), call(2), call(3)])
+        self.assertEqual(actual.to_list(), [0, 0, 0])

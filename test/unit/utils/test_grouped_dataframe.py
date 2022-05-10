@@ -5,7 +5,7 @@
 import pandas as pd
 from parameterized import parameterized
 from pyspark.sql import functions as sf
-from pyspark.sql.types import IntegerType, LongType, StructField, StructType
+from pyspark.sql.types import IntegerType, StructField, StructType
 
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.testing import PySparkTest
@@ -57,41 +57,6 @@ class TestGroupedDataFrame(PySparkTest):
             ["A", "B"]
         )._dataframe.toPandas()
         self.assert_frame_equal_with_sort(actual, expected)
-
-    def test_apply_in_pandas_sorts_by_groupby_columns(self):
-        """Tests that apply_in_pandas output dataframe is sorted by groupby columns."""
-        input_dataframe = pd.DataFrame({"A": [3, 1, 2], "B": [4, 5, 1]})
-        group_keys = pd.DataFrame({"A": [0, 1, 2, 3, 4]})
-        grouped_dataframe = GroupedDataFrame(
-            dataframe=self.spark.createDataFrame(input_dataframe),
-            group_keys=self.spark.createDataFrame(group_keys),
-        )
-        expected_order = [0, 1, 2, 3, 4]
-        actual_order = (
-            grouped_dataframe.apply_in_pandas(
-                aggregation_function=lambda df: pd.DataFrame({"count": [len(df)]}),
-                aggregation_output_schema=StructType(
-                    [StructField("count", LongType())]
-                ),
-            )
-            .toPandas()["A"]
-            .tolist()
-        )
-        self.assertEqual(expected_order, actual_order)
-
-    def test_agg_sorts_by_groupby_columns(self):
-        """Tests that agg output dataframe is sorted by groupby columns."""
-        input_dataframe = pd.DataFrame({"A": [3, 1, 2], "B": [4, 5, 1]})
-        group_keys = pd.DataFrame({"A": [0, 1, 2, 3, 4]})
-        grouped_dataframe = GroupedDataFrame(
-            dataframe=self.spark.createDataFrame(input_dataframe),
-            group_keys=self.spark.createDataFrame(group_keys),
-        )
-        expected_order = [0, 1, 2, 3, 4]
-        actual_order = (
-            grouped_dataframe.agg(sf.count("*"), fill_value=0).toPandas()["A"].tolist()
-        )
-        self.assertEqual(expected_order, actual_order)
 
     def test_group_keys_no_rows_one_column(self):
         """Tests that group keys must have no columns it is empty."""

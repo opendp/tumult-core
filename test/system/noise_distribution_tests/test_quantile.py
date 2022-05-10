@@ -4,7 +4,9 @@
 
 # pylint: disable=no-member, no-self-use
 
-from typing import List, Tuple
+import math
+import sys
+from typing import List, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -15,10 +17,7 @@ from scipy.stats import chisquare
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasSeriesDomain
-from tmlt.core.measurements.pandas_measurements.series import (
-    NoisyQuantile,
-    _get_quantile_probabilities,
-)
+from tmlt.core.measurements.pandas_measurements.series import NoisyQuantile
 from tmlt.core.measures import PureDP
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.testing import PySparkTest
@@ -64,6 +63,45 @@ def _get_quantile_samples(
     more_eps_samples = np.array([more_eps_quantile(data) for _ in range(SAMPLE_SIZE)])
 
     return good_samples, less_eps_samples, more_eps_samples
+
+
+def _get_quantile_probabilities(
+    quantile: float,
+    data: Union[List[float], List[int]],
+    lower: float,
+    upper: float,
+    epsilon: float,
+) -> np.ndarray:
+    """Returns probabilities for intervals between data points.
+
+    Args:
+        quantile: Quantile to be computed.
+        data: Data being queried. This must be sorted and in the range [lower, upper].
+        lower: Lower bound for the data.
+        upper: Upper bound for the data.
+        epsilon: Privacy parameter.
+    """
+    delta_u = max(quantile, 1 - quantile)
+    n = len(data)
+    epsilon = min(epsilon, sys.float_info.max / (n + 1))
+    target_rank = quantile * n
+
+    data = [lower] + cast(List[float], data) + [upper]
+    indexed_intervals = enumerate(zip(data[:-1], data[1:]))
+    weights = np.array(
+        [
+            -math.inf
+            if u == l
+            else (
+                np.log(u - l) + (epsilon * (-np.abs(k - target_rank))) / (2 * delta_u)
+            )
+            for k, (l, u) in indexed_intervals
+        ]
+    )
+    max_weight = weights.max()
+    exp_norm_weights = np.exp(weights - max_weight)
+    exp_norm_weights /= exp_norm_weights.sum()
+    return exp_norm_weights
 
 
 class TestQuantileNoiseDistribution(PySparkTest):

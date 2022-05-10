@@ -6,7 +6,8 @@ Tests :mod:`~tmlt.core.transformations.spark_transformations.partition`.
 # <placeholder: boilerplate>
 
 import itertools
-from typing import List, Tuple, Union
+import re
+from typing import List, Tuple, Type, Union
 
 import pandas as pd
 from parameterized import parameterized
@@ -19,7 +20,7 @@ from tmlt.core.domains.spark_domains import (
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
-from tmlt.core.metrics import RootSumOfSquared, SumOf, SymmetricDifference
+from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
 from tmlt.core.transformations.spark_transformations.partition import PartitionByKeys
 from tmlt.core.utils.testing import (
     TestComponent,
@@ -42,7 +43,7 @@ class TestPartitionByKeys(TestComponent):
         transformation = PartitionByKeys(
             input_domain=SparkDataFrameDomain(self.schema_a),
             input_metric=SymmetricDifference(),
-            output_metric=SumOf(SymmetricDifference()),
+            use_l2=False,
             keys=["A"],
             list_values=[(1.2,), (2.2,)],
         )
@@ -54,7 +55,7 @@ class TestPartitionByKeys(TestComponent):
         transformation = PartitionByKeys(
             input_domain=domain,
             input_metric=SymmetricDifference(),
-            output_metric=SumOf(SymmetricDifference()),
+            use_l2=False,
             keys=["A", "B"],
             list_values=[(1.2, "X"), (2.2, "Y")],
         )
@@ -135,10 +136,11 @@ class TestPartitionByKeys(TestComponent):
     ):
         """Tests that partition by keys works correctly."""
         sdf = self.spark.createDataFrame(df)
+        use_l2 = isinstance(output_metric, RootSumOfSquared)
         partition_op = PartitionByKeys(
             input_domain=SparkDataFrameDomain(columns_descriptor),
             input_metric=SymmetricDifference(),
-            output_metric=output_metric,
+            use_l2=use_l2,
             keys=keys,
             list_values=list_values,
         )
@@ -148,13 +150,105 @@ class TestPartitionByKeys(TestComponent):
         for expected, actual in zip(actual_partitions, expected_partitions):
             self.assert_frame_equal_with_sort(expected, actual.toPandas())
 
+    @parameterized.expand(
+        [
+            (SymmetricDifference(), SumOf(SymmetricDifference()), 2, 2),
+            (SymmetricDifference(), RootSumOfSquared(SymmetricDifference()), 2, 2),
+            (
+                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                SumOf(SymmetricDifference()),
+                2,
+                2,
+            ),
+            (
+                IfGroupedBy("A", RootSumOfSquared(SymmetricDifference())),
+                RootSumOfSquared(SymmetricDifference()),
+                2,
+                2,
+            ),
+            (
+                IfGroupedBy("A", SumOf(IfGroupedBy("B", SymmetricDifference()))),
+                SumOf(IfGroupedBy("B", SymmetricDifference())),
+                2,
+                2,
+            ),
+        ]
+    )
+    def test_stability_function(
+        self,
+        input_metric: Union[IfGroupedBy, SymmetricDifference],
+        expected_output_metric: Union[SumOf, RootSumOfSquared],
+        d_in: int,
+        expected_d_out: int,
+    ):
+        """Tests that supported metrics have the correct stability functions."""
+        use_l2 = isinstance(expected_output_metric, RootSumOfSquared)
+        partition_op = PartitionByKeys(
+            input_domain=SparkDataFrameDomain(
+                {"A": SparkStringColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+            ),
+            input_metric=input_metric,
+            use_l2=use_l2,
+            keys=["A"],
+            list_values=[("a1",), ("a2",)],
+        )
+        self.assertEqual(partition_op.input_metric, input_metric)
+        self.assertEqual(partition_op.output_metric, expected_output_metric)
+        self.assertEqual(partition_op.stability_function(d_in), expected_d_out)
+        self.assertTrue(partition_op.stability_relation(d_in, expected_d_out))
+
+    @parameterized.expand(
+        [
+            (
+                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                RootSumOfSquared(SymmetricDifference()),
+                ValueError,
+                "IfGroupedBy inner metric must match use_l2",
+            ),
+            (
+                IfGroupedBy("A", RootSumOfSquared(SymmetricDifference())),
+                SumOf(SymmetricDifference()),
+                ValueError,
+                "IfGroupedBy inner metric must match use_l2",
+            ),
+            (
+                IfGroupedBy("A", SymmetricDifference()),
+                SymmetricDifference(),
+                ValueError,
+                "IfGroupedBy inner metric must match use_l2",
+            ),
+        ]
+    )
+    def test_invalid_output_metric(
+        self,
+        input_metric: Union[IfGroupedBy, SymmetricDifference],
+        output_metric: Union[SumOf, RootSumOfSquared],
+        error_class: Type[Exception],
+        message: str,
+    ):
+        """Tests that invalid output metrics are handled correctly."""
+        use_l2 = isinstance(output_metric, RootSumOfSquared)
+        with self.assertRaisesRegex(error_class, re.escape(message)):
+            PartitionByKeys(
+                input_domain=SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                ),
+                input_metric=input_metric,
+                use_l2=use_l2,
+                keys=["A"],
+                list_values=[("a1",), ("a2",)],
+            )
+
     def test_partition_by_keys_invalid_value(self):
         """Tests that partition by keys raises error when value is invalid for key."""
         with self.assertRaises(ValueError):
             PartitionByKeys(
                 input_domain=SparkDataFrameDomain(self.schema_a),
                 input_metric=SymmetricDifference(),
-                output_metric=SumOf(SymmetricDifference()),
+                use_l2=False,
                 keys=["A"],
                 list_values=[(1.0,), ("InvalidValue",)],
             )
@@ -172,7 +266,7 @@ class TestPartitionByKeys(TestComponent):
                     }
                 ),
                 input_metric=SymmetricDifference(),
-                output_metric=SumOf(SymmetricDifference()),
+                use_l2=False,
                 keys=["A"],
                 list_values=[(1,), (1,)],
             )

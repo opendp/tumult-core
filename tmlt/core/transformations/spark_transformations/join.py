@@ -3,11 +3,12 @@
 
 # <placeholder: boilerplate>
 
-from abc import abstractmethod
+from dataclasses import replace
+from enum import Enum
 from functools import reduce
 from typing import Any, Dict, List, Optional, Union, cast
 
-from pyspark.sql import DataFrame, Window
+from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 from typeguard import typechecked
 
@@ -16,10 +17,16 @@ from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
 )
-from tmlt.core.metrics import DictMetric, IfGroupedBy, SymmetricDifference
+from tmlt.core.metrics import (
+    DictMetric,
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+)
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
-from tmlt.core.utils.misc import get_nonconflicting_string
+from tmlt.core.utils.truncation import drop_large_groups, truncate_large_groups
 
 
 class PublicJoin(Transformation):
@@ -182,6 +189,12 @@ class PublicJoin(Transformation):
         SymmetricDifference()
 
         Stability Guarantee:
+            For
+
+            - SymmetricDifference()
+            - IfGroupedBy(column, SumOf(SymmetricDifference()))
+            - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
+
             :class:`~.PublicJoin`'s :meth:`~.stability_function` returns the `d_in`
             times the maximum count of any combination of values in the join columns of
             `public_df`.
@@ -199,6 +212,24 @@ class PublicJoin(Transformation):
             2
             >>> natural_join.stability_function(2)
             4
+
+            For
+
+            - IfGroupedBy(column, SymmetricDifference())
+
+            :class:`~.PublicJoin`'s :meth:`~.stability_function` returns `d_in`
+
+            >>> PublicJoin(
+            ...     input_domain=SparkDataFrameDomain(
+            ...         {
+            ...             "A": SparkStringColumnDescriptor(),
+            ...             "B": SparkStringColumnDescriptor(),
+            ...         }
+            ...     ),
+            ...     public_df=public_dataframe,
+            ...     metric=IfGroupedBy("A", SymmetricDifference()),
+            ... ).stability_function(2)
+            2
     """  # pylint: disable=line-too-long
 
     @typechecked
@@ -228,13 +259,15 @@ class PublicJoin(Transformation):
                 public and private dataframes will be considered to be equal.
         """
         if isinstance(metric, IfGroupedBy):
-            if not isinstance(metric.inner_metric.inner_metric, SymmetricDifference):
+            if metric.inner_metric not in (
+                SymmetricDifference(),
+                SumOf(SymmetricDifference()),
+                RootSumOfSquared(SymmetricDifference()),
+            ):
                 raise ValueError(
-                    "Inner metric for IfGroupedBy metric must be SymmetricDifference."
-                )
-            if metric.column not in input_domain.schema:
-                raise ValueError(
-                    f"Invalid IfGroupedBy metric: {metric.column} not in input domain."
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "SumOf(SymmetricDifference()), or "
+                    "RootSumOfSquared(SymmetricDifference())"
                 )
 
         common_cols = set(input_domain.schema) & set(public_df.columns)
@@ -296,14 +329,20 @@ class PublicJoin(Transformation):
         public_df_join_columns = public_df.select(*join_cols)
         if not join_on_nulls:
             public_df_join_columns = public_df_join_columns.dropna()
-        self._join_stability = max(
-            public_df_join_columns.groupby(*join_cols)
-            .count()
-            .select("count")
-            .toPandas()["count"]
-            .to_list(),
-            default=0,
-        )
+        if (
+            isinstance(metric, IfGroupedBy)
+            and metric.inner_metric == SymmetricDifference()
+        ):
+            self._join_stability = 1
+        else:
+            self._join_stability = max(
+                public_df_join_columns.groupby(*join_cols)
+                .count()
+                .select("count")
+                .toPandas()["count"]
+                .to_list(),
+                default=0,
+            )
 
         super().__init__(
             input_domain=input_domain,
@@ -376,291 +415,16 @@ class PublicJoin(Transformation):
         return joined_df.select(output_columns_order)
 
 
-class Truncation(Transformation):
-    """Transforms a Spark DataFrame so that each group has at most `threshold` rows."""
+class TruncationStrategy(Enum):
+    """Enumerating truncation strategies for PrivateJoin.
 
-    @typechecked
-    def __init__(self, domain: SparkDataFrameDomain, keys: List[str], threshold: int):
-        """Constructor.
+    See :meth:`~.PrivateJoin.stability_function` for the stability of each strategy.
+    """
 
-        Args:
-            domain: Domain of input DataFrames.
-            keys: Keys to truncate on. (See `threshold` hold below)
-            threshold: Truncation threshold. Truncation is performed on rows with
-                (tuple) value `v` (for the given keys) only if the multiplicity of `v`
-                in input DataFrame is strictly larger than threshold value.
-        """
-        if not keys:
-            raise ValueError("No key provided for truncation.")
-        if len(keys) != len(set(keys)):
-            raise ValueError("Truncation keys must be distinct.")
-        missing_keys = set(keys) - set(domain.schema)
-        if missing_keys:
-            raise ValueError(f"Truncation keys not in domain: {missing_keys}")
-        if threshold <= 0:
-            raise ValueError("Truncation threshold must be a positive integer.")
-        super().__init__(
-            input_domain=domain,
-            input_metric=SymmetricDifference(),
-            output_domain=domain,
-            output_metric=SymmetricDifference(),
-        )
-        self._threshold = threshold
-        self._keys = keys
-
-    @property
-    def keys(self) -> List[str]:
-        """Returns truncation keys."""
-        return self._keys.copy()
-
-    @property
-    def threshold(self) -> int:
-        """Returns truncation threshold."""
-        return self._threshold
-
-    @typechecked
-    def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
-        """Returns the smallest d_out satisfied by the transformation.
-
-        See the privacy and stability tutorial (add link?) for more information.
-
-        Args:
-            d_in: Distance between inputs under input_metric.
-        """
-        self.input_metric.validate(d_in)
-        return ExactNumber(d_in) * self.stability
-
-    @property
-    @abstractmethod
-    def stability(self) -> int:
-        """Returns stability of the truncation."""
-        ...
-
-
-class HashTopKTruncation(Truncation):
-    """Order by output of a hash function and keep top K rows for each group.
-
-    For a given threshold T, this transformation performs the following steps:
-        - Each row in the input DataFrame is hashed to produce a new int column.
-        - For each group (identified by values in the key columns), rows in the group
-            are sorted by the hash column.
-        - For groups containing more than T rows, all but the first T rows are dropped.
-
-    Example:
-        ..
-            >>> import pandas as pd
-            >>> from pyspark.sql import SparkSession
-            >>> from tmlt.core.domains.spark_domains import (
-            ...     SparkDataFrameDomain,
-            ...     SparkIntegerColumnDescriptor,
-            ...     SparkStringColumnDescriptor,
-            ... )
-            >>> from tmlt.core.utils.misc import print_sdf
-            >>> spark = SparkSession.builder.getOrCreate()
-            >>> spark_dataframe = spark.createDataFrame(
-            ...     pd.DataFrame(
-            ...         {
-            ...             "A": ["a1", "a1", "a1", "a1", "a1", "a2"],
-            ...             "B": ["b1", "b1", "b1", "b2", "b2", "b1"],
-            ...             "X": [2, 3, 5, -1, 4, -5],
-            ...         }
-            ...     )
-            ... )
-
-        >>> # Example input
-        >>> print_sdf(spark_dataframe)
-            A   B  X
-        0  a1  b1  2
-        1  a1  b1  3
-        2  a1  b1  5
-        3  a1  b2 -1
-        4  a1  b2  4
-        5  a2  b1 -5
-        >>> # Create the transformation
-        >>> truncate = HashTopKTruncation(
-        ...     domain=SparkDataFrameDomain(
-        ...         {
-        ...             "A": SparkStringColumnDescriptor(),
-        ...             "B": SparkStringColumnDescriptor(),
-        ...             "X": SparkIntegerColumnDescriptor(),
-        ...         },
-        ...     ),
-        ...     keys=["A", "B"],
-        ...     threshold=2,
-        ... )
-        >>> # Apply transformation to data
-        >>> truncated_spark_dataframe = truncate(spark_dataframe)
-        >>> print_sdf(truncated_spark_dataframe)
-            A   B  X
-        0  a1  b1  2
-        1  a1  b1  5
-        2  a1  b2 -1
-        3  a1  b2  4
-        4  a2  b1 -5
-
-    Transformation Contract:
-        * Input domain - :class:`~.SparkDataFrameDomain`
-        * Output domain - :class:`~.SparkDataFrameDomain`
-        * Input metric - :class:`~.SymmetricDifference`
-        * Output metric - :class:`~.SymmetricDifference`
-
-        >>> truncate.input_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
-        >>> truncate.output_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
-        >>> truncate.input_metric
-        SymmetricDifference()
-        >>> truncate.output_metric
-        SymmetricDifference()
-
-        Stability Guarantee:
-            :class:`~.Truncation`'s :meth:`~.stability_function` returns the `d_in`
-            times 2. (This is because a row that is added or removed can not only become
-            included in the top K, but can also displace another row from being included
-            in the top K.)
-
-            >>> truncate.stability_function(1)
-            2
-            >>> truncate.stability_function(2)
-            4
-    """  # pylint: disable=line-too-long
-
-    def __call__(self, df: DataFrame) -> DataFrame:
-        """Perform the transformation."""
-        index_col_name = get_nonconflicting_string(df.columns)
-        hash_col_name = get_nonconflicting_string(df.columns + [index_col_name])
-        shuffled_partitions = Window.partitionBy(*self.keys).orderBy(
-            hash_col_name, *df.columns
-        )
-        return (
-            df.withColumn(
-                hash_col_name, sf.hash(*df.columns)  # pylint: disable=no-member
-            )
-            .withColumn(
-                index_col_name,
-                sf.row_number().over(shuffled_partitions),  # pylint: disable=no-member
-            )
-            .filter(f"{index_col_name}<={self.threshold}")
-            .drop(index_col_name, hash_col_name)
-        )
-
-    @property
-    def stability(self) -> int:
-        """Returns stability of the truncation.
-
-        The stability is 2, because a row that is added or removed can not only become
-        included in the top K, but can also displace another row from being included
-        in the top K.
-        """
-        return 2
-
-
-class DropAllTruncation(Truncation):
-    """Drop all records having key value with multiplicity greater than threshold.
-
-    Args:
-        domain: Domain of input DataFrames.
-        keys: Keys to truncate on. (See `threshold` hold below)
-        threshold: Truncation threshold. Truncation is performed on rows with
-            (tuple) value `v` (for the given keys) only if the multiplicity of `v`
-            in input DataFrame is strictly larger than threshold value.
-
-    Example:
-        ..
-            >>> import pandas as pd
-            >>> from pyspark.sql import SparkSession
-            >>> from tmlt.core.domains.spark_domains import (
-            ...     SparkDataFrameDomain,
-            ...     SparkIntegerColumnDescriptor,
-            ...     SparkStringColumnDescriptor,
-            ... )
-            >>> from tmlt.core.utils.misc import print_sdf
-            >>> spark = SparkSession.builder.getOrCreate()
-            >>> spark_dataframe = spark.createDataFrame(
-            ...     pd.DataFrame(
-            ...         {
-            ...             "A": ["a1", "a1", "a1", "a1", "a1", "a2"],
-            ...             "B": ["b1", "b1", "b1", "b2", "b2", "b1"],
-            ...             "X": [2, 3, 5, -1, 4, -5],
-            ...         }
-            ...     )
-            ... )
-
-        >>> # Example input
-        >>> print_sdf(spark_dataframe)
-            A   B  X
-        0  a1  b1  2
-        1  a1  b1  3
-        2  a1  b1  5
-        3  a1  b2 -1
-        4  a1  b2  4
-        5  a2  b1 -5
-        >>> # Create the transformation
-        >>> truncate = DropAllTruncation(
-        ...     domain=SparkDataFrameDomain(
-        ...         {
-        ...             "A": SparkStringColumnDescriptor(),
-        ...             "B": SparkStringColumnDescriptor(),
-        ...             "X": SparkIntegerColumnDescriptor(),
-        ...         },
-        ...     ),
-        ...     keys=["A", "B"],
-        ...     threshold=2,
-        ... )
-        >>> # Apply transformation to data
-        >>> truncated_spark_dataframe = truncate(spark_dataframe)
-        >>> print_sdf(truncated_spark_dataframe)
-            A   B  X
-        0  a1  b2 -1
-        1  a1  b2  4
-        2  a2  b1 -5
-
-    Transformation Contract:
-        * Input domain - :class:`~.SparkDataFrameDomain`
-        * Output domain - :class:`~.SparkDataFrameDomain`
-        * Input metric - :class:`~.SymmetricDifference`
-        * Output metric - :class:`~.SymmetricDifference`
-
-        >>> truncate.input_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
-        >>> truncate.output_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
-        >>> truncate.input_metric
-        SymmetricDifference()
-        >>> truncate.output_metric
-        SymmetricDifference()
-
-        Stability Guarantee:
-            :class:`~.Truncation`'s :meth:`~.stability_function` returns the `d_in` times
-            the specified `threshold`.
-
-            >>> truncate.stability_function(1)
-            2
-            >>> truncate.stability_function(2)
-            4
-    """  # pylint: disable=line-too-long
-
-    def __call__(self, df: DataFrame) -> DataFrame:
-        """Perform the transformation."""
-        count_col_name = get_nonconflicting_string(df.columns)
-        partitions = Window.partitionBy(*self.keys)
-        return (
-            df.withColumn(
-                count_col_name,
-                sf.count(sf.lit(1)).over(partitions),  # pylint: disable=no-member
-            )
-            .filter(f"{count_col_name}<={self.threshold}")
-            .drop(count_col_name)
-        )
-
-    @property
-    def stability(self) -> int:
-        """Returns stability of the truncation.
-
-        The stability is self.threshold, because a row that is added or removed can
-        cause all rows with the same key to be dropped/not dropped.
-        """
-        return self.threshold
+    TRUNCATE = 1
+    """Use :func:`~.truncate_large_groups`."""
+    DROP = 2
+    """Use :func:`~.drop_large_groups`."""
 
 
 class PrivateJoin(Transformation):
@@ -732,18 +496,12 @@ class PrivateJoin(Transformation):
         ...             "right": right_domain,
         ...         }
         ...     ),
-        ...     left="left",
-        ...     right="right",
-        ...     left_truncator=HashTopKTruncation(
-        ...         domain=left_domain,
-        ...         keys=["B"],
-        ...         threshold=2,
-        ...     ),
-        ...     right_truncator=HashTopKTruncation(
-        ...         domain=right_domain,
-        ...         keys=["B"],
-        ...         threshold=2,
-        ...     ),
+        ...     left_key="left",
+        ...     right_key="right",
+        ...     left_truncation_strategy=TruncationStrategy.TRUNCATE,
+        ...     left_truncation_threshold=2,
+        ...     right_truncation_strategy=TruncationStrategy.TRUNCATE,
+        ...     right_truncation_threshold=2,
         ... )
         >>> input_dictionary = {
         ...     "left": left_spark_dataframe,
@@ -780,9 +538,9 @@ class PrivateJoin(Transformation):
         SymmetricDifference()
 
         Stability Guarantee:
-            Let :math:`T_l` and :math:`T_r` be the left and right truncation operators with
-            stabilities :math:`s_l` and :math:`s_r` and thresholds :math:`\tau_l` and
-            :math:`\tau_r`.
+            Let :math:`T_l` and :math:`T_r` be the left and right truncation strategies
+            with stabilities :math:`s_l` and :math:`s_r` and thresholds :math:`\tau_l`
+            and :math:`\tau_r`.
 
             :class:`~.PublicJoin`'s :meth:`~.stability_function` returns
 
@@ -796,9 +554,19 @@ class PrivateJoin(Transformation):
             * :math:`df_{r1} \Delta df_{r2}` is `d_in[self.right]`
             * :math:`df_{l1} \Delta df_{l2}` is `d_in[self.left]`
 
-            >>> # Both example transformations had a stability of 2
-            >>> s_r = s_l = tau_r = tau_l = 2
-            >>> tau_l * s_r * 1 + tau_r * s_r * 1
+            - TruncationStrategy.DROP has a stability equal to the truncation
+              threshold (This is because adding a row can cause a number of rows equal
+              to the truncation threshold to be dropped).
+            - TruncationStrategy.TRUNCATE has a stability of 2 (This is because
+              adding a new row can not only add a new row to the output, it also can
+              displace another row)
+
+            >>> # TRUNCATE has a stability of 2
+            >>> s_r = s_l = private_join.truncation_strategy_stability(
+            ...     TruncationStrategy.TRUNCATE, 1
+            ... )
+            >>> tau_r = tau_l = 2
+            >>> tau_l * s_r * 1 + tau_r * s_l * 1
             8
             >>> private_join.stability_function({"left": 1, "right": 1})
             8
@@ -808,11 +576,14 @@ class PrivateJoin(Transformation):
     def __init__(
         self,
         input_domain: DictDomain,
-        left: Any,
-        right: Any,
-        left_truncator: Truncation,
-        right_truncator: Truncation,
+        left_key: Any,
+        right_key: Any,
+        left_truncation_strategy: TruncationStrategy,
+        right_truncation_strategy: TruncationStrategy,
+        left_truncation_threshold: int,
+        right_truncation_threshold: int,
         join_cols: Optional[List[str]] = None,
+        join_on_nulls: bool = False,
     ):
         r"""Constructor.
 
@@ -821,52 +592,47 @@ class PrivateJoin(Transformation):
             - `input_domain` is a DictDomain with 2
               :class:`~tmlt.core.domains.spark_domains.SparkDataFrameDomain`\ s.
             - `left` and `right` are the two keys in the input domain.
-            - `left_truncator` and `right_truncator` have the same domains as
-              the corresponding entries for `left` and `right` in the
-              `input_domain`.
-            - `left_truncator` and `right_truncator` both operate on `join_cols`.
             - `join_cols` is not empty, when provided or computed (if None).
             - Columns in `join_cols` are common to both tables.
             - Columns in `join_cols` have matching column types in both tables.
 
         Args:
             input_domain: Domain of input dictionaries (with exactly two keys).
-            left: Key for left DataFrame.
-            right: Key for right DataFrame.
-            left_truncator: Truncation transformation for truncating left DataFrame.
-            right_truncator: Truncation transformation for truncating right DataFrame.
+            left_key: Key for the left DataFrame.
+            right_key: Key for the right DataFrame.
+            left_truncation_strategy: :class:`~.TruncationStrategy` to use for
+                truncating the left DataFrame.
+            right_truncation_strategy:  :class:`~.TruncationStrategy` to use for
+                truncating the right DataFrame.
+            left_truncation_threshold: The maximum number of rows to allow for each
+                combination of values of `join_cols` in the left DataFrame.
+            right_truncation_threshold: The maximum number of rows to allow for each
+                combination of values of `join_cols` in the right DataFrame.
             join_cols: Columns to perform join on. If None, or empty, natural join is
                 computed.
+            join_on_nulls: If True, null values on corresponding join columns of
+                both dataframes will be considered to be equal.
         """
         if input_domain.length != 2:
             raise ValueError("Input domain must be a DictDomain with 2 keys.")
-        if left == right:
+        if left_key == right_key:
             raise ValueError("Left and right keys must be distinct.")
-        if left not in input_domain.key_to_domain:
-            raise ValueError(f"Invalid key: Key '{left}' not in input domain.")
-        if right not in input_domain.key_to_domain:
-            raise ValueError(f"Invalid key: Key '{right}' not in input domain.")
+        if left_key not in input_domain.key_to_domain:
+            raise ValueError(f"Invalid key: Key '{left_key}' not in input domain.")
+        if right_key not in input_domain.key_to_domain:
+            raise ValueError(f"Invalid key: Key '{right_key}' not in input domain.")
 
-        left_domain, right_domain = input_domain[left], input_domain[right]
+        left_domain, right_domain = input_domain[left_key], input_domain[right_key]
         if not isinstance(left_domain, SparkDataFrameDomain) or not isinstance(
             right_domain, SparkDataFrameDomain
         ):
             raise ValueError("Input domain must be SparkDataFrameDomin for both keys.")
-        if left_truncator.input_domain != left_domain:
-            raise ValueError("Input domain for left_truncator does not match left key.")
-        if right_truncator.input_domain != right_domain:
-            raise ValueError(
-                "Input domain for right_truncator does not match right key."
-            )
 
         common_cols = set(left_domain.schema) & set(right_domain.schema)
         if not join_cols:
             if not common_cols:
                 raise ValueError("Can not join: No common columns.")
             join_cols = sorted(common_cols, key=list(left_domain.schema).index)
-
-        if not left_truncator.keys == join_cols == right_truncator.keys:
-            raise ValueError("Truncation keys must match join columns.")
 
         join_cols_schema = {}
         for key in join_cols:
@@ -875,7 +641,10 @@ class PrivateJoin(Transformation):
                     "Left and right DataFrame domains have mismatching types on"
                     f" join column {key}."
                 )
-            join_cols_schema[key] = left_domain[key]
+            if join_on_nulls:
+                join_cols_schema[key] = left_domain[key]
+            else:
+                join_cols_schema[key] = replace(left_domain[key], allow_null=False)
         overlapping_cols = common_cols - set(join_cols)
         all_input_cols = set(left_domain.schema) | set(right_domain.schema)
         for col in overlapping_cols:
@@ -903,42 +672,64 @@ class PrivateJoin(Transformation):
         super().__init__(
             input_domain=input_domain,
             input_metric=DictMetric(
-                {left: SymmetricDifference(), right: SymmetricDifference()}
+                {left_key: SymmetricDifference(), right_key: SymmetricDifference()}
             ),
             output_domain=output_domain,
             output_metric=SymmetricDifference(),
         )
-        self._left = left
-        self._left_truncator = left_truncator
-        self._right = right
-        self._right_truncator = right_truncator
+        self._left_key = left_key
+        self._right_key = right_key
+        self._left_truncation_strategy = left_truncation_strategy
+        self._right_truncation_strategy = right_truncation_strategy
+        self._left_truncation_threshold = left_truncation_threshold
+        self._right_truncation_threshold = right_truncation_threshold
         self._join_cols = join_cols
         self._overlapping_cols = set(common_cols) - set(join_cols)
+        self._join_on_nulls = join_on_nulls
 
     @property
-    def left(self) -> Any:
+    def left_key(self) -> Any:
         """Returns key to left DataFrame."""
-        return self._left
+        return self._left_key
 
     @property
-    def right(self) -> Any:
+    def right_key(self) -> Any:
         """Returns key to right DataFrame."""
-        return self._right
+        return self._right_key
 
     @property
-    def left_truncator(self) -> Truncation:
-        """Returns Truncation transformation for truncating left DataFrame."""
-        return self._left_truncator
+    def left_truncation_strategy(self) -> TruncationStrategy:
+        """Returns TruncationStrategy for truncating the left DataFrame."""
+        return self._left_truncation_strategy
 
     @property
-    def right_truncator(self) -> Truncation:
-        """Returns Truncation transformation for truncating right DataFrame."""
-        return self._right_truncator
+    def right_truncation_strategy(self) -> TruncationStrategy:
+        """Returns TruncationStrategy for truncating the right DataFrame."""
+        return self._right_truncation_strategy
+
+    @property
+    def left_truncation_threshold(self) -> int:
+        """Returns the threshold for truncating the left DataFrame."""
+        return self._left_truncation_threshold
+
+    @property
+    def right_truncation_threshold(self) -> int:
+        """Returns the threshold for truncating the right DataFrame."""
+        return self._right_truncation_threshold
 
     @property
     def join_cols(self) -> List[str]:
         """Returns list of column names to join on."""
         return self._join_cols.copy()
+
+    @staticmethod
+    def truncation_strategy_stability(
+        truncation_strategy: TruncationStrategy, threshold: int
+    ) -> int:
+        """Returns the stability for the given truncation strategy."""
+        return {TruncationStrategy.TRUNCATE: 2, TruncationStrategy.DROP: threshold}[
+            truncation_strategy
+        ]
 
     @typechecked
     def stability_function(self, d_in: Dict[str, ExactNumberInput]) -> ExactNumber:
@@ -950,21 +741,47 @@ class PrivateJoin(Transformation):
             d_in: Distance between inputs under input_metric.
         """
         self.input_metric.validate(d_in)
-        left_d_mid = self.left_truncator.stability_function(d_in[self.left])
-        right_d_mid = self.right_truncator.stability_function(d_in[self.right])
-        return (
-            self.left_truncator.threshold * right_d_mid
-            + self.right_truncator.threshold * left_d_mid
-        )
+        tau_l = self.left_truncation_threshold
+        tau_r = self.right_truncation_threshold
+        s_l = self.truncation_strategy_stability(self.left_truncation_strategy, tau_l)
+        s_r = self.truncation_strategy_stability(self.right_truncation_strategy, tau_r)
+        d_in_l = ExactNumber(d_in[self.left_key])
+        d_in_r = ExactNumber(d_in[self.right_key])
+        return tau_l * s_r * d_in_r + tau_r * s_l * d_in_l
 
     def __call__(self, dfs: Dict[Any, DataFrame]) -> DataFrame:
         """Perform join."""
-        left = self._left_truncator(dfs[self._left])
-        right = self._right_truncator(dfs[self._right])
+
+        def truncate(df: DataFrame, strategy: TruncationStrategy, threshold: int):
+            if strategy == TruncationStrategy.TRUNCATE:
+                return truncate_large_groups(df, self.join_cols, threshold)
+            elif strategy == TruncationStrategy.DROP:
+                return drop_large_groups(df, self.join_cols, threshold)
+            else:
+                raise AssertionError("Unsupported TruncationStrategy")
+
+        left = truncate(
+            dfs[self.left_key],
+            self.left_truncation_strategy,
+            self.left_truncation_threshold,
+        )
+        right = truncate(
+            dfs[self.right_key],
+            self.right_truncation_strategy,
+            self.right_truncation_threshold,
+        )
 
         for col in self._overlapping_cols:
-            # Assumes {col}_left, {col}_right not already taken.
             left = left.withColumnRenamed(col, f"{col}_left")
             right = right.withColumnRenamed(col, f"{col}_right")
 
-        return left.join(right, on=self._join_cols, how="inner")
+        if not self._join_on_nulls:
+            right = right.dropna()
+            return left.join(right, on=self.join_cols, how="inner")
+
+        joined_df = left.join(
+            right, on=[left[col].eqNullSafe(right[col]) for col in self.join_cols]
+        )
+        for col in self.join_cols:
+            joined_df = joined_df.drop(right[col])
+        return joined_df

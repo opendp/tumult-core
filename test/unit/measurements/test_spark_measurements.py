@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import sympy as sp
 from parameterized import parameterized
+from pyspark.sql import functions as sf
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
@@ -20,10 +21,10 @@ from tmlt.core.domains.spark_domains import (
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise, AddLaplaceNoise
 from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
 from tmlt.core.measurements.pandas_measurements.series import (
-    AddGeometricNoise,
-    AddLaplaceNoise,
+    AddNoiseToSeries,
     NoisyQuantile,
 )
 from tmlt.core.measurements.spark_measurements import (
@@ -56,8 +57,8 @@ class TestApplyInPandas(PySparkTest):
                     PandasSeriesDomain(NumpyIntegerDomain()),
                     output_measure=PureDP(),
                     quantile=0.5,
-                    lower=sp.Integer(22),
-                    upper=sp.Integer(29),
+                    lower=22,
+                    upper=29,
                     epsilon=sp.Integer(1),
                 )
             },
@@ -181,8 +182,8 @@ class TestApplyInPandas(PySparkTest):
             PandasSeriesDomain(NumpyIntegerDomain()),
             output_measure=PureDP(),
             quantile=0.5,
-            lower=sp.Integer(22),
-            upper=sp.Integer(29),
+            lower=22,
+            upper=29,
             epsilon=sp.Integer(2),
         )
 
@@ -233,9 +234,8 @@ class TestAddNoiseToColumn(PySparkTest):
         """Tests that given property is immutable."""
         measurement = AddNoiseToColumn(
             input_domain=self.input_domain,
-            measurement=AddLaplaceNoise(
-                input_domain=PandasSeriesDomain(NumpyIntegerDomain()),
-                scale=sp.Integer(1),
+            measurement=AddNoiseToSeries(
+                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=sp.Integer(1))
             ),
             measure_column="count",
         )
@@ -247,17 +247,15 @@ class TestAddNoiseToColumn(PySparkTest):
         sdf = self.spark.createDataFrame(expected)
         measurement = AddNoiseToColumn(
             input_domain=self.input_domain,
-            measurement=AddGeometricNoise(
-                input_domain=PandasSeriesDomain(NumpyIntegerDomain()), alpha=0
-            ),
+            measurement=AddNoiseToSeries(AddGeometricNoise(alpha=0)),
             measure_column="count",
         )
         actual = measurement(sdf).toPandas()
         self.assert_frame_equal_with_sort(actual, expected)
 
 
-class TestMaterialization(PySparkTest):
-    """Tests for _get_materialized_df."""
+class TestSanitization(PySparkTest):
+    """Output DataFrames from Spark measurements are correctly sanitized."""
 
     @parameterized.expand(
         [
@@ -287,3 +285,21 @@ class TestMaterialization(PySparkTest):
         materialized_df = _get_materialized_df(sdf, table_name)
         self.assertEqual(current_db, self.spark.catalog.currentDatabase())
         self.assert_frame_equal_with_sort(materialized_df.toPandas(), df)
+
+    def test_repartition_works_as_expected(self):
+        """Tests that repartitioning randomly works as expected.
+
+        Note: This is a sanity test that checks repartition by a random
+        column works as expected regardless of the internal representation of
+        the DataFrame being repartitioned. This does not test any unit
+        in :mod:`~tmlt.core.measurements.spark_measurements`.
+        """
+        df = self.spark.createDataFrame(
+            [(i, f"{j}") for i in range(10) for j in range(20)]
+        )
+        df = df.withColumn("partitioningColumn", sf.round(sf.rand() * 1000))
+        # Random partitioning column
+        partitions1 = df.repartition("partitioningColumn").rdd.glom().collect()
+        df_shuffled = df.repartition(1000)
+        partitions2 = df_shuffled.repartition("partitioningColumn").rdd.glom().collect()
+        self.assertListEqual(partitions1, partitions2)

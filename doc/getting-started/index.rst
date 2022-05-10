@@ -42,6 +42,12 @@ or as a source distribution:
 .. note:: `PySpark <http://spark.apache.org/docs/latest/api/python/>`__ is a Tumult Core dependency  and will be installed automatically. However, PySpark may have `additional dependencies <http://spark.apache.org/docs/latest/api/python/getting_started/install.html#dependencies>`__, such as Java 8.
 
 
+..
+   TODO(#1845): Remove this section once Windows support is added.
+
+.. attention:: If you are installing on a Windows machine, please install `python-flint <https://fredrikj.net/python-flint/>`__ (see `instructions <https://github.com/fredrik-johansson/python-flint/#installation>`__) before installing Tumult Core. 
+
+
 How this documentation is organized
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

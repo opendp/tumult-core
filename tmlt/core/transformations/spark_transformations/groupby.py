@@ -2,12 +2,20 @@
 
 # <placeholder: boilerplate>
 
+import datetime
 import itertools
 from functools import reduce
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql.types import LongType, StringType, StructField, StructType
+from pyspark.sql.types import (
+    DataType,
+    DateType,
+    LongType,
+    StringType,
+    StructField,
+    StructType,
+)
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import (
@@ -65,7 +73,7 @@ class GroupBy(Transformation):
         ...         }
         ...     ),
         ...     input_metric=SymmetricDifference(),
-        ...     output_metric=SumOf(SymmetricDifference()),
+        ...     use_l2=False,
         ...     group_keys=spark.createDataFrame(
         ...         pd.DataFrame(
         ...             {
@@ -77,7 +85,7 @@ class GroupBy(Transformation):
         >>> # Apply transformation to data
         >>> grouped_dataframe = groupby_B(spark_dataframe)
         >>> counts_df = grouped_dataframe.agg(count("*").alias("count"), fill_value=0)
-        >>> print(counts_df.toPandas())
+        >>> print(counts_df.sort("B").toPandas())
             B  count
         0  b1      2
         1  b2      2
@@ -112,7 +120,7 @@ class GroupBy(Transformation):
         self,
         input_domain: SparkDataFrameDomain,
         input_metric: Union[HammingDistance, SymmetricDifference, IfGroupedBy],
-        output_metric: Union[SumOf, RootSumOfSquared],
+        use_l2: bool,
         group_keys: DataFrame,
     ):
         """Constructor.
@@ -120,31 +128,29 @@ class GroupBy(Transformation):
         Args:
             input_domain: Input domain.
             input_metric: Input metric.
-            output_metric: Output metric.
+            use_l2: If True, use :class:`~.RootSumOfSquared` instead of :class:`~.SumOf`
+                in the output metric.
             group_keys: DataFrame where rows correspond to group keys.
 
         Note:
             `group_keys` must be public.
         """
+        output_metric: Union[SumOf, RootSumOfSquared] = (
+            RootSumOfSquared(SymmetricDifference())
+            if use_l2
+            else SumOf(SymmetricDifference())
+        )
         if isinstance(input_metric, IfGroupedBy):
-            if input_metric.inner_metric.inner_metric != SymmetricDifference():
-                raise ValueError(
-                    "Inner metric for IfGroupedBy must be SymmetricDifference."
-                )
             if input_metric.column not in group_keys.columns:
                 raise ValueError(
                     f"Must group by IfGroupedBy metric column: {input_metric.column}"
                 )
-            if output_metric != input_metric.inner_metric:
+            expected_input_metric = IfGroupedBy(input_metric.column, output_metric)
+            if input_metric != expected_input_metric:
                 raise ValueError(
-                    f"Invalid output metric: Expected {input_metric.inner_metric}"
-                    f" not {output_metric}"
+                    "Input metric does not have the expected inner metric. "
+                    f"Maybe {expected_input_metric}?"
                 )
-        if output_metric.inner_metric != SymmetricDifference():
-            raise ValueError(
-                f"Output metric ({output_metric}) is invalid for "
-                f"given input metric ({input_metric})"
-            )
         output_domain = SparkGroupedDataFrameDomain(
             schema=input_domain.schema, group_keys=group_keys
         )
@@ -154,6 +160,7 @@ class GroupBy(Transformation):
                     "Group keys cannot have no rows, unless it also has no columns"
                 )
         self._group_keys = group_keys
+        self._use_l2 = use_l2
         self._groupby_columns = group_keys.columns
         super().__init__(
             input_domain=input_domain,
@@ -161,6 +168,11 @@ class GroupBy(Transformation):
             output_domain=output_domain,
             output_metric=output_metric,
         )
+
+    @property
+    def use_l2(self) -> bool:
+        """Returns whether the output metric will use :class:`~.RootSumOfSquared`."""
+        return self._use_l2
 
     @property
     def group_keys(self):
@@ -192,8 +204,8 @@ class GroupBy(Transformation):
 def create_groupby_from_column_domains(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-    output_metric: Union[SumOf, RootSumOfSquared],
-    column_domains: Dict[str, Union[List[int], List[str]]],
+    use_l2: bool,
+    column_domains: Dict[str, Union[List[int], List[str], List[datetime.date]]],
 ) -> GroupBy:
     """Returns GroupBy transformation with Cartesian product of column domains as keys.
 
@@ -234,7 +246,7 @@ def create_groupby_from_column_domains(
         ...         }
         ...     ),
         ...     input_metric=SymmetricDifference(),
-        ...     output_metric=SumOf(SymmetricDifference()),
+        ...     use_l2=False,
         ...     column_domains={
         ...         "B": ["b1", "b2"],
         ...         "C": ["c1", "c2"],
@@ -255,7 +267,8 @@ def create_groupby_from_column_domains(
     Args:
         input_domain: Domain of input DataFrames.
         input_metric: Metric on input DataFrames.
-        output_metric: Metric on output GroupedDataFrames.
+        use_l2: If True, use :class:`~.RootSumOfSquared` instead of :class:`~.SumOf`
+            in the output metric.
         column_domains: Mapping from column name to list of distinct values.
 
     Note:
@@ -265,7 +278,7 @@ def create_groupby_from_column_domains(
     return GroupBy(
         input_domain=input_domain,
         input_metric=input_metric,
-        output_metric=output_metric,
+        use_l2=use_l2,
         group_keys=compute_full_domain_df(column_domains),
     )
 
@@ -273,7 +286,7 @@ def create_groupby_from_column_domains(
 def create_groupby_from_list_of_keys(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-    output_metric: Union[SumOf, RootSumOfSquared],
+    use_l2: bool,
     groupby_columns: List[str],
     keys: List[Tuple[Union[str, int], ...]],
 ) -> GroupBy:
@@ -316,7 +329,7 @@ def create_groupby_from_list_of_keys(
         ...         }
         ...     ),
         ...     input_metric=SymmetricDifference(),
-        ...     output_metric=SumOf(SymmetricDifference()),
+        ...     use_l2=False,
         ...     groupby_columns=["B", "C"],
         ...     keys=[("b1", "c1"), ("b2", "c2")]
         ... )
@@ -334,7 +347,8 @@ def create_groupby_from_list_of_keys(
     Args:
         input_domain: Domain of input DataFrames.
         input_metric: Metric on input DataFrames.
-        output_metric: Metric on output GroupedDataFrames.
+        use_l2: If True, use :class:`~.RootSumOfSquared` instead of :class:`~.SumOf`
+            in the output metric.
         groupby_columns: List of column names to groupby.
         keys: List of distinct tuples corresponding to group keys.
 
@@ -345,22 +359,34 @@ def create_groupby_from_list_of_keys(
     return GroupBy(
         input_domain=input_domain,
         input_metric=input_metric,
-        output_metric=output_metric,
+        use_l2=use_l2,
         group_keys=spark.createDataFrame(
             keys, schema=input_domain.project(groupby_columns).spark_schema
         ),
     )
 
 
-def compute_full_domain_df(column_domains: Dict[str, Union[List[int], List[str]]]):
+def compute_full_domain_df(
+    column_domains: Dict[str, Union[List[int], List[str], List[datetime.date]]]
+):
     """Returns a DataFrame containing the Cartesian product of given column domains."""
     spark = SparkSession.builder.getOrCreate()
     if not column_domains:
         return SparkSession.builder.getOrCreate().createDataFrame([], StructType())
     full_domain_size = reduce(lambda acc, x: acc * len(x), column_domains.values(), 1)
+
+    def spark_type(value: Any) -> DataType:
+        if isinstance(value, str):
+            return StringType()
+        elif isinstance(value, int):
+            return LongType()
+        elif isinstance(value, datetime.date):
+            return DateType()
+        else:
+            raise ValueError(f"Type {type(value).__qualname__} is not supported")
+
     domain_spark_types = {
-        column: StringType() if isinstance(values[0], str) else LongType()
-        for column, values in column_domains.items()
+        column: spark_type(values[0]) for column, values in column_domains.items()
     }
     if full_domain_size <= 10 ** 6:
         # Perform in-memory crossjoin using itertools if fewer than 1m rows

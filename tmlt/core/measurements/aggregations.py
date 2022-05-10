@@ -25,20 +25,13 @@ from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.composition import Composition
 from tmlt.core.measurements.converters import PureDPToRhoZCDP
 from tmlt.core.measurements.noise_mechanisms import (
-    AddDiscreteGaussianNoise as AddDiscreteGaussianNoiseToNumber,
-)
-from tmlt.core.measurements.noise_mechanisms import (
-    AddGeometricNoise as AddGeometricNoiseToNumber,
-)
-from tmlt.core.measurements.noise_mechanisms import (
-    AddLaplaceNoise as AddLaplaceNoiseToNumber,
-)
-from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
-from tmlt.core.measurements.pandas_measurements.series import (
     AddDiscreteGaussianNoise,
     AddGeometricNoise,
     AddLaplaceNoise,
-    AddNoise,
+)
+from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
+from tmlt.core.measurements.pandas_measurements.series import (
+    AddNoiseToSeries,
     NoisyQuantile,
 )
 from tmlt.core.measurements.postprocess import PostProcess
@@ -146,14 +139,14 @@ def create_count_measurement(
         )
         add_noise_to_number: Measurement
         if noise_mechanism == NoiseMechanism.LAPLACE:
-            add_noise_to_number = AddLaplaceNoiseToNumber(
+            add_noise_to_number = AddLaplaceNoise(
                 scale=noise_scale, input_domain=NumpyIntegerDomain()
             )
         elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-            add_noise_to_number = AddGeometricNoiseToNumber(alpha=noise_scale)
+            add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
         else:
             assert noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
-            add_noise_to_number = AddDiscreteGaussianNoiseToNumber(
+            add_noise_to_number = AddDiscreteGaussianNoise(
                 sigma_squared=noise_scale ** 2
             )
         count_measurement: Measurement = count_aggregation | add_noise_to_number
@@ -178,20 +171,17 @@ def create_count_measurement(
     noise_scale = calculate_noise_scale(
         d_in=d_mid, d_out=d_out, output_measure=output_measure
     )
-    add_noise_to_series: AddNoise
+    add_noise_to_series: AddNoiseToSeries
     if noise_mechanism == NoiseMechanism.LAPLACE:
-        add_noise_to_series = AddLaplaceNoise(
-            scale=noise_scale, input_domain=PandasSeriesDomain(NumpyIntegerDomain())
+        add_noise_to_series = AddNoiseToSeries(
+            AddLaplaceNoise(scale=noise_scale, input_domain=NumpyIntegerDomain())
         )
     elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-        add_noise_to_series = AddGeometricNoise(
-            alpha=noise_scale, input_domain=PandasSeriesDomain(NumpyIntegerDomain())
-        )
+        add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
     else:
         assert noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
-        add_noise_to_series = AddDiscreteGaussianNoise(
-            sigma_squared=noise_scale ** 2,
-            input_domain=PandasSeriesDomain(NumpyIntegerDomain()),
+        add_noise_to_series = AddNoiseToSeries(
+            AddDiscreteGaussianNoise(sigma_squared=noise_scale ** 2)
         )
     assert isinstance(groupby_count.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -232,7 +222,7 @@ def create_count_distinct_measurement(
     is guaranteed.
 
     Note:
-        `d_out` is interpreted as the "episilon" parameter if `output_measure` is
+        `d_out` is interpreted as the "epsilon" parameter if `output_measure` is
         :class:`~.PureDP`, otherwise it is interpreted as the "rho" parameter
         (if `output_measure` is :class:`~.RhoZCDP`).
 
@@ -242,7 +232,7 @@ def create_count_distinct_measurement(
         output_measure: Desired privacy guarantee (one of :class:`~.PureDP` or
             :class:`~.RhoZCDP`).
         d_out: Desired distance between output distributions with respect to
-            `d_in`. This is interpreted as "episilon" if `output_measure` is
+            `d_in`. This is interpreted as "epsilon" if `output_measure` is
             :class:`~.PureDP` and as "rho" if `output_measure` is
             :class:`~.RhoZCDP`.
         noise_mechanism: Noise mechanism to apply to count(s).
@@ -284,11 +274,11 @@ def create_count_distinct_measurement(
         )
         add_noise_to_number: Measurement
         if noise_mechanism == NoiseMechanism.LAPLACE:
-            add_noise_to_number = AddLaplaceNoiseToNumber(
+            add_noise_to_number = AddLaplaceNoise(
                 scale=noise_scale, input_domain=NumpyIntegerDomain()
             )
         elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-            add_noise_to_number = AddGeometricNoiseToNumber(alpha=noise_scale)
+            add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
         else:
             if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN:
                 raise ValueError(
@@ -296,7 +286,7 @@ def create_count_distinct_measurement(
                     "Supported noise mechanisms are LAPLACE, "
                     "GEOMETRIC, and DISCRETE_GAUSSIAN."
                 )
-            add_noise_to_number = AddDiscreteGaussianNoiseToNumber(
+            add_noise_to_number = AddDiscreteGaussianNoise(
                 sigma_squared=noise_scale ** 2
             )
         count_distinct_measurement: Measurement = (
@@ -333,15 +323,13 @@ def create_count_distinct_measurement(
     noise_scale = calculate_noise_scale(
         d_in=d_mid, d_out=d_out, output_measure=output_measure
     )
-    add_noise_to_series: AddNoise
+    add_noise_to_series: AddNoiseToSeries
     if noise_mechanism == NoiseMechanism.LAPLACE:
-        add_noise_to_series = AddLaplaceNoise(
-            scale=noise_scale, input_domain=PandasSeriesDomain(NumpyIntegerDomain())
+        add_noise_to_series = AddNoiseToSeries(
+            AddLaplaceNoise(scale=noise_scale, input_domain=NumpyIntegerDomain())
         )
     elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-        add_noise_to_series = AddGeometricNoise(
-            alpha=noise_scale, input_domain=PandasSeriesDomain(NumpyIntegerDomain())
-        )
+        add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
     else:
         if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN:
             raise ValueError(
@@ -349,9 +337,8 @@ def create_count_distinct_measurement(
                 "Supported noise mechanisms are LAPLACE, "
                 "GEOMETRIC, and DISCRETE_GAUSSIAN."
             )
-        add_noise_to_series = AddDiscreteGaussianNoise(
-            sigma_squared=noise_scale ** 2,
-            input_domain=PandasSeriesDomain(NumpyIntegerDomain()),
+        add_noise_to_series = AddNoiseToSeries(
+            AddDiscreteGaussianNoise(sigma_squared=noise_scale ** 2)
         )
     assert isinstance(groupby_count_distinct.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -455,14 +442,14 @@ def create_sum_measurement(
         )
         add_noise_to_number: Measurement
         if noise_mechanism == NoiseMechanism.LAPLACE:
-            add_noise_to_number = AddLaplaceNoiseToNumber(
+            add_noise_to_number = AddLaplaceNoise(
                 scale=noise_scale, input_domain=measure_column_domain
             )
         elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-            add_noise_to_number = AddGeometricNoiseToNumber(alpha=noise_scale)
+            add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
         else:
             assert noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
-            add_noise_to_number = AddDiscreteGaussianNoiseToNumber(
+            add_noise_to_number = AddDiscreteGaussianNoise(
                 sigma_squared=noise_scale ** 2
             )
         sum_measurement: Measurement = sum_aggregation | add_noise_to_number
@@ -475,7 +462,7 @@ def create_sum_measurement(
             sum_measurement = PureDPToRhoZCDP(sum_measurement)
         assert sum_measurement.privacy_function(d_in) == d_out
         return sum_measurement
-    add_noise_to_series: AddNoise
+    add_noise_to_series: AddNoiseToSeries
     assert isinstance(groupby_transformation.output_domain, SparkGroupedDataFrameDomain)
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
     sum_aggregation = create_sum_aggregation(
@@ -492,18 +479,15 @@ def create_sum_measurement(
         d_in=d_mid, d_out=d_out, output_measure=output_measure
     )
     if noise_mechanism == NoiseMechanism.LAPLACE:
-        add_noise_to_series = AddLaplaceNoise(
-            scale=noise_scale, input_domain=PandasSeriesDomain(measure_column_domain)
+        add_noise_to_series = AddNoiseToSeries(
+            AddLaplaceNoise(scale=noise_scale, input_domain=measure_column_domain)
         )
     elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-        add_noise_to_series = AddGeometricNoise(
-            alpha=noise_scale, input_domain=PandasSeriesDomain(measure_column_domain)
-        )
+        add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
     else:
         assert noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
-        add_noise_to_series = AddDiscreteGaussianNoise(
-            sigma_squared=noise_scale ** 2,
-            input_domain=PandasSeriesDomain(measure_column_domain),
+        add_noise_to_series = AddNoiseToSeries(
+            AddDiscreteGaussianNoise(sigma_squared=noise_scale ** 2)
         )
     assert isinstance(sum_aggregation.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -674,7 +658,7 @@ def create_average_measurement(
     groupby = GroupBy(
         input_domain=deviations_map.output_domain,
         input_metric=input_metric,
-        output_metric=groupby_transformation.output_metric,
+        use_l2=groupby_transformation.use_l2,
         group_keys=groupby_transformation.group_keys,
     )
     sod_measurement = create_sum_measurement(
@@ -939,7 +923,7 @@ def create_variance_measurement(
     groupby = GroupBy(
         input_domain=deviations_map.output_domain,
         input_metric=deviations_map.output_metric,
-        output_metric=groupby_transformation.output_metric,
+        use_l2=groupby_transformation.use_l2,
         group_keys=groupby_transformation.group_keys,
     )
     sod_measurement = create_sum_measurement(
@@ -1175,8 +1159,8 @@ def create_quantile_measurement(
     d_out: ExactNumberInput,
     measure_column: str,
     quantile: float,
-    lower: ExactNumberInput,
-    upper: ExactNumberInput,
+    lower: Union[int, float],
+    upper: Union[int, float],
     d_in: ExactNumberInput = 1,
     groupby_transformation: Optional[GroupBy] = None,
     quantile_column: Optional[str] = None,
@@ -1216,8 +1200,6 @@ def create_quantile_measurement(
             output by the measurement. If None, this column will be named
             "q_(<quantile>)_(<measure_column>)".
     """
-    lower = ExactNumber(lower)
-    upper = ExactNumber(upper)
     d_in = ExactNumber(d_in)
     d_out = ExactNumber(d_out)
     if not quantile_column:
@@ -1234,7 +1216,7 @@ def create_quantile_measurement(
         groupby_transformation = GroupBy(
             input_domain=input_domain,
             input_metric=input_metric,
-            output_metric=SumOf(SymmetricDifference()),
+            use_l2=False,
             group_keys=spark.createDataFrame([], schema=StructType([])),
         )
         # Postprocess to obtain the answer if no groupby transformation

@@ -9,7 +9,7 @@ from pyspark.sql import DataFrame, SparkSession
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import IfGroupedBy, SymmetricDifference
+from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
@@ -104,9 +104,15 @@ class Filter(Transformation):
         spark = SparkSession.builder.getOrCreate()
         test_df = spark.createDataFrame([], schema=domain.spark_schema)
         if isinstance(metric, IfGroupedBy):
-            if not isinstance(metric.inner_metric.inner_metric, SymmetricDifference):
+            if metric.inner_metric not in (
+                SymmetricDifference(),
+                SumOf(SymmetricDifference()),
+                RootSumOfSquared(SymmetricDifference()),
+            ):
                 raise ValueError(
-                    "Inner metric for IfGroupedBy metric must be SymmetricDifference."
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "SumOf(SymmetricDifference()), or "
+                    "RootSumOfSquared(SymmetricDifference())"
                 )
             if metric.column not in domain.schema:
                 raise ValueError(

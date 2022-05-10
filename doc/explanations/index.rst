@@ -9,3 +9,4 @@ The following pages explain concepts and advanced topics that come up in Tumult 
    :maxdepth: 1
 
    real-numbers
+   privacy-guarantee

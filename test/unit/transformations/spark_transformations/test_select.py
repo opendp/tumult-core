@@ -8,7 +8,13 @@ import pandas as pd
 from parameterized import parameterized
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import IfGroupedBy, SumOf, SymmetricDifference
+from tmlt.core.metrics import (
+    HammingDistance,
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+)
 from tmlt.core.transformations.spark_transformations.select import Select
 from tmlt.core.utils.testing import (
     TestComponent,
@@ -53,7 +59,11 @@ class TestSelect(TestComponent):
         self.assertEqual(transformation.columns, columns)
 
     @parameterized.expand(
-        [(SymmetricDifference(),), (IfGroupedBy("B", SumOf(SymmetricDifference())),)]
+        [
+            (SymmetricDifference(),),
+            (IfGroupedBy("B", SumOf(SymmetricDifference())),),
+            (IfGroupedBy("B", SymmetricDifference()),),
+        ]
     )
     def test_select_works_correctly(
         self, metric: Union[SymmetricDifference, IfGroupedBy]
@@ -86,15 +96,28 @@ class TestSelect(TestComponent):
             )
 
     @parameterized.expand(
-        [(["B"], "D", "D not in input domain"), (["A"], "B", "must be selected: B")]
+        [
+            (
+                ["D"],
+                "D",
+                SumOf(SymmetricDifference()),
+                "Non existent columns in select columns : {'D'}",
+            ),
+            (["A"], "B", SumOf(SymmetricDifference()), "must be selected: B"),
+            (["B"], "B", SumOf(HammingDistance()), "must be SymmetricDifference"),
+        ]
     )
     def test_if_grouped_by_metric_invalid_parameters(
-        self, select_columns: List[str], groupby_col: str, error_msg: str
+        self,
+        select_columns: List[str],
+        groupby_col: str,
+        inner_metric: Union[SumOf, RootSumOfSquared, SymmetricDifference],
+        error_msg: str,
     ):
         """Tests that Select raises appropriate errors with invalid params."""
         with self.assertRaisesRegex(ValueError, error_msg):
             Select(
                 input_domain=SparkDataFrameDomain(self.schema_a),
-                metric=IfGroupedBy(groupby_col, SumOf(SymmetricDifference())),
+                metric=IfGroupedBy(groupby_col, inner_metric),
                 columns=select_columns,
             )

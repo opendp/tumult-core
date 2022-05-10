@@ -2,16 +2,24 @@
 
 # <placeholder: boilerplate>
 
-from typing import Union
+import random
+from fractions import Fraction
+from typing import Union, cast
 
 import numpy as np
+from pyspark.sql.types import DataType, DoubleType, LongType
 from typeguard import typechecked
 
-from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
+from tmlt.core.domains.numpy_domains import (
+    NumpyDomain,
+    NumpyFloatDomain,
+    NumpyIntegerDomain,
+)
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import AbsoluteDifference
-from tmlt.core.random.discrete_gaussian import sample_dgauss
+from tmlt.core.random.discrete_gaussian import _sample_geometric_exp_slow, sample_dgauss
+from tmlt.core.random.laplace import laplace
 from tmlt.core.random.rng import prng
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.misc import RNGWrapper
@@ -54,11 +62,22 @@ class AddLaplaceNoise(Measurement):
             is_interactive=False,
         )
         self._scale = ExactNumber(scale)
+        self._output_type = DoubleType()
+
+    @property
+    def input_domain(self) -> NumpyDomain:
+        """Return input domain for the measurement."""
+        return cast(NumpyDomain, super().input_domain)
 
     @property
     def scale(self) -> ExactNumber:
         """Returns the noise scale."""
         return self._scale
+
+    @property
+    def output_type(self) -> DataType:
+        """Return the output data type after being used as a UDF."""
+        return self._output_type
 
     @typechecked
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
@@ -95,8 +114,10 @@ class AddLaplaceNoise(Measurement):
         Args:
             val: Value to add Laplace noise to.
         """
+        if not self.scale.is_finite:
+            return random.choice([float("inf"), -float("inf")])
         float_scale = self.scale.to_float(round_up=True)
-        return prng().laplace(loc=val, scale=float_scale)
+        return laplace(u=float(val), b=float_scale)
 
 
 class AddGeometricNoise(Measurement):
@@ -128,6 +149,17 @@ class AddGeometricNoise(Measurement):
             is_interactive=False,
         )
         self._alpha = ExactNumber(alpha)
+        self._output_type = LongType()
+
+    @property
+    def input_domain(self) -> NumpyIntegerDomain:
+        """Return input domain for the measurement."""
+        return cast(NumpyIntegerDomain, super().input_domain)
+
+    @property
+    def output_type(self) -> DataType:
+        """Return the output data type after being used as a UDF."""
+        return self._output_type
 
     @property
     def alpha(self) -> ExactNumber:
@@ -185,9 +217,13 @@ class AddGeometricNoise(Measurement):
         Args:
             value: Value to add geometric noise to.
         """
+        if self.alpha == 0:
+            return int(value)
         float_scale = self.alpha.to_float(round_up=True)
-        p = 1 - np.exp(-1 / float_scale) if float_scale > 0 else 1
-        noise = prng().geometric(p) - prng().geometric(p)
+        x = 1 / Fraction(float_scale)
+        noise = _sample_geometric_exp_slow(
+            x, RNGWrapper(prng())
+        ) - _sample_geometric_exp_slow(x, RNGWrapper(prng()))
         return int(value + noise)
 
 
@@ -221,6 +257,17 @@ class AddDiscreteGaussianNoise(Measurement):
             is_interactive=False,
         )
         self._sigma_squared = ExactNumber(sigma_squared)
+        self._output_type = LongType()
+
+    @property
+    def input_domain(self) -> NumpyIntegerDomain:
+        """Return input domain for the measurement."""
+        return cast(NumpyIntegerDomain, super().input_domain)
+
+    @property
+    def output_type(self) -> DataType:
+        """Return the output data type after being used as a UDF."""
+        return self._output_type
 
     @property
     def sigma_squared(self) -> ExactNumber:

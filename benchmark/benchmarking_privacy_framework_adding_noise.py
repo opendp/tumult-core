@@ -10,24 +10,23 @@ from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.types import IntegerType, StructField, StructType
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
-from tmlt.core.domains.pandas_domains import PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkIntegerColumnDescriptor,
 )
-from tmlt.core.measurements.pandas_measurements.series import (
+from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,
     AddGeometricNoise,
     AddLaplaceNoise,
-    AddNoise,
 )
+from tmlt.core.measurements.pandas_measurements.series import AddNoiseToSeries
 from tmlt.core.measurements.spark_measurements import AddNoiseToColumn
 
 
 def evaluate_runtime(
     input_domain: SparkDataFrameDomain,
     measure_column: str,
-    measurement: AddNoise,
+    measurement: AddNoiseToSeries,
     sdf: DataFrame,
 ) -> float:
     """Returns the running time for adding noise to dataframes."""
@@ -59,10 +58,7 @@ def main():
         running_time = evaluate_runtime(
             input_domain=input_domain,
             measure_column="count",
-            measurement=AddGeometricNoise(
-                alpha=1,
-                input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            ),
+            measurement=AddNoiseToSeries(AddGeometricNoise(alpha=1)),
             sdf=sdf,
         )
         row = {
@@ -78,9 +74,8 @@ def main():
         running_time = evaluate_runtime(
             input_domain=input_domain,
             measure_column="count",
-            measurement=AddLaplaceNoise(
-                scale=1,
-                input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
+            measurement=AddNoiseToSeries(
+                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
             ),
             sdf=sdf,
         )
@@ -97,10 +92,7 @@ def main():
         running_time = evaluate_runtime(
             input_domain=input_domain,
             measure_column="count",
-            measurement=AddDiscreteGaussianNoise(
-                sigma_squared=1,
-                input_domain=PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
-            ),
+            measurement=AddNoiseToSeries(AddDiscreteGaussianNoise(sigma_squared=1)),
             sdf=sdf,
         )
         row = {

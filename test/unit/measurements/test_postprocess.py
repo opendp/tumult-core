@@ -10,7 +10,7 @@ from parameterized import parameterized
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
-from tmlt.core.measurements.base import Queryable
+from tmlt.core.measurements.interactive_measurements import Queryable
 from tmlt.core.measurements.postprocess import NonInteractivePostProcess, PostProcess
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
 from tmlt.core.metrics import AbsoluteDifference, Metric
@@ -26,31 +26,22 @@ from tmlt.core.utils.testing import (
 class TestPostProcess(TestComponent):
     """Tests for :class:`~tmlt.core.measurements.postprocess.PostProcess`."""
 
-    @parameterized.expand(
-        [
-            (NumpyFloatDomain(), AbsoluteDifference(), PureDP(), True),
-            (NumpyIntegerDomain(), AbsoluteDifference(), RhoZCDP(), False),
-        ]
-    )
+    @parameterized.expand([(NumpyFloatDomain(), AbsoluteDifference(), PureDP())])
     def test_properties(
-        self,
-        input_domain: Domain,
-        input_metric: Metric,
-        output_measure: Measure,
-        is_interactive: bool,
+        self, input_domain: Domain, input_metric: Metric, output_measure: Measure
     ):
         """PostProcess's properties have the expected values."""
         measurement = create_mock_measurement(
             input_domain=input_domain,
             input_metric=input_metric,
             output_measure=output_measure,
-            is_interactive=is_interactive,
+            is_interactive=False,
         )
         postprocessed_measurement = PostProcess(measurement=measurement, f=lambda x: x)
         self.assertEqual(postprocessed_measurement.input_domain, input_domain)
         self.assertEqual(postprocessed_measurement.input_metric, input_metric)
         self.assertEqual(postprocessed_measurement.output_measure, output_measure)
-        self.assertEqual(postprocessed_measurement.is_interactive, is_interactive)
+        self.assertEqual(postprocessed_measurement.is_interactive, False)
 
     @parameterized.expand(get_all_props(PostProcess))
     def test_property_immutability(self, prop_name: str):
@@ -121,17 +112,15 @@ class TestPostProcess(TestComponent):
             privacy_relation_return_value,
         )
 
-    def test_interactive_postprocess_must_return_queryable(self):
-        """Interactive PostProcess raises error if a Queryable is not returned."""
+    def test_postprocess_raises_error_on_interactive_measurements(self):
+        """PostProcess raises error if measurement is interactive."""
         measurement = create_mock_measurement(return_value=5, is_interactive=True)
         f = MagicMock(return_value=10)
-        invalid_postprocessed_measurement = PostProcess(measurement=measurement, f=f)
         with self.assertRaisesRegex(
-            RuntimeError,
-            "An interactive PostProcess measurement must return an instance of"
-            f" {Queryable.__module__}.{Queryable.__name__}",
+            ValueError,
+            "PostProcess can only be used with a non-interactive measurement",
         ):
-            invalid_postprocessed_measurement(None)
+            PostProcess(measurement=measurement, f=f)
 
 
 class TestNonInteractivePostProcess(TestComponent):

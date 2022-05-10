@@ -2,7 +2,7 @@
 
 # <placeholder: boilerplate>
 from abc import ABC, abstractmethod
-from typing import Any, Tuple
+from typing import Any
 
 from typeguard import typechecked
 
@@ -93,25 +93,3 @@ class Measurement(ABC):
     def __call__(self, data: Any) -> Any:
         """Performs measurement."""
         ...
-
-
-class Queryable(ABC):
-    """Base class for Queryables."""
-
-    def __init__(self, state: Any):
-        """Constructor.
-
-        Args:
-            state: Initial state of the Queryable.
-        """
-        self._state = state
-
-    @abstractmethod
-    def update(self, query, state: Any) -> Tuple:
-        """Returns tuple with an answer to query and updated state."""
-        ...
-
-    def __call__(self, query: Any):
-        """Returns answer to given query."""
-        answer, self._state = self.update(query, self._state)
-        return answer

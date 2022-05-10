@@ -1,17 +1,21 @@
 """Unit tests for :mod:`~tmlt.core.domains.spark_domains`."""
 
 # <placeholder: boilerplate>
+
+import datetime
 from typing import Any, Optional
 
 import pandas as pd
 from parameterized import parameterized
 from pyspark.sql.types import (
+    DateType,
     FloatType,
     IntegerType,
     LongType,
     StringType,
     StructField,
     StructType,
+    TimestampType,
 )
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
@@ -25,11 +29,13 @@ from tmlt.core.domains.spark_domains import (
     SparkColumnDescriptor,
     SparkColumnsDescriptor,
     SparkDataFrameDomain,
+    SparkDateColumnDescriptor,
     SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
     SparkIntegerColumnDescriptor,
     SparkRowDomain,
     SparkStringColumnDescriptor,
+    SparkTimestampColumnDescriptor,
 )
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.testing import PySparkTest
@@ -315,14 +321,35 @@ class TestSparkColumnDescriptors(PySparkTest):
         self.int64_column_descriptor = SparkIntegerColumnDescriptor(size=64)
         self.float32_column_descriptor = SparkFloatColumnDescriptor(size=32)
         self.str_column_descriptor = SparkStringColumnDescriptor(allow_null=False)
+        self.date_column_descriptor = SparkDateColumnDescriptor()
+        self.timestamp_column_descriptor = SparkTimestampColumnDescriptor()
         self.test_df = self.spark.createDataFrame(
-            [(1, 2, 1.0, "X"), (11, 239, 2.0, None)],
+            [
+                (
+                    1,
+                    2,
+                    1.0,
+                    "X",
+                    datetime.date.fromisoformat("1970-01-01"),
+                    datetime.datetime.fromisoformat("1970-01-01 00:00:00.000+00:00"),
+                ),
+                (
+                    11,
+                    239,
+                    2.0,
+                    None,
+                    datetime.date.fromisoformat("2022-01-01"),
+                    datetime.datetime.fromisoformat("2022-01-01 08:30:00.000+00:00"),
+                ),
+            ],
             schema=StructType(
                 [
                     StructField("A", IntegerType(), False),
                     StructField("B", LongType(), False),
                     StructField("C", FloatType(), False),
                     StructField("D", StringType(), True),
+                    StructField("E", DateType(), True),
+                    StructField("F", TimestampType(), True),
                 ]
             ),
         )
@@ -358,110 +385,128 @@ class TestSparkColumnDescriptors(PySparkTest):
 
     @parameterized.expand(
         [
-            ("A", True, False, False, False),
-            ("B", False, True, False, False),
-            ("C", False, False, True, False),
-            ("D", False, False, False, False),
+            (
+                SparkIntegerColumnDescriptor(allow_null=True),
+                "Nullable column does not have corresponding NumPy domain.",
+            ),
+            (
+                SparkDateColumnDescriptor(),
+                "NumPy does not have support for date types.",
+            ),
+            (
+                SparkTimestampColumnDescriptor(),
+                "NumPy does not have support for timestamp types.",
+            ),
         ]
     )
-    def test_validate_column(
-        self,
-        col_name: str,
-        int32_col: bool,
-        int64_col: bool,
-        float32_col: bool,
-        str_col: bool,
+    def test_to_numpy_domain_invalid(
+        self, descriptor: SparkColumnDescriptor, expected_error: str
     ):
+        """Tests that to_numpy_domain raises appropriate exceptions."""
+        with self.assertRaisesRegex(RuntimeError, expected_error):
+            descriptor.to_numpy_domain()
+
+    @parameterized.expand(
+        [
+            ("A", "int32"),
+            ("B", "int64"),
+            ("C", "float32"),
+            ("D", "str"),
+            ("E", "date"),
+            ("F", "timestamp"),
+        ]
+    )
+    def test_validate_column(self, col_name: str, col_type: str):
         """Tests that validate_column works correctly."""
-        if not int32_col:
+        if col_type == "int32":
+            self.int32_column_descriptor.validate_column(self.test_df, col_name)
+        else:
             with self.assertRaisesRegex(
                 OutOfDomainError,
                 "Column must be IntegerType, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.int32_column_descriptor.validate_column(self.test_df, col_name)
-        else:
-            self.assertEqual(
-                self.int32_column_descriptor.validate_column(self.test_df, col_name),
-                None,
-            )
 
-        if not int64_col:
+        if col_type == "int64":
+            self.int64_column_descriptor.validate_column(self.test_df, col_name)
+        else:
             with self.assertRaisesRegex(
                 OutOfDomainError,
                 "Column must be LongType, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.int64_column_descriptor.validate_column(self.test_df, col_name)
-        else:
-            self.assertEqual(
-                self.int64_column_descriptor.validate_column(self.test_df, col_name),
-                None,
-            )
 
-        if not float32_col:
+        if col_type == "float32":
+            self.float32_column_descriptor.validate_column(self.test_df, col_name)
+        else:
             with self.assertRaisesRegex(
                 OutOfDomainError,
                 "Column must be FloatType, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.float32_column_descriptor.validate_column(self.test_df, col_name)
-        else:
-            self.assertEqual(
-                self.float32_column_descriptor.validate_column(self.test_df, col_name),
-                None,
-            )
 
-        if not str_col:
-            if col_name != "D":
-                e = (
-                    "Column must be StringType, instead it is "
-                    f"{self.test_df.schema[col_name].dataType}."
-                )
-            else:
-                e = "Column contains null values."
-                with self.assertRaisesRegex(OutOfDomainError, e):
-                    self.str_column_descriptor.validate_column(self.test_df, col_name)
+        if col_type == "str":
+            with self.assertRaisesRegex(
+                OutOfDomainError, "Column contains null values."
+            ):
+                self.str_column_descriptor.validate_column(self.test_df, col_name)
         else:
-            self.assertEqual(
-                self.str_column_descriptor.validate_column(self.test_df, col_name), None
-            )
+            with self.assertRaisesRegex(
+                OutOfDomainError,
+                "Column must be StringType, instead it is "
+                f"{self.test_df.schema[col_name].dataType}.",
+            ):
+                self.str_column_descriptor.validate_column(self.test_df, col_name)
+
+        if col_type == "date":
+            self.date_column_descriptor.validate_column(self.test_df, col_name)
+        else:
+            with self.assertRaisesRegex(
+                OutOfDomainError,
+                "Column must be DateType, instead it is "
+                f"{self.test_df.schema[col_name].dataType}.",
+            ):
+                self.date_column_descriptor.validate_column(self.test_df, col_name)
+
+        if col_type == "timestamp":
+            self.timestamp_column_descriptor.validate_column(self.test_df, col_name)
+        else:
+            with self.assertRaisesRegex(
+                OutOfDomainError,
+                "Column must be TimestampType, instead it is "
+                f"{self.test_df.schema[col_name].dataType}.",
+            ):
+                self.timestamp_column_descriptor.validate_column(self.test_df, col_name)
 
     @parameterized.expand(
         [
-            (SparkIntegerColumnDescriptor(size=32), True, False, False, False),
-            (
-                SparkIntegerColumnDescriptor(allow_null=True, size=32),
-                False,
-                False,
-                False,
-                False,
-            ),
-            (SparkIntegerColumnDescriptor(), False, True, False, False),
-            (SparkIntegerColumnDescriptor(allow_null=True), False, False, False, False),
-            (SparkFloatColumnDescriptor(), False, False, False, False),
-            (SparkFloatColumnDescriptor(size=32), False, False, True, False),
-            (
-                SparkFloatColumnDescriptor(size=32, allow_nan=True),
-                False,
-                False,
-                False,
-                False,
-            ),
-            (SparkStringColumnDescriptor(), False, False, False, True),
-            (SparkStringColumnDescriptor(allow_null=True), False, False, False, False),
+            (SparkIntegerColumnDescriptor(size=32), "int32"),
+            (SparkIntegerColumnDescriptor(allow_null=True, size=32), "int32_null"),
+            (SparkIntegerColumnDescriptor(), "int64"),
+            (SparkIntegerColumnDescriptor(allow_null=True), "int64_null"),
+            (SparkFloatColumnDescriptor(), "float64"),
+            (SparkFloatColumnDescriptor(size=32), "float32"),
+            (SparkFloatColumnDescriptor(size=32, allow_nan=True), "float32_nan"),
+            (SparkStringColumnDescriptor(), "str"),
+            (SparkStringColumnDescriptor(allow_null=True), "str_null"),
+            (SparkDateColumnDescriptor(), "date"),
+            (SparkDateColumnDescriptor(allow_null=True), "date_null"),
+            (SparkTimestampColumnDescriptor(), "timestamp"),
+            (SparkTimestampColumnDescriptor(allow_null=True), "timestamp_null"),
         ]
     )
-    def test_eq(
-        self,
-        candidate: Any,
-        int32_col: bool,
-        int64_col: bool,
-        float32_col: bool,
-        str_col: bool,
-    ):
+    def test_eq(self, candidate: Any, col_type: str):
         """Tests that __eq__ works correctly."""
-        self.assertEqual(self.int32_column_descriptor == candidate, int32_col)
-        self.assertEqual(self.int64_column_descriptor == candidate, int64_col)
-        self.assertEqual(self.float32_column_descriptor == candidate, float32_col)
-        self.assertEqual(self.str_column_descriptor == candidate, str_col)
+        self.assertEqual(self.int32_column_descriptor == candidate, col_type == "int32")
+        self.assertEqual(self.int64_column_descriptor == candidate, col_type == "int64")
+        self.assertEqual(
+            self.float32_column_descriptor == candidate, col_type == "float32"
+        )
+        self.assertEqual(self.str_column_descriptor == candidate, col_type == "str")
+        self.assertEqual(self.date_column_descriptor == candidate, col_type == "date")
+        self.assertEqual(
+            self.timestamp_column_descriptor == candidate, col_type == "timestamp"
+        )

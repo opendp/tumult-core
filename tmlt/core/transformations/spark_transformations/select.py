@@ -9,7 +9,13 @@ from pyspark.sql import DataFrame
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import HammingDistance, IfGroupedBy, SymmetricDifference
+from tmlt.core.metrics import (
+    HammingDistance,
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+)
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
@@ -113,14 +119,20 @@ class Select(Transformation):
             )
         output_columns = {col: input_domain[col] for col in columns}
         if isinstance(metric, IfGroupedBy):
-            if metric.column not in input_domain.schema:
-                raise ValueError(
-                    f"Invalid IfGroupedBy metric: {metric.column} not in input domain."
-                )
             if metric.column not in columns:
                 raise ValueError(
                     "Column used in IfGroupedBy metric must be"
                     f" selected: {metric.column}."
+                )
+            if metric.inner_metric not in (
+                SymmetricDifference(),
+                SumOf(SymmetricDifference()),
+                RootSumOfSquared(SymmetricDifference()),
+            ):
+                raise ValueError(
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "SumOf(SymmetricDifference()), or "
+                    "RootSumOfSquared(SymmetricDifference())"
                 )
         super().__init__(
             input_domain=input_domain,

@@ -10,26 +10,13 @@ from nose.plugins.attrib import attr
 from parameterized import parameterized
 from scipy.stats import kstest, laplace
 
-from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
-from tmlt.core.domains.pandas_domains import PandasSeriesDomain
+from tmlt.core.domains.numpy_domains import NumpyFloatDomain
 from tmlt.core.measurements.noise_mechanisms import (
-    AddDiscreteGaussianNoise as AddDiscreteGaussianNoiseToNumber,
+    AddDiscreteGaussianNoise,
+    AddGeometricNoise,
+    AddLaplaceNoise,
 )
-from tmlt.core.measurements.noise_mechanisms import (
-    AddGeometricNoise as AddGeometricNoiseToNumber,
-)
-from tmlt.core.measurements.noise_mechanisms import (
-    AddLaplaceNoise as AddLaplaceNoiseToNumber,
-)
-from tmlt.core.measurements.pandas_measurements.series import (
-    AddDiscreteGaussianNoise as AddDiscreteGaussianNoiseToSeries,
-)
-from tmlt.core.measurements.pandas_measurements.series import (
-    AddGeometricNoise as AddGeometricNoiseToSeries,
-)
-from tmlt.core.measurements.pandas_measurements.series import (
-    AddLaplaceNoise as AddLaplaceNoiseToSeries,
-)
+from tmlt.core.measurements.pandas_measurements.series import AddNoiseToSeries
 from tmlt.core.utils.distributions import (
     discrete_gaussian_cmf,
     discrete_gaussian_pmf,
@@ -77,9 +64,7 @@ def _create_base_laplace_sampler(
         "noisy_vals": np.array(
             list(
                 map(
-                    AddLaplaceNoiseToNumber(
-                        scale=noise_scale, input_domain=NumpyFloatDomain()
-                    ),
+                    AddLaplaceNoise(scale=noise_scale, input_domain=NumpyFloatDomain()),
                     [loc] * sample_size,
                 )
             )
@@ -91,8 +76,8 @@ def _create_vector_laplace_sampler(
     loc: float, noise_scale: ExactNumberInput, iterations: int = 1
 ):
     def vector_laplace_sampler():
-        add_noise_measuerment = AddLaplaceNoiseToSeries(
-            input_domain=PandasSeriesDomain(NumpyFloatDomain()), scale=noise_scale
+        add_noise_measuerment = AddNoiseToSeries(
+            AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=noise_scale)
         )
         samples = np.concatenate(
             [
@@ -128,7 +113,7 @@ def _create_base_geometric_sampler(
 ):
     return lambda: {
         "noisy_vals": np.array(
-            list(map(AddGeometricNoiseToNumber(alpha=noise_scale), [loc] * sample_size))
+            list(map(AddGeometricNoise(alpha=noise_scale), [loc] * sample_size))
         )
     }
 
@@ -137,9 +122,7 @@ def _create_vector_geometric_sampler(
     loc: int, noise_scale: ExactNumberInput, iterations: int = 1
 ):
     def vector_geometric_sampler():
-        add_noise_measuerment = AddGeometricNoiseToSeries(
-            alpha=noise_scale, input_domain=PandasSeriesDomain(NumpyIntegerDomain())
-        )
+        add_noise_measuerment = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
         samples = np.concatenate(
             [
                 add_noise_measuerment(
@@ -157,9 +140,8 @@ def _create_vector_discrete_gaussian_sampler(
     loc: int, noise_scale: ExactNumberInput, iterations: int = 1
 ):
     def vector_discrete_gaussian_sampler():
-        add_noise_measuerment = AddDiscreteGaussianNoiseToSeries(
-            sigma_squared=noise_scale,
-            input_domain=PandasSeriesDomain(NumpyIntegerDomain()),
+        add_noise_measuerment = AddNoiseToSeries(
+            AddDiscreteGaussianNoise(sigma_squared=noise_scale)
         )
         samples = np.concatenate(
             [
@@ -181,7 +163,7 @@ def _create_base_discrete_gaussian_sampler(
         "noisy_vals": np.array(
             list(
                 map(
-                    AddDiscreteGaussianNoiseToNumber(sigma_squared=noise_scale),
+                    AddDiscreteGaussianNoise(sigma_squared=noise_scale),
                     [loc] * sample_size,
                 )
             )

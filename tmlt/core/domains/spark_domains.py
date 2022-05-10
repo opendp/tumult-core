@@ -2,6 +2,7 @@
 
 # <placeholder: boilerplate>
 
+import datetime
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from pyspark import Row
 from pyspark.sql import DataFrame
 from pyspark.sql.types import (
     DataType,
+    DateType,
     DoubleType,
     FloatType,
     IntegerType,
@@ -19,6 +21,7 @@ from pyspark.sql.types import (
     StringType,
     StructField,
     StructType,
+    TimestampType,
 )
 from typeguard import check_type
 
@@ -233,6 +236,66 @@ class SparkStringColumnDescriptor(SparkColumnDescriptor):
         return StringType()
 
 
+@dataclass(frozen=True)
+class SparkDateColumnDescriptor(SparkColumnDescriptor):
+    """Describes a date attribute in Spark."""
+
+    allow_null: bool = False
+    """If True, null values are permitted in the domain."""
+
+    def __post_init__(self):
+        """Checks arguments to constructor."""
+        check_type("allow_null", self.allow_null, bool)
+
+    def to_numpy_domain(self):
+        """Returns corresponding NumPy domain.
+
+        Note:
+            Date types are not supported in NumPy; this method always
+            raises an exception.
+        """
+        raise RuntimeError("NumPy does not have support for date types.")
+
+    def valid_py_value(self, val: Any):
+        """Returns True if the value is a valid Python value for the descriptor."""
+        return isinstance(val, datetime.date) or (self.allow_null and val is None)
+
+    @property
+    def data_type(self) -> DataType:
+        """Returns data type associated with Spark column."""
+        return DateType()
+
+
+@dataclass(frozen=True)
+class SparkTimestampColumnDescriptor(SparkColumnDescriptor):
+    """Describes a timestamp attribute in Spark."""
+
+    allow_null: bool = False
+    """If True, null values are permitted in the domain."""
+
+    def __post_init__(self):
+        """Checks arguments to constructor."""
+        check_type("allow_null", self.allow_null, bool)
+
+    def to_numpy_domain(self):
+        """Returns corresponding NumPy domain.
+
+        Note:
+            Timestamp types are not supported in NumPy; this method always
+            raises an exception.
+        """
+        raise RuntimeError("NumPy does not have support for timestamp types.")
+
+    def valid_py_value(self, val: Any):
+        """Returns True if the value is a valid Python value for the descriptor."""
+        return isinstance(val, datetime.datetime) or (self.allow_null and val is None)
+
+    @property
+    def data_type(self) -> DataType:
+        """Returns data type associated with Spark column."""
+        return TimestampType()
+
+
 @dataclass(frozen=True, eq=False)
 class SparkRowDomain(Domain):
     """Domain of Spark DataFrame rows."""
@@ -383,6 +446,10 @@ def _spark_type_to_descriptor(
         )
     if spark_type == StringType():
         return SparkStringColumnDescriptor(allow_null=nullable)
+    if spark_type == DateType():
+        return SparkDateColumnDescriptor(allow_null=nullable)
+    if spark_type == TimestampType():
+        return SparkTimestampColumnDescriptor(allow_null=nullable)
     raise ValueError(f"Invalid spark_type: {spark_type}")
 
 

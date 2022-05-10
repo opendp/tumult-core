@@ -1,38 +1,40 @@
 """Measurements on Pandas Series."""
 # TODO(#792): Add link to open-source paper.
-# TODO(#530): Address overflow "hack" added to quantile exponential mechanism.
 # TODO(#693): Check edge cases for aggregations.
 # TODO(#1023): Handle clamping bounds approximation.
 
 # <placeholder: boilerplate>
 
 import math
-import sys
 from abc import abstractmethod
-from typing import List, Union, cast
+from typing import List, NamedTuple, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
-from pyspark.sql.types import DataType, DoubleType, LongType
+from flint import arb, ctx  # pylint: disable=no-name-in-module
+from pyspark.sql.types import DataType, DoubleType
 from typeguard import typechecked
 
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasSeriesDomain
 from tmlt.core.measurements.base import Measurement
+from tmlt.core.measurements.noise_mechanisms import (
+    AddDiscreteGaussianNoise,
+    AddGeometricNoise,
+    AddLaplaceNoise,
+)
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
 from tmlt.core.metrics import (
     AbsoluteDifference,
     HammingDistance,
-    Metric,
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
 )
-from tmlt.core.random.discrete_gaussian import sample_dgauss
 from tmlt.core.random.rng import prng
+from tmlt.core.random.uniform import uniform
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
-from tmlt.core.utils.misc import RNGWrapper
-from tmlt.core.utils.validation import validate_exact_number
+from tmlt.core.utils.misc import arb_to_float
 
 
 class Aggregate(Measurement):
@@ -83,8 +85,8 @@ class NoisyQuantile(Aggregate):
         input_domain: PandasSeriesDomain,
         output_measure: Union[PureDP, RhoZCDP],
         quantile: float,
-        lower: ExactNumberInput,
-        upper: ExactNumberInput,
+        lower: Union[float, int],
+        upper: Union[float, int],
         epsilon: ExactNumberInput,
     ):
         """Constructor.
@@ -99,30 +101,28 @@ class NoisyQuantile(Aggregate):
         """
         if not 0 <= quantile <= 1:
             raise ValueError("Quantile must be between 0 and 1.")
-        validate_exact_number(
-            value=lower,
-            allow_nonintegral=True,
-            minimum=-float("inf"),
-            minimum_is_inclusive=False,
-            maximum=float("inf"),
-            maximum_is_inclusive=False,
-        )
-        validate_exact_number(
-            value=upper,
-            allow_nonintegral=True,
-            minimum=-float("inf"),
-            minimum_is_inclusive=False,
-            maximum=float("inf"),
-            maximum_is_inclusive=False,
-        )
-        lower = ExactNumber(lower)
-        upper = ExactNumber(upper)
+
+        if math.isnan(lower) or math.isinf(lower):
+            raise ValueError(
+                f"Lower clamping bound must be finite and non-nan, not {lower}."
+            )
+        if math.isnan(upper) or math.isinf(upper):
+            raise ValueError(
+                f"Upper clamping bound must be finite and non-nan, not {upper}."
+            )
         if lower > upper:
             raise ValueError(
                 f"Lower bound ({lower}) can not be greater than "
                 f"the upper bound ({upper})."
             )
         PureDP().validate(epsilon)
+        if not isinstance(
+            input_domain.element_domain, (NumpyIntegerDomain, NumpyFloatDomain)
+        ):
+            raise ValueError(
+                "input_domain.element_domain must be NumpyIntegerDomain or "
+                f"NumpyFloatDomain, not {type(input_domain.element_domain).__name__}"
+            )
 
         self._quantile = quantile
         self._epsilon = ExactNumber(epsilon)
@@ -142,12 +142,12 @@ class NoisyQuantile(Aggregate):
         return self._quantile
 
     @property
-    def lower(self) -> ExactNumber:
+    def lower(self) -> Union[float, int]:
         """Returns the lower clamping bound."""
         return self._lower
 
     @property
-    def upper(self) -> ExactNumber:
+    def upper(self) -> Union[float, int]:
         """Returns the upper clamping bound."""
         return self._upper
 
@@ -194,104 +194,65 @@ class NoisyQuantile(Aggregate):
         TODO(#792) Add link to open-source paper: See this document for a description
         of the algorithm.
 
-        TODO(#530) Supplied epsilon is replaced by min(epsilon, max_float/(n+1))
-        where n is the number of rows. This prevents overflow during the weights
-        computation by ensuring that epsilon does not exceed max_float/(n+1).
-        Since abs(k-target_rank) is at most n, overflow does not occur.
-
         Args:
             data: The Series on which to compute the quantile.
         """
+        if self.lower == self.upper:
+            return self.lower
+
         float_epsilon = self.epsilon.to_float(round_up=False)
-        lower_ceil = self.lower.to_float(round_up=True)
-        upper_floor = self.upper.to_float(round_up=False)
-        if self.lower == self.upper:  # TODO(#693)
-            return lower_ceil  # TODO(#1023)
-        column = (
-            data.clip(lower=lower_ceil, upper=upper_floor)
-            .sort_values(ascending=True)
-            .to_list()
-        )
-        n = len(column)
-        exp_norm_weights = _get_quantile_probabilities(
-            quantile=self.quantile,
-            data=column,
-            lower=lower_ceil,
-            upper=upper_floor,
+
+        l, u = _select_quantile_interval(
+            values=data.to_list(),
+            q=self.quantile,
             epsilon=float_epsilon,
+            lower=self.lower,
+            upper=self.upper,
         )
-        column = [lower_ceil] + column + [upper_floor]
-        k = prng().choice(range(n + 1), p=exp_norm_weights)
-        # The following double negation ensures that the interval is
-        # inclusive w.r.t the upper bound - i.e. (column[k],column[k+1]].
-        return -1 * prng().uniform(-column[k + 1], -column[k])
+
+        # sample uniformly from bin
+        return uniform(lower=l, upper=u)
 
 
-def _get_quantile_probabilities(
-    quantile: float,
-    data: Union[List[float], List[int]],
-    lower: float,
-    upper: float,
-    epsilon: float,
-) -> np.ndarray:
-    """Returns probabilities for intervals between data points.
-
-    Args:
-        quantile: Quantile to be computed.
-        data: Data being queried. This must be sorted and in the range [lower, upper].
-        lower: Lower bound for the data.
-        upper: Upper bound for the data.
-        epsilon: Privacy parameter.
-    """
-    delta_u = max(quantile, 1 - quantile)
-    n = len(data)
-    epsilon = min(epsilon, sys.float_info.max / (n + 1))
-    target_rank = quantile * n
-
-    data = [lower] + cast(List[float], data) + [upper]
-    indexed_intervals = enumerate(zip(data[:-1], data[1:]))
-    weights = np.array(
-        [
-            -math.inf
-            if u == l
-            else (
-                np.log(u - l) + (epsilon * (-np.abs(k - target_rank))) / (2 * delta_u)
-            )
-            for k, (l, u) in indexed_intervals
-        ]
-    )
-    max_weight = weights.max()
-    exp_norm_weights = np.exp(weights - max_weight)
-    exp_norm_weights /= exp_norm_weights.sum()
-    return exp_norm_weights
-
-
-class AddNoise(Measurement):
-    """A Series to Series measurement that adds noise to each value."""
+class AddNoiseToSeries(Measurement):
+    """A measurement that adds noise to each value in a pandas Series."""
 
     @typechecked
     def __init__(
         self,
-        input_domain: PandasSeriesDomain,
-        input_metric: Metric,
-        output_measure: Measure,
-        output_type: DataType,
+        noise_measurement: Union[
+            AddLaplaceNoise, AddGeometricNoise, AddDiscreteGaussianNoise
+        ],
     ):
         """Constructor.
 
         Args:
-            input_domain: Domain of input datasets.
-            input_metric: Distance metric for input datasets.
-            output_measure: Distance measure for measurement's output.
-            output_type: Output data type after being used as a UDF.
+            noise_measurement: Noise Measurement to be applied to each element
+                in input pandas Series.
         """
+        if not noise_measurement.output_measure in [PureDP(), RhoZCDP()]:
+            raise AssertionError(
+                "This is probably a bug; please let us know so we can fix it!"
+            )
+        input_metric = (
+            SumOf(AbsoluteDifference())
+            if noise_measurement.output_measure == PureDP()
+            else RootSumOfSquared(AbsoluteDifference())
+        )
+        self._noise_measurement = noise_measurement
         super().__init__(
-            input_domain=input_domain,
+            input_domain=PandasSeriesDomain(noise_measurement.input_domain),
             input_metric=input_metric,
-            output_measure=output_measure,
+            output_measure=noise_measurement.output_measure,
             is_interactive=False,
         )
-        self._output_type = output_type
+
+    @property
+    def noise_measurement(
+        self,
+    ) -> Union[AddLaplaceNoise, AddGeometricNoise, AddDiscreteGaussianNoise]:
+        """Returns measurement that adds noise to each number in pandas Series."""
+        return self._noise_measurement
 
     @property
     def input_domain(self) -> PandasSeriesDomain:
@@ -301,301 +262,168 @@ class AddNoise(Measurement):
     @property
     def output_type(self) -> DataType:
         """Return the output data type after being used as a UDF."""
-        return self._output_type
-
-    @abstractmethod
-    def __call__(self, data: pd.Series) -> pd.Series:
-        """Perform measurement."""
-        ...
-
-
-class AddLaplaceNoise(AddNoise):
-    """A vectorized implementation of :class:`AddLaplaceNoise`."""
-
-    @typechecked
-    def __init__(self, input_domain: PandasSeriesDomain, scale: ExactNumberInput):
-        """Constructor.
-
-        To each value in the input vector, this measurement adds noise sampled
-        independently from `Laplace(scale)`.
-
-        Args:
-            input_domain: A PandasSeriesDomain with dtype np.dtype("int64") or
-                np.dtype("float64").
-            scale: Noise scale.
-        """
-        try:
-            validate_exact_number(
-                value=scale,
-                allow_nonintegral=True,
-                minimum=0,
-                minimum_is_inclusive=True,
-            )
-        except ValueError as e:
-            raise ValueError(f"Invalid scale: {e}")
-        if input_domain.element_domain.__class__ not in (
-            NumpyFloatDomain,
-            NumpyIntegerDomain,
-        ):
-            raise ValueError(
-                "Unsupported input_domain element_domain:"
-                f" {input_domain.element_domain}"
-            )
-        if isinstance(input_domain.element_domain, NumpyFloatDomain):
-            if (
-                input_domain.element_domain.allow_nan
-                or input_domain.element_domain.allow_inf
-            ):
-                raise ValueError(
-                    f"Input Domain allows nan/inf values: {input_domain.element_domain}"
-                )
-        super().__init__(
-            input_domain=input_domain,
-            input_metric=SumOf(AbsoluteDifference()),
-            output_measure=PureDP(),
-            output_type=DoubleType(),
-        )
-        self._scale = ExactNumber(scale)
-
-    @property
-    def scale(self) -> ExactNumber:
-        """Returns the noise scale."""
-        return self._scale
+        return self.noise_measurement.output_type
 
     @typechecked
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         r"""Returns the smallest d_out satisfied by the measurement.
 
-        The returned d_out is :math:`\frac{d_{in}}{b}`
-        (:math:`\infty` if :math:`b = 0`).
-
-        where:
-
-        * :math:`d_{in}` is the input argument "d_in"
-        * :math:`b` is :attr:`~.scale`
-
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        self.input_metric.validate(d_in)
-        if self.scale == 0:
-            return ExactNumber(float("inf"))
-        return ExactNumber(d_in) / self.scale
+        return self.noise_measurement.privacy_function(d_in)
 
     def __call__(self, values: pd.Series) -> pd.Series:
-        r"""Returns the values with laplace noise added.
-
-        The added laplace noise has the probability density function
-
-        :math:`f(x) = \frac{1}{2 b} e ^ {\frac{-\mid x \mid}{b}}`
-
-        where:
-
-        * :math:`x` is a real number
-        * :math:`b` is :attr:`~.scale`
-
-        Args:
-            values: pd.Series to add Laplace noise to.
-        """
-        float_scale = self.scale.to_float(round_up=True)
-        return pd.Series(prng().laplace(loc=values.values, scale=float_scale))
-
-
-class AddGeometricNoise(AddNoise):
-    """A vectorized implementation of :class:`AddGeometricNoise`."""
-
-    @typechecked
-    def __init__(self, input_domain: PandasSeriesDomain, alpha: ExactNumberInput):
-        """Constructor.
-
-        Args:
-            input_domain: A PandasSeriesDomain with Integral element domain.
-            alpha: Noise scale.
-        """
-        try:
-            validate_exact_number(
-                value=alpha,
-                allow_nonintegral=True,
-                minimum=0,
-                minimum_is_inclusive=True,
-                maximum=float("inf"),
-                maximum_is_inclusive=False,
-            )
-        except ValueError as e:
-            raise ValueError(f"Invalid alpha: {e}")
-        if input_domain.element_domain.__class__ is not NumpyIntegerDomain:
-            raise ValueError(
-                f"Unsupported element_domain: {input_domain.element_domain}"
-            )
-        super().__init__(
-            input_domain=input_domain,
-            input_metric=SumOf(AbsoluteDifference()),
-            output_measure=PureDP(),
-            output_type=LongType(),
-        )
-        self._alpha = ExactNumber(alpha)
-
-    @property
-    def alpha(self) -> ExactNumber:
-        """Returns the noise scale."""
-        return self._alpha
-
-    @typechecked
-    def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
-        r"""Returns the smallest d_out satisfied by the measurement.
-
-        The returned d_out is :math:`\frac{d_{in}}{\alpha}`
-        (:math:`\infty` if :math:`\alpha = 0`).
-
-        where:
-
-        * :math:`d_{in}` is the input argument "d_in"
-        * :math:`\alpha` is :attr:`~.alpha`
-
-        Args:
-            d_in: Distance between inputs under input_metric.
-        """
-        self.input_metric.validate(d_in)
-        if self.alpha == 0:
-            return ExactNumber(float("inf"))
-        return ExactNumber(d_in) / self.alpha
-
-    def __call__(self, values: pd.Series) -> pd.Series:
-        r"""Returns the value with double sided geometric noise added.
-
-        The added noise has the probability mass function
-
-        .. math::
-
-            f(k)=
-            \frac
-                {e^{1 / \alpha} - 1}
-                {e^{1 / \alpha} + 1}
-            \cdot
-            e^{\frac{-\mid k \mid}{\alpha}}
-
-        where:
-
-        * :math:`k` is an integer
-        * :math:`\alpha` is :attr:`~.alpha`
-
-        A double sided geometric distribution is the difference between two geometric
-        distributions (It can be sampled from by sampling a two values from a geometric
-        distribution, and taking their difference).
-
-        See section 4.1 in :cite:`BalcerV18`, remark 2 in
-        `this paper <https://arxiv.org/pdf/1707.01189.pdf>`_, or scipy.stats.geom for
-        more information. (Note that the parameter :math:`p` used in scipy.stats.geom
-        is related to :math:`\alpha` through :math:`p = 1 - e^{-1 / \alpha}`).
-
-        Args:
-            values: pd.Series to add Geometric noise to.
-        """
-        float_scale = self.alpha.to_float(round_up=True)
-        p = 1 - np.exp(-1 / float_scale) if float_scale > 0 else 1
-        noise = prng().geometric(p, size=len(values)) - prng().geometric(
-            p, size=len(values)
-        )
-        return values + noise
-
-
-class AddDiscreteGaussianNoise(AddNoise):
-    """A vectorized implementation of :class:`AddDiscreteGaussianNoise`."""
-
-    @typechecked
-    def __init__(
-        self, input_domain: PandasSeriesDomain, sigma_squared: ExactNumberInput
-    ):
-        r"""Constructor.
-
-        To each value in the input vector, this measurement adds noise sampled
-        (independently) from the discrete Gaussian distribution \
-        :math:`\mathcal{N}_{\mathbb{Z}}(sigma\_squared)`
-
-        Args:
-            input_domain: A PandasSeriesDomain with integral element domain.
-            sigma_squared: This is the variance of the discrete Gaussian
-                distribution to be used for sampling noise.
-        """
-        try:
-            validate_exact_number(
-                value=sigma_squared,
-                allow_nonintegral=True,
-                minimum=0,
-                minimum_is_inclusive=True,
-                maximum=float("inf"),
-                maximum_is_inclusive=False,
-            )
-        except ValueError as e:
-            raise ValueError(f"Invalid sigma_squared: {e}")
-
-        if input_domain.element_domain.__class__ is not NumpyIntegerDomain:
-            raise ValueError(
-                "Unsupported input_domain element_domain:"
-                f" {input_domain.element_domain}"
-            )
-        super().__init__(
-            input_domain=input_domain,
-            input_metric=RootSumOfSquared(AbsoluteDifference()),
-            output_measure=RhoZCDP(),
-            output_type=LongType(),
-        )
-        self._sigma_squared = ExactNumber(sigma_squared)
-
-    @property
-    def sigma_squared(self) -> ExactNumber:
-        """Returns the noise scale."""
-        return self._sigma_squared
-
-    @typechecked
-    def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
-        r"""Returns the smallest d_out satisfied by the measurement.
-
-        The returned d_out is :math:`\frac{d_{in}^2}{2 \cdot \sigma^2}`
-        (:math:`\infty` if :math:`\sigma^2 = 0`).
-
-        where:
-
-        * :math:`d_{in}` is the input argument "d_in"
-        * :math:`\sigma^2` is :attr:`~.sigma_squared`
-
-        See Proposition 1.6 in `this <https://arxiv.org/pdf/1605.02065.pdf>`_ paper.
-
-        Args:
-            d_in: Distance between inputs under input_metric.
-        """
-        self.input_metric.validate(d_in)
-        d_in = ExactNumber(d_in)
-        if self.sigma_squared == 0:
-            return ExactNumber(float("inf"))
-        return (d_in ** 2) / (2 * self._sigma_squared)
-
-    def __call__(self, values: pd.Series) -> pd.Series:
-        r"""Returns the values with discrete Gaussian noise added.
-
-        The added noise has the probability mass function
-
-        .. math::
-
-            f(k) = \frac
-            {e^{k^2/2\sigma^2}}
-            {
-                \sum_{n\in \mathbb{Z}}
-                e^{n^2/2\sigma^2}
-            }
-
-        where:
-
-        * :math:`k` is an integer
-        * :math:`\sigma^2` is :attr:`~.sigma_squared`
-
-        See :cite:`Canonne0S20` for more information. The formula above is based on
-        Definition 1.
-
-        Args:
-            values: pd.Series to add discrete Gaussian noise to.
-        """
-        float_scale = self.sigma_squared.to_float(round_up=True)
+        """Adds noise to each number in the input Series."""
         return values.apply(
-            lambda x: x + sample_dgauss(float_scale, RNGWrapper(prng()))
+            lambda x: self.noise_measurement(x)  # pylint: disable=unnecessary-lambda
         )
+
+
+class _RankedInterval(NamedTuple):
+    """A interval and its rank w.r.t some list."""
+
+    rank: arb
+    """Rank of any number in this interval."""
+
+    lower: arb
+    """Lower endpoint of the interval."""
+
+    upper: arb
+    """Upper endpoint of the interval."""
+
+
+def _get_intervals_with_ranks(
+    values: List[float], lower: float, upper: float
+) -> List[_RankedInterval]:
+    """Returns a list of intervals constructed from `values`.
+
+    The list of intervals returned consist of three types of intervals:
+
+        - One interval between `lower` and the smallest number in `values`
+          strictly larger than `lower`.
+        - Non-empty intervals between consecutive numbers in `values` (sorted in
+          ascending order)
+        - One interval from the largest number in `values` strictly smaller than
+          `upper` and `upper`.
+
+    The rank associated with each interval is the rank of any number in the interval
+    w.r.t all numbers in `values`.
+    """
+    values = np.sort(values)
+    lower_index, upper_index = np.searchsorted(values, [lower, upper], side="left")
+    # if a value was inserted at lower_index, its rank would be lower_index
+    # every value below lower_index is strictly below lower
+
+    intervals = []
+    left_float = lower
+    left_arb = arb(lower)
+    for index in range(lower_index, upper_index):
+        right_float = float(values[index])
+        if left_float < right_float:
+            right_arb = arb(right_float)
+            intervals.append(
+                _RankedInterval(rank=arb(index), lower=left_arb, upper=right_arb)
+            )
+            left_float = right_float
+            left_arb = right_arb
+
+    intervals.append(
+        _RankedInterval(rank=arb(int(upper_index)), lower=left_arb, upper=arb(upper))
+    )
+    # Note that the `_RankedInterval`s are constructed with exact arbs (with radius=0)
+    # This guarantees that the arbs always represent the floating point numbers exactly
+    # regardless of what the precision is.
+    return intervals
+
+
+def _select_quantile_interval(
+    values: List[float], q: float, epsilon: float, lower: float, upper: float
+) -> Tuple[float, float]:
+    r"""Returns a privately selected interval (l, u) with the max noisy score.
+
+    In particular, this function performs the following steps:
+        - Constructs a list of intervals by calling `_get_intervals_with_ranks`.
+        - Compute the target rank as: :math:`target = q * len(values)`.
+        - Assigns each interval :math:`(rank, x_i, x_j)` a noisy score computed as:
+            :math:`log(x_j - x_i) - |rank - target| * \frac{epsilon}{2 \cdot \Delta U} + G`
+            where :math:`G` is a sampled from the standard Gumbel distribution.
+        - Returns the interval with the highest noisy score.
+    """  # pylint:disable=line-too-long
+    arb_q = arb(q)
+    target_rank = arb_q * len(values)
+
+    # Get bin ranks
+    intervals = _get_intervals_with_ranks(values, lower, upper)
+
+    if epsilon == float("inf"):
+        intervals_with_scores = [
+            (-abs(rank - target_rank), l, u) for rank, l, u in intervals
+        ]
+        _, l, u = sorted(intervals_with_scores, reverse=True)[0]
+        ctx.prec = max(53, ctx.prec)
+        l_float = arb_to_float(l)
+        u_float = arb_to_float(u)
+        assert isinstance(l_float, float)
+        assert isinstance(u_float, float)
+        return l_float, u_float
+
+    # need to be calculated w/ arb, calculation on floats can be inexact
+    delta_u = arb.max(arb_q, 1 - arb_q)
+
+    # select bin
+    gumbel_p_bits = [0] * len(intervals)
+    n = 0
+
+    step_size = 15  # optimal step size from benchmarking
+    while len(intervals) > 1:
+        n += step_size
+        ctx.prec = n
+
+        # sample Gumbel noise with more bits
+        gumbel_p_bits = [
+            (old_bits << step_size) + int(new_bits)
+            for old_bits, new_bits in zip(
+                gumbel_p_bits,
+                prng().integers(pow(2, step_size), size=len(gumbel_p_bits)),
+            )
+        ]
+        probabilities = [arb(mid=(p_bits, -n), rad=(1, -n)) for p_bits in gumbel_p_bits]
+        # probabilities for sampling Gumbel noise using the inverse CDF
+
+        gumbels = [-arb.log(-arb.log(p)) for p in probabilities]
+
+        noisy_scores = [
+            arb.log(u - l) - abs(rank - target_rank) * epsilon / (2 * delta_u) + noise
+            for noise, (rank, l, u) in zip(gumbels, intervals)
+        ]
+
+        # try to get a noisy score which is above most others
+        approx_max = arb(float("-inf"))
+        for noisy_score in noisy_scores:
+            if noisy_score > approx_max:
+                # only if noisy_score.lower > approx_max.upper
+                approx_max = noisy_score
+
+        # do another pass to elimate other intervals
+        new_gumbel_p_bits = []
+        remaining_intervals: List[_RankedInterval] = []
+        for i, noisy_score in enumerate(noisy_scores):
+            if not (
+                noisy_score
+                < approx_max
+                # NOT the same as noisy_score >= approx_max
+                # A < B only returns true if A.upper < B.lower
+                # true if A.upper < B.lower
+            ):
+                new_gumbel_p_bits.append(gumbel_p_bits[i])
+                remaining_intervals.append(intervals[i])
+        gumbel_p_bits = new_gumbel_p_bits
+        intervals = remaining_intervals
+    assert len(intervals) == 1
+    _, l, u = intervals[0]
+    ctx.prec = max(ctx.prec, 53)
+    l_float, u_float = arb_to_float(l), arb_to_float(u)
+    assert isinstance(l_float, float)
+    assert isinstance(u_float, float)
+    return l_float, u_float

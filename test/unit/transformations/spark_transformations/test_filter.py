@@ -7,7 +7,13 @@ import pandas as pd
 from parameterized import parameterized
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import HammingDistance, IfGroupedBy, SumOf, SymmetricDifference
+from tmlt.core.metrics import (
+    HammingDistance,
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+)
 from tmlt.core.transformations.spark_transformations.filter import Filter
 from tmlt.core.utils.testing import (
     TestComponent,
@@ -75,15 +81,22 @@ class TestFilter(TestComponent):
                 filter_expr=filter_expr,
             )
 
-    def test_if_grouped_by_metric(self):
-        """Tests that Filter works correctly with IfGroupedBy metric."""
-        metric = IfGroupedBy("B", SumOf(SymmetricDifference()))
+    @parameterized.expand(
+        [
+            (SymmetricDifference(),),
+            (IfGroupedBy("B", SumOf(SymmetricDifference())),),
+            (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),),
+            (IfGroupedBy("B", SymmetricDifference()),),
+        ]
+    )
+    def test_metrics(self, metric: Union[SymmetricDifference, IfGroupedBy]):
+        """Tests that Filter works correctly with supported metrics."""
         negative_filter = Filter(
             filter_expr="A < 0",
             domain=SparkDataFrameDomain(self.schema_a),
             metric=metric,
         )
-        self.assertTrue(negative_filter.stability_relation(1, 1))
+        self.assertEqual(negative_filter.stability_function(1), 1)
         self.assertTrue(
             negative_filter.input_metric == metric == negative_filter.output_metric
         )

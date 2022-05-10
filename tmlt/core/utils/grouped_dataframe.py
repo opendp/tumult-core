@@ -114,16 +114,12 @@ class GroupedDataFrame:
         all_groups_output = self.group_keys.join(
             nonempty_groups_output, on=self.groupby_columns, how="left"
         ).fillna({empty_indicator: True})
-        return (
-            all_groups_output.withColumn(
-                output_column,
-                sf.when(sf.col(empty_indicator), sf.lit(fill_value)).otherwise(
-                    sf.col(output_column)
-                ),
-            )
-            .drop(empty_indicator)
-            .sort(*self.groupby_columns)
-        )
+        return all_groups_output.withColumn(
+            output_column,
+            sf.when(sf.col(empty_indicator), sf.lit(fill_value)).otherwise(
+                sf.col(output_column)
+            ),
+        ).drop(empty_indicator)
 
     def apply_in_pandas(
         self,
@@ -176,16 +172,17 @@ class GroupedDataFrame:
             lambda st, sf: st.add(sf), aggregation_output_schema, self.group_keys.schema
         )
 
-        output_df = grouped_df.applyInPandas(_wrapper, output_schema)
-        if self._empty:
-            return output_df
-        else:
-            return output_df.sort(*self.groupby_columns)
+        return grouped_df.applyInPandas(_wrapper, output_schema)
 
     def get_groups(self) -> Dict[Row, DataFrame]:
         """Return the groups as dictionary of dataframes."""
         # pylint: disable=no-member
         groups = {}
+        non_grouping_columns = [
+            column
+            for column in self._dataframe.columns
+            if column not in self.groupby_columns
+        ]
         for row in self.group_keys.toLocalIterator():
             groups[row] = self._dataframe.filter(
                 functools.reduce(
@@ -195,7 +192,7 @@ class GroupedDataFrame:
                         row.asDict().keys(),
                     ),
                 )
-            )
+            ).select(non_grouping_columns)
         return groups
 
 

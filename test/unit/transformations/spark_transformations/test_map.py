@@ -201,9 +201,17 @@ class TestMap(TestComponent):
         expected_df = empty_df
         self.assert_frame_equal_with_sort(actual_df, expected_df)
 
-    def test_if_grouped_by_metric(self):
-        """Tests that Map works correctly with IfGroupedBy metric."""
-        metric = IfGroupedBy("B", SumOf(SymmetricDifference()))
+    @parameterized.expand(
+        [
+            (SymmetricDifference(),),
+            (HammingDistance(),),
+            (IfGroupedBy("B", SumOf(SymmetricDifference())),),
+            (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),),
+            (IfGroupedBy("B", SymmetricDifference()),),
+        ]
+    )
+    def test_metrics(self, metric: Union[SymmetricDifference, IfGroupedBy]):
+        """Tests that Map works correctly with supported metrics."""
         id_map = Map(
             metric=metric,
             row_transformer=RowToRowTransformation(
@@ -221,17 +229,37 @@ class TestMap(TestComponent):
 
     @parameterized.expand(
         [
-            ("C", True, "C not in input domain"),  # Invalid column
-            ("B", False, "Transformer must be augmenting"),  # Does not augment
+            (
+                "C",
+                RootSumOfSquared(SymmetricDifference()),
+                True,
+                "Input metric .* and input domain .* are not compatible",
+            ),  # Invalid column
+            (
+                "B",
+                RootSumOfSquared(SymmetricDifference()),
+                False,
+                "Transformer must be augmenting",
+            ),  # Does not augment
+            (
+                "B",
+                SumOf(HammingDistance()),
+                True,
+                "must be SymmetricDifference",
+            ),  # Unsupported inner metric
         ]
     )
     def test_if_grouped_by_metric_invalid_parameters(
-        self, groupby_column: str, augment: bool, error_msg: str
+        self,
+        groupby_column: str,
+        inner_metric: Union[SumOf, RootSumOfSquared, SymmetricDifference],
+        augment: bool,
+        error_msg: str,
     ):
         """Tests that Map raises appropriate error with invalid parameters."""
         with self.assertRaisesRegex(ValueError, error_msg):
             Map(
-                metric=IfGroupedBy(groupby_column, SumOf(SymmetricDifference())),
+                metric=IfGroupedBy(groupby_column, inner_metric),
                 row_transformer=RowToRowTransformation(
                     input_domain=SparkRowDomain(self.schema_a),
                     output_domain=SparkRowDomain(self.schema_a),
@@ -335,9 +363,16 @@ class TestFlatMap(TestComponent):
                 max_num_rows=1,
             )
 
-    def test_if_grouped_by_metric(self):
-        """Tests that FlatMap works correctly with IfGroupedBy metric."""
-        metric = IfGroupedBy("B", SumOf(SymmetricDifference()))
+    @parameterized.expand(
+        [
+            (SymmetricDifference(), 2),
+            (IfGroupedBy("B", SumOf(SymmetricDifference())), 2),
+            (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())), 2),
+            (IfGroupedBy("B", SymmetricDifference()), 1),
+        ]
+    )
+    def test_metrics(self, metric: Union[SymmetricDifference, IfGroupedBy], d_out: int):
+        """Tests that FlatMap works correctly with supported metrics."""
         split_map = FlatMap(
             metric=metric,
             row_transformer=RowToRowsTransformation(
@@ -356,8 +391,8 @@ class TestFlatMap(TestComponent):
             max_num_rows=2,
         )
         self.assertTrue(split_map.input_metric == metric == split_map.output_metric)
-        self.assertTrue(split_map.stability_function(1), 2)
-        self.assertTrue(split_map.stability_relation(1, 2))
+        self.assertTrue(split_map.stability_function(1), d_out)
+        self.assertTrue(split_map.stability_relation(1, d_out))
         actual = split_map(self.df_a).toPandas()
         expected = pd.DataFrame({"A": [1.2, 1.2], "B": ["X", "X"], "C": [1, 2]})
         self.assert_frame_equal_with_sort(actual, expected)
@@ -367,7 +402,7 @@ class TestFlatMap(TestComponent):
             (
                 "C",
                 True,
-                "C not in input domain",
+                "Input metric .* and input domain .* are not compatible",
                 SymmetricDifference(),
             ),  # Invalid column
             (

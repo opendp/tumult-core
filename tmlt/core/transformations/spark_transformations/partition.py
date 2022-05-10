@@ -36,17 +36,6 @@ class Partition(Transformation):
             output_metric: Metric for output list.
             num_partitions: Number of partitions produced by the transformation.
         """
-        if isinstance(input_metric, IfGroupedBy):
-            if not isinstance(input_domain, SparkDataFrameDomain):
-                raise ValueError(
-                    "Input domain must be SparkDataFrameDomain "
-                    "when using IfGroupedBy input metric."
-                )
-            if input_metric.column not in input_domain.schema:
-                raise ValueError(
-                    f"Invalid IfGroupedBy metric: {input_metric.column} "
-                    "not in input domain."
-                )
         super().__init__(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -122,7 +111,7 @@ class PartitionByKeys(Partition):
         ...         },
         ...     ),
         ...     input_metric=SymmetricDifference(),
-        ...     output_metric=SumOf(SymmetricDifference()),
+        ...     use_l2=False,
         ...     keys=["A", "B"],
         ...     list_values=list_values,
         ... )
@@ -150,7 +139,7 @@ class PartitionByKeys(Partition):
         * Output domain - :class:`~.ListDomain` of :class:`~.SparkDataFrameDomain`
         * Input metric - :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`
         * Output metric - :class:`~.SumOf` or :class:`~.RootSumOfSquared` of
-          :class:`~.SymmetricDifference`
+          :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`
 
         >>> partition.input_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
@@ -175,7 +164,7 @@ class PartitionByKeys(Partition):
         self,
         input_domain: SparkDataFrameDomain,
         input_metric: Union[IfGroupedBy, SymmetricDifference],
-        output_metric: Union[SumOf, RootSumOfSquared],
+        use_l2: bool,
         keys: List[str],
         list_values: List[Tuple],
     ):
@@ -184,7 +173,8 @@ class PartitionByKeys(Partition):
         Args:
             input_domain: Domain of input DataFrames.
             input_metric: Distance metric for input DataFrames.
-            output_metric: Distance metric for output lists.
+            use_l2: If True, use :class:`~.RootSumOfSquared` instead of :class:`~.SumOf`
+                in the output metric.
             keys: List of column names to partition by.
             list_values: Domain for key columns in the DataFrame. This is a list
                 of unique n-tuples, where each value is a tuple corresponds to a key.
@@ -204,32 +194,33 @@ class PartitionByKeys(Partition):
                 )
             for k, v in zip(keys, values):
                 if not input_domain[k].valid_py_value(v):
-                    raise ValueError(f"Invalid value for partiton key {k}: {v}")
+                    raise ValueError(f"Invalid value for partition key {k}: {v}")
 
-        if (
-            isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in input_domain.schema
-        ):
-            raise ValueError(
-                f"Invalid IfGroupedBy metric: {input_metric.column}"
-                " not in input domain."
+        output_metric: Union[SumOf, RootSumOfSquared]
+        if isinstance(input_metric, IfGroupedBy):
+            if not (
+                (isinstance(input_metric.inner_metric, RootSumOfSquared) and use_l2)
+                or isinstance(input_metric.inner_metric, SumOf)
+                and not use_l2
+            ):
+                raise ValueError("IfGroupedBy inner metric must match use_l2")
+            if input_metric.column in keys:
+                output_metric = input_metric.inner_metric
+            else:
+                output_metric = (
+                    RootSumOfSquared(input_metric) if use_l2 else SumOf(input_metric)
+                )
+        else:
+            output_metric = (
+                RootSumOfSquared(SymmetricDifference())
+                if use_l2
+                else SumOf(SymmetricDifference())
             )
-
-        expected_inner_metric = (
-            input_metric.inner_metric
-            if isinstance(input_metric, IfGroupedBy) and input_metric.column in keys
-            else input_metric
-        )
-        if output_metric.inner_metric != expected_inner_metric:
-            raise ValueError(
-                "Invalid inner metric for output metric: Expected"
-                f" {expected_inner_metric}, got {output_metric.inner_metric}"
-            )
+        self._partition_keys = keys
+        self._list_values = list_values
         super().__init__(
             input_domain, input_metric, output_metric, num_partitions=len(list_values)
         )
-        self._partition_keys = keys
-        self._list_values = list_values
 
     @property
     def keys(self) -> List[str]:

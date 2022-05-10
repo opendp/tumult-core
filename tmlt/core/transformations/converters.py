@@ -12,6 +12,7 @@ from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
     RootSumOfSquared,
+    SumOf,
     SymmetricDifference,
 )
 from tmlt.core.transformations.base import Transformation
@@ -31,7 +32,13 @@ class UnwrapIfGroupedBy(Transformation):
         """
         if not input_metric.column in domain.schema:
             raise ValueError(
-                "Invalid IfGroupedBy metric: {input_metric.column} not in domain"
+                f"Invalid IfGroupedBy metric: {input_metric.column} not in domain"
+            )
+        if not isinstance(input_metric.inner_metric, (SumOf, RootSumOfSquared)):
+            raise ValueError(
+                "Inner metric for IfGroupedBy metric must be "
+                "SumOf(SymmetricDifference()), or "
+                "RootSumOfSquared(SymmetricDifference())"
             )
         self._is_l2 = isinstance(input_metric.inner_metric, RootSumOfSquared)
         super().__init__(

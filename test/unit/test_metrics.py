@@ -180,7 +180,7 @@ class TestSymmetricDifference(PySparkTest):
         """Only valid nonnegative integral ExactNumberInput's should be allowed."""
         SymmetricDifference().validate(value)
 
-    @parameterized.expand([("2.5",), (sp.Float(2),), ("wat",), ({},)])
+    @parameterized.expand([(sp.Float(2),), ("wat",), ({},)])
     def test_invalid(self, value: Any):
         """Only valid nonnegative integral ExactNumberInput's should be allowed."""
         with self.assertRaises((TypeError, ValueError)):
@@ -285,12 +285,11 @@ class TestSymmetricDifference(PySparkTest):
     )
     def test_distance_df(self, df1: Any, df2: Any, distance: Any):
         """Test that distances are computed correctly."""
-        spark = SparkSession.builder.getOrCreate()
         domain = SparkDataFrameDomain(
             {"A": SparkIntegerColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
         )
-        value1 = spark.createDataFrame(df1, schema=domain.spark_schema)
-        value2 = spark.createDataFrame(df2, schema=domain.spark_schema)
+        value1 = self.spark.createDataFrame(df1, schema=domain.spark_schema)
+        value2 = self.spark.createDataFrame(df2, schema=domain.spark_schema)
         self.assertEqual(
             SymmetricDifference().distance(value1, value2, domain), distance
         )
@@ -315,13 +314,54 @@ class TestSymmetricDifference(PySparkTest):
             (pd.DataFrame({"A": [], "B": []}), pd.DataFrame({"A": [], "B": []}), 0),
         ]
     )
-    def test_distance_pandas_df(self, value1: Any, value2: Any, distance: Any):
+    def test_distance_pandas_df(
+        self, value1: pd.DataFrame, value2: pd.DataFrame, distance: int
+    ):
         """Test that distances are computed correctly."""
         domain = PandasDataFrameDomain(
             {
                 "A": PandasSeriesDomain(NumpyIntegerDomain()),
                 "B": PandasSeriesDomain(NumpyIntegerDomain()),
             }
+        )
+        self.assertEqual(
+            SymmetricDifference().distance(value1, value2, domain), distance
+        )
+
+    @parameterized.expand(
+        [
+            (
+                pd.DataFrame({"A": [1, 1, 1, 3], "B": [2, 2, 2, 4]}),
+                pd.DataFrame({"A": [1, 2], "B": [2, 4]}),
+                4,
+            ),
+            (
+                pd.DataFrame({"A": [1, 1, 3], "B": [2, 2, 4]}),
+                pd.DataFrame({"A": [1, 3, 1], "B": [2, 4, 2]}),
+                0,
+            ),
+            (
+                pd.DataFrame({"A": [], "B": []}),
+                pd.DataFrame({"A": [1, 3, 1], "B": [2, 4, 2]}),
+                2,
+            ),
+            (pd.DataFrame({"A": [], "B": []}), pd.DataFrame({"A": [], "B": []}), 0),
+        ]
+    )
+    def test_distance_spark_grouped_df(
+        self, df1: pd.DataFrame, df2: pd.DataFrame, distance: int
+    ):
+        """Test that distances are computed correctly."""
+        group_keys = self.spark.createDataFrame(pd.DataFrame({"B": [1, 2, 3, 4]}))
+        domain = SparkGroupedDataFrameDomain(
+            {"A": SparkIntegerColumnDescriptor(), "B": SparkIntegerColumnDescriptor()},
+            group_keys,
+        )
+        value1 = GroupedDataFrame(
+            self.spark.createDataFrame(df1, schema=domain.spark_schema), group_keys
+        )
+        value2 = GroupedDataFrame(
+            self.spark.createDataFrame(df2, schema=domain.spark_schema), group_keys
         )
         self.assertEqual(
             SymmetricDifference().distance(value1, value2, domain), distance
@@ -1746,6 +1786,44 @@ class TestIfGroupedBy(TestCase):
                 pd.DataFrame({"A": [], "B": [], "C": []}),
                 pd.DataFrame({"A": [], "B": [], "C": []}),
                 0,
+            ),
+            (
+                IfGroupedBy("B", SymmetricDifference()),
+                pd.DataFrame({"A": [1, 1, 1, 3], "B": [2, 2, 2, 4], "C": [1, 1, 1, 1]}),
+                pd.DataFrame({"A": [1, 2], "B": [2, 4], "C": [1, 1]}),
+                4,
+            ),
+            (
+                IfGroupedBy("B", SymmetricDifference()),
+                pd.DataFrame({"A": [1, 1, 3], "B": [2, 2, 4], "C": [1, 1, 1]}),
+                pd.DataFrame({"A": [1, 3, 1], "B": [2, 4, 2], "C": [1, 1, 1]}),
+                0,
+            ),
+            (
+                IfGroupedBy("B", SymmetricDifference()),
+                pd.DataFrame({"A": [], "B": [], "C": []}),
+                pd.DataFrame({"A": [1, 3, 1], "B": [2, 4, 2], "C": [1, 1, 1]}),
+                2,
+            ),
+            (
+                IfGroupedBy("B", SymmetricDifference()),
+                pd.DataFrame({"A": [], "B": [], "C": []}),
+                pd.DataFrame({"A": [], "B": [], "C": []}),
+                0,
+            ),
+            (
+                IfGroupedBy("A", SumOf(IfGroupedBy("B", SymmetricDifference()))),
+                pd.DataFrame({"A": [1, 2, 2], "B": [2, 2, 4], "C": [1, 1, 1]}),
+                pd.DataFrame({"A": [3, 2, 2], "B": [1, 2, 2], "C": [1, 1, 1]}),
+                5,  # 1 for A=1, 3 for A=2, 1 for A=3, 1 + 3 + 1
+            ),
+            (
+                IfGroupedBy(
+                    "A", RootSumOfSquared(IfGroupedBy("B", SymmetricDifference()))
+                ),
+                pd.DataFrame({"A": [1, 2, 2], "B": [2, 2, 4], "C": [1, 1, 1]}),
+                pd.DataFrame({"A": [3, 2, 2], "B": [1, 2, 2], "C": [1, 1, 1]}),
+                "sqrt(11)",  # 1 for A=1, 3 for A=2, 1 for A=3, sqrt(1 + 9 + 1)
             ),
         ]
     )

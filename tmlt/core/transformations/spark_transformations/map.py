@@ -456,6 +456,12 @@ class FlatMap(Transformation):
         SymmetricDifference()
 
         Stability Guarantee:
+            For
+
+            - SymmetricDifference()
+            - IfGroupedBy(column, SumOf(SymmetricDifference()))
+            - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
+
             :class:`~.FlatMap`'s :meth:`~.stability_function` returns the `d_in`
             times :attr:`.max_num_rows`.
 
@@ -463,6 +469,12 @@ class FlatMap(Transformation):
             2
             >>> duplicate_flat_map.stability_function(2)
             4
+
+            For
+
+            - IfGroupedBy(column, SymmetricDifference())
+
+            :class:`~.PublicJoin`'s :meth:`~.stability_function` returns `d_in`
     """  # pylint: disable=line-too-long
 
     @typechecked
@@ -489,17 +501,19 @@ class FlatMap(Transformation):
         assert isinstance(row_transformer.output_domain.element_domain, SparkRowDomain)
         self._groupby_column: Optional[str] = None
         if isinstance(metric, IfGroupedBy):
-            if not isinstance(metric.inner_metric.inner_metric, SymmetricDifference):
+            if metric.inner_metric not in (
+                SymmetricDifference(),
+                SumOf(SymmetricDifference()),
+                RootSumOfSquared(SymmetricDifference()),
+            ):
                 raise ValueError(
-                    "Inner metric for IfGroupedBy metric must be SymmetricDifference."
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "SumOf(SymmetricDifference()), or "
+                    "RootSumOfSquared(SymmetricDifference())"
                 )
             if not row_transformer.augment:
                 raise ValueError(
                     "Transformer must be augmenting when using IfGroupedBy metric."
-                )
-            if metric.column not in row_transformer.input_domain.schema:
-                raise ValueError(
-                    f"Invalid IfGroupedBy metric: {metric.column} not in input domain."
                 )
         super().__init__(
             input_domain=SparkDataFrameDomain(row_transformer.input_domain.schema),
@@ -532,6 +546,10 @@ class FlatMap(Transformation):
             d_in: Distance between inputs under input_metric.
         """
         self.input_metric.validate(d_in)
+        if isinstance(self.input_metric, IfGroupedBy) and isinstance(
+            self.input_metric.inner_metric, SymmetricDifference
+        ):
+            return ExactNumber(d_in)
         return ExactNumber(d_in) * self.max_num_rows
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
@@ -882,9 +900,15 @@ class Map(Transformation):
                 raise ValueError(
                     "Transformer must be augmenting when using IfGroupedBy metric."
                 )
-            if metric.column not in row_transformer.input_domain.schema:
+            if metric.inner_metric not in (
+                SymmetricDifference(),
+                SumOf(SymmetricDifference()),
+                RootSumOfSquared(SymmetricDifference()),
+            ):
                 raise ValueError(
-                    f"Invalid IfGroupedBy metric: {metric.column} not in input domain."
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "SumOf(SymmetricDifference()), or "
+                    "RootSumOfSquared(SymmetricDifference())"
                 )
 
         super().__init__(

@@ -5,7 +5,8 @@
 # pylint: disable=no-self-use
 
 from typing import Any, List, Optional, Type, Union
-from unittest.mock import ANY, Mock, patch
+from unittest import TestCase
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import numpy as np
 from parameterized import parameterized, parameterized_class
@@ -24,6 +25,8 @@ from tmlt.core.domains.spark_domains import (
 )
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.interactive_measurements import (
+    DecoratedQueryable,
+    DecorateQueryable,
     GetAnswerQueryable,
     IndexQuery,
     MakeInteractive,
@@ -38,6 +41,7 @@ from tmlt.core.measurements.interactive_measurements import (
     SequentialComposition,
     SequentialQueryable,
     TransformationQuery,
+    create_adaptive_composition,
 )
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
 from tmlt.core.metrics import (
@@ -354,6 +358,7 @@ class TestSequentialQueryable(PySparkTest):
                     is_interactive=True,
                     privacy_function_implemented=True,
                     privacy_function_return_value=1,
+                    return_value=create_mock_queryable(),
                 )
             )
         )
@@ -371,6 +376,7 @@ class TestSequentialQueryable(PySparkTest):
                     is_interactive=True,
                     privacy_function_implemented=True,
                     privacy_function_return_value=1,
+                    return_value=create_mock_queryable(),
                 )
             )
         )
@@ -439,6 +445,83 @@ class TestSequentialQueryable(PySparkTest):
                         input_metric=input_metric,
                         output_measure=measure,
                     )
+                )
+            )
+
+    @parameterized.expand([(True,), (False,)])
+    def test_measurement_query_with_explicit_d_out(
+        self, privacy_function_implemented: bool
+    ):
+        """SequentialQueryable can run transformations without stability function."""
+        queryable = self.construct_queryable()
+        queryable(
+            MeasurementQuery(
+                create_mock_measurement(
+                    is_interactive=True,
+                    privacy_function_implemented=privacy_function_implemented,
+                    privacy_relation_return_value=True,
+                    privacy_function_return_value=1,
+                    return_value=create_mock_queryable(),
+                ),
+                d_out=6,
+            )
+        )
+        self.assertEqual(
+            queryable._remaining_budget, 4  # pylint: disable=protected-access
+        )
+
+    def test_measurement_query_stability_relation_returns_false(self):
+        """SequentialQueryable raises error if privacy relation is not True."""
+        queryable = self.construct_queryable()
+        with self.assertRaisesRegex(
+            ValueError,
+            "Measurement's privacy relation cannot be satisfied with given d_out"
+            r" \(11\)",
+        ):
+            queryable(
+                MeasurementQuery(
+                    create_mock_measurement(
+                        is_interactive=True,
+                        privacy_function_implemented=False,
+                        privacy_relation_return_value=False,
+                    ),
+                    d_out=11,
+                )
+            )
+
+    @parameterized.expand([(True,), (False,)])
+    def test_transformation_query_with_explicit_d_out(
+        self, stability_function_implemented: bool
+    ):
+        """SequentialQueryable can run transformations without stability function."""
+        queryable = self.construct_queryable()
+        queryable(
+            TransformationQuery(
+                create_mock_transformation(
+                    stability_function_implemented=stability_function_implemented,
+                    stability_function_return_value=2,
+                    stability_relation_return_value=True,
+                ),
+                d_out=3,
+            )
+        )
+        self.assertEqual(queryable._d_in, 3)  # pylint: disable=protected-access
+
+    def test_transformation_query_stability_relation_returns_false(self):
+        """SequentialQueryable raises error if stability relation is not True."""
+        queryable = self.construct_queryable()
+        with self.assertRaisesRegex(
+            ValueError,
+            "Transformation's stability relation cannot be satisfied with given"
+            r" d_out \(3\)",
+        ):
+            queryable(
+                TransformationQuery(
+                    create_mock_transformation(
+                        stability_function_implemented=False,
+                        stability_relation_return_value=False,
+                    ),
+                    d_out=3,
                 )
             )
 
@@ -798,6 +881,32 @@ class TestPrivacyAccountant(PySparkTest):
         # pylint: disable=protected-access
         self.assertEqual(accountant._queryable._data, np.int64(2))
 
+    def test_transform_with_explicit_d_out(self):
+        """PrivacyAccountant.transform_in_place works with a d_out provided."""
+        accountant = PrivacyAccountant.launch(
+            measurement=self.measurement, data=self.data
+        )
+        transformation = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=NumpyIntegerDomain(),
+            output_metric=AbsoluteDifference(),
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            return_value=np.int64(2),
+        )
+        accountant.transform_in_place(transformation=transformation, d_out=10)
+        self.assertEqual(accountant.input_domain, NumpyIntegerDomain())
+        self.assertEqual(accountant.input_metric, AbsoluteDifference())
+        self.assertEqual(accountant.d_in, 10)
+        # pylint: disable=protected-access
+        self.assertEqual(accountant._queryable._data, np.int64(2))
+
     @parameterized.expand(
         [
             (
@@ -853,6 +962,28 @@ class TestPrivacyAccountant(PySparkTest):
         actual_answer = accountant.measure(measurement=mock_measurement)
         self.assertEqual(actual_answer, np.int64(2))
         self.assertEqual(accountant.privacy_budget, starting_privacy_budget - 5)
+
+    def test_measure_consumes_all_privacy_budget(self):
+        """Test that measurements are allowed to consume the entire budget."""
+        accountant = PrivacyAccountant.launch(
+            measurement=self.measurement, data=self.data
+        )
+        mock_measurement = create_mock_measurement(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_measure=PureDP(),
+            privacy_function_implemented=True,
+            privacy_function_return_value=accountant.privacy_budget,
+            return_value=np.int64(2),
+        )
+        actual_answer = accountant.measure(measurement=mock_measurement)
+        self.assertEqual(actual_answer, np.int64(2))
+        self.assertEqual(accountant.privacy_budget, ExactNumber(0))
 
     @parameterized.expand(
         [
@@ -1020,6 +1151,226 @@ class TestPrivacyAccountant(PySparkTest):
             )
             self.assertEqual(child.state, expected_state)
 
+    def test_queue_transformation_on_active_accountant(self):
+        """queue_transformation runs immediately on active accountant"""
+        accountant = PrivacyAccountant.launch(
+            measurement=self.measurement, data=self.data
+        )
+        transformation = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=NumpyIntegerDomain(),
+            output_metric=AbsoluteDifference(),
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            return_value=np.int64(2),
+        )
+        accountant.queue_transformation(transformation=transformation)
+        self.assertEqual(accountant.input_domain, NumpyIntegerDomain())
+        self.assertEqual(accountant.input_metric, AbsoluteDifference())
+        self.assertEqual(accountant.d_in, 10)
+        # pylint: disable=protected-access
+        self.assertEqual(accountant._queryable._data, np.int64(2))
+        self.assertIsNone(accountant._pending_transformation)
+
+    def test_queue_transformation_on_inactive_accountant(self):
+        """queue_transformation queues transformations on inactive account"""
+        accountant = PrivacyAccountant.launch(
+            measurement=self.measurement, data=self.data
+        )
+        split_transformation = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=ListDomain(element_domain=NumpyIntegerDomain(), length=2),
+            output_metric=SumOf(AbsoluteDifference()),
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            return_value=[np.int64(2), np.int64(3)],
+        )
+        split_budget = 2
+        child_accountants = accountant.split(
+            splitting_transformation=split_transformation, privacy_budget=split_budget
+        )
+        transformation = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=NumpyIntegerDomain(),
+            output_metric=AbsoluteDifference(),
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            return_value=np.int64(2),
+        )
+        accountant.queue_transformation(transformation=transformation)
+        # values should reflect the pending transformation
+        self.assertEqual(accountant.input_domain, NumpyIntegerDomain())
+        self.assertEqual(accountant.input_metric, AbsoluteDifference())
+        self.assertEqual(accountant.d_in, 10)
+        self.assertIsNotNone(
+            accountant._pending_transformation  # pylint: disable=protected-access
+        )
+
+        for c in child_accountants:
+            c.retire()
+
+        # Once the accountant is active again, the transformation should
+        # have been run
+        self.assertEqual(accountant.state, PrivacyAccountantState.ACTIVE)
+        self.assertEqual(accountant.input_domain, NumpyIntegerDomain())
+        self.assertEqual(accountant.input_metric, AbsoluteDifference())
+        self.assertEqual(accountant.d_in, 10)
+        # pylint: disable=protected-access
+        self.assertEqual(accountant._queryable._data, np.int64(2))
+        self.assertIsNone(accountant._pending_transformation)
+
+    @parameterized.expand(
+        [
+            (
+                "Transformation's input domain does not match PrivacyAccountant's input"
+                " domain",
+                create_mock_transformation(
+                    input_domain=SparkDataFrameDomain(
+                        {"A": SparkIntegerColumnDescriptor()}
+                    ),
+                    input_metric=SymmetricDifference(),
+                    stability_function_implemented=True,
+                ),
+            ),
+            (
+                "Transformation's input metric does not match PrivacyAccountant's input"
+                " metric",
+                create_mock_transformation(
+                    input_domain=SparkDataFrameDomain(
+                        {
+                            "A": SparkIntegerColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                        }
+                    ),
+                    input_metric=HammingDistance(),
+                    stability_function_implemented=True,
+                ),
+            ),
+        ]
+    )
+    def test_queue_transformation_invalid_arguments(
+        self,
+        error_message: str,
+        transformation: Transformation,
+        d_out: Optional[Any] = None,
+    ) -> None:
+        """Test queue_transformation with an invalid transformation."""
+        accountant = PrivacyAccountant.launch(
+            measurement=self.measurement, data=self.data
+        )
+        split_transformation = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=ListDomain(element_domain=NumpyIntegerDomain(), length=2),
+            output_metric=SumOf(AbsoluteDifference()),
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            return_value=[np.int64(2), np.int64(3)],
+        )
+        split_budget = 2
+        accountant.split(
+            splitting_transformation=split_transformation, privacy_budget=split_budget
+        )
+        self.assertEqual(accountant.state, PrivacyAccountantState.WAITING_FOR_CHILDREN)
+        with self.assertRaisesRegex(ValueError, error_message):
+            accountant.queue_transformation(transformation=transformation, d_out=d_out)
+
+    @parameterized.expand(
+        [
+            (
+                "Transformation's input domain does not match the output domain"
+                " of the last transformation",
+                create_mock_transformation(
+                    input_domain=SparkDataFrameDomain(
+                        {"A": SparkIntegerColumnDescriptor()}
+                    ),
+                    input_metric=SymmetricDifference(),
+                    stability_function_implemented=True,
+                ),
+            ),
+            (
+                "Transformation's input metric does not match the output metric"
+                " of the last transformation",
+                create_mock_transformation(
+                    input_domain=SparkDataFrameDomain(
+                        {
+                            "A": SparkIntegerColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                        }
+                    ),
+                    input_metric=HammingDistance(),
+                    stability_function_implemented=True,
+                ),
+            ),
+        ]
+    )
+    def test_queue_invalid_transformation_with_transform_in_queue(
+        self,
+        error_message: str,
+        transformation: Transformation,
+        d_out: Optional[Any] = None,
+    ):
+        """Test queue_transformation with invalid arguments and a pending transform."""
+        accountant = PrivacyAccountant.launch(
+            measurement=self.measurement, data=self.data
+        )
+        split_transformation = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=ListDomain(element_domain=NumpyIntegerDomain(), length=2),
+            output_metric=SumOf(AbsoluteDifference()),
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            return_value=[np.int64(2), np.int64(3)],
+        )
+        split_budget = 2
+        accountant.split(
+            splitting_transformation=split_transformation, privacy_budget=split_budget
+        )
+        self.assertEqual(accountant.state, PrivacyAccountantState.WAITING_FOR_CHILDREN)
+
+        identity_transformation = create_mock_transformation(
+            input_domain=accountant.input_domain,
+            input_metric=accountant.input_metric,
+            output_domain=accountant.input_domain,
+            output_metric=accountant.input_metric,
+            stability_function_implemented=True,
+        )
+        accountant.queue_transformation(identity_transformation)
+        self.assertIsNotNone(
+            accountant._pending_transformation  # pylint: disable=protected-access
+        )
+        with self.assertRaisesRegex(ValueError, error_message):
+            accountant.queue_transformation(transformation=transformation, d_out=d_out)
+
     def test_force_activate_raises_error_on_invalid_states(self):
         """PrivacyAccountant.force_activate raises error appropriately."""
         accountant = PrivacyAccountant.launch(
@@ -1163,3 +1514,150 @@ class TestPrivacyAccountant(PySparkTest):
             child.retire()
 
         self.assertEqual(accountant.state, PrivacyAccountantState.ACTIVE)
+
+
+class TestDecorateQueryable(TestCase):
+    """Tests for DecorateQueryable."""
+
+    def setUp(self):
+        """Set up class."""
+        self.mock_queryable = create_mock_queryable()
+        self.measurement = DecorateQueryable(
+            measurement=create_mock_measurement(
+                input_domain=NumpyIntegerDomain(),
+                input_metric=AbsoluteDifference(),
+                output_measure=PureDP(),
+                is_interactive=True,
+                privacy_function_implemented=True,
+                privacy_function_return_value=6,
+                return_value=self.mock_queryable,
+            ),
+            preprocess_query=lambda x: x,
+            postprocess_answer=lambda x: x,
+        )
+
+    @parameterized.expand(get_all_props(DecorateQueryable))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        assert_property_immutability(self.measurement, prop_name)
+
+    def test_properties(self):
+        """SequentialComposition's properties have the expected values."""
+        self.assertEqual(self.measurement.input_domain, NumpyIntegerDomain())
+        self.assertEqual(self.measurement.input_metric, AbsoluteDifference())
+        self.assertEqual(self.measurement.output_measure, PureDP())
+        self.assertEqual(self.measurement.is_interactive, True)
+
+    def test_privacy_function(self):
+        """SequentialComposition's privacy function is correct."""
+        self.assertEqual(self.measurement.privacy_function(1), 6)
+
+    def test_correctness(self):
+        """SequentialComposition returns the expected Queryable object."""
+        # pylint: disable=protected-access
+        actual = self.measurement(np.int64(10))
+        self.assertIsInstance(actual, DecoratedQueryable)
+        self.assertEqual(actual._preprocess_query, self.measurement.preprocess_query)
+        self.assertEqual(
+            actual._postprocess_answer, self.measurement.postprocess_answer
+        )
+        self.assertEqual(actual._queryable, self.mock_queryable)
+
+
+class TestDecoratedQueryable(TestCase):
+    """Tests for DecoratedQueryable."""
+
+    def test_correctness(self):
+        """Set up class."""
+        mock_queryable = MagicMock()
+        mock_queryable.return_value = 1
+        decorated_queryable = DecorateQueryable(
+            measurement=create_mock_measurement(
+                input_domain=NumpyIntegerDomain(),
+                input_metric=AbsoluteDifference(),
+                output_measure=PureDP(),
+                is_interactive=True,
+                privacy_function_implemented=True,
+                privacy_function_return_value=6,
+                return_value=mock_queryable,
+            ),
+            preprocess_query=lambda x: 2 * x,
+            postprocess_answer=lambda x: x + 1,
+        )(np.int64(1))
+        actual = decorated_queryable(2)
+        mock_queryable.assert_called_once_with(4)
+        self.assertEqual(actual, 2)
+
+
+class TestCreateAdaptiveComposition(TestCase):
+    """Tests for :func:`~.create_adaptive_composition`."""
+
+    def setUp(self):
+        """Test setup."""
+        self.queryable = create_adaptive_composition(
+            input_domain=NumpyIntegerDomain(),
+            input_metric=AbsoluteDifference(),
+            d_in=1,
+            privacy_budget=2,
+            output_measure=PureDP(),
+        )(np.int64(10))
+
+    def test_create_adaptive_composition(self):
+        """:func:`~.create_adaptive_composition` works as expected."""
+        adaptive_composition = create_adaptive_composition(
+            input_domain=NumpyIntegerDomain(),
+            input_metric=AbsoluteDifference(),
+            d_in=1,
+            privacy_budget=2,
+            output_measure=PureDP(),
+        )
+        self.assertIsInstance(adaptive_composition, DecorateQueryable)
+        self.assertIsInstance(adaptive_composition.measurement, SequentialComposition)
+        self.assertEqual(
+            adaptive_composition.measurement.input_domain, NumpyIntegerDomain()
+        )
+        self.assertEqual(
+            adaptive_composition.measurement.input_metric, AbsoluteDifference()
+        )
+        self.assertEqual(adaptive_composition.measurement.d_in, 1)
+        self.assertEqual(adaptive_composition.measurement.privacy_budget, 2)
+        self.assertEqual(adaptive_composition.measurement.output_measure, PureDP())
+        self.assertIsInstance(adaptive_composition(np.int64(10)), DecoratedQueryable)
+
+    def test_correctness(self):
+        """Queryable works as expected."""
+        query = MeasurementQuery(
+            create_mock_measurement(
+                privacy_function_implemented=True,
+                privacy_function_return_value=1,
+                return_value=np.int64(22),
+            )
+        )
+        answer = self.queryable(query)
+        self.assertEqual(answer, np.int64(22))
+
+    def test_interactive_measurement(self):
+        """Can not answer interactive measurement queries."""
+        query = MeasurementQuery(create_mock_measurement(is_interactive=True))
+        with self.assertRaisesRegex(
+            ValueError, "Cannot answer interactive measurement query"
+        ):
+            self.queryable(query)
+
+    def test_insufficient_budget(self):
+        """Raises error on insufficient budget."""
+        query1 = MeasurementQuery(
+            create_mock_measurement(
+                privacy_function_implemented=True, privacy_function_return_value=2
+            )
+        )
+        self.queryable(query1)
+        query2 = MeasurementQuery(
+            create_mock_measurement(
+                privacy_function_implemented=True, privacy_function_return_value=2
+            )
+        )
+        with self.assertRaisesRegex(
+            ValueError, "Cannot answer query without exceeding available privacy budget"
+        ):
+            self.queryable(query2)

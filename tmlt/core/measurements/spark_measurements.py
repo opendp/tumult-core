@@ -21,11 +21,12 @@ from tmlt.core.domains.spark_domains import (
 )
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.pandas_measurements.dataframe import Aggregate
-from tmlt.core.measurements.pandas_measurements.series import AddNoise
+from tmlt.core.measurements.pandas_measurements.series import AddNoiseToSeries
 from tmlt.core.metrics import OnColumn, RootSumOfSquared, SumOf, SymmetricDifference
 from tmlt.core.utils.configuration import Config
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+from tmlt.core.utils.misc import get_nonconflicting_string
 
 _materialization_lock = Lock()
 
@@ -43,10 +44,12 @@ class SparkMeasurement(Measurement):
         """
 
     def __call__(self, val: Any) -> DataFrame:
-        """Performs measurement and returns materialized DataFrame."""
-        return _get_materialized_df(
-            self.call(val), table_name=f"table_{uuid.uuid4().hex}"
-        )
+        """Performs measurement and returns a DataFrame with additional protections.
+
+        See :ref:`pseudo-side-channel-mitigations` for more details on the specific
+        mitigations we apply here.
+        """
+        return _get_sanitized_df(self.call(val))
 
 
 class AddNoiseToColumn(SparkMeasurement):
@@ -55,11 +58,13 @@ class AddNoiseToColumn(SparkMeasurement):
     Example:
         ..
             >>> import pandas as pd
-            >>> from tmlt.core.measurements.pandas_measurements.series import (
+            >>> from tmlt.core.measurements.noise_mechanisms import (
             ...     AddLaplaceNoise,
             ... )
+            >>> from tmlt.core.measurements.pandas_measurements.series import (
+            ...     AddNoiseToSeries,
+            ... )
             >>> from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
-            >>> from tmlt.core.domains.pandas_domains import PandasSeriesDomain
             >>> from tmlt.core.domains.spark_domains import (
             ...     SparkDataFrameDomain,
             ...     SparkIntegerColumnDescriptor,
@@ -87,7 +92,7 @@ class AddNoiseToColumn(SparkMeasurement):
         >>> # Create a measurement that can add noise to a pd.Series
         >>> add_laplace_noise = AddLaplaceNoise(
         ...     scale="0.5",
-        ...     input_domain=PandasSeriesDomain(NumpyIntegerDomain()),
+        ...     input_domain=NumpyIntegerDomain(),
         ... )
         >>> # Create a measurement that can add noise to a Spark DataFrame
         >>> add_laplace_noise_to_column = AddNoiseToColumn(
@@ -98,7 +103,7 @@ class AddNoiseToColumn(SparkMeasurement):
         ...             "count": SparkIntegerColumnDescriptor(),
         ...         },
         ...     ),
-        ...     measurement=add_laplace_noise,
+        ...     measurement=AddNoiseToSeries(add_laplace_noise),
         ...     measure_column="count",
         ... )
         >>> # Apply measurement to data
@@ -128,7 +133,7 @@ class AddNoiseToColumn(SparkMeasurement):
 
         Privacy Guarantee:
             :class:`~.AddNoiseToColumn`'s :meth:`~.privacy_function` returns the output of
-            privacy function on the :class:`~.AddNoise` measurement.
+            privacy function on the :class:`~.AddNoiseToSeries` measurement.
 
             >>> add_laplace_noise_to_column.privacy_function(1)
             2
@@ -138,14 +143,14 @@ class AddNoiseToColumn(SparkMeasurement):
     def __init__(
         self,
         input_domain: SparkDataFrameDomain,
-        measurement: AddNoise,
+        measurement: AddNoiseToSeries,
         measure_column: str,
     ):
         """Constructor.
 
         Args:
             input_domain: Domain of input spark DataFrames.
-            measurement: :class:`~.AddNoise` measurement for adding noise to
+            measurement: :class:`~.AddNoiseToSeries` measurement for adding noise to
                 `measure_column`.
             measure_column: Name of column to add noise to.
 
@@ -178,8 +183,8 @@ class AddNoiseToColumn(SparkMeasurement):
         return self._measure_column
 
     @property
-    def measurement(self) -> AddNoise:
-        """Returns the :class:`~.AddNoise` measurement to apply to measure column."""
+    def measurement(self) -> AddNoiseToSeries:
+        """Returns the :class:`~.AddNoiseToSeries` measurement to apply to measure column."""
         return self._measurement
 
     @typechecked
@@ -193,7 +198,7 @@ class AddNoiseToColumn(SparkMeasurement):
 
         Raises:
             NotImplementedError: If the :meth:`~.Measurement.privacy_function` of the
-                :class:`~.AddNoise` measurement raises :class:`NotImplementedError`.
+                :class:`~.AddNoiseToSeries` measurement raises :class:`NotImplementedError`.
         """
         self.input_metric.validate(d_in)
         return self.measurement.privacy_function(d_in)
@@ -299,6 +304,27 @@ class ApplyInPandas(SparkMeasurement):
             aggregation_function=self.aggregation_function,
             aggregation_output_schema=self.aggregation_function.output_schema,
         )
+
+
+def _get_sanitized_df(sdf: DataFrame) -> DataFrame:
+    """Returns a randomly repartitioned and materialized DataFrame.
+
+    See :ref:`pseudo-side-channel-mitigations` for more details on the specific
+    mitigations we apply here.
+    """
+    # pylint: disable=no-name-in-module
+    partitioning_column = get_nonconflicting_string(sdf.columns)
+    # repartitioning by a column of random numbers ensures that the content
+    # of partitions of the output DataFrame is determined randomly.
+    # for each row, its partition number (the partition index that the row is
+    # distributed to) is determined as: `hash(partitioning_column) % num_partitions`
+    return _get_materialized_df(
+        sdf.withColumn(partitioning_column, sf.rand())
+        .repartition(partitioning_column)
+        .drop(partitioning_column)
+        .sortWithinPartitions(*sdf.columns),
+        table_name=f"table_{uuid.uuid4().hex}",
+    )
 
 
 def _get_materialized_df(sdf: DataFrame, table_name: str) -> DataFrame:

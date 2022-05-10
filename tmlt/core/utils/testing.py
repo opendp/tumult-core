@@ -9,6 +9,7 @@ import shutil
 import sys
 import unittest
 from dataclasses import dataclass
+from enum import Enum
 from types import FunctionType
 from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple, Union, overload
 from unittest.mock import Mock, create_autospec
@@ -41,13 +42,7 @@ from tmlt.core.measurements.interactive_measurements import (
 )
 from tmlt.core.measurements.pandas_measurements.dataframe import Aggregate
 from tmlt.core.measures import Measure, PureDP
-from tmlt.core.metrics import (
-    AbsoluteDifference,
-    Metric,
-    RootSumOfSquared,
-    SumOf,
-    SymmetricDifference,
-)
+from tmlt.core.metrics import AbsoluteDifference, Metric, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations.groupby import GroupBy
 from tmlt.core.transformations.spark_transformations.map import RowToRowsTransformation
@@ -328,6 +323,7 @@ IMMUTABLE_TYPES = (
     np.number,
     PrivacyAccountantState,
     PrivacyAccountant,
+    Enum,
 )
 """Types that are considered immutable by the privacy framework.
 
@@ -489,15 +485,10 @@ class FixedGroupDataSet:
 
     def groupby(self, noise_mechanism: NoiseMechanism) -> GroupBy:
         """Returns appropriate GroupBy transformation."""
-        output_metric: Union[SumOf, RootSumOfSquared] = (
-            RootSumOfSquared(SymmetricDifference())
-            if noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
-            else SumOf(SymmetricDifference())
-        )
         return GroupBy(
             input_domain=self.domain,
             input_metric=SymmetricDifference(),
-            output_metric=output_metric,
+            use_l2=noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN,
             group_keys=self.group_keys,
         )
 
