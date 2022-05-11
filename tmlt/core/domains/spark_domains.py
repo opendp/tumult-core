@@ -3,6 +3,7 @@
 # <placeholder: boilerplate>
 
 import datetime
+import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -162,8 +163,9 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
     def to_numpy_domain(self) -> NumpyDomain:
         """Returns corresponding NumPy domain."""
         if self.allow_null:
-            raise RuntimeWarning(
-                "Null values in nullable Spark column are converted to nans in Pandas"
+            warnings.warn(
+                "Null values in nullable Spark column are converted to nans in Pandas",
+                RuntimeWarning,
             )
         return NumpyFloatDomain(
             allow_nan=self.allow_nan, allow_inf=self.allow_inf, size=self.size
