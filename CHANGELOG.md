@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Added two exception types, `InsufficientBudgetError` and `InactiveAccountantError`, to PrivacyAccountants.
 - Future documentation will include any exceptions defined in this library.
 - Added `cleanup.remove_all_temp_tables()` function, which will remove all temporary tables created by Core.
+- Added new components `DropNaNs`, `DropNulls`, `ReplaceNulls`, and `ReplaceNaNs`.
 
 ## 0.1.1 - 2022-02-24
 ### Added
