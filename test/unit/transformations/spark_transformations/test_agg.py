@@ -442,6 +442,7 @@ class TestSum(PySparkTest):
             (pd.DataFrame({"A": ["x1", "x2"], "B": [2, 4]}), np.int64(6)),
             (pd.DataFrame({"A": ["x1", "x2"], "B": [1, 3]}), np.int64(5)),
             (pd.DataFrame({"A": ["x1", "x2"], "B": [6, 5]}), np.int64(8)),
+            (pd.DataFrame({"A": [None, "x2"], "B": [2, 4]}), np.int64(6)),
         ]
     )
     def test_correctness(self, input_df: pd.DataFrame, expected_sum: pd.DataFrame):
@@ -468,11 +469,11 @@ class TestSumGrouped(PySparkTest):
         """Test setup."""
         self.domain = SparkGroupedDataFrameDomain(
             schema={
-                "A": SparkStringColumnDescriptor(),
+                "A": SparkStringColumnDescriptor(allow_null=True),
                 "B": SparkIntegerColumnDescriptor(),
             },
             group_keys=self.spark.createDataFrame(
-                [("x1",), ("x2",), ("x3",)], schema=["A"]
+                [(None,), ("x1",), ("x2",), ("x3",)], schema=["A"]
             ),
         )
 
@@ -503,7 +504,7 @@ class TestSumGrouped(PySparkTest):
             self.groupby_A_sum_B.output_domain,
             SparkDataFrameDomain(
                 {
-                    "A": SparkStringColumnDescriptor(),
+                    "A": SparkStringColumnDescriptor(allow_null=True),
                     "sum": SparkIntegerColumnDescriptor(),
                 }
             ),
@@ -518,19 +519,23 @@ class TestSumGrouped(PySparkTest):
         [
             (
                 pd.DataFrame({"A": ["x1", "x2"], "B": [2, 4]}),
-                pd.DataFrame({"A": ["x1", "x2", "x3"], "sum": [2, 4, 0]}),
+                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [0, 2, 4, 0]}),
             ),
             (  # value exceeds upper clamping bound
                 pd.DataFrame({"A": ["x1", "x2"], "B": [20, 4]}),
-                pd.DataFrame({"A": ["x1", "x2", "x3"], "sum": [4, 4, 0]}),
+                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [0, 4, 4, 0]}),
             ),
             (  # value below lower clamping bound
                 pd.DataFrame({"A": ["x1", "x2"], "B": [2, 0]}),
-                pd.DataFrame({"A": ["x1", "x2", "x3"], "sum": [2, 2, 0]}),
+                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [0, 2, 2, 0]}),
             ),
             (  # extra key 'x4' shouldn't appear
                 pd.DataFrame({"A": ["x1", "x4"], "B": [2, 3]}),
-                pd.DataFrame({"A": ["x1", "x2", "x3"], "sum": [2, 0, 0]}),
+                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [0, 2, 0, 0]}),
+            ),
+            (  # grouping on nulls should work
+                pd.DataFrame({"A": [None, "x1"], "B": [2, 3]}),
+                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [2, 3, 0, 0]}),
             ),
         ]
     )

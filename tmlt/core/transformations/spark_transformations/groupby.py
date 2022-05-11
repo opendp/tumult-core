@@ -1,11 +1,12 @@
 """Transformations for performing groupby on Spark dataframes."""
-
 # <placeholder: boilerplate>
+
+from __future__ import annotations
 
 import datetime
 import itertools
 from functools import reduce
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import (
@@ -201,11 +202,23 @@ class GroupBy(Transformation):
         return GroupedDataFrame(dataframe=sdf, group_keys=self.group_keys)
 
 
+# Don't use a type alias for the mapping here;
+# you will make our Sphinx jobs fail
 def create_groupby_from_column_domains(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
     use_l2: bool,
-    column_domains: Dict[str, Union[List[int], List[str], List[datetime.date]]],
+    column_domains: Dict[
+        str,
+        Union[
+            List[str],
+            List[Optional[str]],
+            List[int],
+            List[Optional[int]],
+            List[datetime.date],
+            List[Optional[datetime.date]],
+        ],
+    ],
 ) -> GroupBy:
     """Returns GroupBy transformation with Cartesian product of column domains as keys.
 
@@ -366,8 +379,41 @@ def create_groupby_from_list_of_keys(
     )
 
 
+def _spark_type(values: List[Any]) -> DataType:
+    """Get the Spark type of a list of values.
+
+    Some of the values might be None.
+    """
+    if len(values) == 0:
+        raise ValueError("Cannot determine type of empty list.")
+    for v in values:
+        if isinstance(v, str):
+            return StringType()
+        elif isinstance(v, int):
+            return LongType()
+        elif isinstance(v, datetime.date) and not isinstance(v, datetime.datetime):
+            return DateType()
+        elif v is None:
+            continue
+        else:
+            raise ValueError(f"Type {type(v).__qualname__} is not supported")
+    raise ValueError("Cannot determine type of list where every entry is None")
+
+
+# Don't use a type alias for the mapping here;
+# you will make our Sphinx jobs fail
 def compute_full_domain_df(
-    column_domains: Dict[str, Union[List[int], List[str], List[datetime.date]]]
+    column_domains: Dict[
+        str,
+        Union[
+            List[str],
+            List[Optional[str]],
+            List[int],
+            List[Optional[int]],
+            List[datetime.date],
+            List[Optional[datetime.date]],
+        ],
+    ]
 ):
     """Returns a DataFrame containing the Cartesian product of given column domains."""
     spark = SparkSession.builder.getOrCreate()
@@ -375,18 +421,8 @@ def compute_full_domain_df(
         return SparkSession.builder.getOrCreate().createDataFrame([], StructType())
     full_domain_size = reduce(lambda acc, x: acc * len(x), column_domains.values(), 1)
 
-    def spark_type(value: Any) -> DataType:
-        if isinstance(value, str):
-            return StringType()
-        elif isinstance(value, int):
-            return LongType()
-        elif isinstance(value, datetime.date):
-            return DateType()
-        else:
-            raise ValueError(f"Type {type(value).__qualname__} is not supported")
-
     domain_spark_types = {
-        column: spark_type(values[0]) for column, values in column_domains.items()
+        column: _spark_type(values) for column, values in column_domains.items()
     }
     if full_domain_size <= 10 ** 6:
         # Perform in-memory crossjoin using itertools if fewer than 1m rows
