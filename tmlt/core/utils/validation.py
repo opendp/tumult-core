@@ -2,6 +2,8 @@
 
 # <placeholder: boilerplate>
 
+from __future__ import annotations
+
 import datetime
 from typing import Dict, List, Optional, Union
 
@@ -9,8 +11,22 @@ from tmlt.core.domains.spark_domains import SparkDataFrameDomain
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
+# You might want to put a type alias here for domains.
+# Then you will discover that Sphinx AutoAPI doesn't support type aliases
+# the way you want it to.
+# Don't fall down this rabbit hole.
 def validate_groupby_domains(
-    groupby_domains: Dict[str, Union[List[str], List[int], List[datetime.date]]],
+    groupby_domains: Dict[
+        str,
+        Union[
+            List[str],
+            List[Optional[str]],
+            List[int],
+            List[Optional[int]],
+            List[datetime.date],
+            List[Optional[datetime.date]],
+        ],
+    ],
     input_domain: SparkDataFrameDomain,
 ):
     """Raises error if groupby domains are invalid.

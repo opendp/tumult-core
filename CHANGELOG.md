@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - `PrivateJoin` has a new parameter for `__init__`: `join_on_nulls`. When `join_on_nulls` is `True`, the `PrivateJoin` can join null values between both dataframes.
+- Operations that group on null values are now supported.
 - Moved truncation transformations used by `PrivateJoin` to be functions (now in `utils.truncation.py`).
 - Change `GroupBy` and `PartitionByKeys` to have an `use_l2` argument instead of `output_metric` 
 

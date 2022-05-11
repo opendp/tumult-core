@@ -1,12 +1,21 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.groupby`."""
 
 # <placeholder: boilerplate>
+
 import re
-from typing import List, Tuple, Union
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from parameterized import parameterized
-from pyspark.sql.types import LongType, StringType, StructField, StructType
+from pyspark.sql.types import (
+    DataType,
+    DateType,
+    LongType,
+    StringType,
+    StructField,
+    StructType,
+)
 
 from tmlt.core.domains.base import OutOfDomainError
 from tmlt.core.domains.spark_domains import (
@@ -24,6 +33,8 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.transformations.spark_transformations.groupby import (
     GroupBy,
+    _spark_type,
+    compute_full_domain_df,
     create_groupby_from_column_domains,
     create_groupby_from_list_of_keys,
 )
@@ -273,3 +284,155 @@ class TestDerivedTransformations(PySparkTest):
         self.assert_frame_equal_with_sort(
             groupby.group_keys.toPandas(), expected_group_keys
         )
+
+
+class TestComputeFullDomainDF(PySparkTest):
+    """Tests for compute_full_domain_df."""
+
+    @parameterized.expand(
+        [
+            (
+                {"A": [1, 2, 3], "B": ["b1", "b2"], "C": [date(2000, 1, 1)]},
+                pd.DataFrame(
+                    [
+                        [1, "b1", date(2000, 1, 1)],
+                        [1, "b2", date(2000, 1, 1)],
+                        [2, "b1", date(2000, 1, 1)],
+                        [2, "b2", date(2000, 1, 1)],
+                        [3, "b1", date(2000, 1, 1)],
+                        [3, "b2", date(2000, 1, 1)],
+                    ],
+                    columns=["A", "B", "C"],
+                ),
+            ),
+            (
+                {"Date": [date(2010, 1, 1), date(2020, 1, 1)], "B": ["b1", "b2"]},
+                pd.DataFrame(
+                    [
+                        [date(2010, 1, 1), "b1"],
+                        [date(2010, 1, 1), "b2"],
+                        [date(2020, 1, 1), "b1"],
+                        [date(2020, 1, 1), "b2"],
+                    ],
+                    columns=["Date", "B"],
+                ),
+            ),
+        ]
+    )
+    def test_without_null(
+        self,
+        domains: Dict[
+            str,
+            Union[
+                List[str],
+                List[Optional[str]],
+                List[int],
+                List[Optional[int]],
+                List[date],
+                List[Optional[date]],
+            ],
+        ],
+        expected: pd.DataFrame,
+    ) -> None:
+        """Test compute_full_domain_df without null/none values."""
+        actual = compute_full_domain_df(domains)
+        self.assert_frame_equal_with_sort(actual.toPandas(), expected)
+
+    @parameterized.expand(
+        [
+            (
+                {"A": [None, 2, 3], "B": ["b1", "b2"], "C": [date(2000, 1, 1)]},
+                pd.DataFrame(
+                    [
+                        [None, "b1", date(2000, 1, 1)],
+                        [None, "b2", date(2000, 1, 1)],
+                        [2, "b1", date(2000, 1, 1)],
+                        [2, "b2", date(2000, 1, 1)],
+                        [3, "b1", date(2000, 1, 1)],
+                        [3, "b2", date(2000, 1, 1)],
+                    ],
+                    columns=["A", "B", "C"],
+                ),
+            ),
+            (
+                {"Date": [date(2010, 1, 1), None], "B": [None, "b1", "b2"]},
+                pd.DataFrame(
+                    [
+                        [date(2010, 1, 1), None],
+                        [date(2010, 1, 1), "b1"],
+                        [date(2010, 1, 1), "b2"],
+                        [None, None],
+                        [None, "b1"],
+                        [None, "b2"],
+                    ],
+                    columns=["Date", "B"],
+                ),
+            ),
+        ]
+    )
+    def test_with_null(
+        self,
+        domains: Dict[
+            str,
+            Union[
+                List[str],
+                List[Optional[str]],
+                List[int],
+                List[Optional[int]],
+                List[date],
+                List[Optional[date]],
+            ],
+        ],
+        expected: pd.DataFrame,
+    ) -> None:
+        """Test compute_full_domain_df when some values *are* null/None."""
+        actual = compute_full_domain_df(domains)
+        self.assert_frame_equal_with_sort(actual.toPandas(), expected)
+
+
+class TestSparkType(PySparkTest):
+    """Tests for _spark_type."""
+
+    @parameterized.expand(
+        [
+            ([1, 2], LongType()),
+            ([None, None, None, None, 17], LongType()),
+            ([-1, 2, None], LongType()),
+            (["a", "b"], StringType()),
+            ([None, "a"], StringType()),
+            (["a", "b", None], StringType()),
+            ([date(2020, 1, 1), date(2000, 1, 1)], DateType()),
+            ([None, None, None, date(1970, 1, 1)], DateType()),
+            ([date(2010, 1, 1), None], DateType()),
+        ]
+    )
+    def test_spark_type(self, l: List[Any], expected: DataType) -> None:
+        """Test _spark_type."""
+        actual = _spark_type(l)  # pylint: disable=protected-access
+        self.assertEqual(actual, expected)
+
+    def test_all_nones(self) -> None:
+        """Test _spark_type raises an error when every list entry is None."""
+        l = [None, None, None, None, None]
+        with self.assertRaisesRegex(ValueError, "every entry is None"):
+            _spark_type(l)  # pylint: disable=protected-access
+
+    @parameterized.expand(
+        [
+            ([1.7, 2.3, 17.0],),
+            ([None, None, -3.1],),
+            ([["a"], ["b"]],),
+            ([None, ["b"]],),
+            ([{"key": "val"}],),
+            ([None, {}],),
+            ([datetime.now()],),
+            ([None, datetime(2012, 1, 1, 0, 0, 0)],),
+        ]
+    )
+    def test_disallowed_types(self, l: List[Any]) -> None:
+        """Test _spark_type raises an error for invalid types.
+
+        (Invalid types are those that cannot be used in a GroupBy.)
+        """
+        with self.assertRaisesRegex(ValueError, "Type .* is not supported"):
+            _spark_type(l)  # pylint: disable=protected-access

@@ -58,6 +58,23 @@ class TestGroupedDataFrame(PySparkTest):
         )._dataframe.toPandas()
         self.assert_frame_equal_with_sort(actual, expected)
 
+    def test_null_safe_join(self) -> None:
+        """Test that _null_safe_join works correctly."""
+        data = pd.DataFrame({"A": [None, "a0", "a1"], "B": [1, 2, 3]})
+        grouped_dataframe = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(data),
+            group_keys=self.spark.createDataFrame(pd.DataFrame({"A": [None, "a999"]})),
+        )
+        expected_join_result = pd.DataFrame({"A": [None, "a999"], "B": [1, None]})
+        # pylint: disable=protected-access
+        self.assert_frame_equal_with_sort(
+            grouped_dataframe._null_safe_join(
+                self.spark.createDataFrame(data)
+            ).toPandas(),
+            expected_join_result,
+        )
+        # pylint: enable=protected-access
+
     def test_group_keys_no_rows_one_column(self):
         """Tests that group keys must have no columns it is empty."""
 
