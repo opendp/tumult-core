@@ -6,7 +6,7 @@ from __future__ import annotations
 import datetime
 import itertools
 from functools import reduce
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, List, Mapping, Optional, Tuple, Union
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import (
@@ -208,7 +208,7 @@ def create_groupby_from_column_domains(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
     use_l2: bool,
-    column_domains: Dict[
+    column_domains: Mapping[
         str,
         Union[
             List[str],
@@ -403,7 +403,7 @@ def _spark_type(values: List[Any]) -> DataType:
 # Don't use a type alias for the mapping here;
 # you will make our Sphinx jobs fail
 def compute_full_domain_df(
-    column_domains: Dict[
+    column_domains: Mapping[
         str,
         Union[
             List[str],
