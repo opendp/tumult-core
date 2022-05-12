@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import datetime
-from typing import Dict, List, Optional, Union
+from typing import List, Mapping, Optional, Union
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -16,7 +16,7 @@ from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 # the way you want it to.
 # Don't fall down this rabbit hole.
 def validate_groupby_domains(
-    groupby_domains: Dict[
+    groupby_domains: Mapping[
         str,
         Union[
             List[str],
