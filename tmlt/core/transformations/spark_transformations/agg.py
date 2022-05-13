@@ -10,6 +10,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 from typeguard import typechecked
 
+import tmlt.core.transformations.spark_transformations.nan as nan
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -20,7 +21,6 @@ from tmlt.core.domains.spark_domains import (
 from tmlt.core.metrics import (
     AbsoluteDifference,
     HammingDistance,
-    Metric,
     OnColumn,
     RootSumOfSquared,
     SumOf,
@@ -29,26 +29,6 @@ from tmlt.core.metrics import (
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
-
-
-def _is_l1_metric(metric: Metric, inner_metric: Metric = AbsoluteDifference()) -> bool:
-    """Returns True if given is an L1 metric over given inner metric.
-
-    Args:
-        metric: Metric to be checked.
-        inner_metric: Inner metric for SumOf metric.
-    """
-    return isinstance(metric, SumOf) and metric.inner_metric == inner_metric
-
-
-def _is_l2_metric(metric: Metric, inner_metric: Metric = AbsoluteDifference()) -> bool:
-    """Returns True if given is an L2 metric over given inner metric.
-
-    Args:
-        metric: Metric to be checked.
-        inner_metric: Inner metric for RootSumOfSquared metric.
-    """
-    return isinstance(metric, RootSumOfSquared) and metric.inner_metric == inner_metric
 
 
 class Count(Transformation):
@@ -705,11 +685,13 @@ class Sum(Transformation):
             input_domain: Domain of input DataFrames.
             input_metric: Metric on input DataFrames.
             measure_column: Name of the column to be summed. This must be a numeric column.
-            lower: Lower clipping bound for sum column.
-            upper: Upper clipping bound for sum column.
+            lower: Lower clipping bound for measure column.
+            upper: Upper clipping bound for measure column.
         """
         if measure_column not in input_domain.schema:
-            raise ValueError(f"Invalid sum column: ({measure_column}) does not exist.")
+            raise ValueError(
+                f"Invalid measure column: ({measure_column}) does not exist."
+            )
 
         measure_column_descriptor = input_domain[measure_column]
         if not isinstance(
@@ -717,8 +699,17 @@ class Sum(Transformation):
             (SparkIntegerColumnDescriptor, SparkFloatColumnDescriptor),
         ):
             raise ValueError(
-                f"Sum column ({measure_column}) must be numeric, not"
+                f"Measure column ({measure_column}) must be numeric, not"
                 f" {measure_column_descriptor}"
+            )
+        if measure_column_descriptor.allow_null or (
+            isinstance(measure_column_descriptor, SparkFloatColumnDescriptor)
+            and measure_column_descriptor.allow_nan
+        ):
+            raise ValueError(
+                "Input domain must not allow nulls or NaNs on the measure column"
+                f" ({measure_column}). See {nan.__name__} for transformations to drop"
+                " or replace such values."
             )
         measure_column_nonintegral = isinstance(
             measure_column_descriptor, SparkFloatColumnDescriptor
@@ -727,7 +718,7 @@ class Sum(Transformation):
         self._upper = ExactNumber(upper)
         if not measure_column_nonintegral:
             if not self._lower.is_integer or not self._upper.is_integer:
-                raise ValueError("Clippings bounds must be integral")
+                raise ValueError("Clipping bounds must be integral")
         if not self._lower.is_finite or not self._upper.is_finite:
             raise ValueError("Clipping bounds must be finite")
         if self._lower > self._upper:
@@ -891,10 +882,7 @@ class SumGrouped(Transformation):
 
             The sensitivity of the sum is:
 
-            * :math:`\max(|h|, |\ell|)` if the input metric is
-              :class:`~.SymmetricDifference`
-            * :math:`h - \ell` if the input metric is
-              :class:`~.HammingDistance`
+            * :math:`\max(|h|, |\ell|)`
     """  # pylint: disable=line-too-long
 
     @typechecked
@@ -935,6 +923,15 @@ class SumGrouped(Transformation):
                 f"Measure column ({measure_column}) must be numeric, not"
                 f" {measure_column_descriptor}"
             )
+        if measure_column_descriptor.allow_null or (
+            isinstance(measure_column_descriptor, SparkFloatColumnDescriptor)
+            and measure_column_descriptor.allow_nan
+        ):
+            raise ValueError(
+                "Input domain must not allow nulls or NaNs on the sum column"
+                f" ({measure_column}). See {nan.__name__} for transformations to drop"
+                " or replace such values."
+            )
         measure_column_is_integral = isinstance(
             measure_column_descriptor, SparkIntegerColumnDescriptor
         )
@@ -942,7 +939,7 @@ class SumGrouped(Transformation):
         self._upper = ExactNumber(upper)
         if measure_column_is_integral:
             if not self._lower.is_integer or not self._upper.is_integer:
-                raise ValueError("Clippings bounds must be integral")
+                raise ValueError("Clipping bounds must be integral")
         if not self._lower.is_finite or not self._upper.is_finite:
             raise ValueError("Clipping bounds must be finite")
         if self._lower > self._upper:
