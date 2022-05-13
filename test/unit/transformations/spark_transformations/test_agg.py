@@ -12,6 +12,7 @@ from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
     SparkColumnsDescriptor,
     SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
@@ -449,17 +450,96 @@ class TestSum(PySparkTest):
         """Tests that sum transformation returns expected answer."""
         self.assertEqual(self.sum_B(self.spark.createDataFrame(input_df)), expected_sum)
 
-    @parameterized.expand([(SymmetricDifference(), 1), (HammingDistance(), 2)])
+    @parameterized.expand([(SymmetricDifference(), 4), (HammingDistance(), 2)])
     def test_stability_function(
         self,
         input_metric: Union[SymmetricDifference, HammingDistance],
         expected_d_out: ExactNumberInput,
     ):
         """Tests that the stability function is correct."""
-        count_transformation = Count(
-            input_domain=self.domain, input_metric=input_metric
+        self.assertEqual(
+            Sum(
+                input_domain=self.domain,
+                input_metric=input_metric,
+                measure_column="B",
+                lower=2,
+                upper=4,
+            ).stability_function(1),
+            expected_d_out,
         )
-        self.assertEqual(count_transformation.stability_function(1), expected_d_out)
+
+    @parameterized.expand(
+        [
+            (  # Non-existent measure column
+                "Z",
+                1,
+                40,
+                r"Invalid measure column: \(Z\) does not exist",
+            ),
+            (  # Non-numeric measure column
+                "A",
+                1,
+                40,
+                r"Measure column \(A\) must be numeric",
+            ),
+            (  # Non-integral clipping bounds for integral measure column
+                "B",
+                "1.1",
+                40,
+                "Clipping bounds must be integral",
+            ),
+            (  # non-finite clipping bounds for integral measure column
+                "E",
+                -float("inf"),
+                40,
+                "Clipping bounds must be finite",
+            ),
+            (  # lower > upper
+                "B",
+                40,
+                1,
+                "Lower clipping bound is larger than upper clipping bound.",
+            ),
+            (  # measure column permits nans
+                "C",
+                1,
+                40,
+                r"Input domain must not allow nulls or NaNs on the measure column"
+                r" \(C\)",
+            ),
+            (  # measure column permits nulls
+                "D",
+                1,
+                40,
+                r"Input domain must not allow nulls or NaNs on the measure column"
+                r" \(D\)",
+            ),
+        ]
+    )
+    def test_invalid_inputs(
+        self,
+        sum_column: str,
+        lower: ExactNumberInput,
+        upper: ExactNumberInput,
+        error_message: str,
+    ):
+        """Sum raises appropriate error when constructor arguments are invalid."""
+        with self.assertRaisesRegex(ValueError, error_message):
+            Sum(
+                input_domain=SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkIntegerColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(allow_nan=True),
+                        "D": SparkIntegerColumnDescriptor(allow_null=True),
+                        "E": SparkFloatColumnDescriptor(),
+                    }
+                ),
+                input_metric=SymmetricDifference(),
+                measure_column=sum_column,
+                upper=upper,
+                lower=lower,
+            )
 
 
 class TestSumGrouped(PySparkTest):
@@ -551,13 +631,37 @@ class TestSumGrouped(PySparkTest):
 
     @parameterized.expand(
         [
+            (SumOf(SymmetricDifference()), 4),
+            (RootSumOfSquared(SymmetricDifference()), 4),
+        ]
+    )
+    def test_stability_function(
+        self,
+        input_metric: Union[SumOf, RootSumOfSquared],
+        expected_d_out: ExactNumberInput,
+    ):
+        """SumGrouped's stability function is correct."""
+        self.assertEqual(
+            SumGrouped(
+                input_domain=self.domain,
+                input_metric=input_metric,
+                measure_column="B",
+                upper=4,
+                lower=2,
+                sum_column="sum",
+            ).stability_function(1),
+            expected_d_out,
+        )
+
+    @parameterized.expand(
+        [
             (  # Non-existent measure column
                 SumOf(SymmetricDifference()),
-                "C",
-                "sum(B)",
+                "Z",
+                "sum(Z)",
                 1,
                 40,
-                "Invalid measure column: C",
+                "Invalid measure column: Z",
             ),
             (  # Non-numeric measure column
                 SumOf(SymmetricDifference()),
@@ -596,6 +700,22 @@ class TestSumGrouped(PySparkTest):
                 r"Input metric must be SumOf\(SymmetricDifference\(\)\) or"
                 r" RootSumOfSquared\(SymmetricDifference\(\)\)",
             ),
+            (  # Domain permits nans
+                SumOf(SymmetricDifference()),
+                "C",
+                "sum(C)",
+                1,
+                40,
+                r"Input domain must not allow nulls or NaNs on the sum column \(C\)",
+            ),
+            (  # Domain permits nulls
+                SumOf(SymmetricDifference()),
+                "D",
+                "sum(D)",
+                1,
+                40,
+                r"Input domain must not allow nulls or NaNs on the sum column \(D\)",
+            ),
         ]
     )
     def test_invalid_inputs(
@@ -613,6 +733,8 @@ class TestSumGrouped(PySparkTest):
             schema = {
                 "A": SparkStringColumnDescriptor(),
                 "B": SparkIntegerColumnDescriptor(),
+                "C": SparkFloatColumnDescriptor(allow_nan=True),
+                "D": SparkIntegerColumnDescriptor(allow_null=True),
             }
         with self.assertRaisesRegex(ValueError, error_msg):
             SumGrouped(
