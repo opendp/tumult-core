@@ -1,6 +1,6 @@
-.. _Explanations:
+.. _Topic guides:
 
-Explanations
+Topic Guides
 ============
 
 The following pages explain concepts and advanced topics that come up in Tumult Core.

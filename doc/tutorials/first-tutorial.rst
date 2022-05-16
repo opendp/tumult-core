@@ -8,17 +8,37 @@ In this tutorial you will learn how to:
 
 In this tutorial, we show how to count the number of records in a dataset whose
 age is greater than 18. Tumult Core can handle multiple types of data, but at present
-it primarily uses Spark DataFrames. Before we do anything, we need to read in the data:
+it primarily uses Spark DataFrames. Before we do anything, we need to create a spark
+session and read in the data:
+
+.. _Java 11 configuration example:
 
 .. testcode::
 
-   from pyspark.sql import SparkSession
+    from pyspark.sql import SparkSession
+    spark = SparkSession.builder.getOrCreate()
+
+.. note::
+
+   When using Java 11, some additional configuration must be passed to Spark, so the previous code block would instead be:
+
+   .. code-block::
+
+      from pyspark.sql import SparkSession
+      spark = (
+          SparkSession.builder
+          .config("spark.driver.extraJavaOptions", "-Dio.netty.tryReflectionSetAccessible=true")
+          .config("spark.executor.extraJavaOptions", "-Dio.netty.tryReflectionSetAccessible=true")
+          .getOrCreate()
+      )
+
+.. testcode::
+
    from pyspark.sql.types import *
 
    spark_schema = StructType(
        [StructField("Name", StringType()), StructField("Age", IntegerType())]
    )
-   spark = SparkSession.builder.getOrCreate()
    df = spark.createDataFrame([("Alice", 30), ("Bob", 15), ("Carlos", 50)], schema=spark_schema)
 
 We build queries out of basic *transformations* and *measurements*.

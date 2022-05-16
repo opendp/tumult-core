@@ -1,4 +1,6 @@
+.. _Bibliography:
+
 Supporting materials
 ====================
 
-.. bibliography:: /ref.bib
+.. bibliography:: ref.bib
