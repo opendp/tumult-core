@@ -7,9 +7,9 @@ from random import randint
 from typing import List, Tuple
 
 import pandas as pd
+from benchmarking_utils import Timer
 from pyspark.sql import DataFrame, SparkSession
 
-from benchmarking_utils import Timer
 from tmlt.core.domains.collections import DictDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -17,83 +17,13 @@ from tmlt.core.domains.spark_domains import (
     SparkStringColumnDescriptor,
 )
 from tmlt.core.transformations.spark_transformations.join import (
-    DropAllTruncation,
-    HashTopKTruncation,
     PrivateJoin,
+    TruncationStrategy,
 )
-
-TRUNCATIONS = {"DROPALL": DropAllTruncation, "HASHTOPK": HashTopKTruncation}
-
-
-def get_phsafe_runtimes_df(persons_df: DataFrame, units_df: DataFrame) -> pd.DataFrame:
-    """Runs truncated join using three truncation functions and returns result."""
-
-    persons_dom = SparkDataFrameDomain(
-        {
-            "RTYPE": SparkStringColumnDescriptor(),
-            "MAFID": SparkIntegerColumnDescriptor(),
-            "QAGE": SparkIntegerColumnDescriptor(),
-            "CENHISP": SparkIntegerColumnDescriptor(),
-            "CENRACE": SparkStringColumnDescriptor(),
-            "RELSHIP": SparkStringColumnDescriptor(),
-        }
-    )
-
-    units_dom = SparkDataFrameDomain(
-        {
-            "RTYPE": SparkStringColumnDescriptor(),
-            "MAFID": SparkIntegerColumnDescriptor(),
-            "FINAL_POP": SparkIntegerColumnDescriptor(),
-            "NPF": SparkIntegerColumnDescriptor(),
-            "HHSPAN": SparkIntegerColumnDescriptor(),
-            "HHRACE": SparkStringColumnDescriptor(),
-            "TEN": SparkStringColumnDescriptor(),
-            "HHT": SparkStringColumnDescriptor(),
-            "HHT2": SparkStringColumnDescriptor(),
-            "CPLT": SparkStringColumnDescriptor(),
-        }
-    )
-
-    runtimes = dict()
-    for truncation_mech, TruncationType in TRUNCATIONS.items():
-        with Timer() as t:
-            PrivateJoin(
-                input_domain=DictDomain({"persons": persons_dom, "units": units_dom}),
-                left="persons",
-                right="units",
-                left_truncator=TruncationType(
-                    domain=persons_dom, keys=["MAFID"], threshold=10
-                ),
-                right_truncator=TruncationType(
-                    domain=units_dom, keys=["MAFID"], threshold=1
-                ),
-                join_cols=["MAFID"],
-            )({"persons": persons_df, "units": units_df}).write.saveAsTable(
-                "tbl", mode="overwrite"
-            )
-        runtimes[truncation_mech] = f"{t.elapsed:.2f}"
-    return pd.DataFrame(
-        list(runtimes.items()), columns=["Truncation Type", "PHSafe Runtime(sec)"]
-    )
+from tmlt.core.utils.truncation import drop_large_groups, truncate_large_groups
 
 
-def benchmark_phsafe():
-    """Truncate at 10/1 and join persons & units tables on MAFID."""
-    spark = SparkSession.builder.getOrCreate()
-    persons_df = spark.createDataFrame(
-        pd.read_csv(
-            "s3://tumult.data.census/pih/phsafe-full-size-input/persons.csv"
-        )
-    )
-    units_df = spark.createDataFrame(
-        pd.read_csv(
-            "s3://tumult.data.census/pih/phsafe-full-size-input/units.csv"
-        )
-    )
-    return get_phsafe_runtimes_df(persons_df, units_df)
-
-
-def benchmark_join(hash_truncation: bool):
+def benchmark_join(truncation_strategy: TruncationStrategy):
     """Benchmark PrivateJoin on different cell sizes and cell counts.
 
     In particular, this function runs PrivateJoin (with truncation) on the following
@@ -117,8 +47,7 @@ def benchmark_join(hash_truncation: bool):
         for each row, identified by integers 0,...,[GROUPSIZE].
 
     """
-    TruncationType = HashTopKTruncation if hash_truncation else DropAllTruncation
-    group_counts = [10 ** i for i in (2, 4, 5)]
+    group_counts = [10**i for i in (2, 4, 5)]
     runtimes = []
 
     for left_group_count, right_group_count in itertools.combinations_with_replacement(
@@ -144,14 +73,12 @@ def benchmark_join(hash_truncation: bool):
             left_table_size, right_table_size = left_df.count(), right_df.count()
             join_transformation = PrivateJoin(
                 input_domain=DictDomain({"left": left_dom, "right": right_dom}),
-                left="left",
-                right="right",
-                left_truncator=TruncationType(
-                    domain=left_dom, keys=["K"], threshold=tau1
-                ),
-                right_truncator=TruncationType(
-                    domain=right_dom, keys=["K"], threshold=tau2
-                ),
+                left_key="left",
+                right_key="right",
+                left_truncation_strategy=truncation_strategy,
+                right_truncation_strategy=truncation_strategy,
+                left_truncation_threshold=tau1,
+                right_truncation_threshold=tau2,
                 join_cols=["K"],
             )
             with Timer() as t:
@@ -196,8 +123,9 @@ def benchmark_trunc():
 
     * There are approximately the same number of groups of each size.
     """
+    truncations = {"TRUNCATE": truncate_large_groups, "DROP": drop_large_groups}
     trunc_runtimes = []
-    group_counts = [10 ** i for i in (2, 4, 5)]
+    group_counts = [10**i for i in (2, 4, 5)]
     group_sizes_tau = [
         ([1, 5, 10], [1, 7]),
         ([10, 20, 50], [10, 48]),
@@ -215,10 +143,11 @@ def benchmark_trunc():
                     "Table Size (approx.)": df_size,
                     "Truncation Threshold": tau,
                 }
-                for truncation_mech, TruncationType in TRUNCATIONS.items():
-                    truncator = TruncationType(domain=df_dom, keys=["K"], threshold=tau)
+                for truncation_mech, truncation_func in truncations.items():
                     with Timer() as t:
-                        truncated_df = truncator(df)
+                        truncated_df = truncation_func(
+                            df, grouping_columns=["K"], threshold=tau
+                        )
                         truncated_df.write.saveAsTable("tbl", mode="overwrite")
                     runtimes_record[f"{truncation_mech} time(sec)"] = f"{t.elapsed:.2f}"
                     runtimes_record[
@@ -276,20 +205,21 @@ def main():
         .getOrCreate()
     )
     truncation_runtimes = benchmark_trunc().to_html()
-    join_runtimes_hash_trunc = benchmark_join(hash_truncation=True).to_html()
-    join_runtimes_dropall_trunc = benchmark_join(hash_truncation=False).to_html()
-    phsafe_runtimes = benchmark_phsafe().to_html()
+    join_runtimes_truncate = benchmark_join(
+        truncation_strategy=TruncationStrategy.TRUNCATE
+    ).to_html()
+    join_runtimes_drop = benchmark_join(
+        truncation_strategy=TruncationStrategy.DROP
+    ).to_html()
 
     all_tables_html = "\n".join(
         [
             "Truncation Runtimes",
             truncation_runtimes,
-            "PrivateJoin with HashTopKTruncation",
-            join_runtimes_hash_trunc,
-            "PrivateJoin with DropAllTruncation",
-            join_runtimes_dropall_trunc,
-            "PHSafe Person-Household Join (~1% data)",
-            phsafe_runtimes,
+            "PrivateJoin with TruncationStrategy.TRUNCATE",
+            join_runtimes_truncate,
+            "PrivateJoin with TruncationStrategy.DROP",
+            join_runtimes_drop,
         ]
     )
     print(all_tables_html)

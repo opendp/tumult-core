@@ -24,7 +24,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-*/poetry.lock
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -109,16 +108,7 @@ ENV/
 .DS_Store
 
 # Tumult
-census-data-tools/census-data/
-census-data-tools/output/
-census-data-tools/tmp/
-benchmark/temp.csv
-phsafe/tmlt/phsafe/example_output/
-phsafe/tmlt/phsafe/input_data/
-safetab/tmlt/safetab/5m/
-safetab/tmlt/safetab/input-dir-puredp/
-safetab/tmlt/safetab/input-dir-zcdp/
-safetab/tmlt/safetab/input-dir/
+benchmark_output/
 
 # Spark
 **/spark-warehouse/
