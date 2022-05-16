@@ -202,7 +202,7 @@ class RhoZCDPToApproxDP(Measurement):
         General case:
 
         Let :math:`\rho` be the unique solution to
-        :math:`\rho - 2 * \sqrt{\rho * log(\frac{1}{\delta}) - \epsilon = 0`
+        :math:`\rho - 2 * \sqrt{\rho * log(\frac{1}{\delta})} - \epsilon = 0`
 
         where:
 

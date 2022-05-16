@@ -3,7 +3,7 @@
 Tutorials
 =========
 
-The following tutorials display the functionality of Tumult Core.
+The following tutorials introduce the functionality of Tumult Core.
 
 .. toctree::
    :maxdepth: 1

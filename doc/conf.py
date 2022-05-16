@@ -79,7 +79,6 @@ panels_css_variables = {
     "tabs-size-label": "1rem",
 }
 
-
 # sphinx-multiversion configuration
 
 # Some building blocks for other regexes. These do not actually match all valid
