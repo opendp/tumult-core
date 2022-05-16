@@ -137,10 +137,6 @@ class Rename(Transformation):
                     rename_mapping[metric.column], metric.inner_metric
                 )
 
-        # TODO: PSDF doesn't allow "switching" column names: A->B and B->A.
-        # Should this be allowed? Currently, this implementation matches PSDF
-        # and doesn't allow it.
-
         output_columns = {
             rename_mapping.get(column, column): input_domain[column]
             for column in input_domain.schema
