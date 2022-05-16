@@ -15,6 +15,7 @@ stages:
   - lint
   - test
   - docs
+  - benchmark
   - package
   - test-release
   - release
@@ -125,6 +126,28 @@ test_nightly:
       when: never
     - when: manual
       allow_failure: true
+
+benchmark_nightly:
+  extends: .base
+  stage: benchmark
+  needs:
+    - job: setup
+      artifacts: false
+  script:
+    - make benchmark
+  artifacts:
+    paths:
+      - benchmark_output/
+    expire_in: 1 week
+  timeout: 3h
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      allow_failure: true
+    - if: '$CI_COMMIT_TAG'
+      when: never
+    - when: manual
+      allow_failure: true
+  tags: [aws-large]
 
 trigger_analytics_with_core_commit_hash_nightly:
   stage: test

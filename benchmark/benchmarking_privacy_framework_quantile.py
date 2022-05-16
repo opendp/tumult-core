@@ -62,7 +62,7 @@ def evaluate_runtime(
         groupby_transformation=create_groupby_from_column_domains(
             input_domain=input_domain,
             input_metric=SymmetricDifference(),
-            output_metric=SumOf(SymmetricDifference()),
+            use_l2=False,
             column_domains=groupby_domains,
         ),
         quantile_column="quantile",
