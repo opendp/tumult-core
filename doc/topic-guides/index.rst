@@ -10,3 +10,4 @@ The following pages explain concepts and advanced topics that come up in Tumult 
 
    real-numbers
    privacy-guarantee
+   known-vulnerabilities
