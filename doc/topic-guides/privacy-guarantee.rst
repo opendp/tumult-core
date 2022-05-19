@@ -20,6 +20,11 @@ this is when output measure of the :class:`~.Measurement` is :class:`~.PureDP`).
 Then, :math:`r(1, \epsilon) = True` implies that the mechanism satisfies
 :math:`\epsilon`-differential privacy.
 
+The rest of this section discusses qualifications to the privacy guarantee with
+respect to side channel information. In addition, see
+:ref:`known-vulnerabilities` for vulnerabilities in Tumult Core that may affect
+the privacy guarantee.
+
 .. _pseudo-side-channel:
 
 Pseudo-side channel information
