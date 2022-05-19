@@ -725,6 +725,11 @@ class Sum(Transformation):
             raise ValueError(
                 "Lower clipping bound is larger than upper clipping bound."
             )
+        if self._upper > 2 ** 970:
+            raise ValueError("Upper clipping bound should be at most 2^970.")
+        if self._lower < -(2 ** 970):
+            raise ValueError("Lower clipping bound should be at least -2^970.")
+
         self._measure_column = measure_column
         output_domain = output_domain = (
             NumpyFloatDomain() if measure_column_nonintegral else NumpyIntegerDomain()

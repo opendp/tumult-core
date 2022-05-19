@@ -514,6 +514,13 @@ class TestSum(PySparkTest):
                 r"Input domain must not allow nulls or NaNs on the measure column"
                 r" \(D\)",
             ),
+            ("E", 0, 2 ** 970 + 1, r"Upper clipping bound should be at most 2\^970."),
+            (
+                "E",
+                -(2 ** 970) - 1,
+                0,
+                r"Lower clipping bound should be at least -2\^970.",
+            ),
         ]
     )
     def test_invalid_inputs(

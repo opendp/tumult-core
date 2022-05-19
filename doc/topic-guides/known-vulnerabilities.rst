@@ -15,3 +15,17 @@ affects the :class:`~.Sum` transformation when the domain of the
 `measure_column` is :class:`~.SparkFloatColumnDescriptor`. Measurements that
 involve a :class:`~.Sum` transformation on floating point numbers may have a
 privacy loss that is larger than the claimed privacy loss.
+
+Floating point overflow/underflow
+---------------------------------
+
+Tumult Core is susceptible to privacy leakage from floating point overflow and
+underflow. Users should not perform operations that may cause
+overflow/underflow.
+
+Tumult Core does have some basic measures to protect users from certain
+floating point overflow and underflow vulnerabilities: for :class:`~.Sum`
+aggregations, values must be clamped to :math:`[-2^{970}, 2^{970}]`, so an overflow
+or underflow can only happen when the number of values summed is more than
+:math:`2^{52}`. We expect users to hit performance bottlenecks before this
+happens.
