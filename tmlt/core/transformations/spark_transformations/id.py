@@ -60,13 +60,13 @@ class AddUniqueColumn(Transformation):
         >>> # Apply transformation to data
         >>> output_dataframe = add_unique_column(spark_dataframe)
         >>> output_dataframe.sort("A").show(truncate=False)
-        +----+----+------------------------------------------+
-        |A   |B   |ID                                        |
-        +----+----+------------------------------------------+
-        |null|NaN |66616C73654E614E66616C736531              |
-        |a1  |0.1 |66616C7365613166616C7365302E3166616C736531|
-        |a2  |null|66616C7365613266616C736531                |
-        +----+----+------------------------------------------+
+        +----+----+--------------------------------+
+        |A   |B   |ID                              |
+        +----+----+--------------------------------+
+        |null|NaN |5B6E756C6C2C224E614E222C2231225D|
+        |a1  |0.1 |5B226131222C22302E31222C2231225D|
+        |a2  |null|5B226132222C6E756C6C2C2231225D  |
+        +----+----+--------------------------------+
         <BLANKLINE>
 
         Transformation Contract:
@@ -140,14 +140,5 @@ class AddUniqueColumn(Transformation):
         sdf = sdf.withColumn(rank_column, sf.row_number().over(shuffled_partitions))
 
         return sdf.withColumn(
-            self.column,
-            sf.hex(
-                sf.concat_ws(
-                    "",
-                    *[
-                        sf.concat(sf.isnull(sf.col(col)), sf.col(col).cast("string"))
-                        for col in sdf.columns
-                    ],
-                )
-            ),
+            self.column, sf.hex(sf.to_json(sf.array(*sdf.columns)).cast("string"))
         ).drop(rank_column)

@@ -3,12 +3,13 @@
 # <placeholder: boilerplate>
 
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from parameterized import parameterized
 from pyspark.sql import functions as sf
 
 from tmlt.core.domains.spark_domains import (
+    SparkColumnsDescriptor,
     SparkDataFrameDomain,
     SparkDateColumnDescriptor,
     SparkFloatColumnDescriptor,
@@ -73,26 +74,55 @@ class TestAddUniqueColumn(PySparkTest):
                     (1, "A", float("inf")),
                 ],
             ),
+            (
+                [("false", ""), ("", "false")],
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                },
+            ),
+            (
+                [(None, ""), ("", None)],
+                {
+                    "A": SparkStringColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=True),
+                },
+            ),
+            (
+                [(None, "null"), ("null", None)],
+                {
+                    "A": SparkStringColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=True),
+                },
+            ),
+            (
+                [(None, "null"), ("null", None)],
+                {
+                    "A": SparkStringColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=True),
+                },
+            ),
         ]
     )
-    def test_correctness(self, rows: List[Tuple]):
+    def test_correctness(
+        self, rows: List[Tuple], schema: Optional[SparkColumnsDescriptor] = None
+    ):
         """AddUniqueColumn works correctly."""
         # pylint: disable=no-member
+        if not schema:
+            schema = {
+                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                "C": SparkFloatColumnDescriptor(
+                    allow_null=True, allow_nan=True, allow_inf=True
+                ),
+            }
         transformation = AddUniqueColumn(
-            input_domain=SparkDataFrameDomain(
-                {
-                    "A": SparkIntegerColumnDescriptor(allow_null=True),
-                    "B": SparkIntegerColumnDescriptor(allow_null=True),
-                    "C": SparkFloatColumnDescriptor(
-                        allow_null=True, allow_nan=True, allow_inf=True
-                    ),
-                }
-            ),
-            column="ID",
+            input_domain=SparkDataFrameDomain(schema), column="ID"
         )
 
         df_with_ID = transformation(
-            self.spark.createDataFrame(rows, schema=["A", "B", "C"])
+            self.spark.createDataFrame(rows, schema=list(schema))
         )
         self.assertEqual(
             df_with_ID.agg(sf.countDistinct(sf.col("ID"))).collect()[0][0], len(rows)
