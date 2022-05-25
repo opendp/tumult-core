@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 ### Changed
 - Fixed bug in `AddUniqueColumn`
+- Modify `CountDistinctGrouped` and `CountDistinct` so it works as expected with null values.
 
 ## 0.3.0-alpha.3 - 2022-05-19
 ### Added
