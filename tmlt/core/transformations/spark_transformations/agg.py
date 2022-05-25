@@ -235,16 +235,13 @@ class CountDistinct(Transformation):
         d_in = ExactNumber(d_in)
         if self.input_metric == SymmetricDifference():
             return d_in
-        else:  # input metric is HammmingDistance
+        else:  # input metric is HammingDistance
             return d_in * 2
 
     def __call__(self, df: DataFrame) -> int:
         """Returns the number of distinct records in the given DataFrame."""
-        columns = (cast(SparkDataFrameDomain, self.input_domain)).schema.keys()
-        collected_data = df.agg(sf.countDistinct(*columns)).collect()
-        assert len(collected_data) == 1
-        assert len(collected_data[0]) == 1
-        return np.int64(collected_data[0][0])
+        # Note: This cannot use sf.count_distinct since it ignores rows with nulls.
+        return df.distinct().count()
 
 
 class CountGrouped(Transformation):
@@ -585,8 +582,10 @@ class CountDistinctGrouped(Transformation):
     def __call__(self, grouped_data: GroupedDataFrame) -> DataFrame:
         """Returns a DataFrame containing counts for each group."""
         # pylint: disable=no-member
+        # Note: This cannot use sf.count_distinct since it ignores rows with nulls.
         return grouped_data.agg(
-            func=sf.countDistinct("*").alias(self.count_column), fill_value=0
+            sf.size(sf.collect_set(sf.struct("*"))).alias(self.count_column),
+            fill_value=0,
         )
 
 

@@ -2,7 +2,7 @@
 
 # <placeholder: boilerplate>
 
-from typing import Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -132,26 +132,51 @@ class TestCountDistinct(PySparkTest):
         self.assertEqual(transformation.output_domain, NumpyIntegerDomain())
         self.assertEqual(transformation.output_metric, AbsoluteDifference())
 
-    def test_correctness(self):
+    @parameterized.expand(
+        [
+            ([(1, "x1", 1.2), (2, "x2", 3.2)], 2),
+            ([(1, "x1", 1.4), (1, "x1", 1.4), (2, "x2", 4.5)], 2),
+            ([(1, None, 0.0), (1, "x1", 0.0), (2, "x2", 0.0)], 3),
+            ([(1, None, 0.0), (1, "x1", 0.0), (2, "", 0.0)], 3),
+            ([(1, None, 1.0), (1, None, 1.0), (2, "x2", 1.0)], 2),
+            ([(None, "", 1.0), (0, None, 1.0)], 2),
+            (
+                [
+                    (None, "", float("inf")),
+                    (0, " ", float("inf")),
+                    (None, "", float("inf")),
+                ],
+                2,
+            ),
+            (
+                [
+                    (None, "", float("nan")),
+                    (0, " ", float("nan")),
+                    (None, "", float("nan")),
+                ],
+                2,
+            ),
+        ]
+    )
+    def test_correctness(self, rows: List[Tuple], expected: int):
         """Tests that the CountDistinct transformation returns the expected
         result.
         """
         transformation = CountDistinct(
-            input_domain=self.domain, input_metric=SymmetricDifference()
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=True),
+                    "C": SparkFloatColumnDescriptor(
+                        allow_null=True, allow_inf=True, allow_nan=True
+                    ),
+                }
+            ),
+            input_metric=SymmetricDifference(),
         )
         self.assertEqual(
-            transformation(
-                self.spark.createDataFrame([(1, "x1"), (2, "x2")], schema=["A", "B"])
-            ),
-            2,
-        )
-        self.assertEqual(
-            transformation(
-                self.spark.createDataFrame(
-                    [(1, "x1"), (1, "x1"), (2, "x2")], schema=["A", "B"]
-                )
-            ),
-            2,
+            transformation(self.spark.createDataFrame(rows, schema=["A", "B", "C"])),
+            expected,
         )
 
     @parameterized.expand([(SymmetricDifference(), 1), (HammingDistance(), 2)])
@@ -338,21 +363,51 @@ class TestCountDistinctGrouped(PySparkTest):
     @parameterized.expand(
         [
             (
-                pd.DataFrame(
-                    {"A": [1, 1, 1, 4, 3], "B": ["x1", "x1", "x2", "x3", "x4"]}
-                ),
-                pd.DataFrame({"A": [1, 2, 3], "C": [2, 0, 1]}),
-            )
+                [(1, "a1", 1.0), (1, "a1", 1.0), (1, "a1", 1.0), (2, "b2", 1.0)],
+                [(1, 1), (2, 1), (3, 0)],
+            ),
+            (
+                [(1, "", 1.0), (1, None, 1.0), (1, "None", 1.0), (1, "null", 1.0)],
+                [(1, 4), (2, 0), (3, 0)],
+            ),
+            (
+                [
+                    (1, "a", 1.0),
+                    (1, "b", 1.0),
+                    (1, "b", 1.1),
+                    (2, "", float("nan")),
+                    (2, "", float("nan")),
+                ],
+                [(1, 3), (2, 1), (3, 0)],
+            ),
+            (
+                [
+                    (1, "a", 1.0),
+                    (1, "b", 1.0),
+                    (1, "b", 1.1),
+                    (2, "", float("nan")),
+                    (2, "", float("inf")),
+                    (2, "", -float("inf")),
+                    (4, "OOD", 1.2),
+                ],
+                [(1, 3), (2, 3), (3, 0)],
+            ),
         ]
     )
-    def test_correctness(self, input_df, expected_counts_df):
-        """Tests that CountDistinctGrouped transformation returns expected DataFrame."""
-        group_keys = self.spark.createDataFrame([(1,), (2,), (3,)], schema=["A"])
+    def test_correctness(
+        self, input_rows: List[Tuple], expected_output_rows: List[Tuple]
+    ):
+        """CountDistinctGrouped returns expected output."""
+        pd.DataFrame()
+        group_keys = self.spark.createDataFrame([(1,), (2,), (3,)], schema=["X"])
         count_distinct_groups = CountDistinctGrouped(
             input_domain=SparkGroupedDataFrameDomain(
                 schema={
-                    "A": SparkIntegerColumnDescriptor(),
-                    "B": SparkStringColumnDescriptor(),
+                    "X": SparkIntegerColumnDescriptor(),
+                    "Y": SparkStringColumnDescriptor(allow_null=True),
+                    "Z": SparkFloatColumnDescriptor(
+                        allow_nan=True, allow_null=True, allow_inf=True
+                    ),
                 },
                 group_keys=group_keys,
             ),
@@ -361,8 +416,14 @@ class TestCountDistinctGrouped(PySparkTest):
         )
         actual_count_distinct_df = count_distinct_groups(
             GroupedDataFrame(
-                dataframe=self.spark.createDataFrame(input_df), group_keys=group_keys
+                dataframe=self.spark.createDataFrame(
+                    input_rows, schema=["X", "Y", "Z"]
+                ),
+                group_keys=group_keys,
             )
+        ).toPandas()
+        expected_counts_df = self.spark.createDataFrame(
+            expected_output_rows, schema=["X", "C"]
         ).toPandas()
         self.assert_frame_equal_with_sort(actual_count_distinct_df, expected_counts_df)
 

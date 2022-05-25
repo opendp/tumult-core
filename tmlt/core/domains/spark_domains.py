@@ -71,7 +71,7 @@ class SparkColumnDescriptor(ABC):
 
     @abstractmethod
     def valid_py_value(self, val: Any) -> bool:
-        """Returns True if val is valid for described Spark columm."""
+        """Returns True if `val` is valid for described Spark column."""
         ...
 
     @property
