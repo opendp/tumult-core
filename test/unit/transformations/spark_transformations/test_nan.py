@@ -3,7 +3,8 @@
 # <placeholder: boilerplate>
 
 
-from typing import Any, Dict, List, Union
+import re
+from typing import Any, Dict, List, Tuple, Union
 
 from parameterized import parameterized
 from pyspark.sql import Row
@@ -22,8 +23,10 @@ from tmlt.core.metrics import (
     SymmetricDifference,
 )
 from tmlt.core.transformations.spark_transformations.nan import (
+    DropInfs,
     DropNaNs,
     DropNulls,
+    ReplaceInfs,
     ReplaceNaNs,
     ReplaceNulls,
 )
@@ -32,6 +35,131 @@ from tmlt.core.utils.testing import (
     assert_property_immutability,
     get_all_props,
 )
+
+
+class TestDropInfs(PySparkTest):
+    """Tests DropInfs."""
+
+    def setUp(self) -> None:
+        """Setup."""
+        self.input_domain = SparkDataFrameDomain(
+            {
+                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                "B": SparkFloatColumnDescriptor(
+                    allow_nan=True, allow_inf=True, allow_null=True
+                ),
+            }
+        )
+
+    @parameterized.expand(get_all_props(DropInfs))
+    def test_property_immutability(self, prop_name: str) -> None:
+        """Tests that a given property is immutable."""
+        transformation = DropInfs(
+            input_domain=self.input_domain, metric=SymmetricDifference(), columns=["B"]
+        )
+        assert_property_immutability(transformation, prop_name)
+
+    def test_properties(self) -> None:
+        """DropInfs's properties have the expected values."""
+        transformation = DropInfs(
+            input_domain=self.input_domain, metric=SymmetricDifference(), columns=["B"]
+        )
+        self.assertEqual(transformation.input_domain, self.input_domain)
+        self.assertEqual(transformation.input_metric, SymmetricDifference())
+        self.assertEqual(transformation.output_metric, SymmetricDifference())
+        expected_output_domain = SparkDataFrameDomain(
+            {
+                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                "B": SparkFloatColumnDescriptor(
+                    allow_nan=True, allow_inf=False, allow_null=True
+                ),
+            }
+        )
+        self.assertEqual(transformation.output_domain, expected_output_domain)
+        self.assertEqual(transformation.columns, ["B"])
+
+    def test_correctness(self) -> None:
+        """DropInfs works correctly."""
+        df = self.spark.createDataFrame(
+            [
+                (None, 1.1),
+                (2, float("nan")),
+                (3, float("inf")),
+                (4, float("-inf")),
+                (6, None),
+                (1, 1.2),
+            ],
+            schema=["A", "B"],
+        )
+        drop_infs = DropInfs(
+            input_domain=self.input_domain, metric=SymmetricDifference(), columns=["B"]
+        )
+        actual_rows = drop_infs(df).collect()
+        expected_rows = [
+            Row(A=None, B=1.1),
+            Row(A=2, B=float("nan")),
+            Row(A=6, B=None),
+            Row(A=1, B=1.2),
+        ]
+        self.assertEqual(len(actual_rows), len(expected_rows))
+        # you can't assert that set(actual_rows) == set(expected_rows)
+        # because Row(A=2, B=float("nan")) != Row(A=2, B=float("nan"))
+        for row in expected_rows:
+            # again, equality on B doesn't work the way you expect
+            # so we find our problem row by doing equality on A instead
+            if row["A"] == 2:
+                continue
+            self.assertIn(row, actual_rows)
+        # Now assert that somewhere in our real results is a row with A=2
+        self.assertTrue(any(row["A"] == 2 for row in actual_rows))
+
+    @parameterized.expand(
+        [
+            (
+                re.escape("Cannot drop +inf and -inf from ")
+                + ".*"
+                + re.escape("Only float columns can contain +inf or -inf"),
+                ["A"],
+            ),
+            (
+                "One or more columns do not exist in the input domain",
+                ["column_that_does_not_exist"],
+            ),
+            ("At least one column must be specified", []),
+            (re.escape("`columns` must not contain duplicate names"), ["B", "B"]),
+            (
+                "Inner metric for IfGroupedBy metric must be L1 or L2 over"
+                " SymmetricDifference",
+                ["B"],
+                IfGroupedBy("A", SumOf(AbsoluteDifference())),
+            ),
+        ]
+    )
+    def test_invalid_constructor_args(
+        self,
+        error_msg: str,
+        columns: List[str],
+        input_metric: Union[SymmetricDifference, IfGroupedBy] = SymmetricDifference(),
+    ) -> None:
+        """DropInfs raises an appropriate error on invalid constructor arguments."""
+        with self.assertRaisesRegex(ValueError, error_msg):
+            DropInfs(
+                input_domain=self.input_domain, metric=input_metric, columns=columns
+            )
+
+    @parameterized.expand(
+        [(SymmetricDifference(),), (IfGroupedBy("A", SumOf(SymmetricDifference())),)]
+    )
+    def test_stability_function(
+        self, input_metric: Union[SymmetricDifference, IfGroupedBy]
+    ) -> None:
+        """DropInfs's stability function is correct."""
+        self.assertEqual(
+            DropInfs(
+                input_domain=self.input_domain, metric=input_metric, columns=["B"]
+            ).stability_function(d_in=1),
+            1,
+        )
 
 
 class TestDropNaNs(PySparkTest):
@@ -240,6 +368,161 @@ class TestDropNulls(PySparkTest):
             ).stability_function(d_in=1),
             1,
         )
+
+
+class TestReplaceInfs(PySparkTest):
+    """Tests ReplaceInfs."""
+
+    def setUp(self) -> None:
+        """Setup."""
+        self.input_domain = SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(allow_null=True),
+                "B": SparkFloatColumnDescriptor(
+                    allow_null=True, allow_nan=True, allow_inf=True
+                ),
+                "X": SparkFloatColumnDescriptor(
+                    allow_null=False, allow_nan=True, allow_inf=True
+                ),
+            }
+        )
+
+    @parameterized.expand(get_all_props(ReplaceInfs))
+    def test_property_immutability(self, prop_name: str) -> None:
+        """Tests that given property is immutable."""
+        transformation = ReplaceInfs(
+            input_domain=self.input_domain,
+            metric=SymmetricDifference(),
+            replace_map={"B": (-987.6, 123.4)},
+        )
+        assert_property_immutability(transformation, prop_name)
+
+    def test_properties(self) -> None:
+        """ReplaceInfs's properties have the expected values."""
+        transformation = ReplaceInfs(
+            input_domain=self.input_domain,
+            metric=SymmetricDifference(),
+            replace_map={"B": (-987.6, 123.4)},
+        )
+        self.assertEqual(transformation.input_domain, self.input_domain)
+        self.assertEqual(transformation.input_metric, SymmetricDifference())
+        self.assertEqual(transformation.output_metric, SymmetricDifference())
+        expected_output_domain = SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(allow_null=True),
+                "B": SparkFloatColumnDescriptor(
+                    allow_nan=True, allow_inf=False, allow_null=True
+                ),
+                "X": SparkFloatColumnDescriptor(
+                    allow_nan=True, allow_inf=True, allow_null=False
+                ),
+            }
+        )
+        self.assertEqual(transformation.output_domain, expected_output_domain)
+        self.assertEqual(transformation.replace_map, {"B": (-987.6, 123.4)})
+
+    def test_correctness(self) -> None:
+        """ReplaceInfs works correctly."""
+        df = self.spark.createDataFrame(
+            [
+                ("A", None, 1.1),
+                ("B", 2.0, float("nan")),
+                ("C", float("nan"), float("inf")),
+                ("D", float("-inf"), 4.4),
+                ("E", 5.5, 5.5),
+                ("F", float("inf"), 6.6),
+            ],
+            schema=["A", "B", "X"],
+        )
+        replace_infs = ReplaceInfs(
+            input_domain=self.input_domain,
+            replace_map={"B": (-987.6, 123.4)},
+            metric=SymmetricDifference(),
+        )
+        expected_rows = [
+            Row(A="A", B=None, C=1.1),
+            Row(A="B", B=2, C=float("nan")),
+            Row(A="C", B=float("nan"), C=float("inf")),
+            Row(A="D", B=-987.6, C=4.4),
+            Row(A="E", B=5.5, C=5.5),
+            Row(A="F", B=123.4, C=6.6),
+        ]
+        actual_rows = replace_infs(df).collect()
+        self.assertEqual(len(expected_rows), len(actual_rows))
+        # again, row equality doesn't work correctly for rows with NaN
+        for row in expected_rows:
+            if row["A"] == "B" or row["A"] == "C":
+                continue
+            self.assertIn(row, actual_rows)
+
+        # Assert that actual_rows has a corresponding row for the
+        # rows that we skipped before
+        self.assertTrue(
+            any(row["A"] == "B" and row["B"] == float(2) for row in actual_rows)
+        )
+        self.assertTrue(any(row["A"] == "C" for row in actual_rows))
+
+    @parameterized.expand(
+        [
+            (
+                "One or more columns do not exist in the input domain",
+                {"C": (-0.1, 0.1)},
+            ),
+            ("At least one column must be specified", {}),
+            (
+                "Replacement value .* is invalid for column " + re.escape("(B)"),
+                {"B": (float("-inf"), float("inf"))},
+            ),
+            (
+                "Column of type .* cannot contain values of "
+                + re.escape("infinity or -infinity"),
+                {"A": (-23, 45)},
+            ),
+        ]
+    )
+    def test_invalid_constructor_args(
+        self,
+        error_msg: str,
+        replace_map: Dict[str, Tuple[float, float]],
+        input_metric: Union[SymmetricDifference, IfGroupedBy] = SymmetricDifference(),
+    ) -> None:
+        """ReplaceInfs raises appropriate errors on invalid constructor arguments."""
+        with self.assertRaisesRegex(ValueError, error_msg):
+            ReplaceInfs(
+                input_domain=self.input_domain,
+                metric=input_metric,
+                replace_map=replace_map,
+            )
+
+    @parameterized.expand(
+        [(SymmetricDifference(),), (IfGroupedBy("A", SumOf(SymmetricDifference())),)]
+    )
+    def test_stability_function(
+        self, input_metric: Union[SymmetricDifference, IfGroupedBy]
+    ) -> None:
+        """ReplaceInfs stability function is correct."""
+        self.assertEqual(
+            ReplaceInfs(
+                input_domain=self.input_domain,
+                metric=input_metric,
+                replace_map={"B": (-100.0, 100.0)},
+            ).stability_function(d_in=1),
+            1,
+        )
+
+    def test_infs_already_disallowed(self):
+        """ReplaceInfs raises appropriate warning when column disallows infs."""
+        domain = SparkDataFrameDomain(
+            {"A": SparkFloatColumnDescriptor(allow_inf=False)}
+        )
+        with self.assertWarnsRegex(
+            RuntimeWarning, r"Column \(A\) already disallows infinite values"
+        ):
+            ReplaceInfs(
+                input_domain=domain,
+                metric=SymmetricDifference(),
+                replace_map={"A": (-987.6, 123.4)},
+            )
 
 
 class TestReplaceNaNs(PySparkTest):
