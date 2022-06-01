@@ -80,9 +80,9 @@ class NumpyFloatDomain(NumpyDomain):
     def validate(self, value: Any):
         """Raises error if value is not a member of the domain."""
         super().validate(value)
-        if ~self.allow_inf & np.isinf(value):
+        if not self.allow_inf and np.isinf(value):
             raise OutOfDomainError("Value is infinite.")
-        if ~self.allow_nan & np.isnan(value):
+        if not self.allow_nan and np.isnan(value):
             raise OutOfDomainError("Value is NaN.")
 
 

@@ -553,9 +553,22 @@ class TestGroupingFlatMap(TestComponent):
         transformation = GroupingFlatMap(
             output_metric=RootSumOfSquared(SymmetricDifference()),
             row_transformer=RowToRowsTransformation(
-                input_domain=SparkRowDomain(self.schema_a),
-                output_domain=ListDomain(SparkRowDomain(self.schema_a_augmented)),
-                trusted_f=lambda row: [{**row.asDict(), "C": 1}],
+                input_domain=SparkRowDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                ),
+                output_domain=ListDomain(
+                    SparkRowDomain(
+                        {
+                            "A": SparkStringColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                            "C": SparkStringColumnDescriptor(),
+                        }
+                    )
+                ),
+                trusted_f=lambda row: [{**row.asDict(), "C": "1"}],
                 augment=True,
             ),
             max_num_rows=max_num_rows,

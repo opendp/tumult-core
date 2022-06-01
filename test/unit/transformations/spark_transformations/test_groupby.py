@@ -11,6 +11,7 @@ from parameterized import parameterized
 from pyspark.sql.types import (
     DataType,
     DateType,
+    DoubleType,
     LongType,
     StringType,
     StructField,
@@ -20,6 +21,7 @@ from pyspark.sql.types import (
 from tmlt.core.domains.base import OutOfDomainError
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
@@ -120,6 +122,20 @@ class TestGroupBy(PySparkTest):
                 StructType([StructField("A", LongType())]),
                 "Group keys cannot have no rows, unless it also has no columns",
             ),
+            (
+                SymmetricDifference(),
+                [(1.0,), (2.0,), (3.0,)],
+                StructType([StructField("C", DoubleType())]),
+                "Can not group by a floating point column: C",
+                ValueError,
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(),
+                    }
+                ),
+            ),
         ]
     )
     def test_invalid_constructor_arguments(
@@ -129,11 +145,14 @@ class TestGroupBy(PySparkTest):
         group_keys_schema: StructType,
         error_msg: str,
         error_type: type = ValueError,
+        input_domain: Optional[SparkDataFrameDomain] = None,
     ):
         """Tests that GroupBy constructor raises appropriate error."""
+        if input_domain is None:
+            input_domain = self.domain
         with self.assertRaisesRegex(error_type, re.escape(error_msg)):
             GroupBy(
-                input_domain=self.domain,
+                input_domain=input_domain,
                 input_metric=input_metric,
                 use_l2=False,
                 group_keys=self.spark.createDataFrame(

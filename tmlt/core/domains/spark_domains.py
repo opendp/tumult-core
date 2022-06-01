@@ -96,7 +96,7 @@ class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
         32: (-2147483648, 2147483647),
         64: (-9223372036854775808, 9223372036854775807),
     }
-    """Mapping from size to tuple of mininum and maximum value allowed."""
+    """Mapping from size to tuple of minimum and maximum value allowed."""
 
     allow_null: bool = False
     """If True, null values are permitted in the domain."""
@@ -478,6 +478,8 @@ class SparkGroupedDataFrameDomain(Domain):
             raise ValueError(f"Invalid groupby column: {invalid_groupby_column}")
 
         for column in self.group_keys.columns:
+            if isinstance(self.schema[column], SparkFloatColumnDescriptor):
+                raise ValueError(f"Can not group by a floating point column: {column}")
             self.schema[column].validate_column(sdf=self.group_keys, col_name=column)
         object.__setattr__(self, "group_keys", self.group_keys.distinct())
 
