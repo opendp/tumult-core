@@ -4,6 +4,7 @@
 
 import pandas as pd
 from parameterized import parameterized
+from pyspark.sql import Row
 from pyspark.sql import functions as sf
 from pyspark.sql.types import IntegerType, StructField, StructType
 
@@ -196,3 +197,24 @@ class TestGroupedDataFrame(PySparkTest):
             .toPandas()
         )
         self.assert_frame_equal_with_sort(expected, actual)
+
+    def test_get_groups(self):
+        """Tests `get_groups` returns correct groups."""
+        actual_groups = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(
+                [("A", 1), ("B", 2), ("B", 4), (None, 2), (None, 3)], schema=["X", "Y"]
+            ),
+            group_keys=self.spark.createDataFrame(
+                [("A",), ("B",), ("C",), (None,)], schema=["X"]
+            ),
+        ).get_groups()
+        expected_groups = {
+            "A": pd.DataFrame({"Y": [1]}),
+            "B": pd.DataFrame({"Y": [2, 4]}),
+            "C": pd.DataFrame({"Y": []}),
+            None: pd.DataFrame({"Y": [2, 3]}),
+        }
+        for key, expected_group in expected_groups.items():
+            self.assert_frame_equal_with_sort(
+                expected_group, actual_groups[Row(A=key)].toPandas()
+            )

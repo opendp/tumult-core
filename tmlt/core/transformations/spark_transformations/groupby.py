@@ -1,4 +1,4 @@
-"""Transformations for performing groupby on Spark dataframes."""
+"""Transformations for performing groupby on Spark DataFrames."""
 # <placeholder: boilerplate>
 
 from __future__ import annotations
@@ -108,7 +108,7 @@ class GroupBy(Transformation):
         >>> groupby_B.output_metric
         SumOf(inner_metric=SymmetricDifference())
 
-        Stability Guarentee:
+        Stability Guarantee:
             :class:`~.GroupBy`'s :meth:`~stability_function` returns the `d_in` if the
             `input_metric` is :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`, otherwise it returns `d_in` times `2`.
 

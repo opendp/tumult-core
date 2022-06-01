@@ -199,7 +199,7 @@ class GroupedDataFrame:
         return grouped_df.applyInPandas(_wrapper, output_schema)
 
     def get_groups(self) -> Dict[Row, DataFrame]:
-        """Return the groups as dictionary of dataframes."""
+        """Returns the groups as dictionary of DataFrames."""
         # pylint: disable=no-member
         groups = {}
         non_grouping_columns = [
@@ -212,7 +212,9 @@ class GroupedDataFrame:
                 functools.reduce(
                     lambda acc, x: acc & x,
                     map(
-                        lambda x, k=row: sf.col(x) == k[x],  # type: ignore
+                        lambda x, k=row: (  # type: ignore
+                            sf.col(x).eqNullSafe(sf.lit(k[x]))
+                        ),
                         row.asDict().keys(),
                     ),
                 )

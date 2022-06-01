@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 0.3.0-alpha.4 - 2022-05-27
 ### Added
 - Added new transformations `DropInfs` and `ReplaceInfs`.
+- Added topic guide around NaNs, nulls and infs.
 
 ### Changed
 - Fixed bug in `AddUniqueColumn`
