@@ -669,9 +669,9 @@ def run_test_using_ks_test(
             cdf=case.cdfs[sample_name],
             fudge_factor=noise_scale_fudge_factor,
         )
-        assert good_p > p_threshold
-        assert less_noise_p < p_threshold
-        assert more_noise_p < p_threshold
+        assert good_p > p_threshold, f"{p_threshold}, {good_p}"
+        assert less_noise_p < p_threshold, f"{p_threshold}, {less_noise_p}"
+        assert more_noise_p < p_threshold, f"{p_threshold}, {more_noise_p}"
 
 
 @nottest
@@ -691,9 +691,9 @@ def run_test_using_chi_squared_test(
             pmf=case.pmfs[sample_name],
             fudge_factor=noise_scale_fudge_factor,
         )
-        assert good_p > p_threshold
-        assert less_noise_p < p_threshold
-        assert more_noise_p < p_threshold
+        assert good_p > p_threshold, f"{p_threshold}, {good_p}"
+        assert less_noise_p < p_threshold, f"{p_threshold}, {less_noise_p}"
+        assert more_noise_p < p_threshold, f"{p_threshold}, {more_noise_p}"
 
 
 @overload
