@@ -1,4 +1,4 @@
-"""Configuration properties for ektelo."""
+"""Configuration properties for Tumult Core."""
 
 # <placeholder: boilerplate>
 
@@ -13,5 +13,5 @@ class Config:
 
     @classmethod
     def temp_db_name(cls) -> str:
-        """Get the name of the temporary database that ektelo uses."""
+        """Get the name of the temporary database that Tumult Core uses."""
         return cls._temp_db_name
