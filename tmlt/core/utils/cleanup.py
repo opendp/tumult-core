@@ -1,4 +1,4 @@
-"""Cleanup functions for ektelo."""
+"""Cleanup functions for Tumult Core."""
 
 # <placeholder: boilerplate>
 
