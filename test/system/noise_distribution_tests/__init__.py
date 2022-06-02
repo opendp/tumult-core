@@ -2,7 +2,7 @@
 
 # <placeholder: boilerplate>
 
-P_THRESHOLD = 0.001
+P_THRESHOLD = 0.01
 """The alpha threshold to use for the statistical tests."""
 
 NOISE_SCALE_FUDGE_FACTOR = 0.3
