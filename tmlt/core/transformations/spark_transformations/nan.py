@@ -117,15 +117,15 @@ class DropInfs(Transformation):
                 :class:`~.SymmetricDifference`.
             columns: Columns to drop +inf and -inf from.
         """
-        if isinstance(metric, IfGroupedBy):
-            if not (
-                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
-            ):
-                raise ValueError(
-                    "Inner metric for IfGroupedBy metric must be L1 or L2 over"
-                    " SymmetricDifference."
-                )
+        if isinstance(metric, IfGroupedBy) and not (
+            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            or isinstance(metric.inner_metric, SymmetricDifference)
+        ):
+            raise ValueError(
+                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                "or L1 or L2 over SymmetricDifference."
+            )
         if not columns:
             raise ValueError("At least one column must be specified.")
         if len(columns) != len(set(columns)):
@@ -285,15 +285,15 @@ class DropNaNs(Transformation):
                 :class:`~.SymmetricDifference`.
             columns: Columns to drop NaNs from.
         """
-        if isinstance(metric, IfGroupedBy):
-            if not (
-                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
-            ):
-                raise ValueError(
-                    "Inner metric for IfGroupedBy metric must be L1 or L2 over"
-                    " SymmetricDifference."
-                )
+        if isinstance(metric, IfGroupedBy) and not (
+            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            or isinstance(metric.inner_metric, SymmetricDifference)
+        ):
+            raise ValueError(
+                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                "or L1 or L2 over SymmetricDifference."
+            )
         if not columns:
             raise ValueError("At least one column must be specified.")
 
@@ -451,15 +451,15 @@ class DropNulls(Transformation):
                 :class:`~.SymmetricDifference`.
             columns: Columns to drop nulls from.
         """
-        if isinstance(metric, IfGroupedBy):
-            if not (
-                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
-            ):
-                raise ValueError(
-                    "Inner metric for IfGroupedBy metric must be L1 or L2 over"
-                    " SymmetricDifference."
-                )
+        if isinstance(metric, IfGroupedBy) and not (
+            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            or isinstance(metric.inner_metric, SymmetricDifference)
+        ):
+            raise ValueError(
+                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                "or L1 or L2 over SymmetricDifference."
+            )
         if not columns:
             raise ValueError("At least one column must be specified.")
 
@@ -615,6 +615,15 @@ class ReplaceInfs(Transformation):
                 and the second value in the tuple will be used to replace +inf
                 in that column.
         """
+        if isinstance(metric, IfGroupedBy) and not (
+            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            or isinstance(metric.inner_metric, SymmetricDifference)
+        ):
+            raise ValueError(
+                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                "or L1 or L2 over SymmetricDifference."
+            )
         if not replace_map:
             raise ValueError(
                 "At least one column must be specified (in `replace_map`)."
@@ -786,6 +795,15 @@ class ReplaceNaNs(Transformation):
             replace_map: Dictionary mapping column names to value to be used for
                 replacing NaNs in that column.
         """
+        if isinstance(metric, IfGroupedBy) and not (
+            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            or isinstance(metric.inner_metric, SymmetricDifference)
+        ):
+            raise ValueError(
+                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                "or L1 or L2 over SymmetricDifference."
+            )
         if not replace_map:
             raise ValueError("At least one column must be specified.")
 
@@ -945,6 +963,15 @@ class ReplaceNulls(Transformation):
             replace_map: Dictionary mapping column names to value to be used for
                 replacing nulls in that column.
         """
+        if isinstance(metric, IfGroupedBy) and not (
+            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            or isinstance(metric.inner_metric, SymmetricDifference)
+        ):
+            raise ValueError(
+                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                "or L1 or L2 over SymmetricDifference."
+            )
         if not replace_map:
             raise ValueError("At least one column must be specified.")
 
@@ -971,6 +998,11 @@ class ReplaceNulls(Transformation):
                     f"Column ({column}) already disallows nulls. This transformation"
                     " will have no effect on this column.",
                     RuntimeWarning,
+                )
+        if isinstance(metric, IfGroupedBy):
+            if metric.column in replace_map:
+                raise ValueError(
+                    "Cannot replace values in the grouping column for IfGroupedBy."
                 )
         super().__init__(
             input_domain=input_domain,
