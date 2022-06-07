@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+### Added
+- Added support for `IfGroupedBy(X, SymmetricDifference())` to `DropNaNs`, `DropNulls`, `DropInfs`, `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs`
+
+### Changed
+- Fixed bug in `ReplaceNulls` to not allow replacing values for grouping column in `IfGroupedBy`
+- Changed `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs` to only support specific `IfGroupedBy` metrics
+
 ## 0.3.0-alpha.4 - 2022-05-27
 ### Added
 - Added new transformations `DropInfs` and `ReplaceInfs`.
