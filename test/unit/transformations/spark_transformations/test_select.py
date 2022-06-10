@@ -29,6 +29,17 @@ class TestSelect(TestComponent):
     Tests :class:`~tmlt.core.transformations.spark_transformations.select.Select`.
     """
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        columns = ["A", "B"]
+        transformation = Select(
+            input_domain=SparkDataFrameDomain(self.schema_a),
+            metric=SymmetricDifference(),
+            columns=columns,
+        )
+        columns.append("C")
+        self.assertListEqual(transformation.columns, ["A", "B"])
+
     @parameterized.expand(get_all_props(Select))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""

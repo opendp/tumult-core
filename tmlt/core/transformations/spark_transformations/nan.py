@@ -160,7 +160,7 @@ class DropInfs(Transformation):
             output_domain=output_domain,
             output_metric=metric,
         )
-        self._columns = columns
+        self._columns = columns.copy()
 
     @property
     def columns(self) -> List[str]:
@@ -330,7 +330,7 @@ class DropNaNs(Transformation):
             output_domain=output_domain,
             output_metric=metric,
         )
-        self._columns = columns
+        self._columns = columns.copy()
 
     @property
     def columns(self) -> List[str]:
@@ -489,7 +489,7 @@ class DropNulls(Transformation):
             output_domain=output_domain,
             output_metric=metric,
         )
-        self._columns = columns
+        self._columns = columns.copy()
 
     @property
     def columns(self) -> List[str]:
@@ -666,7 +666,7 @@ class ReplaceInfs(Transformation):
             output_domain=output_domain,
             output_metric=metric,
         )
-        self._replace_map = replace_map
+        self._replace_map = replace_map.copy()
 
     @property
     def replace_map(self) -> Dict[str, Tuple[float, float]]:
@@ -842,7 +842,7 @@ class ReplaceNaNs(Transformation):
             output_domain=output_domain,
             output_metric=metric,
         )
-        self._replace_map = replace_map
+        self._replace_map = replace_map.copy()
 
     @property
     def replace_map(self) -> Dict[str, Any]:
@@ -1010,7 +1010,7 @@ class ReplaceNulls(Transformation):
             output_domain=output_domain,
             output_metric=metric,
         )
-        self._replace_map = replace_map
+        self._replace_map = replace_map.copy()
 
     @property
     def replace_map(self) -> Dict[str, Any]:

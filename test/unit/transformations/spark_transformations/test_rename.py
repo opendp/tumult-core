@@ -29,6 +29,18 @@ class TestRename(TestComponent):
     Tests :class:`~tmlt.core.transformations.spark_transformations.rename.Rename`.
     """
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        rename_mapping = {"A": "AA"}
+        transformation = Rename(
+            input_domain=SparkDataFrameDomain(self.schema_a),
+            metric=SymmetricDifference(),
+            rename_mapping=rename_mapping,
+        )
+        rename_mapping["A"] = "BB"
+        rename_mapping["C"] = "A"
+        self.assertDictEqual(transformation.rename_mapping, {"A": "AA"})
+
     @parameterized.expand(get_all_props(Rename))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""

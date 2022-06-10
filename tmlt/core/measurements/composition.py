@@ -72,7 +72,7 @@ class Composition(Measurement):
             output_measure=output_measure,
             is_interactive=False,
         )
-        self._measurements = measurements
+        self._measurements = measurements.copy()
         self._hint = hint
 
     @property

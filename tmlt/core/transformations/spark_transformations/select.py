@@ -140,7 +140,7 @@ class Select(Transformation):
             output_domain=SparkDataFrameDomain(output_columns),
             output_metric=metric,
         )
-        self._columns = columns
+        self._columns = columns.copy()
 
     @property
     def columns(self) -> List[str]:

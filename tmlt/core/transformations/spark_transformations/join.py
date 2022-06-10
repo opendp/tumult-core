@@ -245,7 +245,7 @@ class PublicJoin(Transformation):
         """Constructor.
 
         Args:
-            input_domain: Domain of the input SparkDataFrames.
+            input_domain: Domain of the input Spark DataFrames.
             metric: Metric for input/output Spark DataFrames.
             public_df: A Spark DataFrame to join with.
             public_df_domain: Domain of public DataFrame to join with. If this domain
@@ -256,7 +256,7 @@ class PublicJoin(Transformation):
             join_cols: Names of columns to join on. If None, a natural join is
                 performed.
             join_on_nulls: If True, null values on corresponding join columns of the
-                public and private dataframes will be considered to be equal.
+                public and private DataFrames will be considered to be equal.
         """
         if isinstance(metric, IfGroupedBy):
             if metric.inner_metric not in (
@@ -275,6 +275,8 @@ class PublicJoin(Transformation):
             if not common_cols:
                 raise ValueError("Can not join: No common columns.")
             join_cols = sorted(common_cols, key=list(input_domain.schema).index)
+        else:
+            join_cols = join_cols.copy()
 
         if not set(join_cols) <= set(common_cols):
             raise ValueError("Join columns must be common to both DataFrames.")
@@ -633,6 +635,8 @@ class PrivateJoin(Transformation):
             if not common_cols:
                 raise ValueError("Can not join: No common columns.")
             join_cols = sorted(common_cols, key=list(left_domain.schema).index)
+        else:
+            join_cols = join_cols.copy()
 
         join_cols_schema = {}
         for key in join_cols:

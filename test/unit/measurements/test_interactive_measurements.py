@@ -12,7 +12,7 @@ import numpy as np
 from parameterized import parameterized, parameterized_class
 
 from tmlt.core.domains.base import Domain
-from tmlt.core.domains.collections import ListDomain
+from tmlt.core.domains.collections import DictDomain, ListDomain
 from tmlt.core.domains.numpy_domains import (
     NumpyFloatDomain,
     NumpyIntegerDomain,
@@ -46,6 +46,7 @@ from tmlt.core.measurements.interactive_measurements import (
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
 from tmlt.core.metrics import (
     AbsoluteDifference,
+    DictMetric,
     HammingDistance,
     Metric,
     RootSumOfSquared,
@@ -82,10 +83,31 @@ class TestSequentialComposition(PySparkTest):
             privacy_budget=6,
         )
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        d_in = {"A": 2}
+        measurement = SequentialComposition(
+            input_domain=DictDomain({"A": NumpyIntegerDomain()}),
+            input_metric=DictMetric({"A": AbsoluteDifference()}),
+            output_measure=self.output_measure,
+            d_in=d_in,
+            privacy_budget=6,
+        )
+        d_in["A"] = 1
+        d_in["B"] = 2
+        self.assertDictEqual(measurement.d_in, {"A": 2})
+
     @parameterized.expand(get_all_props(SequentialComposition))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""
-        assert_property_immutability(self.measurement, prop_name)
+        measurement = SequentialComposition(
+            input_domain=DictDomain({"A": NumpyIntegerDomain()}),
+            input_metric=DictMetric({"A": AbsoluteDifference()}),
+            output_measure=self.output_measure,
+            d_in={"A": 1},
+            privacy_budget=6,
+        )
+        assert_property_immutability(measurement, prop_name)
 
     def test_properties(self):
         """SequentialComposition's properties have the expected values."""
@@ -379,6 +401,23 @@ class TestSequentialQueryable(PySparkTest):
             output_measure=PureDP(),
             privacy_budget=budget,
             data=np.int64(10),
+        )
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        d_in = {"A": 2}
+        queryable = SequentialQueryable(
+            input_domain=DictDomain({"A": NumpyIntegerDomain()}),
+            input_metric=DictMetric({"A": AbsoluteDifference()}),
+            d_in=d_in,
+            output_measure=PureDP(),
+            privacy_budget=10,
+            data={"A": np.int64(10)},
+        )
+        d_in["A"] = 1
+        d_in["B"] = 2
+        self.assertDictEqual(
+            queryable._d_in, {"A": 2}  # pylint: disable=protected-access
         )
 
     @parameterized.expand([(10, 9), (float("inf"), float("inf"))])
@@ -754,6 +793,28 @@ class TestPrivacyAccountant(PySparkTest):
         )
         self.get_queryable = lambda: self.measurement(self.data)
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        d_in = {"A": 2}
+        accountant = PrivacyAccountant(
+            queryable=SequentialQueryable(
+                input_domain=DictDomain({"A": NumpyIntegerDomain()}),
+                input_metric=DictMetric({"A": AbsoluteDifference()}),
+                d_in=d_in,
+                output_measure=PureDP(),
+                privacy_budget=10,
+                data={"A": np.int64(10)},
+            ),
+            input_metric=DictMetric({"A": AbsoluteDifference()}),
+            input_domain=DictDomain({"A": NumpyIntegerDomain()}),
+            output_measure=PureDP(),
+            d_in=d_in,
+            privacy_budget=10,
+        )
+        d_in["A"] = 1
+        d_in["B"] = 2
+        self.assertDictEqual(accountant.d_in, {"A": 2})
+
     @parameterized.expand(get_all_props(PrivacyAccountant))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""
@@ -785,8 +846,8 @@ class TestPrivacyAccountant(PySparkTest):
             (
                 Mock(PrivacyAccountant),
                 Mock(SequentialQueryable),
-                "PrivacyAccountant can be initialized with only parent only queryable"
-                " but not both",
+                "PrivacyAccountant can be initialized with only parent or only"
+                " queryable but not both",
             ),
         ]
     )
