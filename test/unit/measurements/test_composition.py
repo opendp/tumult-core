@@ -34,6 +34,13 @@ from tmlt.core.utils.testing import (
 class TestComposition(TestComponent):
     """Tests for :class:`~tmlt.core.measurements.composition.Composition`."""
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        measurements = [AddGeometricNoiseToNumber(alpha=0)]
+        measurement = Composition(measurements=measurements)
+        measurements.append(measurements[0])
+        self.assertEqual(len(measurement.measurements), 1)
+
     @parameterized.expand(get_all_props(Composition))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""

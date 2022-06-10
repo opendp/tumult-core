@@ -98,9 +98,7 @@ smv_remote_whitelist = r"^.*$"
 smv_released_pattern = rf"^refs/tags/{semver_base_regex}$"
 
 if ci_tag:
-    version_regex = re.compile(
-        rf"{semver_base_regex}{semver_prerelease_regex}"
-    )
+    version_regex = re.compile(rf"{semver_base_regex}{semver_prerelease_regex}")
     match = version_regex.fullmatch(ci_tag)
     if match is None:
         _logger.error(
@@ -203,6 +201,8 @@ nitpick_ignore = [
     ("py:class", "numpy.float64"),
     # Caused by pyspark.sql.dataframe.DataFrame in a dataclass (in spark_domains)
     ("py:class", "pyspark.sql.dataframe.DataFrame"),
+    # TypeVar support: https://github.com/agronholm/sphinx-autodoc-typehints/issues/39
+    ("py:class", "T"),
 ]
 nitpick_ignore_regex = [
     # No intersphinx_mapping for typing_extensions

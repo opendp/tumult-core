@@ -2,7 +2,6 @@
 
 # <placeholder: boilerplate>
 
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -27,6 +26,7 @@ from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
 from tmlt.core.transformations.identity import Identity
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.utils.misc import copy_if_mutable
 
 
 class Queryable(ABC):
@@ -128,7 +128,7 @@ class RetireQuery:
 class RetirableQueryable(Queryable):
     r"""Wraps another Queryable and allows retiring all descendant Queryables.
 
-    A RetirableQueryable can be initialzed with any instance of :class:`~.Queryable`
+    A RetirableQueryable can be initialized with any instance of :class:`~.Queryable`
     and can be in one of two internal states: "active" or "retired".
 
     All descendant :class:`~.Queryable`\ s of a RetirableQueryable are instances of
@@ -220,9 +220,9 @@ class SequentialQueryable(Queryable):
         self._input_domain = input_domain
         self._input_metric = input_metric
         self._output_measure = output_measure
-        self._d_in = d_in
+        self._d_in = copy_if_mutable(d_in)
         self._remaining_budget = ExactNumber(privacy_budget)
-        self._data = data
+        self._data = copy_if_mutable(data)
         self._previous_queryable: Optional[RetirableQueryable] = None
 
     def __call__(self, query: Union[MeasurementQuery, TransformationQuery]):
@@ -358,7 +358,7 @@ class DecoratedQueryable(Queryable):
 
     The privacy guarantee for :class:`~.DecoratedQueryable` depends on the passed
     function `postprocess_answer` satisfying certain properties. In particular,
-    `postprocess_answer` should not use distinguishing psuedo-side channel information,
+    `postprocess_answer` should not use distinguishing pseudo-side channel information,
     and should be well-defined on its abstract domain. See
     :ref:`postprocessing-udf-assumptions`.
     """
@@ -413,7 +413,7 @@ class DecorateQueryable(Measurement):
                 Queryable returned by this measurement.
         """
         if not measurement.is_interactive:
-            raise ValueError("TODO")
+            raise ValueError("Non-interactive measurements cannot be decorated.")
         self._preprocess_query = preprocess_query
         self._postprocess_answer = postprocess_answer
         self._measurement = measurement
@@ -490,13 +490,13 @@ class SequentialComposition(Measurement):
         )
         self.input_metric.validate(d_in)
         self.output_measure.validate(privacy_budget)
-        self._d_in = d_in
+        self._d_in = copy_if_mutable(d_in)
         self._privacy_budget = ExactNumber(privacy_budget)
 
     @property
     def d_in(self) -> Any:
         """Returns the distance between input datasets."""
-        return self._d_in
+        return copy_if_mutable(self._d_in)
 
     @property
     def privacy_budget(self) -> ExactNumber:
@@ -528,7 +528,7 @@ class SequentialComposition(Measurement):
         return SequentialQueryable(
             input_domain=self.input_domain,
             input_metric=self.input_metric,
-            output_measure=cast(Union[PureDP, RhoZCDP], self._output_measure),
+            output_measure=self.output_measure,
             d_in=self.d_in,
             privacy_budget=self.privacy_budget,
             data=data,
@@ -625,7 +625,7 @@ class ParallelComposition(Measurement):
             output_measure=output_measure,
             is_interactive=True,
         )
-        self._measurements = measurements
+        self._measurements = measurements.copy()
 
     @property
     def measurements(self) -> List[Measurement]:
@@ -864,15 +864,15 @@ class PrivacyAccountant:
 
         if parent and queryable:
             raise ValueError(
-                "PrivacyAccountant can be initialized with only parent only queryable"
-                " but not both."
+                "PrivacyAccountant can be initialized with only parent or only"
+                " queryable but not both."
             )
 
         self._queryable = queryable
         self._input_domain = input_domain
         self._input_metric = input_metric
         self._output_measure = output_measure
-        self._d_in = d_in
+        self._d_in = copy_if_mutable(d_in)
         self._privacy_budget = ExactNumber(privacy_budget)
         self._parent = parent
 
@@ -1728,7 +1728,7 @@ class PrivacyAccountant:
         r"""Activates next child or self.
 
         If `child` is the last child of this :class:`~.PrivacyAccountant`, this
-        :class:`~.PrivacyAccoutant`\ 's state is changed from WAITING_FOR_CHILDREN
+        :class:`~.PrivacyAccountant`\ 's state is changed from WAITING_FOR_CHILDREN
         to ACTIVE. Otherwise, the next child of this :class:`~.PrivacyAccountant`
         becomes ACTIVE.
         """

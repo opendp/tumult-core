@@ -317,6 +317,15 @@ class TestSubset(TestCase):
             }
         )
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        keys = ["A", ("B", "B")]
+        transformation = Subset(
+            input_domain=self.input_domain, input_metric=self.input_metric, keys=keys
+        )
+        keys[1] = ("A", "B")
+        self.assertListEqual(transformation.keys, ["A", ("B", "B")])
+
     @parameterized.expand(get_all_props(Subset))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""

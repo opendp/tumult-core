@@ -148,7 +148,7 @@ class Rename(Transformation):
             output_domain=SparkDataFrameDomain(output_columns),
             output_metric=output_metric,
         )
-        self._rename_mapping = rename_mapping
+        self._rename_mapping = rename_mapping.copy()
 
     @property
     def rename_mapping(self) -> Dict[str, str]:

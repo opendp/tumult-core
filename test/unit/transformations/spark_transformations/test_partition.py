@@ -37,6 +37,24 @@ class TestPartitionByKeys(TestComponent):
     PartitionByKeys`.
     """
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        partition_keys = ["A"]
+        key_values = [(0.1,), (1.1,)]
+        transformation = PartitionByKeys(
+            input_domain=SparkDataFrameDomain(
+                {"A": SparkFloatColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+            ),
+            input_metric=SymmetricDifference(),
+            use_l2=False,
+            keys=partition_keys,
+            list_values=key_values,
+        )
+        key_values.append((2.2,))
+        partition_keys.append("D")
+        self.assertListEqual(transformation.keys, ["A"])
+        self.assertListEqual(transformation.list_values, [(0.1,), (1.1,)])
+
     @parameterized.expand(get_all_props(PartitionByKeys))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""

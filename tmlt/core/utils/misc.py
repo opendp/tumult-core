@@ -2,8 +2,9 @@
 
 # <placeholder: boilerplate>
 
+import copy
 import math
-from typing import List, Optional
+from typing import List, Optional, TypeVar
 
 import numpy as np
 from flint import arb  # pylint: disable=no-name-in-module
@@ -79,3 +80,17 @@ def arb_to_float(x: arb) -> Optional[float]:
         if lower_float == upper_float:
             return lower_float
     return None
+
+
+T = TypeVar("T")
+
+
+def copy_if_mutable(value: T) -> T:
+    # pylint: disable=import-outside-toplevel
+    """Returns a deep copy of argument if it is mutable."""
+    from tmlt.core.utils.testing import IMMUTABLE_TYPES
+
+    if isinstance(value, IMMUTABLE_TYPES):
+        # NOTE: See https://github.com/python/mypy/issues/5720
+        return value  # type: ignore
+    return copy.deepcopy(value)

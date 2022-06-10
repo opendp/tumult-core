@@ -66,6 +66,18 @@ class TestPublicJoin(TestComponent):
             ),
         )
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        join_cols = ["B"]
+        transformation = PublicJoin(
+            input_domain=self.input_domain,
+            metric=SymmetricDifference(),
+            public_df=self.public_df,
+            join_cols=join_cols,
+        )
+        join_cols.append("C")
+        self.assertListEqual(transformation.join_cols, ["B"])
+
     @parameterized.expand(get_all_props(PublicJoin))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""
@@ -385,6 +397,24 @@ class TestPrivateJoin(PySparkTest):
         self.right_domain = SparkDataFrameDomain(
             {"B": SparkStringColumnDescriptor(), "C": SparkStringColumnDescriptor()}
         )
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        join_cols = ["B"]
+        transformation = PrivateJoin(
+            input_domain=DictDomain(
+                {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
+            ),
+            left_key="l",
+            right_key=("r", "i", "g", "h", "t"),
+            left_truncation_strategy=TruncationStrategy.TRUNCATE,
+            right_truncation_strategy=TruncationStrategy.TRUNCATE,
+            left_truncation_threshold=1,
+            right_truncation_threshold=1,
+            join_cols=join_cols,
+        )
+        join_cols.append("C")
+        self.assertListEqual(transformation.join_cols, ["B"])
 
     @parameterized.expand(get_all_props(PrivateJoin))
     def test_property_immutability(self, prop_name: str):

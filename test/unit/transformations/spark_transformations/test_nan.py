@@ -52,6 +52,15 @@ class TestDropInfs(PySparkTest):
             }
         )
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        drop_columns = ["B"]
+        transformation = DropInfs(
+            input_domain=self.input_domain, metric=SymmetricDifference(), columns=["B"]
+        )
+        drop_columns.append("C")
+        self.assertListEqual(transformation.columns, ["B"])
+
     @parameterized.expand(get_all_props(DropInfs))
     def test_property_immutability(self, prop_name: str) -> None:
         """Tests that a given property is immutable."""
@@ -179,6 +188,15 @@ class TestDropNaNs(PySparkTest):
             }
         )
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        drop_columns = ["B"]
+        transformation = DropNaNs(
+            input_domain=self.input_domain, metric=SymmetricDifference(), columns=["B"]
+        )
+        drop_columns.append("C")
+        self.assertListEqual(transformation.columns, ["B"])
+
     @parameterized.expand(get_all_props(DropNaNs))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""
@@ -279,6 +297,15 @@ class TestDropNulls(PySparkTest):
                 "B": SparkFloatColumnDescriptor(allow_nan=True, allow_null=True),
             }
         )
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        drop_columns = ["B"]
+        transformation = DropNulls(
+            input_domain=self.input_domain, metric=SymmetricDifference(), columns=["B"]
+        )
+        drop_columns.append("C")
+        self.assertListEqual(transformation.columns, ["B"])
 
     @parameterized.expand(get_all_props(DropNulls))
     def test_property_immutability(self, prop_name: str):
@@ -412,6 +439,18 @@ class TestReplaceInfs(PySparkTest):
                 ),
             }
         )
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        replace_map = {"B": (1.1, 2.2)}
+        transformation = ReplaceInfs(
+            input_domain=self.input_domain,
+            metric=SymmetricDifference(),
+            replace_map=replace_map,
+        )
+        replace_map["B"] = (1.0, 3.0)
+        replace_map["C"] = (1.2, 3.1)
+        self.assertDictEqual(transformation.replace_map, {"B": (1.1, 2.2)})
 
     @parameterized.expand(get_all_props(ReplaceInfs))
     def test_property_immutability(self, prop_name: str) -> None:
@@ -580,6 +619,18 @@ class TestReplaceNaNs(PySparkTest):
             }
         )
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        replace_map = {"B": 0.1}
+        transformation = ReplaceNaNs(
+            input_domain=self.input_domain,
+            metric=SymmetricDifference(),
+            replace_map=replace_map,
+        )
+        replace_map["B"] = 1.1
+        replace_map["C"] = 1.1
+        self.assertDictEqual(transformation.replace_map, {"B": 0.1})
+
     @parameterized.expand(get_all_props(ReplaceNaNs))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""
@@ -723,6 +774,18 @@ class TestReplaceNulls(PySparkTest):
                 "B": SparkFloatColumnDescriptor(allow_nan=True, allow_null=True),
             }
         )
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        replace_map = {"B": 0.1}
+        transformation = ReplaceNulls(
+            input_domain=self.input_domain,
+            metric=SymmetricDifference(),
+            replace_map=replace_map,
+        )
+        replace_map["B"] = 1.1
+        replace_map["C"] = 1.1
+        self.assertDictEqual(transformation.replace_map, {"B": 0.1})
 
     @parameterized.expand(get_all_props(ReplaceNulls))
     def test_property_immutability(self, prop_name: str):

@@ -197,7 +197,7 @@ class Subset(Transformation):
             output_domain=DictDomain({k: input_domain[k] for k in keys}),
             output_metric=DictMetric({k: input_metric[k] for k in keys}),
         )
-        self._keys = keys
+        self._keys = keys.copy()
 
     @property
     def keys(self) -> List[Any]:

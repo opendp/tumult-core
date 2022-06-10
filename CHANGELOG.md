@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - Fixed bug in `ReplaceNulls` to not allow replacing values for grouping column in `IfGroupedBy`
 - Changed `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs` to only support specific `IfGroupedBy` metrics
+- Changed transformations and measurements to make a copy of mutable constructor arguments
 - Add checks in `ParallelComposition` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.
 
 ## 0.3.0-alpha.4 - 2022-05-27

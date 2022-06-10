@@ -3,7 +3,6 @@
 
 # <placeholder: boilerplate>
 
-import copy
 from typing import List, Optional, Tuple, Union
 
 from pyspark.sql import DataFrame
@@ -216,8 +215,8 @@ class PartitionByKeys(Partition):
                 if use_l2
                 else SumOf(SymmetricDifference())
             )
-        self._partition_keys = keys
-        self._list_values = list_values
+        self._partition_keys = keys.copy()
+        self._list_values = list_values.copy()
         super().__init__(
             input_domain, input_metric, output_metric, num_partitions=len(list_values)
         )
@@ -230,7 +229,7 @@ class PartitionByKeys(Partition):
     @property
     def list_values(self) -> List[Tuple]:
         """Returns list of values corresponding to the partition keys."""
-        return copy.deepcopy(self._list_values)
+        return self._list_values.copy()
 
     def __call__(self, sdf: DataFrame) -> List[DataFrame]:
         """Returns a list of partitions of input DataFrame."""
