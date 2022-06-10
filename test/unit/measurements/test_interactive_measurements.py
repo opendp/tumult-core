@@ -193,6 +193,41 @@ class TestParallelComposition(PySparkTest):
                 "Output measure for each supplied measurement must match output measure"
                 " for ParallelComposition",
             ),
+            (
+                ListDomain(NumpyIntegerDomain(), length=1),
+                SumOf(HammingDistance()),
+                PureDP(),
+                [
+                    create_mock_measurement(
+                        is_interactive=True,
+                        output_measure=PureDP(),
+                        input_metric=SymmetricDifference(),
+                    )
+                ],
+                r"Input metric \(SumOf\(inner_metric=HammingDistance\(\)\)\) must be"
+                r" over"
+                r" SymmetricDifference\(\),"
+                r" AbsoluteDifference\(\), or IfGroupedBy\(X,"
+                r" SymmetricDifference\(\)\)",
+            ),
+            (
+                ListDomain(NumpyIntegerDomain(), length=1),
+                RootSumOfSquared(HammingDistance()),
+                RhoZCDP(),
+                [
+                    create_mock_measurement(
+                        is_interactive=True,
+                        output_measure=RhoZCDP(),
+                        input_metric=SymmetricDifference(),
+                    )
+                ],
+                r"Input metric \(RootSumOfSquared\(inner_metric=HammingDistance\(\)\)\)"
+                r" must be"
+                r" over"
+                r" SymmetricDifference\(\),"
+                r" AbsoluteDifference\(\), or IfGroupedBy\(X,"
+                r" SymmetricDifference\(\)\)",
+            ),
         ]
     )
     def test_invalid_constructor_arguments(
