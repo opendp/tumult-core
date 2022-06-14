@@ -12,7 +12,7 @@ You can install Tumult Core using [pip](https://pypi.org/project/pip/).
 pip install <TODO>
 ```
 
-Also see the [installation instructions](https://dev.docs.tumultlabs.io/pkg/new-core/dev/installation.html#installation-instructions) in the documentation.
+See the [installation instructions](https://dev.docs.tumultlabs.io/pkg/new-core/dev/installation.html#installation-instructions) in the documentation for information about setting up prerequisites such as Spark.
 
 TODO: update the link to the installation instructions
 
