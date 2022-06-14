@@ -17,6 +17,7 @@ import tmlt.core.utils.cleanup  # pylint: disable=unused-import
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkGroupedDataFrameDomain,
+    SparkStringColumnDescriptor,
     convert_pandas_domain,
 )
 from tmlt.core.measurements.base import Measurement
@@ -251,6 +252,15 @@ class ApplyInPandas(SparkMeasurement):
                 "The aggregation function needs unexpected columns: "
                 f"{sorted(needed_columns - available_columns)}"
             )
+        for column in needed_columns:
+            if input_domain[column].allow_null and not isinstance(
+                input_domain[column], SparkStringColumnDescriptor
+            ):
+                raise ValueError(
+                    f"Column ({column}) in the input domain is a"
+                    " numeric nullable column, which is not supported by ApplyInPandas"
+                )
+
         if SparkDataFrameDomain(
             convert_pandas_domain(aggregation_function.input_domain)
         ) != SparkDataFrameDomain(

@@ -127,6 +127,10 @@ class TestNoisyQuantile(TestCase):
                 "input_domain.element_domain must be NumpyIntegerDomain or "
                 "NumpyFloatDomain, not NumpyStringDomain",
             ),
+            (
+                {"input_domain": PandasSeriesDomain(NumpyFloatDomain(allow_nan=True))},
+                "Input domain must disallow NaNs",
+            ),
         ]
     )
     def test_bad_inputs(self, bad_kwargs: Dict[str, Any], message: str):

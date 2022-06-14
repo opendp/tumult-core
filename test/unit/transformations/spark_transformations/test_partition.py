@@ -6,6 +6,7 @@ Tests :mod:`~tmlt.core.transformations.spark_transformations.partition`.
 # <placeholder: boilerplate>
 
 import itertools
+import math
 import re
 from typing import List, Tuple, Type, Union
 
@@ -167,6 +168,40 @@ class TestPartitionByKeys(TestComponent):
         expected_partitions = partition_op(sdf)
         for expected, actual in zip(actual_partitions, expected_partitions):
             self.assert_frame_equal_with_sort(expected, actual.toPandas())
+
+    def test_partition_by_special_value_keys(self):
+        """PartitionByKeys works when one or more key contains a special value.
+
+        NaNs, nulls and Infs are considered special values.
+        """
+        key_values = [0.1, float("nan"), float("inf"), float("-inf"), None]
+        transformation = PartitionByKeys(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkFloatColumnDescriptor(
+                        allow_null=True, allow_nan=True, allow_inf=True
+                    ),
+                    "B": SparkIntegerColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            use_l2=False,
+            keys=["A"],
+            list_values=[(value,) for value in key_values],
+        )
+        sdf = self.spark.createDataFrame(
+            [(value, 1) for value in key_values], schema=["A", "B"]
+        )
+        partitions = transformation(sdf)
+        for key, partition in zip(key_values, partitions):
+            actual_rows = partition.collect()
+            self.assertEqual(len(actual_rows), 1)
+            assert (
+                actual_rows[0].A == key
+                or math.isnan(actual_rows[0].A)
+                and math.isnan(key)
+            )
+            assert actual_rows[0].B == 1
 
     @parameterized.expand(
         [

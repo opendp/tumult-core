@@ -124,6 +124,12 @@ class NoisyQuantile(Aggregate):
                 f"NumpyFloatDomain, not {type(input_domain.element_domain).__name__}"
             )
 
+        if (
+            isinstance(input_domain.element_domain, NumpyFloatDomain)
+            and input_domain.element_domain.allow_nan
+        ):
+            raise ValueError("Input domain must disallow NaNs.")
+
         self._quantile = quantile
         self._epsilon = ExactNumber(epsilon)
         self._lower = lower

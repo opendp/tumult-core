@@ -5,7 +5,8 @@
 
 from typing import List, Optional, Tuple, Union
 
-from pyspark.sql import DataFrame
+from pyspark.sql import Column, DataFrame
+from pyspark.sql import functions as sf
 from typeguard import typechecked
 
 from tmlt.core.domains.base import Domain
@@ -233,14 +234,20 @@ class PartitionByKeys(Partition):
 
     def __call__(self, sdf: DataFrame) -> List[DataFrame]:
         """Returns a list of partitions of input DataFrame."""
+
+        def construct_partition_filter(values: Tuple) -> Column:
+            """Returns a filter expression for given partition key.
+
+            Args:
+                values: Tuple corresponding to a partition key.
+            """
+            # pylint: disable=no-member
+            exp = sf.lit(True)
+            for column, value in zip(self._partition_keys, values):
+                exp = exp & sf.col(column).eqNullSafe(value)
+            return exp
+
         return [
-            sdf.filter(
-                " AND ".join(
-                    [
-                        f'{col} = "{val}"'
-                        for col, val in zip(self._partition_keys, values)
-                    ]
-                )
-            )
+            sdf.filter(construct_partition_filter(values))
             for values in self._list_values
         ]
