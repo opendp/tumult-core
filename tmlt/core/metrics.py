@@ -1,6 +1,6 @@
 """Module containing metrics used for constructing measurements and transformations."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from abc import ABC, abstractmethod
 from collections import Counter

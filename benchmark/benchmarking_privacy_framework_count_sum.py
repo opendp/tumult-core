@@ -1,6 +1,6 @@
 """Benchmarking script for spark-based count and sum aggregations."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from math import log
 from random import randint

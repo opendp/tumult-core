@@ -1,6 +1,6 @@
 """Tumult Core Module."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 import warnings
 
 warnings.filterwarnings(action="ignore", category=UserWarning, message=".*open_stream")

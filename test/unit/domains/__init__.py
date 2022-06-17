@@ -1,3 +1,3 @@
 """Unit tests for :mod:`~tmlt.core.domains`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0

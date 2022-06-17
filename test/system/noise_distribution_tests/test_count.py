@@ -1,6 +1,6 @@
 """Tests that count measurement adds noise from the correct distribution."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-member, no-self-use
 

@@ -1,6 +1,6 @@
 """Derived measurements for computing noisy aggregates on spark DataFrames."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-member
 

@@ -1,6 +1,6 @@
 """Miscellaneous helper functions and classes."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import copy
 import math

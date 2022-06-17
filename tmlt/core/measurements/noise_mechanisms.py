@@ -1,6 +1,6 @@
 """Measurements for adding noise to individual numbers."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import random
 from fractions import Fraction

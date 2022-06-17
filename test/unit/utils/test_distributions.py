@@ -1,6 +1,6 @@
 """Tests for :module:`tmlt.common.statistical_testing.distributions`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-self-use
 

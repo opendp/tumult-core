@@ -9,7 +9,7 @@ from tmlt.core.utils.cleanup import cleanup, remove_all_temp_tables
 from tmlt.core.utils.configuration import Config
 from tmlt.core.utils.testing import PySparkTest
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 
 class TestCleanup(PySparkTest):

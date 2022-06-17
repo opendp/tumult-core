@@ -1,5 +1,5 @@
 """Benchmarking quantile script for the OpenDP-based privacy framework."""
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import time
 from random import randint

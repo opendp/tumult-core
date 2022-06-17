@@ -5,7 +5,7 @@ from unittest import TestCase
 
 from tmlt.core.utils.configuration import Config
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 
 class TestConfiguration(TestCase):

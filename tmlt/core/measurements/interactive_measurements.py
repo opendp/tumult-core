@@ -1,6 +1,6 @@
 """Measurements that allow interactively submitting queries to a private dataset."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass

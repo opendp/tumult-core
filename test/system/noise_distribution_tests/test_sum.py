@@ -1,6 +1,6 @@
 """Tests that Sum measurement adds noise sampled from the correct distributions."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-member, no-self-use
 

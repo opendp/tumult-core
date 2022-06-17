@@ -1,6 +1,6 @@
 """Probability functions for distributions commonly used in differential privacy."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from functools import lru_cache
 from typing import overload

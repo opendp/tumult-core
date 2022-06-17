@@ -1,6 +1,6 @@
 """Helpers for type introspection and type-checking."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Any, NoReturn, Sequence
 

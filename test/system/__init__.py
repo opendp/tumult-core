@@ -1,3 +1,3 @@
 """System tests for :mod:`~tmlt.core`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0

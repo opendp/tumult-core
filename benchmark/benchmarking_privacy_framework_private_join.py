@@ -1,6 +1,6 @@
 """Benchmarking module for PrivateJoin and Truncation transformations."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import itertools
 from random import randint

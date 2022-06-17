@@ -1,6 +1,6 @@
 """Transformations for truncating Spark DataFrames."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 from typing import Type, Union
 
 from pyspark.sql import DataFrame

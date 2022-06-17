@@ -1,6 +1,6 @@
 """Tests `create_standard_deviation_measurement` noise distributions are as expected."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-member, no-self-use
 

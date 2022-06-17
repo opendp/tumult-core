@@ -1,6 +1,6 @@
 """Domains for common python collections such as lists and dictionaries."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional

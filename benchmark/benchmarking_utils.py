@@ -1,6 +1,6 @@
 """Common utility functions for benchmarking scripts."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=attribute-defined-outside-init
 

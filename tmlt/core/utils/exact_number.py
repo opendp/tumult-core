@@ -132,7 +132,7 @@ Examples:
     1/3
 """  # pylint: disable=line-too-long
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from fractions import Fraction
 from typing import Any, Union

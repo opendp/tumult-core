@@ -1,3 +1,3 @@
 """Modules related to random number generation."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0

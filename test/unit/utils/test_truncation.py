@@ -1,6 +1,6 @@
 """Tests for :mod:`~tmlt.core.utils.truncation`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import itertools
 from typing import List, Tuple

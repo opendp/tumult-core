@@ -1,6 +1,6 @@
 """Module for sampling from a Laplace distribution."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 
 import math

@@ -1,6 +1,6 @@
 """Domains for Pandas datatypes."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from collections import OrderedDict
 from dataclasses import dataclass
