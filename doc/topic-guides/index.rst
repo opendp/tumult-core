@@ -8,6 +8,7 @@ The following pages explain concepts and advanced topics that come up in Tumult 
 .. toctree::
    :maxdepth: 1
 
+   architecture
    real-numbers
    privacy-guarantee
    known-vulnerabilities
