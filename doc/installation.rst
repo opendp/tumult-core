@@ -16,6 +16,12 @@ Only Python 3.7 is officially supported at present, though newer versions likely
 
 Because Tumult Core uses PySpark for computation, it also `requires Java 8 or 11 <https://spark.apache.org/docs/3.0.0/index.html#downloading>`__.
 
+Tumult Core uses `python-flint <https://github.com/fredrik-johansson/python-flint/>`__
+for some mathematical functions, so ``python-flint`` is also required.
+Only Tumult's wheels (located at ``https://d3p0voevd56kj6.cloudfront.net``) are
+currently supported.
+
+
 Only the x86_64 processor architecture is officially supported at present.
 
 .. note::
@@ -48,6 +54,13 @@ If you encounter any issues during the installation process, please let us know!
 
       apt install openjdk-8-jre-headless
 
+   Then install python-flint with
+
+   .. code-block:: bash
+
+      pip install -i https://d3p0voevd56kj6.cloudfront.net python-flint
+
+
 .. tabbed:: Linux (Red Hat-based)
 
    Python and ``pip``, Python's package manager, may already be installed.
@@ -65,6 +78,13 @@ If you encounter any issues during the installation process, please let us know!
       yum install java-1.8.0-openjdk-headless
 
    Note that despite the package name, this will install Java 8.
+
+   Then install python-flint with
+
+   .. code-block:: bash
+
+      pip install -i https://d3p0voevd56kj6.cloudfront.net python-flint
+
 
 .. tabbed:: MacOS
 
@@ -88,6 +108,13 @@ If you encounter any issues during the installation process, please let us know!
     .. code-block:: bash
 
        brew install openjdk@8
+
+   Then install python-flint with
+
+   .. code-block:: bash
+
+      pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
+
 
 .. tabbed:: Manual installation
 
