@@ -14,7 +14,9 @@ test-doctest
 test-examples
 benchmark
 package
-docs-fast
+docs
+docs-linkcheck
+docs-doctest
 prepare-release
 endef
 
@@ -22,7 +24,6 @@ define make-target
 .PHONY: $(1)
 $(1):
 	@export BASE_DIR="$(CURDIR)"
-	export PACKAGE_DIR=""
 	source ./.buildscripts.base
 	[ -f ./.buildscripts ] && source ./.buildscripts
 	$(1)
