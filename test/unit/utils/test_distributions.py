@@ -1,4 +1,4 @@
-"""Tests for :module:`tmlt.common.statistical_testing.distributions`."""
+"""Tests for :module:`tmlt.core.utils.distributions`."""
 
 # SPDX-License-Identifier: Apache-2.0
 

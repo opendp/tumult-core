@@ -7,6 +7,8 @@ PYDOCSTYLE_ENABLE="true"
 
 TEST_MIN_COVERAGE="70%"
 
+SPHINX_EXTRA_OPTS="-n -W --keep-going"
+
 function benchmark() {
     echo "=== Benchmarking Core ==="
     mkdir benchmark_output/

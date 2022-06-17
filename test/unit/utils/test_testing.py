@@ -1,4 +1,4 @@
-"""Test for :mod:`tmlt.common.spark_test_harness`"""
+"""Test for :mod:`tmlt.core.utils.testing`"""
 
 # SPDX-License-Identifier: Apache-2.0
 
