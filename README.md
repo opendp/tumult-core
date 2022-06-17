@@ -6,27 +6,21 @@ The design of Tumult Core is based on the design proposed in the [OpenDP White P
 
 ## Installation
 
-You can install Tumult Core using [pip](https://pypi.org/project/pip/).
+See the [installation instructions in the documentation](https://docs.tmlt.dev/core/latest/installation.html#installation-instructions) for information about setting up prerequisites such as Spark and python-flint.
+
+Once the prerequisites are installed, you can install Tumult Core using [pip](https://pypi.org/project/pip/).
 
 ```bash
-pip install <TODO>
+pip install tmlt.core
 ```
-
-See the [installation instructions](https://dev.docs.tumultlabs.io/pkg/new-core/dev/installation.html#installation-instructions) in the documentation for information about setting up prerequisites such as Spark.
-
-TODO: update the link to the installation instructions
 
 ## Documentation
 
-The full documentation is located at https://dev.docs.tumultlabs.io/pkg/new-core/dev/.
-
-TODO: update the link to the documentation
+The full documentation is located at https://docs.tmlt.dev/core/latest.
 
 ## Support
 
-If you have any questions/concerns, please create an issue or reach out to [support@tmlt.io](mailto:support@tmlt.io)
-
-TODO: add link to issues
+If you have any questions/concerns, please [create an issue](https://gitlab.com/tumult-labs/core/-/issues) or reach out to [support@tmlt.io](mailto:support@tmlt.io)
 
 ## Contributing
 
@@ -37,13 +31,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for information about installing our deve
 
 ## License
 
-TODO: Add License information.
-
-Below is what we had in the previous version of the README.
-
-A portion of this software, specifically the file `tmlt/core/privacy_framework/discrete_gaussian.py`,
-is derived from a work authored by Thomas Steinke [dgauss@thomas-steinke.net], copyrighted by
-IBM Corp. 2020, licensed under Apache 2.0, and available [here](https://github.com/IBM/discrete-gaussian-differential-privacy) at
-commit `cb190d2a990a78eff6e21159203bc888e095f01b`.  This file, and
-only this file, is licensed under the Apache 2.0 license.  However, all other files and this computer software
-as a whole are not licensed under the Apache 2 license.
+The Tumult Platform source code is licensed under the Apache License, version 2.0 (Apache-2.0).
+The Tumult Platform documentation is licensed under
+Creative Commons Attribution-ShareAlike 4.0 International (CC-BY-SA-4.0).

@@ -1,5 +1,5 @@
 Tumult Core documentation
-==============================
+=========================
 
 .. toctree::
    :hidden:
@@ -86,3 +86,11 @@ New users probably want to start with the :ref:`installation instructions`.
    describes notable changes to the library,
    :ref:`supporting materials <Bibliography>`, :ref:`contact information <Contact>`,
    as well as :ref:`license information <License>`.
+
+
+Documentation License
+^^^^^^^^^^^^^^^^^^^^^
+This documentation is licensed under the
+Creative Commons Attribution-ShareAlike 4.0 Unported License.
+To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/4.0/
+or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
