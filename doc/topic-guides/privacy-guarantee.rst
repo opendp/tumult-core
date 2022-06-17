@@ -1,7 +1,7 @@
 .. _privacy-guarantee:
 
 Tumult Core Privacy Guarantee
-==================================
+=============================
 
 The privacy guarantee of a Core :class:`~.Measurement`, :math:`\mathcal{M}` is
 the following. Let :math:`r` denote the privacy relation of :math:`\mathcal{M}`,
@@ -90,12 +90,12 @@ Suppose, for example, that Tumult core did not protect against information
 leakage via the ordering of the records in the Spark DataFrame, and the ordering
 revealed something about the private data. Then for some record :math:`r`,
 consider a postprocessing function on a Spark DataFrame that outputs 1 if the
-first record of the DataFrame is :math`r`, and 0 otherwise. Such a function
+first record of the DataFrame is :math:`r`, and 0 otherwise. Such a function
 would break the Tumult Core privacy guarantee, because it uses distinguishing
 pseudo-side channel information.  This function is also not well defined on the
 abstract input domain.  There exist two DataFrames :math:`D,D'` that represent
 the same multiset of records (and are therefore equal in the abstract domain),
-but :math:`f(D) != f(D')` because :math:`r` is the first record of :math:`D` but
+but :math:`f(D) \ne f(D')` because :math:`r` is the first record of :math:`D` but
 not :math:`D'`. This is example is hypothetical since Tumult Core *does* protect
 against information leakage via the ordering.
 
