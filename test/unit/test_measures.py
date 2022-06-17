@@ -1,6 +1,6 @@
 """Unit tests for :mod:`tmlt.core.measures`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 import itertools
 from fractions import Fraction
 from typing import Any, Tuple

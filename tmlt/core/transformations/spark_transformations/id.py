@@ -3,7 +3,7 @@
 
 # TODO(#1320): Add link to privacy and stability tutorial
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf

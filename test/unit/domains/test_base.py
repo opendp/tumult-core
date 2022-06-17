@@ -1,6 +1,6 @@
 """Unit tests for :mod:`~tmlt.core.domains.base`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 from unittest.case import TestCase
 from unittest.mock import Mock, patch
 

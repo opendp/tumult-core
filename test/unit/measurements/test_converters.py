@@ -1,6 +1,6 @@
 """Unit tests for :mod:`~tmlt.core.measurements.converters`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 from typing import Tuple
 from unittest.case import TestCase
 from unittest.mock import call

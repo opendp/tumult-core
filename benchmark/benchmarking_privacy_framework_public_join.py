@@ -1,6 +1,6 @@
 """Benchmarking module for PublicJoin."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import time
 from random import randint

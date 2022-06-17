@@ -1,6 +1,6 @@
 """Unit tests for :mod:`~tmlt.core.transformations.identity`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain

@@ -1,6 +1,6 @@
 """Wrappers for changing a measurements's output measure."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Any, Tuple
 

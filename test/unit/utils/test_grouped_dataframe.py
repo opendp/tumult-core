@@ -1,6 +1,6 @@
 """Tests for :mod:`~tmlt.core.util.grouped_dataframe`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import pandas as pd
 from parameterized import parameterized

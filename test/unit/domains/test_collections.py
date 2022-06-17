@@ -1,6 +1,6 @@
 """Unit tests for :mod:`~tmlt.core.domains.collections`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 from typing import Any, Dict, Optional
 from unittest.case import TestCase
 from unittest.mock import Mock, create_autospec

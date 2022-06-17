@@ -1,6 +1,6 @@
 """Unit tests for :mod:`~tmlt.core.measurements.composition`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-self-use
 import itertools

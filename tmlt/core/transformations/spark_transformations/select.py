@@ -1,7 +1,7 @@
 """Transformations for selecting columns from Spark DataFrames."""
 # TODO(#1320): Add link to privacy and stability tutorial
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import List, Union
 

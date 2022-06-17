@@ -1,6 +1,6 @@
 """Utilities for testing."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 # TODO(#1218): Move dummy aggregate class back to the test.
 

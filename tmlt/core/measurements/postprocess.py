@@ -1,7 +1,7 @@
 """Measurements for processing the output of other measurements."""
 # TODO(#1176): Retire the queryable after calling self._f.
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Any, Callable
 

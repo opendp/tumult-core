@@ -3,7 +3,7 @@
 #TODO(#1653): Add link to the Spark Abstraction page.
 """
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
 

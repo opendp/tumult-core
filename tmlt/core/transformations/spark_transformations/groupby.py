@@ -1,5 +1,5 @@
 """Transformations for performing groupby on Spark DataFrames."""
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 

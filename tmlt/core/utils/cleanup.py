@@ -1,6 +1,6 @@
 """Cleanup functions for Tumult Core."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import atexit
 import re

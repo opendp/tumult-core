@@ -1,6 +1,6 @@
 """System tests for :mod:`~tmlt.core.measurements.interactive_measurements`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,

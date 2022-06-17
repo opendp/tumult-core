@@ -1,6 +1,6 @@
 """Tumult Core's random number generator."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
 from randomgen.rdrand import RDRAND  # pylint: disable=no-name-in-module

@@ -1,6 +1,6 @@
 """Test for :mod:`tmlt.common.spark_test_harness`"""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from operator import add
 

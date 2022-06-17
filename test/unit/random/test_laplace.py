@@ -1,6 +1,6 @@
 """Tests for :mod:`~tmlt.core.random.laplace`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from unittest import TestCase
 

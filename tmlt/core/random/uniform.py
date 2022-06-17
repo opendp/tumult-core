@@ -1,6 +1,6 @@
 """Module for sampling uniformly from an interval."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from flint import arb  # pylint: disable=no-name-in-module
 

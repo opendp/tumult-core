@@ -1,6 +1,6 @@
 """Tests for :mod:`~tmlt.core.util.type_utils`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Any, Sequence, Type
 from unittest import TestCase

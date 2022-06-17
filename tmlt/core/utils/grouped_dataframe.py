@@ -1,6 +1,6 @@
 """Grouped DataFrame aware of group keys when performing aggregations."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import functools
 from functools import reduce

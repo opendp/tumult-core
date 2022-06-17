@@ -1,6 +1,6 @@
 """Benchmarking script for adding noise to dataframes."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import time
 

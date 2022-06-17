@@ -1,3 +1,3 @@
 """Measurements on Pandas DataFrames and Series."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0

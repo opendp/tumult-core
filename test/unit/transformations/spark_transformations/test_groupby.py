@@ -1,6 +1,6 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.groupby`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import re
 from datetime import date, datetime

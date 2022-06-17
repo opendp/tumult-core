@@ -1,6 +1,6 @@
 """Statistical tests for samplers in :mod:`tmlt.core.random`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-member, no-self-use
 

@@ -1,6 +1,6 @@
 """Measurement for combining multiple measurements into a single measurement."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Any, Callable, List, Optional, Tuple
 

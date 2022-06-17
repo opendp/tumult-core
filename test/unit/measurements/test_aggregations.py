@@ -1,6 +1,6 @@
 """Unit tests for :mod:`~tmlt.core.measurements.aggregations`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 from typing import List, Optional, Tuple, Union, cast
 
 import sympy as sp

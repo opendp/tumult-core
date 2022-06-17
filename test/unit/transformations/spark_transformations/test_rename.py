@@ -1,6 +1,6 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.rename`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Dict, Union
 

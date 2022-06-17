@@ -3,7 +3,7 @@
 # TODO(#693): Check edge cases for aggregations.
 # TODO(#1023): Handle clamping bounds approximation.
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import math
 from abc import abstractmethod

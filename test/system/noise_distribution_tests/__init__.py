@@ -1,6 +1,6 @@
 """Tests that measurements that add noise sample from the correct distributions."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 P_THRESHOLD = 0.01
 """The alpha threshold to use for the statistical tests."""

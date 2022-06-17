@@ -1,6 +1,6 @@
 """Unit tests for :mod:`~tmlt.core.domains.pandas_domains`."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 from typing import Any, Optional
 from unittest.case import TestCase
 

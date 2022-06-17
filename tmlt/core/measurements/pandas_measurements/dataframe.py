@@ -1,6 +1,6 @@
 """Measurements on Pandas DataFrames."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from abc import abstractmethod
 from typing import Callable, Dict, Mapping, Optional, Union, cast

@@ -3,7 +3,7 @@
 Tests :mod:`~tmlt.core.transformations.spark_transformations.partition`.
 """
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 import itertools
 import math

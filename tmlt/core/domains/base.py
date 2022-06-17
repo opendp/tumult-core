@@ -1,6 +1,6 @@
 """Base class for input/output domains."""
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
 
 from abc import ABC, abstractmethod
 from typing import Any
