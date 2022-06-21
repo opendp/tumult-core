@@ -2,37 +2,25 @@
 
 ## Unreleased
 ### Added
-- Added support for `IfGroupedBy(X, SymmetricDifference())` to `DropNaNs`, `DropNulls`, `DropInfs`, `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs`.
-
-### Changed
-- Fixed bug in `ReplaceNulls` to not allow replacing values for grouping column in `IfGroupedBy`.
-- Changed `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs` to only support specific `IfGroupedBy` metrics.
-- Changed transformations and measurements to make a copy of mutable constructor arguments.
-- Add checks in `ParallelComposition` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.
-
-## 0.3.0-alpha.4 - 2022-05-27
-### Added
-- Added new transformations `DropInfs` and `ReplaceInfs`.
-- Added topic guide around NaNs, nulls and infinities.
-
-### Changed
-- Fixed bug in `AddUniqueColumn`.
-- Modify `CountDistinctGrouped` and `CountDistinct` so it works as expected with null values.
-
-## 0.3.0-alpha.3 - 2022-05-19
-### Added
+- Added new transformations `DropInfs` and `ReplaceInfs` for handling infinities in data.
 - Added `IfGroupedBy(X, SymmetricDifference())` input metric.
-  - Added support for this metric to `Filter`, `Map`, `FlatMap`, `PublicJoin`, `Select`, and `Rename`.
-- Added new truncation transformations for `IfGroupedBy(X, SymmetricDifference())`:
-  - `LimitRowsPerGroup`, `LimitKeysPerGroup`
+  - Added support for this metric to `Filter`, `Map`, `FlatMap`, `PublicJoin`, `Select`, `Rename`, `DropNaNs`, `DropNulls`, `DropInfs`, `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs`.
+- Added new truncation transformations for `IfGroupedBy(X, SymmetricDifference())`: `LimitRowsPerGroup`, `LimitKeysPerGroup`
 - Added `AddUniqueColumn` for switching from `SymmetricDifference` to `IfGroupedBy(X, SymmetricDifference())`.
+- Added a topic guide around NaNs, nulls and infinities.
 
 ### Changed
-- `PrivateJoin` has a new parameter for `__init__`: `join_on_nulls`.
-  When `join_on_nulls` is `True`, the `PrivateJoin` can join null values between both dataframes.
-- Operations that group on null values are now supported.
 - Moved truncation transformations used by `PrivateJoin` to be functions (now in `utils/truncation.py`).
 - Change `GroupBy` and `PartitionByKeys` to have an `use_l2` argument instead of `output_metric`.
+- Fixed bug in `AddUniqueColumn`.
+- Operations that group on null values are now supported.
+- Modify `CountDistinctGrouped` and `CountDistinct` so they work as expected with null values.
+- Changed `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs` to only support specific `IfGroupedBy` metrics.
+- Fixed bug in `ReplaceNulls` to not allow replacing values for grouping column in `IfGroupedBy`.
+- `PrivateJoin` has a new parameter for `__init__`: `join_on_nulls`.
+  When `join_on_nulls` is `True`, the `PrivateJoin` can join null values between both dataframes.
+- Changed transformations and measurements to make a copy of mutable constructor arguments.
+- Add checks in `ParallelComposition` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.
 
 ### Removed
 - Removed old examples from `examples/`.
