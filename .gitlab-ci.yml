@@ -307,7 +307,7 @@ publish_docs:
     - git config user.email "gitlab@tmlt.io"
     - git add public
     - git diff --staged --stat
-    - git commit -m "[auto] Publish docs for $version" --author "$CI_COMMIT_AUTHOR"
+    - git commit -m "[auto] Publish docs for $version ($CI_COMMIT_SHORT_SHA)" --author "$CI_COMMIT_AUTHOR"
     - git push
   timeout: 3m
   interruptible: false

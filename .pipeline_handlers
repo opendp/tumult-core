@@ -137,9 +137,15 @@ function release_handler () {
         exit 1
     fi
 
-    # TODO: Add a link to the docs to this message as well, once we start
-    # automatically publishing them to the public site from this pipeline.
-    links="<https://gitlab.com/tumult-labs/core/-/packages|:package: Package Registry>    <$CI_PIPELINE_URL|:factory: Pipeline>"
+    links="<https://pypi.org/project/tmlt.core/|:package: Package Registry>"
+    # Prereleases don't have docs published for them, so skip the docs link in
+    # that case.
+    if [[ ! "$CI_COMMIT_TAG" =~ ^\d+\.\d+\.\d+-(alpha|beta|rc)\.(0|[1-9]\d*)$ ]]; then
+        # Convert X.Y.Z semantic version to vX.Y for docs.
+        docs_version="v$(echo $CI_COMMIT_TAG | sed -E 's/^([[:digit:]]+\.[[:digit:]]+).*/\1/')"
+        links="$links    <https://docs.tmlt.dev/core/$docs_version|:page_facing_up: Docs>"
+    fi
+    links="$links    <$CI_PIPELINE_URL|:factory: Pipeline>"
 
     webhook_url="$RELEASE_SLACK_WEBHOOK_URL"
     message_content="*Core Release $CI_COMMIT_TAG*\n$links"
