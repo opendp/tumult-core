@@ -14,14 +14,7 @@ from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import PureDP, RhoZCDP
-from tmlt.core.metrics import (
-    AbsoluteDifference,
-    IfGroupedBy,
-    Metric,
-    RootSumOfSquared,
-    SumOf,
-    SymmetricDifference,
-)
+from tmlt.core.metrics import Metric, RootSumOfSquared, SumOf
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
 from tmlt.core.transformations.identity import Identity
@@ -573,23 +566,17 @@ class ParallelComposition(Measurement):
                 " non-interactive measurement with ParallelComposition, use"
                 " MakeInteractive."
             )
-        if (output_measure == PureDP() and input_metric.__class__ != SumOf) or (
-            output_measure == RhoZCDP() and input_metric.__class__ != RootSumOfSquared
-        ):
+        valid_metric_measure_combinations = [
+            (SumOf, PureDP),
+            (RootSumOfSquared, RhoZCDP),
+        ]
+        if (
+            input_metric.__class__,
+            output_measure.__class__,
+        ) not in valid_metric_measure_combinations:
             raise ValueError(
                 f"Input metric {input_metric.__class__} is incompatible with "
                 f"output measure {output_measure.__class__}"
-            )
-        if input_metric.inner_metric not in (
-            SymmetricDifference(),
-            AbsoluteDifference(),
-        ) and not (
-            isinstance(input_metric.inner_metric, IfGroupedBy)
-            and input_metric.inner_metric.inner_metric == SymmetricDifference()
-        ):
-            raise ValueError(
-                f"Input metric ({input_metric}) must be over SymmetricDifference(), "
-                "AbsoluteDifference(), or IfGroupedBy(X, SymmetricDifference())."
             )
         if not all(
             meas.input_domain == input_domain.element_domain for meas in measurements
