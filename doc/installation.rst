@@ -16,6 +16,12 @@ Only Python 3.7 is officially supported at present, though newer versions likely
 
 Because Tumult Core uses PySpark for computation, it also `requires Java 8 or 11 <https://spark.apache.org/docs/3.0.0/index.html#downloading>`__.
 
+You may also need to configure pyspark to use the intended Python installation. You can do this by setting the `PYSPARK_PYTHON` environment variable. For example:
+
+   .. code-block:: bash
+
+      export PYSPARK_PYTHON=/usr/bin/python3
+
 Tumult Core uses `python-flint <https://github.com/fredrik-johansson/python-flint/>`__
 for some mathematical functions, so ``python-flint`` is also required.
 Only Tumult's wheels (located at ``https://d3p0voevd56kj6.cloudfront.net``) are
@@ -30,13 +36,9 @@ Only the x86_64 processor architecture is officially supported at present.
     An example of how to set these values when initializing Spark is :ref:`included in the first tutorial <Java 11 configuration example>`.
     Not doing this before making calls to Tumult Core will result in Spark raising ``java.lang.UnsupportedOperationException: sun.misc.Unsafe or java.nio.DirectByteBuffer.(long, int) not available``
 
-
-..
-   TODO: Link "let us know" to the public issue tracker for Core, once it is set up.
-
 Below are instructions for installing these prerequisites on several common platforms.
 If none of these apply to you, install Python 3 and Java from your OS package manager, or use the "Manual Installation" section to obtain installers or source distributions and build instructions for your platform.
-If you encounter any issues during the installation process, please let us know!
+If you encounter any issues during the installation process, please `let us know <https://gitlab.com/tumult-labs/core/-/issues>`__!
 
 .. tabbed:: Linux (Debian-based)
 
@@ -58,7 +60,7 @@ If you encounter any issues during the installation process, please let us know!
 
    .. code-block:: bash
 
-      pip install -i https://d3p0voevd56kj6.cloudfront.net python-flint
+      pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
 
 
 .. tabbed:: Linux (Red Hat-based)
@@ -83,10 +85,10 @@ If you encounter any issues during the installation process, please let us know!
 
    .. code-block:: bash
 
-      pip install -i https://d3p0voevd56kj6.cloudfront.net python-flint
+      pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
 
 
-.. tabbed:: MacOS
+.. tabbed:: macOS
 
     The below instructions assume the use of `Homebrew <https://brew.sh/>`__ for managing packages.
     If you do not wish to use Homebrew for this, use the "Manual Installation" instructions instead.
@@ -133,18 +135,11 @@ If you encounter any issues during the installation process, please let us know!
 Installation
 ^^^^^^^^^^^^
 
-..
-   TODO: Update this section once the final distribution mechanism is set up.
-
-.. note::
-   In order to install Tumult Core, you will need a username and token to download it.
-   If you do not currently have these, contact `support@tmlt.io <mailto:support@tmlt.io>`_.
-
-Once the above prerequisites are installed, Tumult Core can be installed using ``pip`` with:
+Once the above prerequisites are installed, Tumult Core can be installed using ``pip3`` with:
 
 .. code-block:: bash
 
-   pip install --extra-index-url https://<token-username>:<token>@gitlab.com/api/v4/projects/17405343/packages/pypi/simple tmlt.core
+   pip3 install tmlt.core
 
 This will automatically install all of its Python dependencies as well.
 
