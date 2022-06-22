@@ -3,39 +3,44 @@
 Changelog
 =========
 
-All notable changes to this project will be documented in this file.
-
-The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`__.
-
-0.3.0-alpha.2 - 2022-05-16
---------------------------
+0.3.0 - 2022-06-22
+------------------
 
 Added
 ~~~~~
 
--  Added ``IfGroupedBy(X, SymmetricDifference())`` input metric
+-  Added new transformations ``DropInfs`` and ``ReplaceInfs`` for handling infinities in data.
+-  Added ``IfGroupedBy(X, SymmetricDifference())`` input metric.
 
-   -  Added support for this metric to ``Filter``, ``Map``, ``FlatMap``, ``PublicJoin``, ``Select``, and ``Rename``
+   -  Added support for this metric to ``Filter``, ``Map``, ``FlatMap``, ``PublicJoin``, ``Select``, ``Rename``, ``DropNaNs``, ``DropNulls``, ``DropInfs``, ``ReplaceNulls``, ``ReplaceNaNs``, and ``ReplaceInfs``.
 
--  Added new truncation transformations for ``IfGroupedBy(X, SymmetricDifference())``
-
-   -  ``LimitRowsPerGroup``, ``LimitKeysPerGroup``
+-  Added new truncation transformations for ``IfGroupedBy(X, SymmetricDifference())``: ``LimitRowsPerGroup``, ``LimitKeysPerGroup``
+-  Added ``AddUniqueColumn`` for switching from ``SymmetricDifference`` to ``IfGroupedBy(X, SymmetricDifference())``.
+-  Added a topic guide around NaNs, nulls and infinities.
 
 Changed
 ~~~~~~~
 
--  ``PrivateJoin`` has a new parameter for ``__init__``: ``join_on_nulls``. When ``join_on_nulls`` is ``True``, the ``PrivateJoin`` can join null values between both dataframes.
+-  Moved truncation transformations used by ``PrivateJoin`` to be functions (now in ``utils/truncation.py``).
+-  Change ``GroupBy`` and ``PartitionByKeys`` to have an ``use_l2`` argument instead of ``output_metric``.
+-  Fixed bug in ``AddUniqueColumn``.
 -  Operations that group on null values are now supported.
--  Moved truncation transformations used by ``PrivateJoin`` to be functions (now in ``utils.truncation.py``).
--  Change ``GroupBy`` and ``PartitionByKeys`` to have an ``use_l2`` argument instead of ``output_metric``
+-  Modify ``CountDistinctGrouped`` and ``CountDistinct`` so they work as expected with null values.
+-  Changed ``ReplaceNulls``, ``ReplaceNaNs``, and ``ReplaceInfs`` to only support specific ``IfGroupedBy`` metrics.
+-  Fixed bug in ``ReplaceNulls`` to not allow replacing values for grouping column in ``IfGroupedBy``.
+-  ``PrivateJoin`` has a new parameter for ``__init__``: ``join_on_nulls``.
+   When ``join_on_nulls`` is ``True``, the ``PrivateJoin`` can join null values between both dataframes.
+-  Changed transformations and measurements to make a copy of mutable constructor arguments.
+-  Add checks in ``ParallelComposition`` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.
 
 Removed
 ~~~~~~~
 
--  Removed old examples from ``examples/``, future examples will be added directly to the documentation.
+-  Removed old examples from ``examples/``.
+   Future examples will be added directly to the documentation.
 
-0.2.0 - 2022-04-12
-------------------
+0.2.0 - 2022-04-12 (internal release)
+-------------------------------------
 
 .. _added-1:
 
@@ -48,10 +53,10 @@ Added
 -  Added ``cleanup.remove_all_temp_tables()`` function, which will remove all temporary tables created by Core.
 -  Added new components ``DropNaNs``, ``DropNulls``, ``ReplaceNulls``, and ``ReplaceNaNs``.
 
-.. _section-1:
+.. _internal-release-1:
 
-0.1.1 - 2022-02-24
-------------------
+0.1.1 - 2022-02-24 (internal release)
+-------------------------------------
 
 .. _added-2:
 
@@ -69,7 +74,7 @@ Added
 Changed
 ~~~~~~~
 
--  Fixed a bug where create_quantile_measurement would always be created with PureDP as the output measure.
+-  Fixed a bug where ``create_quantile_measurement`` would always be created with PureDP as the output measure.
 -  ``PySparkTest`` now runs ``tmlt.core.utils.cleanup.cleanup()`` during ``tearDownClass``.
 -  Refactored noise distribution tests.
 -  Remove sorting from ``GroupedDataFrame.apply_in_pandas`` and ``GroupedDataFrame.agg``.
@@ -84,20 +89,18 @@ Removed
 ~~~~~~~
 
 -  Removed ``ExponentialMechanism`` and ``PermuteAndFlip`` components.
--  Removed ``AddNoise``, ``AddLaplaceNoise``, ``AddGeometricNoise``, and ``AddDiscreteGaussianNoise`` from
-   ``tmlt.core.measurements.pandas.series``.
--  Removed ``SequentialComposition``, ``ParallelComposition`` and corresponding Queryables from
-   ``tmlt.core.measurements.composition``.
+-  Removed ``AddNoise``, ``AddLaplaceNoise``, ``AddGeometricNoise``, and ``AddDiscreteGaussianNoise`` from ``tmlt.core.measurements.pandas.series``.
+-  Removed ``SequentialComposition``, ``ParallelComposition`` and corresponding Queryables from ``tmlt.core.measurements.composition``.
 -  Removed ``tmlt.core.transformations.cache``.
 
-.. _section-2:
+.. _internal-release-2:
 
-0.1.0 - 2022-02-14
-------------------
+0.1.0 - 2022-02-14 (internal release)
+-------------------------------------
 
 .. _added-3:
 
 Added
 ~~~~~
 
--  Initial release
+-  Initial release.

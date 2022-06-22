@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 - 2022-06-22
 ### Added
 - Added new transformations `DropInfs` and `ReplaceInfs` for handling infinities in data.
 - Added `IfGroupedBy(X, SymmetricDifference())` input metric.
