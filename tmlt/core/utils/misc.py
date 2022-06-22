@@ -93,4 +93,14 @@ def copy_if_mutable(value: T) -> T:
     if isinstance(value, IMMUTABLE_TYPES):
         # NOTE: See https://github.com/python/mypy/issues/5720
         return value  # type: ignore
+    if isinstance(value, list):
+        return [copy_if_mutable(item) for item in value]
+    if isinstance(value, set):
+        return {copy_if_mutable(item) for item in value}
+    if isinstance(value, dict):
+        return {
+            copy_if_mutable(key): copy_if_mutable(item) for key, item in value.items()
+        }
+    if isinstance(value, tuple):
+        return tuple(copy_if_mutable(item) for item in value)
     return copy.deepcopy(value)

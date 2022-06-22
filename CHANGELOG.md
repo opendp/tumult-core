@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+### Changed
+- Fixed `copy_if_mutable` so that it works with containers that can't be deep-copied.
+
 ## 0.3.0 - 2022-06-22
 ### Added
 - Added new transformations `DropInfs` and `ReplaceInfs` for handling infinities in data.
