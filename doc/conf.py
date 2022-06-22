@@ -159,10 +159,10 @@ html_theme_options = {
     "navbar_end": ["navbar-icon-links"],
     "footer_items": ["copyright", "build-info", "sphinx-version"],
     "switcher": {
-        "json_url": "https://docs.tmlt.dev/analytics/versions.json",
+        "json_url": "https://docs.tmlt.dev/core/versions.json",
         "version_match": version,
     },
-    "gitlab_url": "https://gitlab.com/tumult-labs/analytics",
+    "gitlab_url": "https://gitlab.com/tumult-labs/core",
 }
 html_context = {
     "default_mode": "light",
