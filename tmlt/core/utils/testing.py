@@ -9,17 +9,14 @@ import shutil
 import sys
 import unittest
 from dataclasses import dataclass
-from enum import Enum
-from types import FunctionType
 from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple, Union, overload
 from unittest.mock import Mock, create_autospec
 
 import numpy as np
 import pandas as pd
-import sympy as sp
 from nose.tools import nottest
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql.types import DataType, DoubleType, StringType, StructField, StructType
+from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 from scipy.stats import chisquare, kstest, laplace
 
 from tmlt.core.domains.base import Domain
@@ -35,11 +32,7 @@ from tmlt.core.domains.spark_domains import (
 )
 from tmlt.core.measurements.aggregations import NoiseMechanism
 from tmlt.core.measurements.base import Measurement
-from tmlt.core.measurements.interactive_measurements import (
-    PrivacyAccountant,
-    PrivacyAccountantState,
-    Queryable,
-)
+from tmlt.core.measurements.interactive_measurements import Queryable
 from tmlt.core.measurements.pandas_measurements.dataframe import Aggregate
 from tmlt.core.measures import Measure, PureDP
 from tmlt.core.metrics import AbsoluteDifference, Metric, SymmetricDifference
@@ -54,6 +47,7 @@ from tmlt.core.utils.distributions import (
     double_sided_geometric_pmf,
 )
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.utils.type_utils import get_immutable_types
 
 
 def get_all_props(Component: type) -> List[Tuple[str]]:
@@ -170,7 +164,7 @@ def _mutate_and_check_items(
             given component.
     """
     for item in items:
-        if item is None or isinstance(item, IMMUTABLE_TYPES):
+        if item is None or isinstance(item, get_immutable_types()):
             continue
         if isinstance(item, list):
             _mutate_list_and_check(component, prop_name, prop_val, item)
@@ -301,35 +295,6 @@ class FakeAggregate(Aggregate):
         """Perform dummy measurement."""
         value = -1.0 if data.empty else sum(data["B"])
         return pd.DataFrame({"C": [value], "C_str": [str(value)]})
-
-
-IMMUTABLE_TYPES = (
-    ExactNumber,
-    Measurement,
-    Transformation,
-    Domain,
-    Metric,
-    Measure,
-    FunctionType,
-    int,
-    str,
-    float,
-    bool,
-    pd.DataFrame,
-    DataFrame,
-    DataType,
-    StructType,
-    sp.Expr,
-    np.number,
-    PrivacyAccountantState,
-    PrivacyAccountant,
-    Enum,
-)
-"""Types that are considered immutable by the privacy framework.
-
-While many of these types are technically mutable in python, we assume that users do
-not mutate their state after creating them or passing them to another immutable object.
-"""
 
 
 class PySparkTest(unittest.TestCase):

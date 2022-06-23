@@ -2,7 +2,11 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, NoReturn, Sequence
+from enum import Enum
+from types import FunctionType
+from typing import Any, NoReturn, Sequence, Tuple, Type
+
+# pylint: disable=cyclic-import, import-outside-toplevel
 
 
 def assert_never(x: NoReturn) -> NoReturn:
@@ -40,3 +44,45 @@ def get_element_type(l: Sequence[Any], allow_none: bool = True) -> type:
     else:
         (list_type,) = types
         return list_type
+
+
+def get_immutable_types() -> Tuple[Type, ...]:
+    """Returns the types that are considered immutable by the privacy framework.
+
+    While many of these types are technically mutable in python, we assume that users do
+    not mutate their state after creating them or passing them to another object.
+    """
+    import numpy as np
+    import pandas as pd
+    import sympy as sp
+    from pyspark.sql import DataFrame
+    from pyspark.sql.types import DataType
+    from pyspark.sql.types import StructType
+
+    from tmlt.core.domains.base import Domain
+    from tmlt.core.measurements.base import Measurement
+    from tmlt.core.measures import Measure
+    from tmlt.core.metrics import Metric
+    from tmlt.core.transformations.base import Transformation
+    from tmlt.core.utils.exact_number import ExactNumber
+
+    return (
+        ExactNumber,
+        Measurement,
+        Transformation,
+        Domain,
+        Metric,
+        Measure,
+        FunctionType,
+        int,
+        str,
+        float,
+        bool,
+        pd.DataFrame,
+        DataFrame,
+        DataType,
+        StructType,
+        sp.Expr,
+        np.number,
+        Enum,
+    )

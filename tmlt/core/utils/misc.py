@@ -10,6 +10,8 @@ import numpy as np
 from flint import arb  # pylint: disable=no-name-in-module
 from pyspark.sql import DataFrame
 
+from tmlt.core.utils.type_utils import get_immutable_types
+
 
 class RNGWrapper:  # pylint: disable=too-few-public-methods
     """Mimics python random interface for discrete gaussian sampling."""
@@ -86,21 +88,18 @@ T = TypeVar("T")
 
 
 def copy_if_mutable(value: T) -> T:
-    # pylint: disable=import-outside-toplevel
     """Returns a deep copy of argument if it is mutable."""
-    from tmlt.core.utils.testing import IMMUTABLE_TYPES
-
-    if isinstance(value, IMMUTABLE_TYPES):
+    if isinstance(value, get_immutable_types()):
         # NOTE: See https://github.com/python/mypy/issues/5720
         return value  # type: ignore
     if isinstance(value, list):
-        return [copy_if_mutable(item) for item in value]
+        return [copy_if_mutable(item) for item in value]  # type: ignore
     if isinstance(value, set):
-        return {copy_if_mutable(item) for item in value}
+        return {copy_if_mutable(item) for item in value}  # type: ignore
     if isinstance(value, dict):
-        return {
+        return {  # type: ignore
             copy_if_mutable(key): copy_if_mutable(item) for key, item in value.items()
         }
     if isinstance(value, tuple):
-        return tuple(copy_if_mutable(item) for item in value)
+        return tuple(copy_if_mutable(item) for item in value)  # type: ignore
     return copy.deepcopy(value)

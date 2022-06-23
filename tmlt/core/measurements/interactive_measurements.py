@@ -1528,7 +1528,7 @@ class PrivacyAccountant:
         ]
         self._activate_child(0)
         self._state = PrivacyAccountantState.WAITING_FOR_CHILDREN
-        return self._children
+        return self.children
 
     def force_activate(self) -> None:
         r"""Set this :class:`~.PrivacyAccountant`'s state to ACTIVE.
