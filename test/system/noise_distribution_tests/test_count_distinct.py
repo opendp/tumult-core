@@ -24,6 +24,7 @@ from tmlt.core.utils.testing import (
     get_sampler,
     run_test_using_chi_squared_test,
     run_test_using_ks_test,
+    skip,
 )
 
 from . import NOISE_SCALE_FUDGE_FACTOR, P_THRESHOLD, SAMPLE_SIZE
@@ -80,6 +81,7 @@ def _get_count_distinct_test_cases(noise_mechanism: NoiseMechanism):
     return test_cases
 
 
+@skip
 class TestCountDistinctNoiseDistributions(PySparkTest):
     """Noise distributions test for `create_count_distinct_measurement`."""
 
