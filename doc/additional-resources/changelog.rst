@@ -3,6 +3,18 @@
 Changelog
 =========
 
+0.3.1 - 2022-06-23
+------------------
+
+Changed
+~~~~~~~
+
+-  Fixed ``copy_if_mutable`` so that it works with containers that can’t be deep-copied.
+-  Reverted change from 0.3.0 “Add checks in ``ParallelComposition`` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.”
+-  Temporarily disabled flaky statistical tests.
+
+.. _section-1:
+
 0.3.0 - 2022-06-22
 ------------------
 
@@ -17,6 +29,8 @@ Added
 -  Added new truncation transformations for ``IfGroupedBy(X, SymmetricDifference())``: ``LimitRowsPerGroup``, ``LimitKeysPerGroup``
 -  Added ``AddUniqueColumn`` for switching from ``SymmetricDifference`` to ``IfGroupedBy(X, SymmetricDifference())``.
 -  Added a topic guide around NaNs, nulls and infinities.
+
+.. _changed-1:
 
 Changed
 ~~~~~~~
@@ -69,7 +83,7 @@ Added
 -  Installation on Python 3.7.1 through 3.7.3 is now allowed.
 -  Added ``DecorateQueryable``, ``DecoratedQueryable`` and ``create_adaptive_composition`` components.
 
-.. _changed-1:
+.. _changed-2:
 
 Changed
 ~~~~~~~

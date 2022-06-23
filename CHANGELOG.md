@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 - 2022-06-23
 ### Changed
 - Fixed `copy_if_mutable` so that it works with containers that can't be deep-copied.
 - Reverted change from 0.3.0 "Add checks in `ParallelComposition` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference."
