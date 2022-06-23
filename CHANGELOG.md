@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.2 - 2022-06-23
 ## Changed
 - Moved `IMMUTABLE_TYPES` from utils/testing.py to utils/type_utils to avoid importing nose when accessing `IMMUTABLE_TYPES`
 
