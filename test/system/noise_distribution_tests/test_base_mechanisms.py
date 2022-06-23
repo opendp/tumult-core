@@ -31,6 +31,7 @@ from tmlt.core.utils.testing import (
     _run_chi_squared_tests,
     run_test_using_chi_squared_test,
     run_test_using_ks_test,
+    skip,
 )
 
 from . import NOISE_SCALE_FUDGE_FACTOR, P_THRESHOLD, SAMPLE_SIZE
@@ -206,6 +207,7 @@ BASE_DISCRETE_GAUSSIAN_TEST_INSTANCES = [
 ]
 
 
+@skip
 class TestBaseMechanismsNoiseDistributions(PySparkTest):
     """KS Tests for continuous noise mechanisms."""
 
@@ -234,6 +236,7 @@ class TestBaseMechanismsNoiseDistributions(PySparkTest):
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
 
+@skip
 class TestCorrelationDetection(PySparkTest):
     """Tests that samples with duplicates are rejected.
 

@@ -12,9 +12,11 @@ from scipy.stats import kstest
 from scipy.stats import uniform as scipy_uniform
 
 from tmlt.core.random.uniform import uniform
+from tmlt.core.utils.testing import skip
 
 
 @parameterized.expand([(10, 1000), (0, 1), (-10, 10), (0.5, 0.6)])
+@skip
 def test_uniform_distribution(a, b):
     """:func:`~.uniform` samples correctly."""
     samples = np.array([uniform(a, b) for _ in range(SAMPLE_SIZE)])

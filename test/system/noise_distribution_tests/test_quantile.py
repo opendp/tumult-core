@@ -20,7 +20,7 @@ from tmlt.core.domains.pandas_domains import PandasSeriesDomain
 from tmlt.core.measurements.pandas_measurements.series import NoisyQuantile
 from tmlt.core.measures import PureDP
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
-from tmlt.core.utils.testing import PySparkTest
+from tmlt.core.utils.testing import PySparkTest, skip
 
 from . import NOISE_SCALE_FUDGE_FACTOR, P_THRESHOLD, SAMPLE_SIZE
 
@@ -104,6 +104,7 @@ def _get_quantile_probabilities(
     return exp_norm_weights
 
 
+@skip
 class TestQuantileNoiseDistribution(PySparkTest):
     """Tests that NoisyQuantile has expected output distribution."""
 
