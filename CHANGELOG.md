@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+## Changed
+- Moved `IMMUTABLE_TYPES` from utils/testing.py to utils/type_utils to avoid importing nose when accessing `IMMUTABLE_TYPES`
+
 ## 0.3.1 - 2022-06-23
 ### Changed
 - Fixed `copy_if_mutable` so that it works with containers that can't be deep-copied.

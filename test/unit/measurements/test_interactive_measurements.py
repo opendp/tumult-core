@@ -780,9 +780,8 @@ class TestPrivacyAccountant(PySparkTest):
         d_in["B"] = 2
         self.assertDictEqual(accountant.d_in, {"A": 2})
 
-    @parameterized.expand(get_all_props(PrivacyAccountant))
-    def test_property_immutability(self, prop_name: str):
-        """Tests that given property is immutable."""
+    def test_children_cannot_be_mutated(self):
+        """Tests that the list of children of a PrivacyAccountant cannot be mutated."""
         accountant = PrivacyAccountant.launch(
             measurement=self.measurement, data=self.data
         )
@@ -797,8 +796,14 @@ class TestPrivacyAccountant(PySparkTest):
             ),
             privacy_budget=2,
         )
-        assert_property_immutability(accountant, prop_name)
-        assert_property_immutability(children[0], prop_name)
+        self.assertEqual(children, accountant.children)
+        children.append(accountant)
+        self.assertNotEqual(children, accountant.children)
+
+        children = accountant.children
+        self.assertEqual(children, accountant.children)
+        children.append(accountant)
+        self.assertNotEqual(children, accountant.children)
 
     @parameterized.expand(
         [
