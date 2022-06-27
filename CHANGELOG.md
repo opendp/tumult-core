@@ -1,7 +1,11 @@
 # Changelog
 
+## Unreleased
+### Added
+- Added an alternate prng for non-intel architectures that don't support RDRAND.
+
 ## 0.3.2 - 2022-06-23
-## Changed
+### Changed
 - Moved `IMMUTABLE_TYPES` from utils/testing.py to utils/type_utils to avoid importing nose when accessing `IMMUTABLE_TYPES`
 
 ## 0.3.1 - 2022-06-23
