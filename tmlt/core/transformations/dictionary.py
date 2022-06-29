@@ -1,4 +1,11 @@
-"""Transformations and utilities for manipulating dictionaries."""
+"""Transformations and utilities for manipulating dictionaries.
+
+Note that while most transformations in this module (:class:`~.CreateDictFromValue`,
+:class:`~.Subset`, and :class:`~.GetValue`) support the metric :class:`~.AddRemoveKeys`,
+:class:`~.AugmentDictTransformation` does not. Because of this, none of the included
+derived transformations (such as :func:`create_copy_and_transform_value`) support
+:class:`~.AddRemoveKeys`. Instead, use transformations in :mod:`~.add_remove_keys`.
+"""
 
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,7 +15,13 @@ from typeguard import typechecked
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import DictDomain
-from tmlt.core.metrics import DictMetric, Metric
+from tmlt.core.metrics import (
+    AddRemoveKeys,
+    DictMetric,
+    IfGroupedBy,
+    Metric,
+    SymmetricDifference,
+)
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
 from tmlt.core.transformations.identity import Identity
@@ -19,19 +32,40 @@ class CreateDictFromValue(Transformation):
     """Create a dictionary from an object."""
 
     @typechecked
-    def __init__(self, input_domain: Domain, input_metric: Metric, key: Any):
+    def __init__(
+        self,
+        input_domain: Domain,
+        input_metric: Metric,
+        key: Any,
+        use_add_remove_keys: bool = False,
+    ):
         """Constructor.
 
         Args:
             input_domain: Domain of input objects.
             input_metric: Distance metric on input objects.
             key: Key for constructing dictionary with given object.
+            use_add_remove_keys: Whether to use :class:`~.AddRemoveKeys` as the output
+                metric instead of :class:`~.DictMetric`.
         """
+        output_metric: Union[DictMetric, AddRemoveKeys]
+        if use_add_remove_keys:
+            if not (
+                isinstance(input_metric, IfGroupedBy)
+                and isinstance(input_metric.inner_metric, SymmetricDifference)
+            ):
+                raise ValueError(
+                    "Input metric must be IfGroupedBy with an inner metric of "
+                    "SymmetricDifference to use AddRemoveKeys as the output metric"
+                )
+            output_metric = AddRemoveKeys(input_metric.column)
+        else:
+            output_metric = DictMetric({key: input_metric})
         super().__init__(
             input_domain=input_domain,
             input_metric=input_metric,
             output_domain=DictDomain({key: input_domain}),
-            output_metric=DictMetric({key: input_metric}),
+            output_metric=output_metric,
         )
         self._key = key
 
@@ -41,7 +75,7 @@ class CreateDictFromValue(Transformation):
         return self._key
 
     @typechecked
-    def stability_function(self, d_in: Any) -> Dict[Any, Any]:
+    def stability_function(self, d_in: Any) -> Any:
         """Returns the smallest d_out satisfied by the transformation.
 
         The returned d_out is {self.key: d_in}.
@@ -50,7 +84,10 @@ class CreateDictFromValue(Transformation):
             d_in: Distance between inputs under input_metric.
         """
         self.input_metric.validate(d_in)
-        return {self.key: d_in}
+        if isinstance(self.output_metric, DictMetric):
+            return {self.key: d_in}
+        else:
+            return d_in
 
     def __call__(self, val: Any) -> Dict[Any, Any]:
         """Returns dictionary with value associated with specified key."""
@@ -169,7 +206,10 @@ class Subset(Transformation):
 
     @typechecked
     def __init__(
-        self, input_domain: DictDomain, input_metric: DictMetric, keys: List[Any]
+        self,
+        input_domain: DictDomain,
+        input_metric: Union[DictMetric, AddRemoveKeys],
+        keys: List[Any],
     ):
         """Constructor.
 
@@ -178,12 +218,6 @@ class Subset(Transformation):
             input_metric: Distance metric over input dictionaries.
             keys: Keys to be used for extracting subset.
         """
-        if set(input_domain.key_to_domain) != set(input_metric.key_to_metric):
-            raise ValueError(
-                "Input metric invalid for input domain: Expected keys: "
-                f"{set(input_domain.key_to_domain)}, not: "
-                f"{set(input_metric.key_to_metric)}."
-            )
         if not keys:
             raise ValueError("No keys provided.")
         if not set(keys) <= set(input_domain.key_to_domain):
@@ -191,11 +225,22 @@ class Subset(Transformation):
                 "Can not retrieve subset from dictionary. Invalid keys: "
                 f"{set(keys) - set(input_domain.key_to_domain)}"
             )
+        output_metric: Union[DictMetric, AddRemoveKeys]
+        if isinstance(input_metric, DictMetric):
+            if set(input_domain.key_to_domain) != set(input_metric.key_to_metric):
+                raise ValueError(
+                    "Input metric invalid for input domain: Expected keys: "
+                    f"{set(input_domain.key_to_domain)}, not: "
+                    f"{set(input_metric.key_to_metric)}."
+                )
+            output_metric = DictMetric({k: input_metric[k] for k in keys})
+        else:
+            output_metric = input_metric
         super().__init__(
             input_domain=input_domain,
             input_metric=input_metric,
             output_domain=DictDomain({k: input_domain[k] for k in keys}),
-            output_metric=DictMetric({k: input_metric[k] for k in keys}),
+            output_metric=output_metric,
         )
         self._keys = keys.copy()
 
@@ -205,7 +250,7 @@ class Subset(Transformation):
         return self._keys.copy()
 
     @typechecked
-    def stability_function(self, d_in: Dict[Any, Any]) -> Dict[Any, Any]:
+    def stability_function(self, d_in: Any) -> Any:
         """Returns the smallest d_out satisfied by the transformation.
 
         The returned d_out is {key: d_in[key] for key in self.keys}.
@@ -214,9 +259,11 @@ class Subset(Transformation):
             d_in: Distance between inputs under input_metric.
         """
         self.input_metric.validate(d_in)
-        return {key: d_in[key] for key in self.keys}
+        if isinstance(self.input_metric, DictMetric):
+            return {key: d_in[key] for key in self.keys}
+        return d_in
 
-    def __call__(self, input_dict: Dict[Any, Any]) -> Dict[Any, Any]:
+    def __call__(self, input_dict: Any) -> Any:
         """Returns subset of dictionary specified by keys."""
         return {k: input_dict[k] for k in self.keys}
 
@@ -225,7 +272,12 @@ class GetValue(Transformation):
     """Retrieve an object from a dictionary."""
 
     @typechecked
-    def __init__(self, input_domain: DictDomain, input_metric: DictMetric, key: Any):
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: Union[DictMetric, AddRemoveKeys],
+        key: Any,
+    ):
         """Constructor.
 
         Args:
@@ -233,20 +285,26 @@ class GetValue(Transformation):
             input_metric: Distance metric for input dictionaries.
             key: Key for retrieval.
         """
-        if set(input_domain.key_to_domain) != set(input_metric.key_to_metric):
-            raise ValueError(
-                "Input metric invalid for input domain: Expected keys: "
-                f"{set(input_domain.key_to_domain)}, not: "
-                f"{set(input_metric.key_to_metric)}."
-            )
         if key not in input_domain.key_to_domain:
-            raise ValueError(f"Invalid key for retrieval: {key}")
+            raise KeyError(f"{repr(key)} is not one of the input domain's keys")
+        # Below is the check in base class, but needs to happen before so
+        # output_metric = input_metric[key] won't get a KeyError
+        if not input_metric.supports_domain(input_domain):
+            raise ValueError(
+                f"Input metric {input_metric} and input domain {input_domain} are not"
+                " compatible."
+            )
+        output_metric: Metric
+        if isinstance(input_metric, DictMetric):
+            output_metric = input_metric[key]
+        else:
+            output_metric = IfGroupedBy(input_metric.column, SymmetricDifference())
 
         super().__init__(
             input_domain=input_domain,
             input_metric=input_metric,
             output_domain=input_domain[key],
-            output_metric=input_metric[key],
+            output_metric=output_metric,
         )
         self._key = key
 
@@ -256,7 +314,7 @@ class GetValue(Transformation):
         return self._key
 
     @typechecked
-    def stability_function(self, d_in: Dict[Any, Any]) -> Any:
+    def stability_function(self, d_in: Any) -> Any:
         """Returns the smallest d_out satisfied by the transformation.
 
         The returned d_out is d_in[self.key].
@@ -265,9 +323,12 @@ class GetValue(Transformation):
             d_in: Distance between inputs under input_metric.
         """
         self.input_metric.validate(d_in)
-        return d_in[self.key]
+        if isinstance(self.input_metric, DictMetric):
+            return d_in[self.key]
+        else:
+            return d_in
 
-    def __call__(self, input_dict: Dict[Any, Any]) -> Any:
+    def __call__(self, input_dict: Any) -> Any:
         """Returns value for specified key."""
         return input_dict[self.key]
 

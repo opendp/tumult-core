@@ -487,10 +487,10 @@ class FlatMap(Transformation):
         """Constructor.
 
         Args:
+            metric: Distance metric for input and output DataFrames.
             row_transformer: Transformation to apply to each row.
             max_num_rows: The maximum number of rows to allow from `row_transformer`. If
                 more rows are output, the additional rows are suppressed.
-            metric: Distance metric for input and output DataFrames.
         """
         if max_num_rows < 0:
             raise ValueError(f"max_num_rows ({max_num_rows}) must be nonnegative.")
@@ -507,7 +507,8 @@ class FlatMap(Transformation):
                 RootSumOfSquared(SymmetricDifference()),
             ):
                 raise ValueError(
-                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "Inner metric for IfGroupedBy metric must be "
+                    "SymmetricDifference(), "
                     "SumOf(SymmetricDifference()), or "
                     "RootSumOfSquared(SymmetricDifference())"
                 )

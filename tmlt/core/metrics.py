@@ -2,13 +2,17 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=no-member
+
 from abc import ABC, abstractmethod
 from collections import Counter
+from functools import reduce
 from typing import Any, Dict, Iterable, List, Tuple, Union, cast
 
 import numpy as np  # pylint: disable=unused-import
 import pandas as pd
 import sympy as sp
+from pyspark.sql import functions as sf
 from pyspark.sql.session import SparkSession
 from typeguard import typechecked
 
@@ -18,6 +22,7 @@ from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
 )
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -57,7 +62,7 @@ class Metric(ABC):
     ) -> None:
         """Raise an exception if the arguments to a distance method aren't valid."""
         if not self.supports_domain(domain):
-            raise ValueError(f"This metric is not implemented for domain {domain}.")
+            raise ValueError(f"{repr(self)} does not support domain {repr(domain)}.")
         if value1 not in domain:
             raise OutOfDomainError(f"The first argument is not in domain {domain}.")
         if value2 not in domain:
@@ -851,7 +856,8 @@ class OnColumn(ExactNumberMetric):
     def __repr__(self) -> str:
         """Returns string representation."""
         return (
-            f"{self.__class__.__name__}(column='{self.column}', metric={self.metric})"
+            f"{self.__class__.__name__}(column={repr(self.column)},"
+            f" metric={self.metric})"
         )
 
 
@@ -982,6 +988,8 @@ class IfGroupedBy(ExactNumberMetric):
     This metric is an upper bound on the distance for any fixed set of grouping keys.
     This assumes that the distance between two empty groups is zero, and the inner
     metric must satisfy this property.
+
+    The grouping column cannot contain floating point values.
 
     Examples:
         >>> import pandas as pd
@@ -1263,3 +1271,206 @@ class DictMetric(Metric):
             key: self[key] for key in sorted(self.key_to_metric, key=str)
         }
         return f"{self.__class__.__name__}(key_to_metric={sorted_key_to_metric})"
+
+
+class AddRemoveKeys(Metric):
+    """The number of keys that dictionaries of dataframe differ by.
+
+    This metric can be thought of as a extension of :class:`IfGroupedBy` with inner
+    metric :class:`~SymmetricDifference`, except it is applied to a dictionary of
+    dataframes, instead of a single dataframe.
+
+    Both `IfGroupedBy(X, SymmetricDifference())` and `AddRemoveKeys(X)` can be described
+    in the following way:
+
+    Sum over each key that appears in column `X` in either neighbor
+
+    - 0 if both neighbors "match" for `X = key`
+    - 1 if only one neighbor has records for `X = key`
+    - 2 if both neighbor have records for `X = key`, but they don't "match"
+
+    The key column cannot containg floating point values, and all dataframes must
+    have the same type for the key column.
+
+    Examples:
+        >>> import pandas as pd
+        >>> from pyspark.sql import SparkSession
+        >>> from tmlt.core.domains.spark_domains import (
+        ...     SparkIntegerColumnDescriptor,
+        ...     SparkStringColumnDescriptor,
+        ... )
+        >>> spark = SparkSession.builder.getOrCreate()
+        >>> domain = DictDomain(
+        ...     {
+        ...         1: SparkDataFrameDomain(
+        ...             {
+        ...                 "A": SparkIntegerColumnDescriptor(),
+        ...                 "B": SparkIntegerColumnDescriptor(),
+        ...             },
+        ...         ),
+        ...         2: SparkDataFrameDomain(
+        ...             {
+        ...                 "A": SparkIntegerColumnDescriptor(),
+        ...                 "C": SparkStringColumnDescriptor(),
+        ...             },
+        ...         ),
+        ...     }
+        ... )
+        >>> metric = AddRemoveKeys("A")
+        >>> # A=1 matches, A=2 is only in value1, A=3 is only in value2, A=4 differs
+        >>> value1 = {
+        ...     1: spark.createDataFrame(
+        ...             pd.DataFrame(
+        ...             {
+        ...                 "A": [1, 1, 2],
+        ...                 "B": [1, 1, 1],
+        ...             }
+        ...         )
+        ...     ),
+        ...     2: spark.createDataFrame(
+        ...         pd.DataFrame(
+        ...             {
+        ...                 "A": [1, 4],
+        ...                 "C": ["1", "1"],
+        ...             }
+        ...         )
+        ...     )
+        ... }
+        >>> value2 = {
+        ...     1: spark.createDataFrame(
+        ...             pd.DataFrame(
+        ...             {
+        ...                 "A": [1, 1, 3],
+        ...                 "B": [1, 1, 1],
+        ...             }
+        ...         )
+        ...     ),
+        ...     2: spark.createDataFrame(
+        ...         pd.DataFrame(
+        ...             {
+        ...                 "A": [1, 4],
+        ...                 "C": ["1", "2"],
+        ...             }
+        ...         )
+        ...     )
+        ... }
+        >>> metric.distance(value1, value2, domain)
+        4
+    """
+
+    @typechecked
+    def __init__(self, column: str):
+        """Constructor.
+
+        Args:
+            column: The column defining the keys.
+        """
+        self._column = column
+
+    @property
+    def column(self) -> str:
+        """Returns the key column."""
+        return self._column
+
+    @typechecked
+    def validate(self, value: ExactNumberInput):
+        """Raises an error if `value` not a valid distance.
+
+        * `value` must be a nonnegative real or infinite
+
+        Args:
+            value: A distance between two datasets under this metric.
+        """
+        try:
+            validate_exact_number(
+                value=value,
+                allow_nonintegral=True,
+                minimum=0,
+                minimum_is_inclusive=True,
+            )
+        except ValueError as e:
+            raise ValueError(f"Invalid value for metric AbsoluteDifference: {e}")
+
+    def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
+        """Returns True if `value1` is less than or equal to `value2`."""
+        self.validate(value1)
+        self.validate(value2)
+        return ExactNumber(value1) <= ExactNumber(value2)
+
+    def supports_domain(self, domain: Domain) -> bool:
+        """Return True if the metric is implemented for the passed domain.
+
+        Args:
+            domain: The domain to check against.
+        """
+        if isinstance(domain, DictDomain):
+            column_descriptor = None
+            for element_domain in domain.key_to_domain.values():
+                if not isinstance(element_domain, SparkDataFrameDomain) or isinstance(
+                    element_domain.schema.get(self.column, None),
+                    SparkFloatColumnDescriptor,
+                ):
+                    return False
+                if self.column not in element_domain.schema:
+                    return False
+                if column_descriptor is None:
+                    column_descriptor = element_domain.schema[self.column]
+                else:
+                    if element_domain.schema[self.column] != column_descriptor:
+                        return False
+            return True
+        return False
+
+    def distance(self, value1: Any, value2: Any, domain: Domain) -> ExactNumber:
+        """Return the metric distance between two elements of a supported domain.
+
+        Args:
+            value1: An element of the domain.
+            value2: An element of the domain.
+            domain: A domain compatible with the metric.
+        """
+        self._validate_distance_arguments(value1, value2, domain)
+        assert isinstance(domain, DictDomain)
+        keys_in_value1_elements = {}
+        keys_in_value2_elements = {}
+        for dict_key in domain.key_to_domain:
+            keys_in_value1_elements[dict_key] = set(
+                value1[dict_key]
+                .select(self.column)
+                .distinct()
+                .rdd.map(lambda x: x[0])
+                .collect()
+            )
+            keys_in_value2_elements[dict_key] = set(
+                value2[dict_key]
+                .select(self.column)
+                .distinct()
+                .rdd.map(lambda x: x[0])
+                .collect()
+            )
+        value1_keys = reduce(lambda x, y: x | y, keys_in_value1_elements.values())
+        value2_keys = reduce(lambda x, y: x | y, keys_in_value2_elements.values())
+        added_keys = value2_keys - value1_keys
+        removed_keys = value1_keys - value2_keys
+
+        # keys which may have changed
+        for key in value1_keys & value2_keys:
+            for dict_key in domain.key_to_domain:
+                df1 = value1[dict_key].filter(sf.col(self.column).eqNullSafe(key))
+                df2 = value2[dict_key].filter(sf.col(self.column).eqNullSafe(key))
+                if (
+                    SymmetricDifference().distance(
+                        df1, df2, domain.key_to_domain[dict_key]
+                    )
+                    > 0
+                ):
+                    added_keys.add(key)
+                    removed_keys.add(key)
+                    break
+        distance = ExactNumber(len(added_keys) + len(removed_keys))
+        self.validate(distance)
+        return distance
+
+    def __repr__(self) -> str:
+        """Returns string representation."""
+        return f"{self.__class__.__name__}(column={repr(self.column)})"

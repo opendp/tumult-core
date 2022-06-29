@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-self-use
-
+import datetime
 from typing import Any, Union
 from unittest import TestCase
 from unittest.mock import patch
@@ -24,11 +24,15 @@ from tmlt.core.domains.numpy_domains import (
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
     SparkIntegerColumnDescriptor,
+    SparkStringColumnDescriptor,
+    SparkTimestampColumnDescriptor,
 )
 from tmlt.core.metrics import (
     AbsoluteDifference,
+    AddRemoveKeys,
     DictMetric,
     HammingDistance,
     IfGroupedBy,
@@ -2023,3 +2027,337 @@ class TestDictMetric(TestCase):
         domain = DictDomain({})
         metric = DictMetric({})
         self.assertEqual(metric.distance({}, {}, domain), {})
+
+
+class TestAddRemoveKeys(PySparkTest):
+    """TestCase for AddRemoveKeys"""
+
+    @parameterized.expand(
+        [
+            (0,),
+            (10,),
+            (float("inf"),),
+            ("3",),
+            ("32",),
+            (sp.Integer(0),),
+            (sp.Integer(1),),
+            (sp.oo,),
+        ]
+    )
+    def test_valid(self, value: ExactNumberInput):
+        """Only valid nonnegative integral ExactNumberInput's should be allowed."""
+        AddRemoveKeys("A").validate(value)
+
+    @parameterized.expand([(sp.Float(2),), ("wat",), ({},)])
+    def test_invalid(self, value: Any):
+        """Only valid nonnegative integral ExactNumberInput's should be allowed."""
+        with self.assertRaises((TypeError, ValueError)):
+            AddRemoveKeys("A").validate(value)
+
+    @parameterized.expand(
+        [
+            (sp.Integer(0), sp.Integer(1), True),
+            (sp.Integer(0), sp.oo, True),
+            (sp.oo, sp.oo, True),
+            (sp.Integer(1), sp.Integer(0), False),
+            (sp.oo, sp.Integer(1000), False),
+        ]
+    )
+    def test_compare(
+        self, value1: ExactNumberInput, value2: ExactNumberInput, expected: bool
+    ):
+        """Tests that compare returns the expected result."""
+        self.assertEqual(AddRemoveKeys("A").compare(value1, value2), expected)
+
+    @parameterized.expand(
+        [
+            (AddRemoveKeys("A"), True),
+            (AddRemoveKeys("B"), False),
+            (AbsoluteDifference(), False),
+            ("not a metric", False),
+        ]
+    )
+    def test_eq(self, value: Any, expected: bool):
+        """Tests that the metric is equal to itself and not other metrics."""
+        self.assertEqual(AddRemoveKeys("A") == value, expected)
+
+    def test_repr(self):
+        """Tests that the string representation is as expected."""
+        self.assertEqual(repr(AddRemoveKeys("A")), "AddRemoveKeys(column='A')")
+
+    @parameterized.expand(
+        [
+            (NumpyIntegerDomain(), False),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "B": SparkIntegerColumnDescriptor(),
+                            }
+                        )
+                    }
+                ),
+                True,
+            ),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "B": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "C": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                    }
+                ),
+                True,
+            ),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "B": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {
+                                "A": SparkStringColumnDescriptor(allow_null=True),
+                                "C": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                    }
+                ),
+                False,
+            ),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkFloatColumnDescriptor(),
+                                "B": SparkIntegerColumnDescriptor(),
+                            }
+                        )
+                    }
+                ),
+                False,
+            ),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {"A": SparkTimestampColumnDescriptor()}
+                        )
+                    }
+                ),
+                True,
+            ),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "B": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {
+                                "B": SparkIntegerColumnDescriptor(),
+                                "C": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                    }
+                ),
+                False,
+            ),
+        ]
+    )
+    def test_supports_domain(self, domain: Domain, is_supported: bool):
+        """Test that supports_domain correctly identifies supported domains."""
+        self.assertEqual(AddRemoveKeys("A").supports_domain(domain), is_supported)
+
+    @parameterized.expand(
+        [
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkTimestampColumnDescriptor(allow_null=True),
+                                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                            }
+                        )
+                    }
+                ),
+                {
+                    "key1": (
+                        [
+                            [
+                                datetime.datetime.fromisoformat(
+                                    "1970-01-01 00:00:00.000+00:00"
+                                ),
+                                1,
+                            ],
+                            [
+                                datetime.datetime.fromisoformat(
+                                    "1970-01-02 00:00:00.000+00:00"
+                                ),
+                                2,
+                            ],
+                        ],
+                        ["A", "B"],  # schema can be inferred
+                    )
+                },
+                {
+                    "key1": (
+                        [
+                            [
+                                datetime.datetime.fromisoformat(
+                                    "1970-01-01 00:00:00.000+00:00"
+                                ),
+                                1,
+                            ],
+                            [
+                                datetime.datetime.fromisoformat(
+                                    "1970-01-01 00:00:00.000+00:00"
+                                ),
+                                3,
+                            ],
+                        ],
+                        ["A", "B"],
+                    )
+                },
+                3,
+            ),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                            }
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                                "C": SparkIntegerColumnDescriptor(allow_null=True),
+                            }
+                        ),
+                    }
+                ),
+                {
+                    "key1": ([[1, 1], [2, 2]], ["A", "B"]),
+                    "key2": ([[3, 3], [4, 4]], ["A", "C"]),
+                },
+                {
+                    "key1": ([], "A: bigint, B: bigint"),
+                    "key2": ([], "A: bigint, C: bigint"),
+                },
+                4,
+            ),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                            }
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                                "C": SparkIntegerColumnDescriptor(allow_null=True),
+                            }
+                        ),
+                    }
+                ),
+                {
+                    "key1": ([[1, 1], [2, 2]], ["A", "B"]),
+                    "key2": ([[2, 2], [3, 3]], ["A", "C"]),
+                },
+                {
+                    "key1": ([[1, 1], [2, 2]], ["A", "B"]),
+                    "key2": ([], "A: bigint, C: bigint"),
+                },
+                3,
+            ),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                            }
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                                "C": SparkIntegerColumnDescriptor(allow_null=True),
+                            }
+                        ),
+                    }
+                ),
+                {
+                    "key1": ([[1, 1], [2, 2]], ["A", "B"]),
+                    "key2": ([[3, 3], [4, 4]], ["A", "C"]),
+                },
+                {
+                    "key1": ([[1, 1], [2, 2]], ["A", "B"]),
+                    "key2": ([[3, 3], [4, 4]], ["A", "C"]),
+                },
+                0,
+            ),
+            (
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                            }
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                                "C": SparkIntegerColumnDescriptor(allow_null=True),
+                            }
+                        ),
+                    }
+                ),
+                {
+                    "key1": ([], "A: bigint, B: bigint"),
+                    "key2": ([], "A: bigint, C: bigint"),
+                },
+                {
+                    "key1": ([], "A: bigint, B: bigint"),
+                    "key2": ([], "A: bigint, C: bigint"),
+                },
+                0,
+            ),
+        ]
+    )
+    def test_distance(self, domain: Domain, value1: Any, value2: Any, distance: Any):
+        """Test that distances are computed correctly."""
+        value1 = {
+            key: self.spark.createDataFrame(data, schema)
+            for key, (data, schema) in value1.items()
+        }
+        value2 = {
+            key: self.spark.createDataFrame(data, schema)
+            for key, (data, schema) in value2.items()
+        }
+        self.assertEqual(AddRemoveKeys("A").distance(value1, value2, domain), distance)
