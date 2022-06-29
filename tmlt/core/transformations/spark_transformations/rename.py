@@ -59,7 +59,7 @@ class Rename(Transformation):
         ...             "B": SparkStringColumnDescriptor(),
         ...         }
         ...     ),
-        ...     metric=SymmetricDifference(),
+        ...     input_metric=SymmetricDifference(),
         ...     rename_mapping={"B": "C"},
         ... )
         >>> # Apply transformation to data
@@ -77,8 +77,8 @@ class Rename(Transformation):
         * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
           or :class:`~.IfGroupedBy`
         * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
-          or :class:`~.IfGroupedBy`
-          (matches input metric)
+          or :class:`~.IfGroupedBy`. Matches input metric, unless :class:`~.IfGroupedBy`
+          and the grouping column is renamed.
 
         >>> rename_b_to_c.input_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
@@ -102,15 +102,16 @@ class Rename(Transformation):
     def __init__(
         self,
         input_domain: SparkDataFrameDomain,
-        metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
+        input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
         rename_mapping: Dict[str, str],
     ):
         """Constructor.
 
         Args:
             input_domain: Domain of input DataFrame.
-            metric: Distance metric for input and output DataFrames.
-            rename_mapping: Dictionary from existing column names to target column names.
+            input_metric: Distance metric for input DataFrames.
+            rename_mapping: Dictionary from existing column names to target column
+                names.
         """
         nonexistent_columns = rename_mapping.keys() - set(input_domain.schema)
         if nonexistent_columns:
@@ -120,9 +121,9 @@ class Rename(Transformation):
         for old, new in rename_mapping.items():
             if new in input_domain.schema and new != old:
                 raise ValueError(f"Cannot rename {new} to {old}. {old} already exists.")
-        output_metric = metric
-        if isinstance(metric, IfGroupedBy):
-            if metric.inner_metric not in (
+        output_metric = input_metric
+        if isinstance(input_metric, IfGroupedBy):
+            if input_metric.inner_metric not in (
                 SymmetricDifference(),
                 SumOf(SymmetricDifference()),
                 RootSumOfSquared(SymmetricDifference()),
@@ -132,9 +133,11 @@ class Rename(Transformation):
                     "SumOf(SymmetricDifference()), or "
                     "RootSumOfSquared(SymmetricDifference())"
                 )
-            if metric.column in rename_mapping:
+            if input_metric.column in rename_mapping:
+                # If we add support multiple grouping columns, make sure that
+                # two grouping columns can't switch names for FilterValue
                 output_metric = IfGroupedBy(
-                    rename_mapping[metric.column], metric.inner_metric
+                    rename_mapping[input_metric.column], input_metric.inner_metric
                 )
 
         output_columns = {
@@ -144,7 +147,7 @@ class Rename(Transformation):
 
         super().__init__(
             input_domain=input_domain,
-            input_metric=metric,
+            input_metric=input_metric,
             output_domain=SparkDataFrameDomain(output_columns),
             output_metric=output_metric,
         )

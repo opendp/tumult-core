@@ -3,20 +3,32 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-self-use
-
+import re
 import unittest
-from typing import Any, Dict, Hashable, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from unittest.case import TestCase
 from unittest.mock import call
 
 import numpy as np
-import sympy as sp
 from parameterized import parameterized
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import DictDomain
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
-from tmlt.core.metrics import AbsoluteDifference, DictMetric, Metric
+from tmlt.core.domains.spark_domains import (
+    SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
+    SparkIntegerColumnDescriptor,
+    SparkStringColumnDescriptor,
+)
+from tmlt.core.metrics import (
+    AbsoluteDifference,
+    AddRemoveKeys,
+    DictMetric,
+    IfGroupedBy,
+    Metric,
+    SymmetricDifference,
+)
 from tmlt.core.transformations.dictionary import (
     AugmentDictTransformation,
     CreateDictFromValue,
@@ -173,7 +185,7 @@ class TestAugmentDictTransformation(TestCase):
             ),
         ]
     )
-    def test_invalid_arguments_raises_errror(
+    def test_invalid_arguments_raises_error(
         self,
         error_regex: str,
         input_domain: Domain,
@@ -217,25 +229,54 @@ class TestGetValue(TestCase):
         )
         assert_property_immutability(transformation, prop_name)
 
-    def test_properties(self):
+    @parameterized.expand(
+        [
+            (
+                DictMetric(
+                    {
+                        "key1": IfGroupedBy("A", SymmetricDifference()),
+                        "key2": IfGroupedBy("A", SymmetricDifference()),
+                    }
+                ),
+                IfGroupedBy("A", SymmetricDifference()),
+            ),
+            (AddRemoveKeys("A"), IfGroupedBy("A", SymmetricDifference())),
+        ]
+    )
+    def test_properties(
+        self, input_metric: Union[DictMetric, AddRemoveKeys], output_metric: Metric
+    ):
         """Tests that GetValue has expected properties."""
         input_domain = DictDomain(
-            {"A": NumpyIntegerDomain(), "B": NumpyIntegerDomain()}
-        )
-        input_metric = DictMetric(
-            {"A": AbsoluteDifference(), "B": AbsoluteDifference()}
+            {
+                "key1": SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkFloatColumnDescriptor(
+                            allow_nan=True, allow_inf=True, allow_null=True
+                        ),
+                        "C": SparkStringColumnDescriptor(),
+                    }
+                ),
+                "key2": SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "D": SparkIntegerColumnDescriptor(),
+                    }
+                ),
+            }
         )
         transformation = GetValue(
-            input_domain=input_domain, input_metric=input_metric, key="A"
+            input_domain=input_domain, input_metric=input_metric, key="key1"
         )
         self.assertEqual(transformation.input_domain, input_domain)
         self.assertEqual(transformation.input_metric, input_metric)
-        self.assertEqual(transformation.output_domain, NumpyIntegerDomain())
-        self.assertEqual(transformation.output_metric, AbsoluteDifference())
-        self.assertEqual(transformation.key, "A")
+        self.assertEqual(transformation.output_domain, input_domain["key1"])
+        self.assertEqual(transformation.output_metric, output_metric)
+        self.assertEqual(transformation.key, "key1")
 
     @parameterized.expand([("A", np.int(20)), (("B", "B"), np.int(123))])
-    def test_correctness(self, key: Hashable, expected: Any):
+    def test_correctness(self, key: Any, expected: Any):
         """Tests that GetValue correctly applies transformation."""
         transformation = GetValue(
             input_domain=DictDomain(
@@ -252,20 +293,22 @@ class TestGetValue(TestCase):
     @parameterized.expand(
         [
             (
-                "Input metric invalid for input domain",
+                "Input metric DictMetric(key_to_metric={'B': AbsoluteDifference()}) and"
+                " input domain DictDomain(key_to_domain={'A':"
+                " NumpyIntegerDomain(size=64)}) are not compatible.",
                 DictDomain({"A": NumpyIntegerDomain()}),
                 DictMetric({"B": AbsoluteDifference()}),
                 "A",
             ),
             (
-                "Invalid key",
+                "'B' is not one of the input domain's keys",
                 DictDomain({"A": NumpyIntegerDomain()}),
                 DictMetric({"A": AbsoluteDifference()}),
                 "B",
             ),
         ]
     )
-    def test_invalid_arguments_raises_errror(
+    def test_invalid_arguments_raises_error(
         self,
         error_regex: str,
         input_domain: DictDomain,
@@ -273,28 +316,55 @@ class TestGetValue(TestCase):
         key: str,
     ):
         """Tests that GetValue raises errors appropriately."""
-        with self.assertRaisesRegex(ValueError, error_regex):
+        with self.assertRaisesRegex((ValueError, KeyError), re.escape(error_regex)):
             GetValue(input_domain=input_domain, input_metric=input_metric, key=key)
 
-    def test_stability_function_and_relation(self):
+    @parameterized.expand(
+        [
+            (
+                DictMetric(
+                    {
+                        "key1": IfGroupedBy("A", SymmetricDifference()),
+                        "key2": IfGroupedBy("A", SymmetricDifference()),
+                    }
+                ),
+                {"key1": 2, "key2": 3},
+                2,
+            ),
+            (AddRemoveKeys("A"), 2, 2),
+        ]
+    )
+    def test_stability_function_and_relation(
+        self,
+        input_metric: Union[DictMetric, AddRemoveKeys],
+        d_in: Any,
+        d_out: ExactNumberInput,
+    ):
         """Tests that GetValue's stability function and relation are correct."""
+        input_domain = DictDomain(
+            {
+                "key1": SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkFloatColumnDescriptor(
+                            allow_nan=True, allow_inf=True, allow_null=True
+                        ),
+                        "C": SparkStringColumnDescriptor(),
+                    }
+                ),
+                "key2": SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "D": SparkIntegerColumnDescriptor(),
+                    }
+                ),
+            }
+        )
         transformation = GetValue(
-            input_domain=DictDomain(
-                {"A": NumpyIntegerDomain(), "B": NumpyIntegerDomain()}
-            ),
-            input_metric=DictMetric(
-                {"A": AbsoluteDifference(), "B": AbsoluteDifference()}
-            ),
-            key="A",
+            input_domain=input_domain, input_metric=input_metric, key="key1"
         )
-        self.assertTrue(
-            transformation.stability_relation(d_in={"A": 1, "B": 10}, d_out=1)
-        )
-        self.assertFalse(
-            transformation.stability_relation(
-                d_in={"A": 1, "B": 10}, d_out=sp.Rational("0.99999")
-            )
-        )
+        self.assertEqual(transformation.stability_function(d_in=d_in), d_out)
+        self.assertTrue(transformation.stability_relation(d_in=d_in, d_out=d_out))
 
 
 class TestSubset(TestCase):
@@ -304,56 +374,73 @@ class TestSubset(TestCase):
         """Setup."""
         self.input_domain = DictDomain(
             {
-                "A": NumpyIntegerDomain(),
-                ("B", "B"): NumpyIntegerDomain(),
-                "C": NumpyFloatDomain(),
-            }
-        )
-        self.input_metric = DictMetric(
-            {
-                "A": AbsoluteDifference(),
-                ("B", "B"): AbsoluteDifference(),
-                "C": AbsoluteDifference(),
+                "key1": SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkFloatColumnDescriptor(
+                            allow_nan=True, allow_inf=True, allow_null=True
+                        ),
+                        "C": SparkStringColumnDescriptor(),
+                    }
+                ),
+                "key2": SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "D": SparkIntegerColumnDescriptor(),
+                    }
+                ),
             }
         )
 
     def test_constructor_mutable_arguments(self):
         """Tests that mutable constructor arguments are copied."""
-        keys = ["A", ("B", "B")]
+        keys = ["key1", "key2"]
         transformation = Subset(
-            input_domain=self.input_domain, input_metric=self.input_metric, keys=keys
+            input_domain=self.input_domain, input_metric=AddRemoveKeys("A"), keys=keys
         )
-        keys[1] = ("A", "B")
-        self.assertListEqual(transformation.keys, ["A", ("B", "B")])
+        keys[1] = "key3"
+        self.assertListEqual(transformation.keys, ["key1", "key2"])
 
     @parameterized.expand(get_all_props(Subset))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""
         transformation = Subset(
             input_domain=self.input_domain,
-            input_metric=self.input_metric,
-            keys=["A", ("B", "B")],
+            input_metric=DictMetric(
+                {"key1": SymmetricDifference(), "key2": SymmetricDifference()}
+            ),
+            keys=["key1"],
         )
         assert_property_immutability(transformation, prop_name)
 
-    def test_properties(self):
+    @parameterized.expand(
+        [
+            (
+                DictMetric(
+                    {"key1": SymmetricDifference(), "key2": SymmetricDifference()}
+                ),
+                DictMetric({"key2": SymmetricDifference()}),
+            ),
+            (AddRemoveKeys("A"), AddRemoveKeys("A")),
+        ]
+    )
+    def test_properties(
+        self,
+        input_metric: Union[DictMetric, AddRemoveKeys],
+        output_metric: Union[DictMetric, AddRemoveKeys],
+    ):
         """Tests that Subset has expected properties."""
         transformation = Subset(
-            input_domain=self.input_domain,
-            input_metric=self.input_metric,
-            keys=["A", "C"],
+            input_domain=self.input_domain, input_metric=input_metric, keys=["key2"]
         )
         self.assertEqual(transformation.input_domain, self.input_domain)
-        self.assertEqual(transformation.input_metric, self.input_metric)
+        self.assertEqual(transformation.input_metric, input_metric)
         self.assertEqual(
             transformation.output_domain,
-            DictDomain({"A": NumpyIntegerDomain(), "C": NumpyFloatDomain()}),
+            DictDomain({"key2": self.input_domain["key2"]}),
         )
-        self.assertEqual(
-            transformation.output_metric,
-            DictMetric({"A": AbsoluteDifference(), "C": AbsoluteDifference()}),
-        )
-        self.assertEqual(transformation.keys, ["A", "C"])
+        self.assertEqual(transformation.output_metric, output_metric)
+        self.assertEqual(transformation.keys, ["key2"])
 
     @parameterized.expand(
         [
@@ -371,8 +458,22 @@ class TestSubset(TestCase):
         expected: Dict[Union[str, Tuple[str, str]], Any],
     ):
         """Tests that Subset correctly applies transformation."""
+        input_domain = DictDomain(
+            {
+                "A": NumpyIntegerDomain(),
+                ("B", "B"): NumpyIntegerDomain(),
+                "C": NumpyFloatDomain(),
+            }
+        )
+        input_metric = DictMetric(
+            {
+                "A": AbsoluteDifference(),
+                ("B", "B"): AbsoluteDifference(),
+                "C": AbsoluteDifference(),
+            }
+        )
         transformation = Subset(
-            input_domain=self.input_domain, input_metric=self.input_metric, keys=keys
+            input_domain=input_domain, input_metric=input_metric, keys=keys
         )
         actual = transformation(
             {"A": np.int(20), ("B", "B"): "XYZ", "C": np.float(10.11)}
@@ -399,40 +500,47 @@ class TestSubset(TestCase):
                 DictMetric({"A": AbsoluteDifference()}),
                 [],
             ),
+            (
+                "Input metric AddRemoveKeys(column='key1') and input domain"
+                " DictDomain(key_to_domain={'A': NumpyIntegerDomain(size=64)}) are not"
+                " compatible.",
+                DictDomain({"A": NumpyIntegerDomain()}),
+                AddRemoveKeys("key1"),
+                ["A"],
+            ),
         ]
     )
-    def test_invalid_arguments_raises_errror(
+    def test_invalid_arguments_raises_error(
         self,
-        error_regex: str,
+        error_message: str,
         input_domain: DictDomain,
         input_metric: DictMetric,
         keys: List[str],
     ):
         """Tests that Subset raises errors appropriately."""
-        with self.assertRaisesRegex(ValueError, error_regex):
+        with self.assertRaisesRegex(ValueError, re.escape(error_message)):
             Subset(input_domain=input_domain, input_metric=input_metric, keys=keys)
 
-    def test_stability_function_and_relation(self):
+    @parameterized.expand(
+        [
+            (
+                DictMetric(
+                    {"key1": SymmetricDifference(), "key2": SymmetricDifference()}
+                ),
+                {"key1": 3, "key2": 10},
+                {"key1": 3},
+            ),
+            (AddRemoveKeys("A"), 4, 4),
+        ]
+    )
+    def test_stability_function_and_relation(
+        self, input_metric: Union[DictMetric, AddRemoveKeys], d_in: Any, d_out: Any
+    ):
         """Tests that Subset's stability function and relation are correct."""
         transformation = Subset(
-            input_domain=DictDomain(
-                {"A": NumpyIntegerDomain(), ("B", "B"): NumpyIntegerDomain()}
-            ),
-            input_metric=DictMetric(
-                {"A": AbsoluteDifference(), ("B", "B"): AbsoluteDifference()}
-            ),
-            keys=["A"],
+            input_domain=self.input_domain, input_metric=input_metric, keys=["key1"]
         )
-        self.assertTrue(
-            transformation.stability_relation(
-                d_in={"A": 1, ("B", "B"): 10}, d_out={"A": 1}
-            )
-        )
-        self.assertFalse(
-            transformation.stability_relation(
-                d_in={"A": 1, ("B", "B"): 10}, d_out={"A": sp.Rational("0.99999")}
-            )
-        )
+        self.assertEqual(transformation.stability_function(d_in), d_out)
 
 
 class TestCreateDictFromValue(TestCase):
@@ -451,21 +559,39 @@ class TestCreateDictFromValue(TestCase):
         )
         assert_property_immutability(transformation, prop_name)
 
-    def test_properties(self):
+    @parameterized.expand(
+        [
+            (False, DictMetric({("X", "Y"): IfGroupedBy("A", SymmetricDifference())})),
+            (True, AddRemoveKeys("A")),
+        ]
+    )
+    def test_properties(
+        self, use_add_remove_keys: bool, output_metric: Union[DictMetric, AddRemoveKeys]
+    ):
         """Tests that CreateDictFromValue has expected properties."""
+        input_domain = SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(),
+                "B": SparkFloatColumnDescriptor(
+                    allow_nan=True, allow_inf=True, allow_null=True
+                ),
+                "C": SparkStringColumnDescriptor(),
+            }
+        )
         transformation = CreateDictFromValue(
-            input_domain=NumpyIntegerDomain(),
-            input_metric=AbsoluteDifference(),
+            input_domain=input_domain,
+            input_metric=IfGroupedBy("A", SymmetricDifference()),
             key=("X", "Y"),
+            use_add_remove_keys=use_add_remove_keys,
         )
-        self.assertEqual(transformation.input_domain, NumpyIntegerDomain())
-        self.assertEqual(transformation.input_metric, AbsoluteDifference())
+        self.assertEqual(transformation.input_domain, input_domain)
         self.assertEqual(
-            transformation.output_domain, DictDomain({("X", "Y"): NumpyIntegerDomain()})
+            transformation.input_metric, IfGroupedBy("A", SymmetricDifference())
         )
         self.assertEqual(
-            transformation.output_metric, DictMetric({("X", "Y"): AbsoluteDifference()})
+            transformation.output_domain, DictDomain({("X", "Y"): input_domain})
         )
+        self.assertEqual(transformation.output_metric, output_metric)
         self.assertEqual(transformation.key, ("X", "Y"))
 
     def test_correctness(self):
@@ -479,22 +605,57 @@ class TestCreateDictFromValue(TestCase):
         expected = {"X": np.int(20)}
         self.assertEqual(actual, expected)
 
-    def test_stability_function_and_relation(self):
+    @parameterized.expand([(False, 3, {"X": 3}), (True, 4, 4)])
+    def test_stability_function_and_relation(
+        self, use_add_remove_keys: bool, d_in: Any, d_out: Any
+    ):
         """Tests that the stability function and relation are correct."""
+        input_domain = SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(),
+                "B": SparkFloatColumnDescriptor(
+                    allow_nan=True, allow_inf=True, allow_null=True
+                ),
+                "C": SparkStringColumnDescriptor(),
+            }
+        )
         transformation = CreateDictFromValue(
-            input_domain=NumpyIntegerDomain(),
-            input_metric=AbsoluteDifference(),
+            input_domain=input_domain,
+            input_metric=IfGroupedBy("A", SymmetricDifference()),
             key="X",
+            use_add_remove_keys=use_add_remove_keys,
         )
-        # NOTE: The following would fail because this stability relation
-        # checks for strict equality.
-        # self.assertTrue(transformation.stability_relation(
-        #                   1, {"X": 2})
-        #               )
-        self.assertTrue(transformation.stability_relation(1, {"X": 1}))
-        self.assertFalse(
-            transformation.stability_relation(1, {"X": 1 - sp.Pow(10, -10)})
-        )
+        self.assertEqual(transformation.stability_function(d_in), d_out)
+        self.assertTrue(transformation.stability_relation(d_in, d_out))
+
+    @parameterized.expand(
+        [
+            (
+                "Input metric must be IfGroupedBy with an inner metric of"
+                " SymmetricDifference to use AddRemoveKeys as the output metric",
+                NumpyIntegerDomain(),
+                AbsoluteDifference(),
+                "A",
+                True,
+            )
+        ]
+    )
+    def test_invalid_arguments_raises_error(
+        self,
+        error_regex: str,
+        input_domain: DictDomain,
+        input_metric: DictMetric,
+        key: Any,
+        use_add_remove_keys: bool,
+    ):
+        """Tests that CreateDictFromValue raises errors appropriately."""
+        with self.assertRaisesRegex(ValueError, error_regex):
+            CreateDictFromValue(
+                input_domain=input_domain,
+                input_metric=input_metric,
+                key=key,
+                use_add_remove_keys=use_add_remove_keys,
+            )
 
 
 class TestDerivedTransformations(unittest.TestCase):
