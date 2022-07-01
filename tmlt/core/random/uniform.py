@@ -1,6 +1,7 @@
 """Module for sampling uniformly from an interval."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 from flint import arb  # pylint: disable=no-name-in-module
 

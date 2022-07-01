@@ -1,6 +1,7 @@
 """Configuration properties for Tumult Core."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 import time
 from uuid import uuid4

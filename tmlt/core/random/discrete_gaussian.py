@@ -1,6 +1,7 @@
 """Module for discrete Gaussian sampling."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 # This file is derived from a work authored by Thomas Steinke dgauss@thomas-steinke.net,
 # copyrighted by IBM Corp. 2020, licensed under Apache 2.0, and available at

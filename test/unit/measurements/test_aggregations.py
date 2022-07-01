@@ -1,6 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.measurements.aggregations`."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 from typing import List, Optional, Tuple, Union, cast
 
 import sympy as sp

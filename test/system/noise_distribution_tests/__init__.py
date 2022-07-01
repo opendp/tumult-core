@@ -1,6 +1,7 @@
 """Tests that measurements that add noise sample from the correct distributions."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 P_THRESHOLD = 0.01
 """The alpha threshold to use for the statistical tests."""

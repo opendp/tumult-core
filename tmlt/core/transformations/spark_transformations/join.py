@@ -2,6 +2,7 @@
 # TODO(#1320): Add links to privacy and stability tutorial
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 from dataclasses import replace
 from enum import Enum

@@ -1,6 +1,7 @@
 """Measurements on Pandas DataFrames."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 from abc import abstractmethod
 from typing import Callable, Dict, Mapping, Optional, Union, cast

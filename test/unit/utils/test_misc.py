@@ -1,6 +1,7 @@
 """Test for :mod:`tmlt.core.utils.testing`"""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 from typing import Any, Callable
 

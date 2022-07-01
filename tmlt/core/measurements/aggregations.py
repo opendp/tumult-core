@@ -1,6 +1,7 @@
 """Derived measurements for computing noisy aggregates on spark DataFrames."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 # pylint: disable=no-member
 

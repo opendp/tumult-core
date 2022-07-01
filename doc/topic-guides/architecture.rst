@@ -1,5 +1,12 @@
 .. _architecture:
 
+Tumult Core Architecture
+========================
+
+..
+    SPDX-License-Identifier: CC-BY-SA-4.0
+    Copyright Tumult Labs 2022
+
 .. testsetup::
 
    from tmlt.core.transformations.spark_transformations.filter import Filter
@@ -13,10 +20,6 @@
    from pyspark.sql.types import *
    from pyspark.sql import SparkSession
    spark = SparkSession.builder.getOrCreate()
-
-
-Tumult Core Architecture
-========================
 
 Tumult Core is a collection of composable components for implementing
 algorithms to perform differentially private computations. The design of Tumult Core

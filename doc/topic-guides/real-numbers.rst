@@ -1,6 +1,5 @@
 .. _real-numbers:
 
-
 Handling Real Numbers
 =====================
 

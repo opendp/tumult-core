@@ -3,6 +3,10 @@
 Known Vulnerabilities
 =====================
 
+..
+    SPDX-License-Identifier: CC-BY-SA-4.0
+    Copyright Tumult Labs 2022
+
 This page describes known vulnerabilities in Tumult Core that we intend to fix.
 
 Stability imprecision bug
