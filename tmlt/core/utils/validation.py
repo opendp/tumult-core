@@ -1,6 +1,7 @@
 """Utilities for checking the inputs to components."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 from __future__ import annotations
 

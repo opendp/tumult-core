@@ -1,6 +1,7 @@
 """Tests for :mod:`~tmlt.core.util.type_utils`."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 from typing import Any, Sequence, Type
 from unittest import TestCase

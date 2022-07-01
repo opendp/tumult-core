@@ -2,6 +2,7 @@
 # TODO(#1320): Add link to privacy and stability tutorial
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 import uuid
 from abc import abstractmethod

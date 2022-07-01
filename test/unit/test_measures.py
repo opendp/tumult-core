@@ -1,6 +1,7 @@
 """Unit tests for :mod:`tmlt.core.measures`."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 import itertools
 from fractions import Fraction
 from typing import Any, Tuple

@@ -1,6 +1,7 @@
 """Tests that base mechanisms add noise sampled from the correct distributions."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 # pylint: disable=no-member, no-self-use
 

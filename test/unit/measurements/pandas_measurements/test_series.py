@@ -1,6 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.measurements.pandas_measurements.series`."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 # pylint: disable=no-self-use
 import re

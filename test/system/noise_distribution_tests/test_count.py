@@ -1,6 +1,7 @@
 """Tests that count measurement adds noise from the correct distribution."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 # pylint: disable=no-member, no-self-use
 

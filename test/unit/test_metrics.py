@@ -1,6 +1,7 @@
 """Unit tests for :mod:`tmlt.core.metrics`."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 
 # pylint: disable=no-self-use
 import datetime

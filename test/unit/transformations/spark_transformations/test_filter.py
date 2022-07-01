@@ -1,6 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.filter`."""
 
 # SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022
 from typing import Union
 
 import pandas as pd

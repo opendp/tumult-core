@@ -1,6 +1,10 @@
 Simple Data Analysis with Tumult Core
 =====================================
 
+..
+    SPDX-License-Identifier: CC-BY-SA-4.0
+    Copyright Tumult Labs 2022
+
 In this tutorial you will learn how to:
 
 -  compute a basic query on a dataset, and
