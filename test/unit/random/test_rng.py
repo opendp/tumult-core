@@ -14,7 +14,7 @@ import tmlt.core.random.rng
 # pylint: disable=import-outside-toplevel, no-name-in-module
 
 
-class TesRNG(TestCase):
+class TestRNG(TestCase):
     """Tests for :func:`~.laplace_inverse_cdf`."""
 
     def tearDown(self):

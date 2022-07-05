@@ -3,18 +3,14 @@
 ## Unreleased
 ### Added
 - Added an alternate prng for non-intel architectures that don't support RDRAND.
-- Added support for `IfGroupedBy(X, SymmetricDifference())` to `DropNaNs`, `DropNulls`, `DropInfs`, `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs`
-- Add new metric `AddRemoveKeys` for multiple tables using `IfGroupedBy(X, SymmetricDifference())`
-- Add new `TransformValue` base class for wrapping transformations to support `AddRemoveKeys`
-- Add many new transformations using `TransformValue`: `FilterValue`, `PublicJoinValue`, `FlatMapValue`, `MapValue`, `DropInfsValue`, `DropNaNsValue`, `DropNullsValue`, `ReplaceInfsValue`, `ReplaceNaNsValue`, `ReplaceNullsValue`, `PersistValue`, `UnpersistValue`, `SparkActionValue`, `RenameValue`, `SelectValue`
+- Add new metric `AddRemoveKeys` for multiple tables using `IfGroupedBy(X, SymmetricDifference())`.
+- Add new `TransformValue` base class for wrapping transformations to support `AddRemoveKeys`.
+- Add many new transformations using `TransformValue`: `FilterValue`, `PublicJoinValue`, `FlatMapValue`, `MapValue`, `DropInfsValue`, `DropNaNsValue`, `DropNullsValue`, `ReplaceInfsValue`, `ReplaceNaNsValue`, `ReplaceNullsValue`, `PersistValue`, `UnpersistValue`, `SparkActionValue`, `RenameValue`, `SelectValue`.
 
 ### Changed
 - Fixed bug in `ReplaceNulls` to not allow replacing values for grouping column in `IfGroupedBy`
 - Changed `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs` to only support specific `IfGroupedBy` metrics
-- Change parameter `metric` for `Rename` to be called `input_metric` 
-- Changed transformations and measurements to make a copy of mutable constructor arguments
-- Add checks in `ParallelComposition` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.
-
+- Change parameter `metric` for `Rename` to be called `input_metric`
 
 
 ## 0.3.2 - 2022-06-23
