@@ -627,7 +627,7 @@ class RenameValue(TransformValue):
         """
         transformation = Rename(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            input_metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(column, SymmetricDifference()),
             rename_mapping=rename_mapping,
         )
         super().__init__(input_domain, transformation, key, new_key)

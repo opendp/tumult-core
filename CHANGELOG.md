@@ -10,7 +10,6 @@
 ### Changed
 - Fixed bug in `ReplaceNulls` to not allow replacing values for grouping column in `IfGroupedBy`
 - Changed `ReplaceNulls`, `ReplaceNaNs`, and `ReplaceInfs` to only support specific `IfGroupedBy` metrics
-- Change parameter `metric` for `Rename` to be called `input_metric`
 
 
 ## 0.3.2 - 2022-06-23
