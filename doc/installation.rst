@@ -28,8 +28,6 @@ Only Tumult's wheels (located at ``https://d3p0voevd56kj6.cloudfront.net``) are
 currently supported.
 
 
-Only the x86_64 processor architecture is officially supported at present.
-
 .. note::
     When using Java 11, Spark requires that Java be passed the ``-Dio.netty.tryReflectionSetAccessible=true`` option.
     This can be achieved by adding that option to Spark's ``spark.driver.extraJavaOptions`` and ``spark.executor.extraJavaOptions`` configurations.
@@ -88,7 +86,7 @@ If you encounter any issues during the installation process, please `let us know
       pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
 
 
-.. tabbed:: macOS
+.. tabbed:: macOS (Intel)
 
     The below instructions assume the use of `Homebrew <https://brew.sh/>`__ for managing packages.
     If you do not wish to use Homebrew for this, use the "Manual Installation" instructions instead.
@@ -117,6 +115,40 @@ If you encounter any issues during the installation process, please `let us know
 
       pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
 
+.. tabbed:: macOS (Apple Silicon)
+
+    Since Python 3.7 is not supported on the Apple Silicon processor architecture, you will need to first install `Rosetta 2 <https://support.apple.com/en-us/HT211861>`__ and the x86_64 version of HomeBrew.
+
+    If you do not already have Rosetta 2, it can be installed with:
+
+    .. code-block:: bash
+    
+        softwareupdate --install-rosetta
+
+    The x86_64 version of Homebrew can be installed with:
+
+    .. code-block:: bash
+
+        arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+
+    Now, you can install Python 3.7 with:
+
+    .. code-block:: bash
+
+        arch -x86_64 /usr/local/bin/brew install python@3.7
+
+    And Java may be installed with:
+
+    .. code-block:: bash
+
+       arch -x86_64 /usr/local/bin/brew install python@3.7
+
+   Then install python-flint with
+
+   .. code-block:: bash
+
+      pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
+
 
 .. tabbed:: Manual installation
 
@@ -128,7 +160,7 @@ If you encounter any issues during the installation process, please `let us know
     ..
         TODO(#1845): Remove this section once Windows support is added.
 
-    .. attention:: If you are installing on a Windows machine, please install `python-flint <https://fredrikj.net/python-flint/>`__ (see `instructions <https://github.com/fredrik-johansson/python-flint/#installation>`__) before installing Tumult Core.
+    .. attention:: If you are installing on a Windows machine, please install `python-flint <https://fredrikj.net/python-flint/>`__ (following `these instructions <https://github.com/fredrik-johansson/python-flint/#installation>`__) before installing Tumult Core.
 
 
 
