@@ -3,11 +3,31 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Added
+~~~~~
+
+-  Added an alternate prng for non-intel architectures that don’t support RDRAND.
+-  Add new metric ``AddRemoveKeys`` for multiple tables using ``IfGroupedBy(X, SymmetricDifference())``.
+-  Add new ``TransformValue`` base class for wrapping transformations to support ``AddRemoveKeys``.
+-  Add many new transformations using ``TransformValue``: ``FilterValue``, ``PublicJoinValue``, ``FlatMapValue``, ``MapValue``, ``DropInfsValue``, ``DropNaNsValue``, ``DropNullsValue``, ``ReplaceInfsValue``, ``ReplaceNaNsValue``, ``ReplaceNullsValue``, ``PersistValue``, ``UnpersistValue``, ``SparkActionValue``, ``RenameValue``, ``SelectValue``.
+
+Changed
+~~~~~~~
+
+-  Fixed bug in ``ReplaceNulls`` to not allow replacing values for grouping column in ``IfGroupedBy``
+-  Changed ``ReplaceNulls``, ``ReplaceNaNs``, and ``ReplaceInfs`` to only support specific ``IfGroupedBy`` metrics
+-  Change parameter ``metric`` for ``Rename`` to be called ``input_metric``
+
 0.3.2 - 2022-06-23
 ------------------
 
+.. _changed-1:
+
 Changed
--------
+~~~~~~~
 
 -  Moved ``IMMUTABLE_TYPES`` from utils/testing.py to utils/type_utils to avoid importing nose when accessing ``IMMUTABLE_TYPES``
 
@@ -16,7 +36,7 @@ Changed
 0.3.1 - 2022-06-23
 ------------------
 
-.. _changed-1:
+.. _changed-2:
 
 Changed
 ~~~~~~~
@@ -30,6 +50,8 @@ Changed
 0.3.0 - 2022-06-22
 ------------------
 
+.. _added-1:
+
 Added
 ~~~~~
 
@@ -42,7 +64,7 @@ Added
 -  Added ``AddUniqueColumn`` for switching from ``SymmetricDifference`` to ``IfGroupedBy(X, SymmetricDifference())``.
 -  Added a topic guide around NaNs, nulls and infinities.
 
-.. _changed-2:
+.. _changed-3:
 
 Changed
 ~~~~~~~
@@ -68,7 +90,7 @@ Removed
 0.2.0 - 2022-04-12 (internal release)
 -------------------------------------
 
-.. _added-1:
+.. _added-2:
 
 Added
 ~~~~~
@@ -84,7 +106,7 @@ Added
 0.1.1 - 2022-02-24 (internal release)
 -------------------------------------
 
-.. _added-2:
+.. _added-3:
 
 Added
 ~~~~~
@@ -95,7 +117,7 @@ Added
 -  Installation on Python 3.7.1 through 3.7.3 is now allowed.
 -  Added ``DecorateQueryable``, ``DecoratedQueryable`` and ``create_adaptive_composition`` components.
 
-.. _changed-3:
+.. _changed-4:
 
 Changed
 ~~~~~~~
@@ -124,7 +146,7 @@ Removed
 0.1.0 - 2022-02-14 (internal release)
 -------------------------------------
 
-.. _added-3:
+.. _added-4:
 
 Added
 ~~~~~
