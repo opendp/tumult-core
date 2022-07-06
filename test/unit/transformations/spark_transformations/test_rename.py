@@ -35,7 +35,7 @@ class TestRename(TestComponent):
         rename_mapping = {"A": "AA"}
         transformation = Rename(
             input_domain=SparkDataFrameDomain(self.schema_a),
-            input_metric=SymmetricDifference(),
+            metric=SymmetricDifference(),
             rename_mapping=rename_mapping,
         )
         rename_mapping["A"] = "BB"
@@ -47,7 +47,7 @@ class TestRename(TestComponent):
         """Tests that given property is immutable."""
         transformation = Rename(
             input_domain=SparkDataFrameDomain(self.schema_a),
-            input_metric=SymmetricDifference(),
+            metric=SymmetricDifference(),
             rename_mapping={"A": "AA", "B": "BB"},
         )
         assert_property_immutability(transformation, prop_name)
@@ -58,7 +58,7 @@ class TestRename(TestComponent):
         input_domain = SparkDataFrameDomain(self.schema_a)
         transformation = Rename(
             input_domain=input_domain,
-            input_metric=SymmetricDifference(),
+            metric=SymmetricDifference(),
             rename_mapping=rename_mapping,
         )
         self.assertEqual(
@@ -106,7 +106,7 @@ class TestRename(TestComponent):
         """Tests that rename transformation works correctly."""
         rename_transformation = Rename(
             input_domain=SparkDataFrameDomain(self.schema_a),
-            input_metric=metric,
+            metric=metric,
             rename_mapping=rename_mapping,
         )
         self.assertEqual(rename_transformation.input_metric, metric)
@@ -126,7 +126,7 @@ class TestRename(TestComponent):
         with self.assertRaises(ValueError):
             Rename(
                 input_domain=SparkDataFrameDomain(self.schema_a),
-                input_metric=SymmetricDifference(),
+                metric=SymmetricDifference(),
                 rename_mapping=rename_mapping,
             )
 
@@ -158,6 +158,6 @@ class TestRename(TestComponent):
         with self.assertRaisesRegex(ValueError, error_msg):
             Rename(
                 input_domain=SparkDataFrameDomain(self.schema_a),
-                input_metric=IfGroupedBy(groupby_col, inner_metric),
+                metric=IfGroupedBy(groupby_col, inner_metric),
                 rename_mapping=rename_mapping,
             )
