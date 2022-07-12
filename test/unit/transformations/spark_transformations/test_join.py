@@ -483,20 +483,25 @@ class TestPrivateJoin(PySparkTest):
 
     @parameterized.expand(
         [
-            (["A", "B", "C"], ["B", "D"], ["B"], ["B", "A", "C", "D"]),
-            (
-                ["A", "B", "C"],
-                ["B", "D", "C"],
-                ["B"],
-                ["B", "A", "C_left", "D", "C_right"],
-            ),
-            (
-                ["A", "B", "C"],
-                ["B", "D", "C"],
-                ["B"],
-                ["B", "A", "C_left", "D", "C_right"],
-            ),
-            (["A", "B", "C"], ["B", "C", "D"], ["C", "B"], ["C", "B", "A", "D"]),
+            (left_cols, right_cols, join_cols, expected_ordering, join_on_nulls)
+            for (left_cols, right_cols, join_cols, expected_ordering) in [
+                (["A", "B", "C"], ["B", "D"], ["B"], ["B", "A", "C", "D"]),
+                (
+                    ["A", "B", "C"],
+                    ["B", "D", "C"],
+                    ["B"],
+                    ["B", "A", "C_left", "D", "C_right"],
+                ),
+                (
+                    ["A", "B", "C"],
+                    ["B", "D", "C"],
+                    ["B"],
+                    ["B", "A", "C_left", "D", "C_right"],
+                ),
+                (["A", "B", "C"], ["B", "C", "D"], ["C", "B"], ["C", "B", "A", "D"]),
+                (["A", "B"], ["B", "C"], ["B"], ["B", "A", "C"]),
+            ]
+            for join_on_nulls in [True, False]
         ]
     )
     def test_columns_ordering(
@@ -505,6 +510,7 @@ class TestPrivateJoin(PySparkTest):
         right_cols: List[str],
         join_cols: List[str],
         expected_ordering: List[str],
+        join_on_nulls: bool,
     ):
         """Tests that the output columns of join are in expected order.
 
@@ -538,6 +544,7 @@ class TestPrivateJoin(PySparkTest):
             left_truncation_threshold=1,
             right_truncation_threshold=1,
             join_cols=join_cols,
+            join_on_nulls=join_on_nulls,
         )
 
         answer = private_join({"left": left_df, "right": right_df})

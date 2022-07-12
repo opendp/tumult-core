@@ -789,4 +789,7 @@ class PrivateJoin(Transformation):
         )
         for col in self.join_cols:
             joined_df = joined_df.drop(right[col])
-        return joined_df
+        output_columns_order = list(
+            (cast(SparkDataFrameDomain, self.output_domain)).schema
+        )
+        return joined_df.select(output_columns_order)
