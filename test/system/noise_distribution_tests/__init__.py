@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-P_THRESHOLD = 0.01
+P_THRESHOLD = 1e-20
 """The alpha threshold to use for the statistical tests."""
 
 NOISE_SCALE_FUDGE_FACTOR = 0.3

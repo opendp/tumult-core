@@ -30,7 +30,6 @@ from tmlt.core.utils.testing import (
     get_values_summing_to_loc,
     run_test_using_chi_squared_test,
     run_test_using_ks_test,
-    skip,
 )
 
 from . import NOISE_SCALE_FUDGE_FACTOR, P_THRESHOLD, SAMPLE_SIZE
@@ -138,7 +137,6 @@ def _get_var_stddev_test_cases(
     return test_cases
 
 
-@skip
 class TestStandardDeviationNoiseDistributions(PySparkTest):
     """Noise distribution tests for standard deviation measurement."""
 

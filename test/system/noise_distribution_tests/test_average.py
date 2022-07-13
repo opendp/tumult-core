@@ -28,7 +28,6 @@ from tmlt.core.utils.testing import (
     get_values_summing_to_loc,
     run_test_using_chi_squared_test,
     run_test_using_ks_test,
-    skip,
 )
 
 from . import NOISE_SCALE_FUDGE_FACTOR, P_THRESHOLD, SAMPLE_SIZE
@@ -107,7 +106,6 @@ def _get_average_test_cases(noise_mechanism: NoiseMechanism) -> List[Dict]:
     return test_cases
 
 
-@skip
 class TestAverageNoiseDistributions(PySparkTest):
     """Distribution tests for create_average_measurement."""
 
