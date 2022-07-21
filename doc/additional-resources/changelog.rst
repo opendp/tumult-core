@@ -3,8 +3,8 @@
 Changelog
 =========
 
-Unreleased
-----------
+0.4.0 - 2022-07-21
+------------------
 
 Added
 ~~~~~
@@ -19,7 +19,8 @@ Changed
 
 -  Fixed bug in ``ReplaceNulls`` to not allow replacing values for grouping column in ``IfGroupedBy``
 -  Changed ``ReplaceNulls``, ``ReplaceNaNs``, and ``ReplaceInfs`` to only support specific ``IfGroupedBy`` metrics
--  Change parameter ``metric`` for ``Rename`` to be called ``input_metric``
+
+.. _section-1:
 
 0.3.2 - 2022-06-23
 ------------------
@@ -31,7 +32,7 @@ Changed
 
 -  Moved ``IMMUTABLE_TYPES`` from utils/testing.py to utils/type_utils to avoid importing nose when accessing ``IMMUTABLE_TYPES``
 
-.. _section-1:
+.. _section-2:
 
 0.3.1 - 2022-06-23
 ------------------
@@ -45,7 +46,7 @@ Changed
 -  Reverted change from 0.3.0 “Add checks in ``ParallelComposition`` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.”
 -  Temporarily disabled flaky statistical tests.
 
-.. _section-2:
+.. _section-3:
 
 0.3.0 - 2022-06-22
 ------------------
