@@ -264,8 +264,8 @@ optional = false
 python-versions = "*"
 
 [package.extras]
-develop = ["pytest (>=4.6)", "pycodestyle", "pytest-cov", "codecov", "wheel"]
 tests = ["pytest (>=4.6)"]
+develop = ["wheel", "codecov", "pytest-cov", "pycodestyle", "pytest (>=4.6)"]
 
 [[package]]
 name = "mypy"
@@ -474,10 +474,10 @@ packaging = "*"
 sphinx = ">=4.0.2"
 
 [package.extras]
-doc = ["numpydoc", "myst-parser", "pandas", "pytest", "pytest-regressions", "sphinxext-rediraffe", "sphinx-sitemap", "jupyter-sphinx", "plotly", "numpy", "xarray", "sphinx-design"]
-test = ["pytest", "pydata-sphinx-theme"]
-coverage = ["pytest-cov", "codecov", "pydata-sphinx-theme"]
-dev = ["pyyaml", "pre-commit", "nox", "pydata-sphinx-theme"]
+dev = ["pydata-sphinx-theme", "nox", "pre-commit", "pyyaml"]
+coverage = ["pydata-sphinx-theme", "codecov", "pytest-cov"]
+test = ["pydata-sphinx-theme", "pytest"]
+doc = ["sphinx-design", "xarray", "numpy", "plotly", "jupyter-sphinx", "sphinx-sitemap", "sphinxext-rediraffe", "pytest-regressions", "pytest", "pandas", "myst-parser", "numpydoc"]
 
 [[package]]
 name = "pydocstyle"
@@ -760,8 +760,8 @@ python-versions = ">=3.6"
 sphinx = ">=1.8"
 
 [package.extras]
+rtd = ["sphinx-book-theme", "ipython", "sphinx"]
 code_style = ["pre-commit (==2.12.1)"]
-rtd = ["sphinx", "ipython", "sphinx-book-theme"]
 
 [[package]]
 name = "sphinx-panels"
@@ -776,10 +776,10 @@ docutils = "*"
 sphinx = ">=2,<5"
 
 [package.extras]
+themes = ["myst-parser (>=0.12.9,<0.13.0)", "sphinx-book-theme (>=0.0.36,<0.1.0)", "pydata-sphinx-theme (>=0.4.0,<0.5.0)", "sphinx-rtd-theme"]
+testing = ["pytest-regressions (>=2.0.1,<2.1.0)", "pytest (>=6.0.1,<6.1.0)"]
+live-dev = ["web-compile (>=0.2.0,<0.3.0)", "sphinx-autobuild"]
 code_style = ["pre-commit (>=2.7.0,<2.8.0)"]
-live-dev = ["sphinx-autobuild", "web-compile (>=0.2.0,<0.3.0)"]
-testing = ["pytest (>=6.0.1,<6.1.0)", "pytest-regressions (>=2.0.1,<2.1.0)"]
-themes = ["sphinx-rtd-theme", "pydata-sphinx-theme (>=0.4.0,<0.5.0)", "sphinx-book-theme (>=0.0.36,<0.1.0)", "myst-parser (>=0.12.9,<0.13.0)"]
 
 [[package]]
 name = "sphinxcontrib-applehelp"
@@ -790,8 +790,8 @@ optional = false
 python-versions = ">=3.5"
 
 [package.extras]
-lint = ["flake8", "mypy", "docutils-stubs"]
 test = ["pytest"]
+lint = ["docutils-stubs", "mypy", "flake8"]
 
 [[package]]
 name = "sphinxcontrib-bibtex"
@@ -816,8 +816,8 @@ optional = false
 python-versions = ">=3.5"
 
 [package.extras]
-lint = ["flake8", "mypy", "docutils-stubs"]
 test = ["pytest"]
+lint = ["docutils-stubs", "mypy", "flake8"]
 
 [[package]]
 name = "sphinxcontrib-htmlhelp"
@@ -828,8 +828,8 @@ optional = false
 python-versions = ">=3.6"
 
 [package.extras]
-lint = ["flake8", "mypy", "docutils-stubs"]
-test = ["pytest", "html5lib"]
+test = ["html5lib", "pytest"]
+lint = ["docutils-stubs", "mypy", "flake8"]
 
 [[package]]
 name = "sphinxcontrib-jsmath"
@@ -840,7 +840,7 @@ optional = false
 python-versions = ">=3.5"
 
 [package.extras]
-test = ["pytest", "flake8", "mypy"]
+test = ["mypy", "flake8", "pytest"]
 
 [[package]]
 name = "sphinxcontrib-qthelp"
@@ -851,8 +851,8 @@ optional = false
 python-versions = ">=3.5"
 
 [package.extras]
-lint = ["flake8", "mypy", "docutils-stubs"]
 test = ["pytest"]
+lint = ["docutils-stubs", "mypy", "flake8"]
 
 [[package]]
 name = "sphinxcontrib-serializinghtml"

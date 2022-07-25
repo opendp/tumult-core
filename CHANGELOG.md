@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1 - 2022-07-25
 ### Added
 - Added an alternate prng for non-intel architectures that don't support RDRAND.
 - Add new metric `AddRemoveKeys` for multiple tables using `IfGroupedBy(X, SymmetricDifference())`.
