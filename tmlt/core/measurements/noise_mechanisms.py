@@ -19,7 +19,11 @@ from tmlt.core.domains.numpy_domains import (
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import AbsoluteDifference
-from tmlt.core.random.discrete_gaussian import _sample_geometric_exp_slow, sample_dgauss
+from tmlt.core.random.discrete_gaussian import (
+    _sample_dlaplace,
+    _sample_geometric_exp_slow,
+    sample_dgauss,
+)
 from tmlt.core.random.laplace import laplace
 from tmlt.core.random.rng import prng
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -221,10 +225,19 @@ class AddGeometricNoise(Measurement):
         if self.alpha == 0:
             return int(value)
         float_scale = self.alpha.to_float(round_up=True)
-        x = 1 / Fraction(float_scale)
-        noise = _sample_geometric_exp_slow(
-            x, RNGWrapper(prng())
-        ) - _sample_geometric_exp_slow(x, RNGWrapper(prng()))
+        # The following two statements produce the same noise distribution,
+        # but _sample_geometric_exp_slow performs better for small noise scales,
+        # and _sample_dlaplace performs better for larger noise scales
+        if float_scale < 10:
+            x = 1 / Fraction(float_scale)
+            noise = _sample_geometric_exp_slow(
+                x, RNGWrapper(prng())
+            ) - _sample_geometric_exp_slow(x, RNGWrapper(prng()))
+        # for very large noise scales, _sample_geometric_exp_slow is *very* slow
+        else:
+            # _sample_dlaplace produces a noise distribution that
+            # matches the equation above.
+            noise = _sample_dlaplace(float_scale, RNGWrapper(prng()))
         return int(value + noise)
 
 
