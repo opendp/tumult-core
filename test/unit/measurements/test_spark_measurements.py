@@ -11,6 +11,7 @@ import pandas as pd
 import sympy as sp
 from parameterized import parameterized
 from pyspark.sql import functions as sf
+from pyspark.sql.types import IntegerType, StringType, StructField, StructType
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
@@ -31,10 +32,13 @@ from tmlt.core.measurements.pandas_measurements.series import (
 from tmlt.core.measurements.spark_measurements import (
     AddNoiseToColumn,
     ApplyInPandas,
+    GeometricPartitionSelection,
     _get_materialized_df,
 )
-from tmlt.core.measures import PureDP
+from tmlt.core.measures import ApproxDP, PureDP
 from tmlt.core.metrics import SumOf, SymmetricDifference
+from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
+from tmlt.core.utils.exact_number import ExactNumber
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.testing import (
     FakeAggregate,
@@ -253,6 +257,146 @@ class TestAddNoiseToColumn(PySparkTest):
         )
         actual = measurement(sdf).toPandas()
         self.assert_frame_equal_with_sort(actual, expected)
+
+
+class TestGeometricPartitionSelection(PySparkTest):
+    """Tests for GeometricPartitionSelection.
+
+    Tests
+    :class:`~tmlt.core.measurements.spark_measurements.GeometricPartitionSelection`.
+    """
+
+    def setUp(self):
+        """Test Setup."""
+        self.input_domain = SparkDataFrameDomain(
+            {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+        )
+        self.threshold = 5
+        self.alpha = ExactNumber(3)
+        self.count_column = "noisy counts"
+        self.measurement = GeometricPartitionSelection(
+            input_domain=self.input_domain,
+            alpha=self.alpha,
+            threshold=self.threshold,
+            count_column=self.count_column,
+        )
+
+    @parameterized.expand(get_all_props(GeometricPartitionSelection))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        assert_property_immutability(self.measurement, prop_name)
+
+    def test_properties(self):
+        """GeometricPartitionSelection has the expected properties."""
+        self.assertEqual(self.measurement.input_domain, self.input_domain)
+        self.assertEqual(self.measurement.input_metric, SymmetricDifference())
+        self.assertEqual(self.measurement.output_measure, ApproxDP())
+        self.assertEqual(self.measurement.alpha, self.alpha)
+        self.assertEqual(self.measurement.threshold, self.threshold)
+        self.assertEqual(self.measurement.count_column, self.count_column)
+
+    def test_empty(self):
+        """Tests that empty inputs/outputs don't cause any issues."""
+        sdf = self.spark.createDataFrame(
+            [],
+            schema=StructType(
+                [StructField("A", StringType()), StructField("B", IntegerType())]
+            ),
+        )
+        expected = pd.DataFrame(
+            {
+                "A": pd.Series(dtype=str),
+                "B": pd.Series(dtype=int),
+                self.count_column: pd.Series(dtype=int),
+            }
+        )
+        actual = self.measurement(sdf).toPandas()
+        self.assert_frame_equal_with_sort(actual, expected)
+
+    def test_negative_threshold(self):
+        """Tests that negative thresholds don't cause any issues."""
+        sdf = self.spark.createDataFrame(
+            pd.DataFrame({"A": ["a1"] * 100, "B": [1] * 100})
+        )
+        measurement = GeometricPartitionSelection(
+            input_domain=self.input_domain,
+            alpha=1,
+            threshold=-1,
+            count_column=self.count_column,
+        )
+        actual = measurement(sdf).toPandas()
+        expected_without_count = pd.DataFrame({"A": ["a1"], "B": [1]})
+        self.assert_frame_equal_with_sort(actual[["A", "B"]], expected_without_count)
+        # Threshold -1 should give worse guarantee than for threshold of 0 or 1
+        measurement_threshold_0 = GeometricPartitionSelection(
+            input_domain=self.input_domain,
+            alpha=1,
+            threshold=0,
+            count_column=self.count_column,
+        )
+        measurement_threshold_1 = GeometricPartitionSelection(
+            input_domain=self.input_domain,
+            alpha=1,
+            threshold=1,
+            count_column=self.count_column,
+        )
+        # Guarantee isn't infinitely bad
+        self.assertFalse(
+            ApproxDP().compare((sp.oo, 1), measurement.privacy_function(1))
+        )
+        # But is worse than for 0, which is worse than for 1
+        self.assertFalse(
+            ApproxDP().compare(
+                measurement.privacy_function(1),
+                measurement_threshold_0.privacy_function(1),
+            )
+        )
+        self.assertFalse(
+            ApproxDP().compare(
+                measurement.privacy_function(1),
+                measurement_threshold_1.privacy_function(1),
+            )
+        )
+        self.assertFalse(
+            ApproxDP().compare(
+                measurement_threshold_0.privacy_function(1),
+                measurement_threshold_1.privacy_function(1),
+            )
+        )
+
+    def test_no_noise(self):
+        """Tests that the no noise works correctly."""
+        sdf = self.spark.createDataFrame(
+            pd.DataFrame(
+                {"A": ["a1", "a2", "a2", "a3", "a3", "a3"], "B": [1, 2, 2, 3, 3, 3]}
+            )
+        )
+        expected = pd.DataFrame({"A": ["a2", "a3"], "B": [2, 3], "count": [2, 3]})
+        measurement = GeometricPartitionSelection(
+            input_domain=self.input_domain, alpha=0, threshold=2
+        )
+        actual = measurement(sdf).toPandas()
+        self.assert_frame_equal_with_sort(actual, expected)
+
+    def test_privacy_function(self):
+        """GeometricPartitionSelection's privacy function is correct."""
+        alpha = ExactNumber(3)
+        threshold = 100
+        measurement = GeometricPartitionSelection(
+            input_domain=self.input_domain, alpha=alpha, threshold=threshold
+        )
+        self.assertEqual(measurement.privacy_function(0), (0, 0))
+        base_epsilon = 1 / alpha
+        base_delta = 1 - double_sided_geometric_cmf_exact(threshold - 2, alpha)
+        self.assertEqual(measurement.privacy_function(1), (base_epsilon, base_delta))
+
+        self.assertEqual(
+            measurement.privacy_function(3),
+            (
+                3 * base_epsilon,
+                3 * ExactNumber(sp.E) ** (3 * base_epsilon) * base_delta,
+            ),
+        )
 
 
 class TestSanitization(PySparkTest):
