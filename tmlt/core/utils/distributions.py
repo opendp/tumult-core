@@ -7,6 +7,9 @@ from functools import lru_cache
 from typing import overload
 
 import numpy as np
+import sympy as sp
+
+from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
 @overload
@@ -22,7 +25,7 @@ def double_sided_geometric_pmf(k: np.ndarray, alpha: float) -> np.ndarray:
 def double_sided_geometric_pmf(
     k, alpha
 ):  # pylint: disable=missing-type-doc, missing-return-type-doc
-    r"""Returns the pmf for a double sided geometric distribution at k.
+    r"""Returns the pmf for a double-sided geometric distribution at k.
 
     For :math:`k \in \mathbb{Z}`
 
@@ -65,7 +68,7 @@ def double_sided_geometric_cmf(k: np.ndarray, alpha: float) -> np.ndarray:
 def double_sided_geometric_cmf(
     k, alpha
 ):  # pylint: disable=missing-type-doc, missing-return-type-doc
-    r"""Returns the cmf for a double sided geometric distribution at k.
+    r"""Returns the cmf for a double-sided geometric distribution at k.
 
     For :math:`k \in \mathbb{Z}`
 
@@ -91,6 +94,30 @@ def double_sided_geometric_cmf(
         np.exp(1 / alpha) / (np.exp(1 / alpha) + 1) * np.exp(k / alpha),
         1 - np.exp(-k / alpha) / (np.exp(1 / alpha) + 1),
     )
+
+
+def double_sided_geometric_cmf_exact(
+    k: ExactNumberInput, alpha: ExactNumberInput
+) -> ExactNumber:
+    """Returns exact value of the cmf for a double-sided geometric distribution at k.
+
+    See :func:`double_sided_geometric_cmf` for more information.
+
+    Args:
+        k: The values to calculate the pmf for.
+        alpha: The scale of the geometric distribution.
+    """
+    k_expr = ExactNumber(k).expr
+    alpha_expr = ExactNumber(alpha).expr
+    if k_expr <= 0:
+        p = (
+            sp.exp(1 / alpha_expr)
+            / (sp.exp(1 / alpha_expr) + 1)
+            * sp.exp(k_expr / alpha_expr)
+        )
+    else:
+        p = 1 - 1 / (sp.exp(k_expr / alpha_expr) * (sp.exp(1 / alpha_expr) + 1))
+    return ExactNumber(p)
 
 
 @lru_cache(None)
@@ -127,10 +154,10 @@ def discrete_gaussian_pmf(k, sigma_squared):
         :label: discrete_gaussian_pmf
 
         f(k) = \frac
-        {e^{k^2/2\sigma^2}}
+        {e^{-k^2/2\sigma^2}}
         {
             \sum_{n\in \mathbb{Z}}
-            e^{n^2/2\sigma^2}
+            e^{-n^2/2\sigma^2}
         }
 
     See :cite:`Canonne0S20` for more information. The formula above is based on

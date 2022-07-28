@@ -7,8 +7,9 @@
 import uuid
 from abc import abstractmethod
 from threading import Lock
-from typing import Any, Union, cast
+from typing import Any, Optional, Tuple, Union, cast
 
+import sympy as sp
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as sf
 from typeguard import typechecked
@@ -17,18 +18,26 @@ from typeguard import typechecked
 import tmlt.core.utils.cleanup  # pylint: disable=unused-import
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
+    SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
     convert_pandas_domain,
 )
 from tmlt.core.measurements.base import Measurement
+from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise
 from tmlt.core.measurements.pandas_measurements.dataframe import Aggregate
 from tmlt.core.measurements.pandas_measurements.series import AddNoiseToSeries
+from tmlt.core.measures import ApproxDP
 from tmlt.core.metrics import OnColumn, RootSumOfSquared, SumOf, SymmetricDifference
 from tmlt.core.utils.configuration import Config
+from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.misc import get_nonconflicting_string
+from tmlt.core.utils.validation import validate_exact_number
+
+# pylint: disable=no-member
 
 _materialization_lock = Lock()
 
@@ -315,6 +324,222 @@ class ApplyInPandas(SparkMeasurement):
             aggregation_function=self.aggregation_function,
             aggregation_output_schema=self.aggregation_function.output_schema,
         )
+
+
+class GeometricPartitionSelection(SparkMeasurement):
+    r"""Discovers the distinct rows in a DataFrame, suppressing infrequent rows.
+
+    Example:
+        ..
+            >>> import pandas as pd
+            >>> from tmlt.core.utils.misc import print_sdf
+            >>> spark = SparkSession.builder.getOrCreate()
+            >>> spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "A": ["a1"] + ["a2"] * 100,
+            ...             "B": ["b1"] + ["b2"] * 100,
+            ...         }
+            ...     )
+            ... )
+            >>> noisy_spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "A": ["a2"],
+            ...             "B": ["b2"],
+            ...             "count": [106],
+            ...         }
+            ...     )
+            ... )
+
+        >>> # Example input
+        >>> print_sdf(spark_dataframe)
+              A   B
+        0    a1  b1
+        1    a2  b2
+        2    a2  b2
+        3    a2  b2
+        4    a2  b2
+        ..   ..  ..
+        96   a2  b2
+        97   a2  b2
+        98   a2  b2
+        99   a2  b2
+        100  a2  b2
+        <BLANKLINE>
+        [101 rows x 2 columns]
+        >>> measurement = GeometricPartitionSelection(
+        ...     input_domain=SparkDataFrameDomain(
+        ...         schema={
+        ...             "A": SparkStringColumnDescriptor(),
+        ...             "B": SparkStringColumnDescriptor(),
+        ...         },
+        ...     ),
+        ...     threshold=50,
+        ...     alpha=1,
+        ... )
+        >>> noisy_spark_dataframe = measurement(spark_dataframe) # doctest: +SKIP
+        >>> print_sdf(noisy_spark_dataframe)  # doctest: +NORMALIZE_WHITESPACE
+            A   B  count
+        0  a2  b2    106
+
+    Measurement Contract:
+        * Input domain - :class:`~.SparkDataFrameDomain`
+        * Output type - Spark DataFrame
+        * Input metric - :class:`~.SymmetricDifference`
+        * Output measure - :class:`~.ApproxDP`
+
+        >>> measurement.input_domain
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
+        >>> measurement.input_metric
+        SymmetricDifference()
+        >>> measurement.output_measure
+        ApproxDP()
+
+        Privacy Guarantee:
+            For :math:`d_{in} = 0`, returns :math:`(0, 0)`
+
+            For :math:`d_{in} = 1`, returns
+            :math:`(1/\alpha, 1 - CDF_{\alpha}[\tau - 2])`
+
+            For :math:`d_{in} > 1`, returns
+            :math:`(d_{in} \cdot \epsilon, d_{in} \cdot e^{d_{in} \cdot \epsilon} \cdot \delta)`
+
+            where:
+
+            * :math:`\alpha` is :attr:`~.alpha`
+            * :math:`\tau` is :attr:`~.threshold`
+            * :math:`\epsilon` is the first element returned for the :math:`d_{in} = 1`
+              case
+            * :math:`\delta` is the second element returned for the :math:`d_{in} = 1`
+              case
+            * :math:`CDF_{\alpha}` is :func:`~.double_sided_geometric_cmf_exact`
+
+            >>> epsilon, delta = measurement.privacy_function(1)
+            >>> epsilon
+            1
+            >>> delta.to_float(round_up=True)
+            3.8328565409781243e-22
+            >>> epsilon, delta = measurement.privacy_function(2)
+            >>> epsilon
+            2
+            >>> delta.to_float(round_up=True)
+            5.664238400088129e-21
+    """  # pylint: disable=line-too-long
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: SparkDataFrameDomain,
+        threshold: int,
+        alpha: ExactNumberInput,
+        count_column: Optional[str] = None,
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: Domain of the input Spark DataFrames. Input cannot contain
+                floating point columns.
+            threshold: The minimum threshold for the noisy count to have to be released.
+                Can be nonpositive, but must be integral.
+            alpha: The noise scale parameter for Geometric noise. See
+                :class:`~.AddGeometricNoise` for more information.
+            count_column: Column name for output group counts. If None, output column
+                will be named "count".
+        """
+        if any(
+            isinstance(column_descriptor, SparkFloatColumnDescriptor)
+            for column_descriptor in input_domain.schema.values()
+        ):
+            raise ValueError("Input domain cannot contain any float columns.")
+        try:
+            validate_exact_number(
+                value=alpha,
+                allow_nonintegral=True,
+                minimum=0,
+                minimum_is_inclusive=True,
+            )
+        except ValueError as e:
+            raise ValueError(f"Invalid alpha: {e}")
+        if count_column is None:
+            count_column = "count"
+        if count_column in set(input_domain.schema):
+            raise ValueError(
+                f"Invalid count column name: ({count_column}) column already exists"
+            )
+        self._alpha = ExactNumber(alpha)
+        self._threshold = threshold
+        self._count_column = count_column
+        super().__init__(
+            input_domain=input_domain,
+            input_metric=SymmetricDifference(),
+            output_measure=ApproxDP(),
+            is_interactive=False,
+        )
+
+    @property
+    def alpha(self) -> ExactNumber:
+        """Returns the noise scale."""
+        return self._alpha
+
+    @property
+    def threshold(self) -> int:
+        """Returns the minimum noisy count to include row."""
+        return self._threshold
+
+    @property
+    def count_column(self) -> str:
+        """Returns the count column name."""
+        return self._count_column
+
+    @typechecked
+    def privacy_function(
+        self, d_in: ExactNumberInput
+    ) -> Tuple[ExactNumber, ExactNumber]:
+        """Returns the smallest d_out satisfied by the measurement.
+
+        See the privacy and stability tutorial for more information. # TODO(#1320)
+
+        Args:
+            d_in: Distance between inputs under input_metric.
+        """
+        self.input_metric.validate(d_in)
+        d_in = ExactNumber(d_in)
+        if d_in == 0:
+            return ExactNumber(0), ExactNumber(0)
+        if self.alpha == 0:
+            return ExactNumber(float("inf")), ExactNumber(0)
+        if d_in < 1:
+            raise NotImplementedError()
+        base_epsilon = 1 / self.alpha
+        base_delta = 1 - double_sided_geometric_cmf_exact(
+            self.threshold - 2, self.alpha
+        )
+        if d_in == 1:
+            return base_epsilon, base_delta
+        return (
+            d_in * base_epsilon,
+            min(
+                ExactNumber(1),
+                d_in * ExactNumber(sp.E) ** (d_in * base_epsilon) * base_delta,
+            ),
+        )
+
+    def call(self, sdf: DataFrame) -> DataFrame:
+        """Return the noisy counts for common rows."""
+        count_df = sdf.groupBy(sdf.columns).agg(sf.count("*").alias(self.count_column))
+        internal_measurement = AddNoiseToColumn(
+            input_domain=SparkDataFrameDomain(
+                schema={
+                    **cast(SparkDataFrameDomain, self.input_domain).schema,
+                    self.count_column: SparkIntegerColumnDescriptor(),
+                }
+            ),
+            measurement=AddNoiseToSeries(AddGeometricNoise(self.alpha)),
+            measure_column=self.count_column,
+        )
+        noisy_count_df = internal_measurement(count_df)
+        return noisy_count_df.filter(sf.col(self.count_column) >= self.threshold)
 
 
 def _get_sanitized_df(sdf: DataFrame) -> DataFrame:

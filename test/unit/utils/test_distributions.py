@@ -8,6 +8,7 @@
 import unittest
 
 import numpy as np
+import sympy as sp
 from parameterized import parameterized
 from scipy.stats import geom, norm
 
@@ -15,6 +16,7 @@ from tmlt.core.utils.distributions import (
     discrete_gaussian_cmf,
     discrete_gaussian_pmf,
     double_sided_geometric_cmf,
+    double_sided_geometric_cmf_exact,
     double_sided_geometric_pmf,
 )
 
@@ -51,8 +53,6 @@ class TestDoubleSidedGeometric(unittest.TestCase):
             return double_sided_cmf[k - min_value]
 
         ks_to_test = [-10, -5, -3, -1, 0, 1, 3, 5, 10]
-        # Test passing multiple ks as an np.ndarray
-        ks_to_test.append(np.array(ks_to_test))
         for k in ks_to_test:
             # Test pmf
             actual = double_sided_geometric_pmf(k, alpha)
@@ -63,6 +63,25 @@ class TestDoubleSidedGeometric(unittest.TestCase):
             actual = double_sided_geometric_cmf(k, alpha)
             expected = approx_cmf(k)
             np.testing.assert_allclose(actual, expected)
+
+            # Test exact cmf
+            actual = double_sided_geometric_cmf_exact(k, sp.Rational(alpha)).to_float(
+                round_up=False
+            )
+            # same expected
+            np.testing.assert_allclose(actual, expected)
+
+        # Test passing multiple ks as an np.ndarray
+        ks = np.array(ks_to_test)
+        # Test pmf
+        actual = double_sided_geometric_pmf(ks, alpha)
+        expected = approx_pmf(ks)
+        np.testing.assert_allclose(actual, expected)
+
+        # Test cmf
+        actual = double_sided_geometric_cmf(ks, alpha)
+        expected = approx_cmf(ks)
+        np.testing.assert_allclose(actual, expected)
 
     def test_pmf_integrates_to_one(self):
         """The sum of all values of the probability mass function should be 1."""
