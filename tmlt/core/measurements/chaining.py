@@ -35,13 +35,13 @@ class ChainTM(Measurement):
         """
         if transformation.output_domain != measurement.input_domain:
             raise ValueError(
-                "Can not chain transformation and measurment: Mismatching domains.\n"
+                "Can not chain transformation and measurement: Mismatching domains.\n"
                 f"{transformation.output_domain} != {measurement.input_domain}"
             )
 
         if transformation.output_metric != measurement.input_metric:
             raise ValueError(
-                "Can not chain transformation and measurment: Mismatching metrics.\n"
+                "Can not chain transformation and measurement: Mismatching metrics.\n"
                 f"{transformation.output_metric} != {measurement.input_metric}"
             )
         super().__init__(
