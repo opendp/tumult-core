@@ -183,7 +183,7 @@ class TestChainTM(TestComponent):
         measurement = create_mock_measurement(input_domain=NumpyIntegerDomain())
         with self.assertRaisesRegex(
             ValueError,
-            "Can not chain transformation and measurment: Mismatching domains.",
+            "Can not chain transformation and measurement: Mismatching domains.",
         ):
             ChainTM(
                 transformation=transformation,
