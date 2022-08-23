@@ -518,8 +518,26 @@ class SparkGroupedDataFrameDomain(Domain):
                 f"Expected: {self.group_keys.schema}. Got: {value.group_keys.schema}"
             )
 
+        if not self.group_keys.columns:
+            # Other checks are not necessary if there are no columns.
+            return
+
+        # Note that we are using an inner join instead of intersect
+        # This is b/c intersect sometimes drops rows for unknown reasons
+        # see https://issues.apache.org/jira/browse/SPARK-40181
+        intersection = self.group_keys.join(
+            value.group_keys,
+            on=[
+                self.group_keys[column].eqNullSafe(value.group_keys[column])
+                for column in self.group_keys.columns
+            ],
+            how="inner",
+        )
+        # this join duplicates columns, drop the duplicates
+        for column in value.group_keys.columns:
+            intersection = intersection.drop(value.group_keys[column])
         invalid_group_keys = self.group_keys.union(value.group_keys).subtract(
-            self.group_keys.intersect(value.group_keys)
+            intersection
         )
         if invalid_group_keys.first():
             raise OutOfDomainError("Groups keys do not match")
@@ -559,16 +577,26 @@ class SparkGroupedDataFrameDomain(Domain):
             self.group_keys.schema != other.group_keys.schema
         ):
             return False
+        if not self.group_keys.columns:
+            return True
         group_keys_count = self.group_keys.count()
         if group_keys_count != other.group_keys.count():
             return False
-        # This only works because group_keys contains distinct rows.
-        # intersecting two empty dataframes produces a row!
-        return self.group_keys.intersect(
-            other.group_keys
-        ).count() == group_keys_count or (
-            group_keys_count == 0 and other.group_keys.count() == 0
+        # Note that we are using an inner join instead of intersect
+        # that is b/c intersect sometimes drops rows for unknown reasons
+        # see https://issues.apache.org/jira/browse/SPARK-40181
+        intersection = self.group_keys.join(
+            other.group_keys,
+            on=[
+                self.group_keys[column].eqNullSafe(other.group_keys[column])
+                for column in self.group_keys.columns
+            ],
+            how="inner",
         )
+        # this join duplicates columns, drop the duplicates
+        for column in other.group_keys.columns:
+            intersection = intersection.drop(other.group_keys[column])
+        return intersection.count() == group_keys_count
 
     def __getitem__(self, col_name: str) -> SparkColumnDescriptor:
         """Returns column descriptor for given column."""
