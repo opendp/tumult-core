@@ -195,9 +195,9 @@ class TestSparkGroupedDataFrameDomain(PySparkTest):
             [(1, "W"), (2, "X"), (3, "Y")], schema=["A", "B"]
         )
         self.schema = {
-            "A": SparkIntegerColumnDescriptor(),
-            "B": SparkStringColumnDescriptor(),
-            "C": SparkIntegerColumnDescriptor(),
+            "A": SparkIntegerColumnDescriptor(allow_null=True),
+            "B": SparkStringColumnDescriptor(allow_null=True),
+            "C": SparkIntegerColumnDescriptor(allow_null=True),
         }
         self.domain = SparkGroupedDataFrameDomain(
             schema=self.schema, group_keys=self.group_keys
@@ -308,6 +308,85 @@ class TestSparkGroupedDataFrameDomain(PySparkTest):
         expected = pd.DataFrame({"A": [1], "B": ["W"]})
         actual = domain.group_keys.toPandas()
         self.assert_frame_equal_with_sort(expected, actual)
+
+    def test_eq_no_group_keys(self):
+        """Tests that __eq__ works for empty group_keys."""
+        domain1 = SparkGroupedDataFrameDomain(
+            schema=self.schema,
+            group_keys=self.spark.createDataFrame([], schema=StructType([])),
+        )
+        domain2 = SparkGroupedDataFrameDomain(
+            schema=self.schema,
+            group_keys=self.spark.createDataFrame([], schema=StructType([])),
+        )
+        self.assertTrue(domain1 == domain2)
+
+    def test_validate_with_nulls(self):
+        """Test that validate works correctly with nulls."""
+        group_keys_with_nulls = self.spark.createDataFrame(
+            [(1, "W"), (2, "X"), (3, None)], schema=["A", "B"]
+        )
+        group_keys_without_nulls = self.spark.createDataFrame(
+            [(1, "W"), (1, "X")], schema=["A", "B"]
+        )
+        dataframe_with_nulls = self.spark.createDataFrame(
+            [(1, "W", 0), (None, "X", 1), (None, "X", 2)], schema=["A", "B", "C"]
+        )
+        domain_with_nulls = SparkGroupedDataFrameDomain(
+            schema=self.schema, group_keys=group_keys_with_nulls
+        )
+        # everything matches, no exception should be raised
+        domain_with_nulls.validate(
+            GroupedDataFrame(
+                dataframe=dataframe_with_nulls, group_keys=group_keys_with_nulls
+            )
+        )
+        # group keys don't match, should raise exception
+        with self.assertRaises(OutOfDomainError):
+            domain_with_nulls.validate(
+                GroupedDataFrame(
+                    dataframe=dataframe_with_nulls, group_keys=group_keys_without_nulls
+                )
+            )
+        domain_without_nulls = SparkGroupedDataFrameDomain(
+            schema=self.schema, group_keys=group_keys_without_nulls
+        )
+        # group keys match, nulls should be fine
+        domain_without_nulls.validate(
+            GroupedDataFrame(
+                dataframe=dataframe_with_nulls, group_keys=group_keys_without_nulls
+            )
+        )
+        # group keys don't match, should raise exception
+        with self.assertRaises(OutOfDomainError):
+            domain_without_nulls.validate(
+                GroupedDataFrame(
+                    dataframe=dataframe_with_nulls, group_keys=group_keys_with_nulls
+                )
+            )
+
+    def test_eq_with_nulls(self):
+        """Tests that eq works correctly with null values."""
+        domain_with_nulls1 = SparkGroupedDataFrameDomain(
+            schema=self.schema,
+            group_keys=self.spark.createDataFrame(
+                [(1, "W"), (1, "X"), (None, "X")], schema=["A", "B"]
+            ),
+        )
+        domain_with_nulls2 = SparkGroupedDataFrameDomain(
+            schema=self.schema,
+            group_keys=self.spark.createDataFrame(
+                [(1, "W"), (1, "X"), (None, "X")], schema=["A", "B"]
+            ),
+        )
+        self.assertEqual(domain_with_nulls1, domain_with_nulls2)
+        domain_without_nulls = SparkGroupedDataFrameDomain(
+            schema=self.schema,
+            group_keys=self.spark.createDataFrame(
+                [(1, "W"), (1, "X")], schema=["A", "B"]
+            ),
+        )
+        self.assertNotEqual(domain_with_nulls1, domain_without_nulls)
 
 
 class TestSparkColumnDescriptors(PySparkTest):
