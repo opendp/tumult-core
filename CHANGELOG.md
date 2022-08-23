@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+### Changed
+- Replaced uses of PySpark DataFrame's `intersect` with inner joins. See https://issues.apache.org/jira/browse/SPARK-40181 for background.
+
 ## 0.4.1 - 2022-07-25
 ### Added
 - Added an alternate prng for non-intel architectures that don't support RDRAND.
