@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 import numpy as np
 from pyspark import Row
@@ -605,7 +605,7 @@ class SparkGroupedDataFrameDomain(Domain):
 
 def convert_spark_schema(spark_schema: StructType) -> SparkColumnsDescriptor:
     """Returns mapping from column name to SparkColumnDescriptor."""
-    spark_type_to_size = {
+    spark_type_to_size: Mapping[DataType, int] = {
         IntegerType(): 32,
         LongType(): 64,
         FloatType(): 32,
@@ -613,10 +613,10 @@ def convert_spark_schema(spark_schema: StructType) -> SparkColumnsDescriptor:
     }
     column_to_descriptor = dict()
     for field in spark_schema:
-        if field.name in spark_schema:
+        if field.name in column_to_descriptor:
             raise ValueError(f"Schema contains duplicate column name {field.name}.")
         column_to_descriptor[field.name] = _spark_type_to_descriptor(
-            field.dataType, field.nullable, spark_type_to_size.get(field.dataType, None)
+            field.dataType, field.nullable, spark_type_to_size.get(field.dataType)
         )
 
     return column_to_descriptor

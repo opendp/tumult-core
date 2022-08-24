@@ -726,8 +726,12 @@ def get_sampler(
             processed_df = post_processor(
                 raw_output_df
             ).toPandas()  # Produce columns to be sampled.
+            # TODO(#2107): Fix typing here
             samples.append(
-                {col: processed_df[col].values for col in processed_df.columns}
+                {
+                    col: processed_df[col].values  # type: ignore
+                    for col in processed_df.columns  # type: ignore
+                }
             )
         cols = samples[0].keys()
         return {
