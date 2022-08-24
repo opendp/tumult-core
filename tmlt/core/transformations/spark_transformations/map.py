@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-from typing import Any, Callable, List, Optional, Set, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
 
 import sympy as sp
 from pyspark.sql import DataFrame, Row, SparkSession
@@ -116,7 +116,7 @@ class RowToRowTransformation(Transformation):
         self,
         input_domain: SparkRowDomain,
         output_domain: SparkRowDomain,
-        trusted_f: Callable[[Row], Row],
+        trusted_f: Callable[[Row], Union[Row, Dict[str, Any]]],
         augment: bool,
     ):
         """Constructor.
@@ -151,7 +151,7 @@ class RowToRowTransformation(Transformation):
         self._augment = augment
 
     @property
-    def trusted_f(self) -> Callable:
+    def trusted_f(self) -> Callable[[Row], Union[Row, Dict[str, Any]]]:
         """Returns function to be applied to each row.
 
         Note:
@@ -285,7 +285,7 @@ class RowToRowsTransformation(Transformation):
         self,
         input_domain: SparkRowDomain,
         output_domain: ListDomain,
-        trusted_f: Callable,
+        trusted_f: Callable[[Row], Union[List[Row], List[Dict[str, Any]]]],
         augment: bool,
     ):
         """Constructor.
@@ -328,7 +328,7 @@ class RowToRowsTransformation(Transformation):
         self._augment = augment
 
     @property
-    def trusted_f(self) -> Callable:
+    def trusted_f(self) -> Callable[[Row], Union[List[Row], List[Dict[str, Any]]]]:
         """Returns function to be applied to each row.
 
         Note:
@@ -351,9 +351,9 @@ class RowToRowsTransformation(Transformation):
 
     def __call__(self, row: Row) -> List[Row]:
         """Map row."""
-        mapped_rows = self._trusted_f(row)
-        assert all(isinstance(r, (Row, dict)) for r in mapped_rows)
-        mapped_rows = [r if isinstance(r, Row) else Row(**r) for r in mapped_rows]
+        mapped = self._trusted_f(row)
+        assert all(isinstance(r, (Row, dict)) for r in mapped)
+        mapped_rows = [r if isinstance(r, Row) else Row(**r) for r in mapped]
         if self._augment:
             augmented_rows: List[Row] = list()
             for r in mapped_rows:

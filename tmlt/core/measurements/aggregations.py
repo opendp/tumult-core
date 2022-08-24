@@ -691,6 +691,13 @@ def create_average_measurement(
 
     def postprocess_sod_and_count_dfs(answers: List[DataFrame]) -> DataFrame:
         """Computes average from noisy count and sum of deviations."""
+        # Give mypy some help -- none of these can be None, but it has trouble
+        # figuring that out because of how closures are handled.
+        assert (
+            average_column is not None
+            and sum_column is not None
+            and count_column is not None
+        )
         sod_df, count_df = answers
         if groupby.groupby_columns:
             df_with_sod_and_count = sod_df.join(count_df, on=groupby.groupby_columns)
@@ -787,6 +794,15 @@ def create_variance_measurement(
             DataFrame output by the measurement. If None, this column will be named
             "count".
     """
+    if sum_of_deviations_column is None:
+        sum_of_deviations_column = f"sod({measure_column})"
+    if sum_of_squared_deviations_column is None:
+        sum_of_squared_deviations_column = f"sos({measure_column})"
+    if count_column is None:
+        count_column = "count"
+    if variance_column is None:
+        variance_column = f"var({measure_column})"
+
     lower = ExactNumber(lower)
     upper = ExactNumber(upper)
     d_in = ExactNumber(d_in)
@@ -912,14 +928,6 @@ def create_variance_measurement(
         assert variance_measurement.privacy_function(d_in) == d_out
         return variance_measurement
     assert isinstance(groupby_transformation, GroupBy)
-    if sum_of_deviations_column is None:
-        sum_of_deviations_column = f"sod({measure_column})"
-    if sum_of_squared_deviations_column is None:
-        sum_of_squared_deviations_column = f"sos({measure_column})"
-    if count_column is None:
-        count_column = "count"
-    if variance_column is None:
-        variance_column = f"var({measure_column})"
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
     groupby = GroupBy(
         input_domain=deviations_map.output_domain,
@@ -973,6 +981,14 @@ def create_variance_measurement(
 
     def postprocess_sums_and_count_dfs(answers: List[DataFrame]) -> DataFrame:
         """Computes variance from noisy counts and sums."""
+        # Give mypy some help -- none of these can be None, but it has trouble
+        # figuring that out because of how closures are handled.
+        assert (
+            variance_column is not None
+            and sum_of_deviations_column is not None
+            and sum_of_squared_deviations_column is not None
+            and count_column is not None
+        )
         sod_df, sos_df, count_df = answers
         assert groupby_transformation is not None
         if groupby.groupby_columns:
@@ -1145,6 +1161,9 @@ def create_standard_deviation_measurement(
         return PostProcess(measurement=variance_measurement, f=postprocess_variance)
 
     def postprocess_variance_df(sdf: DataFrame) -> DataFrame:
+        # Give mypy some help -- this can't be None, but mypy has trouble figuring
+        # that out because of how closures are handled.
+        assert standard_deviation_column is not None
         return sdf.withColumn(
             standard_deviation_column, sf.sqrt(sf.col(standard_deviation_column))
         )

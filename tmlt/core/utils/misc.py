@@ -67,7 +67,8 @@ def get_nonconflicting_string(strs: List[str]) -> str:
 def print_sdf(sdf: DataFrame) -> None:
     """Prints a spark dataframe in a deterministic way."""
     df = sdf.toPandas()
-    print(df.sort_values(list(df.columns), ignore_index=True))
+    # TODO(#2107): Fix typing here
+    print(df.sort_values(list(df.columns), ignore_index=True))  # type: ignore
 
 
 def arb_to_float(x: arb) -> Optional[float]:

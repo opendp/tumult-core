@@ -55,7 +55,7 @@ class TestRowToRowsTransformer(TestComponent):
         transformer = RowToRowsTransformation(
             SparkRowDomain(self.schema_a),
             ListDomain(SparkRowDomain(self.schema_a)),
-            lambda x: x,
+            lambda x: [x],
             False,
         )
         assert_property_immutability(transformer, prop_name)
@@ -65,13 +65,13 @@ class TestRowToRowsTransformer(TestComponent):
         """RowToRowsTransformation's properties have the expected values."""
         input_domain = SparkRowDomain(self.schema_a)
         transformer = RowToRowsTransformation(
-            input_domain, ListDomain(input_domain), lambda x: x, augment
+            input_domain, ListDomain(input_domain), lambda x: [x], augment
         )
         self.assertEqual(transformer.input_domain, input_domain)
         self.assertEqual(transformer.input_metric, NullMetric())
         self.assertEqual(transformer.output_domain, ListDomain(input_domain))
         self.assertEqual(transformer.output_metric, NullMetric())
-        self.assertEqual(transformer.trusted_f(5), 5)
+        self.assertEqual(transformer.trusted_f(Row(x=5)), [Row(x=5)])
         self.assertEqual(transformer.augment, augment)
 
     @parameterized.expand(
@@ -358,7 +358,7 @@ class TestFlatMap(TestComponent):
                 row_transformer=RowToRowsTransformation(
                     input_domain,  # type: ignore
                     output_domain,  # type: ignore
-                    lambda x: x,
+                    lambda x: [x],
                     augment=False,
                 ),
                 max_num_rows=1,
@@ -434,7 +434,7 @@ class TestFlatMap(TestComponent):
                 row_transformer=RowToRowsTransformation(
                     input_domain=SparkRowDomain(self.schema_a),
                     output_domain=ListDomain(SparkRowDomain(self.schema_a)),
-                    trusted_f=lambda row: row,
+                    trusted_f=lambda row: [row],
                     augment=augment,
                 ),
                 max_num_rows=2,
