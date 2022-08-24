@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.2 - 2022-08-24
 ### Changed
 - Replaced uses of PySpark DataFrame's `intersect` with inner joins. See https://issues.apache.org/jira/browse/SPARK-40181 for background.
 
