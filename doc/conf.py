@@ -140,6 +140,11 @@ nitpick_ignore = [
     ("py:class", "numpy.int64"),
     ("py:class", "numpy.float32"),
     ("py:class", "numpy.float64"),
+    # Caused by a function in tmlt.core.utils.configuration returning a SparkConf
+    ("py:class", "pyspark.conf.SparkConf"),
+    # Caused by a function in tmlt.core.utils.configuration taking a RuntimeConf
+    # as an argument
+    ("py:class", "pyspark.sql.conf.RuntimeConfig"),
     # Caused by pyspark.sql.dataframe.DataFrame in a dataclass (in spark_domains)
     ("py:class", "pyspark.sql.dataframe.DataFrame"),
     # TypeVar support: https://github.com/agronholm/sphinx-autodoc-typehints/issues/39
@@ -177,12 +182,7 @@ html_logo = "_static/logo.png"
 html_favicon = "_static/favicon.ico"
 html_show_sourcelink = False
 html_sidebars = {
-    "**": [
-        "package-name",
-        "version-switcher",
-        "search-field",
-        "sidebar-nav-bs",
-    ]
+    "**": ["package-name", "version-switcher", "search-field", "sidebar-nav-bs"]
 }
 
 # Intersphinx mapping

@@ -10,6 +10,7 @@
 - Add new metric `AddRemoveKeys` for multiple tables using `IfGroupedBy(X, SymmetricDifference())`.
 - Add new `TransformValue` base class for wrapping transformations to support `AddRemoveKeys`.
 - Add many new transformations using `TransformValue`: `FilterValue`, `PublicJoinValue`, `FlatMapValue`, `MapValue`, `DropInfsValue`, `DropNaNsValue`, `DropNullsValue`, `ReplaceInfsValue`, `ReplaceNaNsValue`, `ReplaceNullsValue`, `PersistValue`, `UnpersistValue`, `SparkActionValue`, `RenameValue`, `SelectValue`.
+- Core now checks to see if the user is running Java 11 or higher. If they are, Core either sets the appropriate Spark options (if Spark is not yet running) or raises an informative exception (if Spark is running and configured incorrectly).
 
 ### Changed
 - Fixed bug in `ReplaceNulls` to not allow replacing values for grouping column in `IfGroupedBy`
