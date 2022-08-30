@@ -10,6 +10,7 @@ Additional Resources
 
    changelog
    ../zcitations
+   privacy_policy
    contact
    license
 
