@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2022
 
 import datetime
+import functools
 import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
@@ -36,6 +37,7 @@ from tmlt.core.domains.numpy_domains import (
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+from tmlt.core.utils.misc import get_nonconflicting_string
 
 
 class SparkColumnDescriptor(ABC):
@@ -525,11 +527,20 @@ class SparkGroupedDataFrameDomain(Domain):
         # Note that we are using an inner join instead of intersect
         # This is b/c intersect sometimes drops rows for unknown reasons
         # see https://issues.apache.org/jira/browse/SPARK-40181
+        # We are using column aliases to prevent Spark from raising a warning when
+        # identical domains are being compared.
+        aliases = functools.reduce(
+            lambda all_keys, _: all_keys + [get_nonconflicting_string(all_keys)],
+            self.group_keys.columns,
+            self.group_keys.columns,
+        )[len(self.group_keys.columns) :]
         intersection = self.group_keys.join(
             value.group_keys,
             on=[
-                self.group_keys[column].eqNullSafe(value.group_keys[column])
-                for column in self.group_keys.columns
+                self.group_keys[column].eqNullSafe(
+                    value.group_keys[column].alias(aliases[idx])
+                )
+                for idx, column in enumerate(self.group_keys.columns)
             ],
             how="inner",
         )
@@ -585,11 +596,21 @@ class SparkGroupedDataFrameDomain(Domain):
         # Note that we are using an inner join instead of intersect
         # that is b/c intersect sometimes drops rows for unknown reasons
         # see https://issues.apache.org/jira/browse/SPARK-40181
+
+        # We are using column aliases to prevent Spark from raising a warning when
+        # identical domains are being compared.
+        aliases = functools.reduce(
+            lambda all_keys, _: all_keys + [get_nonconflicting_string(all_keys)],
+            self.group_keys.columns,
+            self.group_keys.columns,
+        )[len(self.group_keys.columns) :]
         intersection = self.group_keys.join(
             other.group_keys,
             on=[
-                self.group_keys[column].eqNullSafe(other.group_keys[column])
-                for column in self.group_keys.columns
+                self.group_keys[column].eqNullSafe(
+                    other.group_keys[column].alias(aliases[idx])
+                )
+                for idx, column in enumerate(self.group_keys.columns)
             ],
             how="inner",
         )
