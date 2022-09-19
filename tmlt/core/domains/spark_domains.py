@@ -593,30 +593,28 @@ class SparkGroupedDataFrameDomain(Domain):
         group_keys_count = self.group_keys.count()
         if group_keys_count != other.group_keys.count():
             return False
-        # Note that we are using an inner join instead of intersect
-        # that is b/c intersect sometimes drops rows for unknown reasons
-        # see https://issues.apache.org/jira/browse/SPARK-40181
-
-        # We are using column aliases to prevent Spark from raising a warning when
-        # identical domains are being compared.
-        aliases = functools.reduce(
-            lambda all_keys, _: all_keys + [get_nonconflicting_string(all_keys)],
-            self.group_keys.columns,
-            self.group_keys.columns,
-        )[len(self.group_keys.columns) :]
+        # Note that we are using an inner join instead of intersect here; that
+        # is b/c intersect sometimes drops rows for unknown reasons, see
+        # https://issues.apache.org/jira/browse/SPARK-40181
+        #
+        # A previous implementation of this comparison would fail during the
+        # join in some environments (notably on Databricks) with
+        # "AnalysisException: Column ... are ambiguous"; this failure was never
+        # successfully replicated in the CI, so there is no automated test for
+        # it, but the current tests do catch it if run in environments where the
+        # error occurs.
+        other_group_keys = other.group_keys.alias("other")
         intersection = self.group_keys.join(
-            other.group_keys,
+            other_group_keys,
             on=[
-                self.group_keys[column].eqNullSafe(
-                    other.group_keys[column].alias(aliases[idx])
-                )
-                for idx, column in enumerate(self.group_keys.columns)
+                self.group_keys[column].eqNullSafe(other_group_keys[column])
+                for column in self.group_keys.columns
             ],
             how="inner",
         )
         # this join duplicates columns, drop the duplicates
-        for column in other.group_keys.columns:
-            intersection = intersection.drop(other.group_keys[column])
+        for column in other_group_keys.columns:
+            intersection = intersection.drop(other_group_keys[column])
         return intersection.count() == group_keys_count
 
     def __getitem__(self, col_name: str) -> SparkColumnDescriptor:
