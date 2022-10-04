@@ -58,6 +58,7 @@ class TransformValue(Transformation):
     def __init__(
         self,
         input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
         transformation: Transformation,
         key: Any,
         new_key: Any,
@@ -66,6 +67,8 @@ class TransformValue(Transformation):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             transformation: The DataFrame to DataFrame transformation to apply. Input
                 and output metric must both be
                 `IfGroupedBy(column, SymmetricDifference())` using the same `column`.
@@ -107,7 +110,15 @@ class TransformValue(Transformation):
             raise ValueError(
                 "Transformation's input and output metric must group by the same column"
             )
-        metric = AddRemoveKeys(column)
+        if input_metric.df_to_key_column[key] != column:
+            raise ValueError(
+                f"Transformation's input metric grouping column, {column}, does not"
+                " match the dataframe's key column,"
+                f" {input_metric.df_to_key_column[key]}."
+            )
+        output_metric = AddRemoveKeys(
+            {**input_metric.df_to_key_column, new_key: column}
+        )
         output_domain = DictDomain(
             {**input_domain.key_to_domain, new_key: transformation.output_domain}
         )
@@ -117,9 +128,9 @@ class TransformValue(Transformation):
         # __init__ checks that domain and metric are compatible (multiple useful checks)
         super().__init__(
             input_domain=input_domain,
-            input_metric=metric,
+            input_metric=input_metric,
             output_domain=output_domain,
-            output_metric=metric,
+            output_metric=output_metric,
         )
 
     @property
@@ -169,7 +180,7 @@ class FilterValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         filter_expr: str,
@@ -178,8 +189,8 @@ class FilterValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -189,10 +200,12 @@ class FilterValue(TransformValue):
         """
         transformation = Filter(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             filter_expr=filter_expr,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class PublicJoinValue(TransformValue):
@@ -205,7 +218,7 @@ class PublicJoinValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         public_df: DataFrame,
@@ -217,8 +230,8 @@ class PublicJoinValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -235,13 +248,15 @@ class PublicJoinValue(TransformValue):
         """
         transformation = PublicJoin(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             public_df=public_df,
             public_df_domain=public_df_domain,
             join_cols=join_cols,
             join_on_nulls=join_on_nulls,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class FlatMapValue(TransformValue):
@@ -254,7 +269,7 @@ class FlatMapValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         row_transformer: RowToRowsTransformation,
@@ -264,8 +279,8 @@ class FlatMapValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -274,11 +289,13 @@ class FlatMapValue(TransformValue):
                 more rows are output, the additional rows are suppressed.
         """
         transformation = FlatMap(
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             row_transformer=row_transformer,
             max_num_rows=max_num_rows,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class MapValue(TransformValue):
@@ -291,7 +308,7 @@ class MapValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         row_transformer: RowToRowTransformation,
@@ -300,18 +317,20 @@ class MapValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
             row_transformer: Transformation to apply to each row.
         """
         transformation = Map(
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             row_transformer=row_transformer,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class DropInfsValue(TransformValue):
@@ -324,7 +343,7 @@ class DropInfsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         columns: List[str],
@@ -333,8 +352,8 @@ class DropInfsValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -342,10 +361,12 @@ class DropInfsValue(TransformValue):
         """
         transformation = DropInfs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             columns=columns,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class DropNaNsValue(TransformValue):
@@ -358,7 +379,7 @@ class DropNaNsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         columns: List[str],
@@ -367,8 +388,8 @@ class DropNaNsValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -376,10 +397,12 @@ class DropNaNsValue(TransformValue):
         """
         transformation = DropNaNs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             columns=columns,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class DropNullsValue(TransformValue):
@@ -392,7 +415,7 @@ class DropNullsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         columns: List[str],
@@ -401,8 +424,8 @@ class DropNullsValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -410,10 +433,12 @@ class DropNullsValue(TransformValue):
         """
         transformation = DropNulls(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             columns=columns,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class ReplaceInfsValue(TransformValue):
@@ -426,7 +451,7 @@ class ReplaceInfsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         replace_map: Dict[str, Tuple[float, float]],
@@ -435,8 +460,8 @@ class ReplaceInfsValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -447,10 +472,12 @@ class ReplaceInfsValue(TransformValue):
         """
         transformation = ReplaceInfs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             replace_map=replace_map,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class ReplaceNaNsValue(TransformValue):
@@ -463,7 +490,7 @@ class ReplaceNaNsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         replace_map: Dict[str, Any],
@@ -472,8 +499,8 @@ class ReplaceNaNsValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -482,10 +509,12 @@ class ReplaceNaNsValue(TransformValue):
         """
         transformation = ReplaceNaNs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             replace_map=replace_map,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class ReplaceNullsValue(TransformValue):
@@ -498,7 +527,7 @@ class ReplaceNullsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         replace_map: Dict[str, Any],
@@ -507,8 +536,8 @@ class ReplaceNullsValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -517,10 +546,12 @@ class ReplaceNullsValue(TransformValue):
         """
         transformation = ReplaceNulls(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             replace_map=replace_map,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class PersistValue(TransformValue):
@@ -530,22 +561,30 @@ class PersistValue(TransformValue):
     """
 
     @typechecked
-    def __init__(self, input_domain: DictDomain, column: str, key: Any, new_key: Any):
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
+        key: Any,
+        new_key: Any,
+    ):
         """Constructor.
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
         """
         transformation = Persist(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class UnpersistValue(TransformValue):
@@ -555,22 +594,30 @@ class UnpersistValue(TransformValue):
     """
 
     @typechecked
-    def __init__(self, input_domain: DictDomain, column: str, key: Any, new_key: Any):
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
+        key: Any,
+        new_key: Any,
+    ):
         """Constructor.
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
         """
         transformation = Unpersist(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class SparkActionValue(TransformValue):
@@ -580,22 +627,30 @@ class SparkActionValue(TransformValue):
     """
 
     @typechecked
-    def __init__(self, input_domain: DictDomain, column: str, key: Any, new_key: Any):
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
+        key: Any,
+        new_key: Any,
+    ):
         """Constructor.
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
         """
         transformation = SparkAction(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class RenameValue(TransformValue):
@@ -608,7 +663,7 @@ class RenameValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         rename_mapping: Dict[str, str],
@@ -617,8 +672,8 @@ class RenameValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -627,10 +682,12 @@ class RenameValue(TransformValue):
         """
         transformation = Rename(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             rename_mapping=rename_mapping,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class SelectValue(TransformValue):
@@ -643,7 +700,7 @@ class SelectValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        column: str,
+        input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
         columns: List[str],
@@ -652,8 +709,8 @@ class SelectValue(TransformValue):
 
         Args:
             input_domain: The Domain of the input dictionary of Spark DataFrames.
-            column: The column to use for the input and output :class:`~.AddRemoveKeys`
-                metric.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -661,7 +718,9 @@ class SelectValue(TransformValue):
         """
         transformation = Select(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            metric=IfGroupedBy(column, SymmetricDifference()),
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
             columns=columns,
         )
-        super().__init__(input_domain, transformation, key, new_key)
+        super().__init__(input_domain, input_metric, transformation, key, new_key)

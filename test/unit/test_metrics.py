@@ -2047,13 +2047,13 @@ class TestAddRemoveKeys(PySparkTest):
     )
     def test_valid(self, value: ExactNumberInput):
         """Only valid nonnegative integral ExactNumberInput's should be allowed."""
-        AddRemoveKeys("A").validate(value)
+        AddRemoveKeys({"A": "B", "C": "D"}).validate(value)
 
     @parameterized.expand([(sp.Float(2),), ("wat",), ({},)])
     def test_invalid(self, value: Any):
         """Only valid nonnegative integral ExactNumberInput's should be allowed."""
         with self.assertRaises((TypeError, ValueError)):
-            AddRemoveKeys("A").validate(value)
+            AddRemoveKeys({"A": "B", "C": "D"}).validate(value)
 
     @parameterized.expand(
         [
@@ -2068,28 +2068,35 @@ class TestAddRemoveKeys(PySparkTest):
         self, value1: ExactNumberInput, value2: ExactNumberInput, expected: bool
     ):
         """Tests that compare returns the expected result."""
-        self.assertEqual(AddRemoveKeys("A").compare(value1, value2), expected)
+        self.assertEqual(
+            AddRemoveKeys({"A": "B", "C": "D"}).compare(value1, value2), expected
+        )
 
     @parameterized.expand(
         [
-            (AddRemoveKeys("A"), True),
-            (AddRemoveKeys("B"), False),
+            (AddRemoveKeys({"A": "B", "C": "D"}), True),
+            (AddRemoveKeys({"A": "D", "C": "D"}), False),
+            (AddRemoveKeys({"E": "B", "C": "D"}), False),
             (AbsoluteDifference(), False),
             ("not a metric", False),
         ]
     )
     def test_eq(self, value: Any, expected: bool):
         """Tests that the metric is equal to itself and not other metrics."""
-        self.assertEqual(AddRemoveKeys("A") == value, expected)
+        self.assertEqual(AddRemoveKeys({"A": "B", "C": "D"}) == value, expected)
 
     def test_repr(self):
         """Tests that the string representation is as expected."""
-        self.assertEqual(repr(AddRemoveKeys("A")), "AddRemoveKeys(column='A')")
+        self.assertEqual(
+            repr(AddRemoveKeys({"A": "B", "C": "D"})),
+            "AddRemoveKeys(df_to_key_column={'A': 'B', 'C': 'D'})",
+        )
 
     @parameterized.expand(
         [
-            (NumpyIntegerDomain(), False),
+            (AddRemoveKeys({"A": "B"}), NumpyIntegerDomain(), False),
             (
+                AddRemoveKeys({"key1": "A"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2103,6 +2110,55 @@ class TestAddRemoveKeys(PySparkTest):
                 True,
             ),
             (
+                AddRemoveKeys({"key2": "A"}),
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "B": SparkIntegerColumnDescriptor(),
+                            }
+                        )
+                    }
+                ),
+                False,
+            ),
+            (
+                AddRemoveKeys({"key1": "A", "key2": "A"}),
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "B": SparkIntegerColumnDescriptor(),
+                            }
+                        )
+                    }
+                ),
+                False,
+            ),
+            (
+                AddRemoveKeys({"key1": "A"}),
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "B": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "C": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                    }
+                ),
+                False,
+            ),
+            (
+                AddRemoveKeys({"key1": "A", "key2": "A"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2122,6 +2178,27 @@ class TestAddRemoveKeys(PySparkTest):
                 True,
             ),
             (
+                AddRemoveKeys({"key1": "A", "key2": "C"}),
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "B": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {
+                                "A": SparkIntegerColumnDescriptor(),
+                                "C": SparkIntegerColumnDescriptor(),
+                            }
+                        ),
+                    }
+                ),
+                True,
+            ),
+            (
+                AddRemoveKeys({"key1": "A", "key2": "A"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2141,6 +2218,7 @@ class TestAddRemoveKeys(PySparkTest):
                 False,
             ),
             (
+                AddRemoveKeys({"key1": "A"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2154,6 +2232,7 @@ class TestAddRemoveKeys(PySparkTest):
                 False,
             ),
             (
+                AddRemoveKeys({"key1": "A"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2164,6 +2243,7 @@ class TestAddRemoveKeys(PySparkTest):
                 True,
             ),
             (
+                AddRemoveKeys({"key1": "A", "key2": "D"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2184,13 +2264,16 @@ class TestAddRemoveKeys(PySparkTest):
             ),
         ]
     )
-    def test_supports_domain(self, domain: Domain, is_supported: bool):
+    def test_supports_domain(
+        self, metric: AddRemoveKeys, domain: Domain, is_supported: bool
+    ):
         """Test that supports_domain correctly identifies supported domains."""
-        self.assertEqual(AddRemoveKeys("A").supports_domain(domain), is_supported)
+        self.assertEqual(metric.supports_domain(domain), is_supported)
 
     @parameterized.expand(
         [
             (
+                AddRemoveKeys({"key1": "A"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2242,6 +2325,7 @@ class TestAddRemoveKeys(PySparkTest):
                 3,
             ),
             (
+                AddRemoveKeys({"key1": "A", "key2": "C"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2252,23 +2336,24 @@ class TestAddRemoveKeys(PySparkTest):
                         ),
                         "key2": SparkDataFrameDomain(
                             {
-                                "A": SparkIntegerColumnDescriptor(allow_null=True),
                                 "C": SparkIntegerColumnDescriptor(allow_null=True),
+                                "D": SparkIntegerColumnDescriptor(allow_null=True),
                             }
                         ),
                     }
                 ),
                 {
                     "key1": ([[1, 1], [2, 2]], ["A", "B"]),
-                    "key2": ([[3, 3], [4, 4]], ["A", "C"]),
+                    "key2": ([[3, 3], [4, 4]], ["C", "D"]),
                 },
                 {
                     "key1": ([], "A: bigint, B: bigint"),
-                    "key2": ([], "A: bigint, C: bigint"),
+                    "key2": ([], "C: bigint, D: bigint"),
                 },
                 4,
             ),
             (
+                AddRemoveKeys({"key1": "A", "key2": "A"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2296,6 +2381,7 @@ class TestAddRemoveKeys(PySparkTest):
                 3,
             ),
             (
+                AddRemoveKeys({"key1": "A", "key2": "C"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2306,23 +2392,24 @@ class TestAddRemoveKeys(PySparkTest):
                         ),
                         "key2": SparkDataFrameDomain(
                             {
-                                "A": SparkIntegerColumnDescriptor(allow_null=True),
                                 "C": SparkIntegerColumnDescriptor(allow_null=True),
+                                "A": SparkIntegerColumnDescriptor(allow_null=True),
                             }
                         ),
                     }
                 ),
                 {
                     "key1": ([[1, 1], [2, 2]], ["A", "B"]),
-                    "key2": ([[3, 3], [4, 4]], ["A", "C"]),
+                    "key2": ([[3, 3], [4, 4]], ["C", "A"]),
                 },
                 {
                     "key1": ([[1, 1], [2, 2]], ["A", "B"]),
-                    "key2": ([[3, 3], [4, 4]], ["A", "C"]),
+                    "key2": ([[3, 3], [4, 4]], ["C", "A"]),
                 },
                 0,
             ),
             (
+                AddRemoveKeys({"key1": "A", "key2": "A"}),
                 DictDomain(
                     {
                         "key1": SparkDataFrameDomain(
@@ -2351,7 +2438,14 @@ class TestAddRemoveKeys(PySparkTest):
             ),
         ]
     )
-    def test_distance(self, domain: Domain, value1: Any, value2: Any, distance: Any):
+    def test_distance(
+        self,
+        metric: AddRemoveKeys,
+        domain: Domain,
+        value1: Any,
+        value2: Any,
+        distance: Any,
+    ):
         """Test that distances are computed correctly."""
         value1 = {
             key: self.spark.createDataFrame(data, schema)
@@ -2361,4 +2455,4 @@ class TestAddRemoveKeys(PySparkTest):
             key: self.spark.createDataFrame(data, schema)
             for key, (data, schema) in value2.items()
         }
-        self.assertEqual(AddRemoveKeys("A").distance(value1, value2, domain), distance)
+        self.assertEqual(metric.distance(value1, value2, domain), distance)

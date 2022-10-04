@@ -241,7 +241,10 @@ class TestGetValue(TestCase):
                 ),
                 IfGroupedBy("A", SymmetricDifference()),
             ),
-            (AddRemoveKeys("A"), IfGroupedBy("A", SymmetricDifference())),
+            (
+                AddRemoveKeys({"key1": "A", "key2": "A"}),
+                IfGroupedBy("A", SymmetricDifference()),
+            ),
         ]
     )
     def test_properties(
@@ -332,7 +335,7 @@ class TestGetValue(TestCase):
                 {"key1": 2, "key2": 3},
                 2,
             ),
-            (AddRemoveKeys("A"), 2, 2),
+            (AddRemoveKeys({"key1": "A", "key2": "A"}), 2, 2),
         ]
     )
     def test_stability_function_and_relation(
@@ -397,7 +400,9 @@ class TestSubset(TestCase):
         """Tests that mutable constructor arguments are copied."""
         keys = ["key1", "key2"]
         transformation = Subset(
-            input_domain=self.input_domain, input_metric=AddRemoveKeys("A"), keys=keys
+            input_domain=self.input_domain,
+            input_metric=AddRemoveKeys({"key1": "A", "key2": "A"}),
+            keys=keys,
         )
         keys[1] = "key3"
         self.assertListEqual(transformation.keys, ["key1", "key2"])
@@ -422,7 +427,7 @@ class TestSubset(TestCase):
                 ),
                 DictMetric({"key2": SymmetricDifference()}),
             ),
-            (AddRemoveKeys("A"), AddRemoveKeys("A")),
+            (AddRemoveKeys({"key1": "A", "key2": "A"}), AddRemoveKeys({"key2": "A"})),
         ]
     )
     def test_properties(
@@ -502,11 +507,11 @@ class TestSubset(TestCase):
                 [],
             ),
             (
-                "Input metric AddRemoveKeys(column='key1') and input domain"
-                " DictDomain(key_to_domain={'A': NumpyIntegerDomain(size=64)}) are not"
-                " compatible.",
+                "Input metric AddRemoveKeys(df_to_key_column={'A': 'B'}) and input"
+                " domain DictDomain(key_to_domain={'A': NumpyIntegerDomain(size=64)})"
+                " are not compatible.",
                 DictDomain({"A": NumpyIntegerDomain()}),
-                AddRemoveKeys("key1"),
+                AddRemoveKeys({"A": "B"}),
                 ["A"],
             ),
         ]
@@ -531,7 +536,7 @@ class TestSubset(TestCase):
                 {"key1": 3, "key2": 10},
                 {"key1": 3},
             ),
-            (AddRemoveKeys("A"), 4, 4),
+            (AddRemoveKeys({"key1": "A", "key2": "A"}), 4, 4),
         ]
     )
     def test_stability_function_and_relation(
@@ -563,7 +568,7 @@ class TestCreateDictFromValue(TestCase):
     @parameterized.expand(
         [
             (False, DictMetric({("X", "Y"): IfGroupedBy("A", SymmetricDifference())})),
-            (True, AddRemoveKeys("A")),
+            (True, AddRemoveKeys({("X", "Y"): "A"})),
         ]
     )
     def test_properties(

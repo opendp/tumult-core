@@ -1281,17 +1281,18 @@ class AddRemoveKeys(Metric):
     metric :class:`~SymmetricDifference`, except it is applied to a dictionary of
     dataframes, instead of a single dataframe.
 
-    Both `IfGroupedBy(X, SymmetricDifference())` and `AddRemoveKeys(X)` can be described
-    in the following way:
+    `AddRemoveKeys(X)` can be described in the following way:
 
-    Sum over each key that appears in column `X` in either neighbor
+    Sum over each key that appears in the key column in either
+    neighbor, where the key column for dataframe df is given by `X[df]`.
 
-    - 0 if both neighbors "match" for `X = key`
-    - 1 if only one neighbor has records for `X = key`
-    - 2 if both neighbor have records for `X = key`, but they don't "match"
+    - 0 if both neighbors "match" for `X[df] = key`
+    - 1 if only one neighbor has records for `X[df] = key`
+    - 2 if both neighbor have records for `X[df] = key`, but they don't "match"
 
-    The key column cannot containg floating point values, and all dataframes must
-    have the same type for the key column.
+    The key column cannot containg floating point values, and all dataframes must have
+    the same type for the key column. The key columns for the different dataframes may
+    have different names.
 
     Examples:
         >>> import pandas as pd
@@ -1311,14 +1312,15 @@ class AddRemoveKeys(Metric):
         ...         ),
         ...         2: SparkDataFrameDomain(
         ...             {
-        ...                 "A": SparkIntegerColumnDescriptor(),
-        ...                 "C": SparkStringColumnDescriptor(),
+        ...                 "C": SparkIntegerColumnDescriptor(),
+        ...                 "D": SparkStringColumnDescriptor(),
         ...             },
         ...         ),
         ...     }
         ... )
-        >>> metric = AddRemoveKeys("A")
-        >>> # A=1 matches, A=2 is only in value1, A=3 is only in value2, A=4 differs
+        >>> metric = AddRemoveKeys({1: "A", 2: "C"})
+        >>> # key=1 matches, key=2 is only in value1, key=3 is only in value2, key=4
+        >>> # differs
         >>> value1 = {
         ...     1: spark.createDataFrame(
         ...             pd.DataFrame(
@@ -1331,8 +1333,8 @@ class AddRemoveKeys(Metric):
         ...     2: spark.createDataFrame(
         ...         pd.DataFrame(
         ...             {
-        ...                 "A": [1, 4],
-        ...                 "C": ["1", "1"],
+        ...                 "C": [1, 4],
+        ...                 "D": ["1", "1"],
         ...             }
         ...         )
         ...     )
@@ -1349,8 +1351,8 @@ class AddRemoveKeys(Metric):
         ...     2: spark.createDataFrame(
         ...         pd.DataFrame(
         ...             {
-        ...                 "A": [1, 4],
-        ...                 "C": ["1", "2"],
+        ...                 "C": [1, 4],
+        ...                 "D": ["1", "2"],
         ...             }
         ...         )
         ...     )
@@ -1360,18 +1362,19 @@ class AddRemoveKeys(Metric):
     """
 
     @typechecked
-    def __init__(self, column: str):
+    def __init__(self, df_to_key_column: Dict[Any, str]):
         """Constructor.
 
         Args:
-            column: The column defining the keys.
+            df_to_key_column: A dictionary mapping dataframe names to the name of the
+                key column in that dataframe.
         """
-        self._column = column
+        self._df_to_key_column = df_to_key_column.copy()
 
     @property
-    def column(self) -> str:
+    def df_to_key_column(self) -> Dict[Any, str]:
         """Returns the key column."""
-        return self._column
+        return self._df_to_key_column.copy()
 
     @typechecked
     def validate(self, value: ExactNumberInput):
@@ -1406,18 +1409,24 @@ class AddRemoveKeys(Metric):
         """
         if isinstance(domain, DictDomain):
             column_descriptor = None
-            for element_domain in domain.key_to_domain.values():
-                if not isinstance(element_domain, SparkDataFrameDomain) or isinstance(
-                    element_domain.schema.get(self.column, None),
-                    SparkFloatColumnDescriptor,
+            if set(domain.key_to_domain).symmetric_difference(
+                set(self.df_to_key_column)
+            ):
+                return False
+            for key, element_domain in domain.key_to_domain.items():
+                id_column = self.df_to_key_column[key]
+                if not isinstance(element_domain, SparkDataFrameDomain):
+                    return False
+                if id_column not in element_domain.schema:
+                    return False
+                if isinstance(
+                    element_domain.schema[id_column], SparkFloatColumnDescriptor
                 ):
                     return False
-                if self.column not in element_domain.schema:
-                    return False
                 if column_descriptor is None:
-                    column_descriptor = element_domain.schema[self.column]
+                    column_descriptor = element_domain.schema[id_column]
                 else:
-                    if element_domain.schema[self.column] != column_descriptor:
+                    if element_domain.schema[id_column] != column_descriptor:
                         return False
             return True
         return False
@@ -1437,14 +1446,14 @@ class AddRemoveKeys(Metric):
         for dict_key in domain.key_to_domain:
             keys_in_value1_elements[dict_key] = set(
                 value1[dict_key]
-                .select(self.column)
+                .select(self.df_to_key_column[dict_key])
                 .distinct()
                 .rdd.map(lambda x: x[0])
                 .collect()
             )
             keys_in_value2_elements[dict_key] = set(
                 value2[dict_key]
-                .select(self.column)
+                .select(self.df_to_key_column[dict_key])
                 .distinct()
                 .rdd.map(lambda x: x[0])
                 .collect()
@@ -1457,8 +1466,12 @@ class AddRemoveKeys(Metric):
         # keys which may have changed
         for key in value1_keys & value2_keys:
             for dict_key in domain.key_to_domain:
-                df1 = value1[dict_key].filter(sf.col(self.column).eqNullSafe(key))
-                df2 = value2[dict_key].filter(sf.col(self.column).eqNullSafe(key))
+                df1 = value1[dict_key].filter(
+                    sf.col(self.df_to_key_column[dict_key]).eqNullSafe(key)
+                )
+                df2 = value2[dict_key].filter(
+                    sf.col(self.df_to_key_column[dict_key]).eqNullSafe(key)
+                )
                 if (
                     SymmetricDifference().distance(
                         df1, df2, domain.key_to_domain[dict_key]
@@ -1474,4 +1487,6 @@ class AddRemoveKeys(Metric):
 
     def __repr__(self) -> str:
         """Returns string representation."""
-        return f"{self.__class__.__name__}(column={repr(self.column)})"
+        return (
+            f"{self.__class__.__name__}(df_to_key_column={repr(self.df_to_key_column)})"
+        )

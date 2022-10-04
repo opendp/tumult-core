@@ -59,7 +59,7 @@ class CreateDictFromValue(Transformation):
                     "Input metric must be IfGroupedBy with an inner metric of "
                     "SymmetricDifference to use AddRemoveKeys as the output metric"
                 )
-            output_metric = AddRemoveKeys(input_metric.column)
+            output_metric = AddRemoveKeys({key: input_metric.column})
         else:
             output_metric = DictMetric({key: input_metric})
         super().__init__(
@@ -236,7 +236,9 @@ class Subset(Transformation):
                 )
             output_metric = DictMetric({k: input_metric[k] for k in keys})
         else:
-            output_metric = input_metric
+            output_metric = AddRemoveKeys(
+                {k: input_metric.df_to_key_column[k] for k in keys}
+            )
         super().__init__(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -299,7 +301,9 @@ class GetValue(Transformation):
         if isinstance(input_metric, DictMetric):
             output_metric = input_metric[key]
         else:
-            output_metric = IfGroupedBy(input_metric.column, SymmetricDifference())
+            output_metric = IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            )
 
         super().__init__(
             input_domain=input_domain,
