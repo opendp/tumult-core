@@ -14,12 +14,12 @@ from pyspark.sql import functions as sf
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.types import IntegerType, StructField, StructType
 
-from benchmarking_utils import Timer
+from benchmarking_utils import Timer, write_as_html
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkIntegerColumnDescriptor,
 )
-from tmlt.core.metrics import SumOf, SymmetricDifference
+from tmlt.core.metrics import SymmetricDifference
 from tmlt.core.transformations.spark_transformations.agg import (
     create_count_aggregation,
     create_sum_aggregation,
@@ -331,8 +331,7 @@ def main():
         }
         benchmark_result = benchmark_result.append(row, ignore_index=True)
 
-    benchmark_result_html = benchmark_result.to_html()
-    print(benchmark_result_html)
+    write_as_html(benchmark_result, "count_sum.html")
 
 
 if __name__ == "__main__":

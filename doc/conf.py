@@ -10,9 +10,6 @@ import datetime
 
 _logger = logging.getLogger(__name__)
 
-sys.path.insert(0, os.path.abspath(".."))
-
-
 # Project information
 
 project = "Tumult Core"
@@ -35,7 +32,6 @@ linkcheck_mode_url_prefix = os.getenv("BASE_URL_OVERRIDE")
 # Linkcheck fails to check anchors in Github
 # See https://github.com/sphinx-doc/sphinx/issues/9016 and also
 # https://sphinx-doc.org/en/master/usage/configuration.html
-linkcheck_ignore = ["https://github.com/fredrik-johansson/python-flint/#"]
 
 # Sphinx configuration
 
@@ -193,7 +189,6 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/pandas-docs/version/1.2.0/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
     "pyspark": ("https://spark.apache.org/docs/3.0.0/api/python/", None),
-    "flint": ("https://fredrikj.net/python-flint/", None),
 }
 
 

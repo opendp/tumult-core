@@ -17,4 +17,4 @@ class TestInverseSampler(TestCase):
     def test_invalid_step_size(self, step_size: int):
         """`construct_inverse_sampler` raises error when step_size is not valid."""
         with self.assertRaisesRegex(ValueError, "`step_size` should be positive"):
-            construct_inverse_sampler(inverse_cdf=lambda x: x, step_size=step_size)
+            construct_inverse_sampler(inverse_cdf=lambda x, _: x, step_size=step_size)

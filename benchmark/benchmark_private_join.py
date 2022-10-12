@@ -8,7 +8,7 @@ from random import randint
 from typing import List, Tuple
 
 import pandas as pd
-from benchmarking_utils import Timer
+from benchmarking_utils import Timer, write_as_html
 from pyspark.sql import DataFrame, SparkSession
 
 from tmlt.core.domains.collections import DictDomain
@@ -48,7 +48,7 @@ def benchmark_join(truncation_strategy: TruncationStrategy):
         for each row, identified by integers 0,...,[GROUPSIZE].
 
     """
-    group_counts = [10**i for i in (2, 4, 5)]
+    group_counts = [10 ** i for i in (2, 4, 5)]
     runtimes = []
 
     for left_group_count, right_group_count in itertools.combinations_with_replacement(
@@ -126,7 +126,7 @@ def benchmark_trunc():
     """
     truncations = {"TRUNCATE": truncate_large_groups, "DROP": drop_large_groups}
     trunc_runtimes = []
-    group_counts = [10**i for i in (2, 4, 5)]
+    group_counts = [10 ** i for i in (2, 4, 5)]
     group_sizes_tau = [
         ([1, 5, 10], [1, 7]),
         ([10, 20, 50], [10, 48]),
@@ -205,25 +205,14 @@ def main():
         .config("spark.driver.memory", "3g")
         .getOrCreate()
     )
-    truncation_runtimes = benchmark_trunc().to_html()
-    join_runtimes_truncate = benchmark_join(
-        truncation_strategy=TruncationStrategy.TRUNCATE
-    ).to_html()
-    join_runtimes_drop = benchmark_join(
-        truncation_strategy=TruncationStrategy.DROP
-    ).to_html()
-
-    all_tables_html = "\n".join(
-        [
-            "Truncation Runtimes",
-            truncation_runtimes,
-            "PrivateJoin with TruncationStrategy.TRUNCATE",
-            join_runtimes_truncate,
-            "PrivateJoin with TruncationStrategy.DROP",
-            join_runtimes_drop,
-        ]
+    write_as_html(benchmark_trunc(), "private_join.html")
+    write_as_html(
+        benchmark_join(truncation_strategy=TruncationStrategy.TRUNCATE),
+        "private_join.html",
     )
-    print(all_tables_html)
+    write_as_html(
+        benchmark_join(truncation_strategy=TruncationStrategy.DROP), "private_join.html"
+    )
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ The design of Tumult Core is based on the design proposed in the [OpenDP White P
 
 ## Installation
 
-See the [installation instructions in the documentation](https://docs.tmlt.dev/core/latest/installation.html#installation-instructions) for information about setting up prerequisites such as Spark and python-flint.
+See the [installation instructions in the documentation](https://docs.tmlt.dev/core/latest/installation.html#installation-instructions) for information about setting up prerequisites such as Spark and Java.
 
 Once the prerequisites are installed, you can install Tumult Core using [pip](https://pypi.org/project/pip/).
 
@@ -27,7 +27,6 @@ If you have any questions/concerns, please [create an issue](https://gitlab.com/
 We are not yet accepting external contributions, but please let us know at [support@tmlt.io](mailto:support@tmlt.io) if you are interested in contributing.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for information about installing our development dependencies and running tests.
-
 
 ## License
 

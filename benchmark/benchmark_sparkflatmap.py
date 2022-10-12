@@ -24,6 +24,8 @@ from tmlt.core.transformations.spark_transformations.map import (
     RowToRowsTransformation,
 )
 
+from benchmarking_utils import write_as_html
+
 
 def evaluate_runtime(
     input_domain: SparkRowDomain,
@@ -292,8 +294,7 @@ def main():
         benchmark_result = benchmark_result.append(row, ignore_index=True)
 
     spark.stop()
-    benchmark_result_html = benchmark_result.to_html()
-    print(benchmark_result_html)
+    write_as_html(benchmark_result, "sparkflatmap.html")
 
 
 if __name__ == "__main__":

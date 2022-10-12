@@ -22,10 +22,6 @@ You may also need to configure pyspark to use the intended Python installation. 
 
         export PYSPARK_PYTHON=/usr/bin/python3
 
-Tumult Core uses `python-flint <https://github.com/fredrik-johansson/python-flint/>`__
-for some mathematical functions, so ``python-flint`` is also required.
-Only Tumult's wheels (located at ``https://d3p0voevd56kj6.cloudfront.net``) are
-currently supported.
 
 Only the x86_64 processor architecture is officially supported at present. Apple silicon is supported through binary translation with Rosetta 2.
 
@@ -58,12 +54,6 @@ If you encounter any issues during the installation process, please `let us know
 
         apt install openjdk-8-jre-headless
 
-    Then install python-flint with
-
-    .. code-block:: bash
-
-        pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
-
 
 .. tabbed:: Linux (Red Hat-based)
 
@@ -82,12 +72,6 @@ If you encounter any issues during the installation process, please `let us know
         yum install java-1.8.0-openjdk-headless
 
     Note that despite the package name, this will install Java 8.
-
-    Then install python-flint with
-
-    .. code-block:: bash
-
-        pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
 
 
 .. tabbed:: macOS (Intel)
@@ -113,11 +97,6 @@ If you encounter any issues during the installation process, please `let us know
 
        brew install openjdk@8
 
-    Then install python-flint with
-
-    .. code-block:: bash
-
-        pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
 
 .. tabbed:: macOS (Apple silicon)
 
@@ -147,11 +126,6 @@ If you encounter any issues during the installation process, please `let us know
 
         arch -x86_64 /usr/local/bin/brew install openjdk@8
 
-    Then install python-flint with
-
-    .. code-block:: bash
-
-        pip3 install -i https://d3p0voevd56kj6.cloudfront.net python-flint
 
 .. tabbed:: Windows
 

@@ -9,6 +9,7 @@ import pandas as pd
 from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.types import IntegerType, StructField, StructType
+from benchmarking_utils import write_as_html
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
@@ -104,8 +105,7 @@ def main():
         benchmark_result = benchmark_result.append(row, ignore_index=True)
 
     spark.stop()
-    benchmark_result_html = benchmark_result.to_html()
-    print(benchmark_result_html)
+    write_as_html(benchmark_result, "noise_mechanism.html")
 
 
 if __name__ == "__main__":

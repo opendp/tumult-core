@@ -2,6 +2,10 @@
 
 ## Unreleased
 ### Changed
+- Core no longer depends on the `python-flint` package, and instead packages libflint and libarb itself.
+  Binary wheels are available, and the source distribution includes scripting to build these dependencies from source.
+
+### Fixed
 - Equality checks on `SparkGroupedDataFrameDomain`s used to occasionally fail with a Spark `AnalysisException` in some environments.
   That should no longer happen.
 - `AddRemoveKeys` now allows different names for the key column in each dataframe.
