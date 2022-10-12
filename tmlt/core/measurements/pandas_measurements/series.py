@@ -12,7 +12,6 @@ from typing import List, NamedTuple, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
-from flint import arb, ctx  # pylint: disable=no-name-in-module
 from pyspark.sql.types import DataType, DoubleType
 from typeguard import typechecked
 
@@ -34,8 +33,17 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.random.rng import prng
 from tmlt.core.random.uniform import uniform
+from tmlt.core.utils.arb import (
+    Arb,
+    arb_abs,
+    arb_add,
+    arb_div,
+    arb_log,
+    arb_max,
+    arb_mul,
+    arb_sub,
+)
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
-from tmlt.core.utils.misc import arb_to_float
 
 
 class Aggregate(Measurement):
@@ -290,13 +298,13 @@ class AddNoiseToSeries(Measurement):
 class _RankedInterval(NamedTuple):
     """A interval and its rank w.r.t some list."""
 
-    rank: arb
+    rank: Arb
     """Rank of any number in this interval."""
 
-    lower: arb
+    lower: Arb
     """Lower endpoint of the interval."""
 
-    upper: arb
+    upper: Arb
     """Upper endpoint of the interval."""
 
 
@@ -324,19 +332,25 @@ def _get_intervals_with_ranks(
 
     intervals = []
     left_float = lower
-    left_arb = arb(lower)
+    left_arb = Arb.from_float(lower)
     for index in range(lower_index, upper_index):
         right_float = float(values[index])
         if left_float < right_float:
-            right_arb = arb(right_float)
+            right_arb = Arb.from_float(right_float)
             intervals.append(
-                _RankedInterval(rank=arb(index), lower=left_arb, upper=right_arb)
+                _RankedInterval(
+                    rank=Arb.from_int(index), lower=left_arb, upper=right_arb
+                )
             )
             left_float = right_float
             left_arb = right_arb
 
     intervals.append(
-        _RankedInterval(rank=arb(int(upper_index)), lower=left_arb, upper=arb(upper))
+        _RankedInterval(
+            rank=Arb.from_int(int(upper_index)),
+            lower=left_arb,
+            upper=Arb.from_float(upper),
+        )
     )
     # Note that the `_RankedInterval`s are constructed with exact arbs (with radius=0)
     # This guarantees that the arbs always represent the floating point numbers exactly
@@ -357,26 +371,26 @@ def _select_quantile_interval(
             where :math:`G` is a sampled from the standard Gumbel distribution.
         - Returns the interval with the highest noisy score.
     """  # pylint:disable=line-too-long
-    arb_q = arb(q)
-    target_rank = arb_q * len(values)
+    arb_q = Arb.from_float(float(q))
+    prec = 53
+    # target_rank = arb_q * len(values)
+    target_rank = arb_mul(arb_q, Arb.from_int(len(values)), prec)
 
     # Get bin ranks
     intervals = _get_intervals_with_ranks(values, lower, upper)
 
     if epsilon == float("inf"):
         intervals_with_scores = [
-            (-abs(rank - target_rank), l, u) for rank, l, u in intervals
+            (-arb_abs(arb_sub(rank, target_rank, prec)), l, u)
+            for rank, l, u in intervals
         ]
         _, l, u = sorted(intervals_with_scores, reverse=True)[0]
-        ctx.prec = max(53, ctx.prec)
-        l_float = arb_to_float(l)
-        u_float = arb_to_float(u)
-        assert isinstance(l_float, float)
-        assert isinstance(u_float, float)
+        l_float = l.to_float()
+        u_float = u.to_float()
         return l_float, u_float
 
     # need to be calculated w/ arb, calculation on floats can be inexact
-    delta_u = arb.max(arb_q, 1 - arb_q)
+    delta_u: Arb = arb_max(arb_q, arb_sub(Arb.from_int(1), arb_q, prec), prec)
 
     # select bin
     gumbel_p_bits = [0] * len(intervals)
@@ -385,7 +399,7 @@ def _select_quantile_interval(
     step_size = 15  # optimal step size from benchmarking
     while len(intervals) > 1:
         n += step_size
-        ctx.prec = n
+        prec = n
 
         # sample Gumbel noise with more bits
         gumbel_p_bits = [
@@ -395,18 +409,40 @@ def _select_quantile_interval(
                 prng().integers(pow(2, step_size), size=len(gumbel_p_bits)),
             )
         ]
-        probabilities = [arb(mid=(p_bits, -n), rad=(1, -n)) for p_bits in gumbel_p_bits]
+        probabilities = [
+            Arb.from_midpoint_radius(
+                mid=Arb.from_man_exp(p_bits, -n), rad=Arb.from_man_exp(1, -n)
+            )
+            for p_bits in gumbel_p_bits
+        ]
         # probabilities for sampling Gumbel noise using the inverse CDF
 
-        gumbels = [-arb.log(-arb.log(p)) for p in probabilities]
+        gumbels = [-arb_log(-arb_log(p, prec), prec) for p in probabilities]
 
         noisy_scores = [
-            arb.log(u - l) - abs(rank - target_rank) * epsilon / (2 * delta_u) + noise
+            # arb.log(u - l) - ((abs(rank - target_rank) * epsilon) / (2 * delta_u)) + noise
+            arb_add(
+                arb_sub(
+                    arb_log(arb_sub(u, l, prec), prec),
+                    arb_div(
+                        arb_mul(
+                            arb_abs(arb_sub(rank, target_rank, prec)),
+                            Arb.from_float(epsilon),
+                            prec,
+                        ),
+                        arb_mul(Arb.from_int(2), delta_u, prec),
+                        prec,
+                    ),
+                    prec,
+                ),
+                noise,
+                prec,
+            )
             for noise, (rank, l, u) in zip(gumbels, intervals)
         ]
 
         # try to get a noisy score which is above most others
-        approx_max = arb(float("-inf"))
+        approx_max = Arb.from_float(float("-inf"))
         for noisy_score in noisy_scores:
             if noisy_score > approx_max:
                 # only if noisy_score.lower > approx_max.upper
@@ -429,8 +465,4 @@ def _select_quantile_interval(
         intervals = remaining_intervals
     assert len(intervals) == 1
     _, l, u = intervals[0]
-    ctx.prec = max(ctx.prec, 53)
-    l_float, u_float = arb_to_float(l), arb_to_float(u)
-    assert isinstance(l_float, float)
-    assert isinstance(u_float, float)
-    return l_float, u_float
+    return l.to_float(), u.to_float()

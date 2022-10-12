@@ -11,7 +11,7 @@ import pandas as pd
 from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import lit
-
+from benchmarking_utils import write_as_html
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -342,10 +342,9 @@ class BenchmarkSparkPublicJoin:
         running_time = time.time() - start
         return round(transform_time, 3), round(running_time, 3)
 
-    def print_result(self):
+    def write_result(self):
         self.spark.stop()
-        benchmark_result_html = self.benchmark_result.to_html()
-        print(benchmark_result_html)
+        write_as_html(self.benchmark_result, "public_join.html")
 
 
 def main():
@@ -367,7 +366,7 @@ def main():
     benchmark(join_columns=join_columns)
     domain_sizes = [2, 4, 8, 16, 32, 64, 128, 256, 384, 512]
     benchmark(domain_sizes=domain_sizes)
-    benchmark.print_result()
+    benchmark.write_result()
 
 
 if __name__ == "__main__":

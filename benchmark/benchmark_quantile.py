@@ -16,11 +16,13 @@ from tmlt.core.domains.spark_domains import (
 )
 from tmlt.core.measurements.aggregations import create_quantile_measurement
 from tmlt.core.measures import PureDP
-from tmlt.core.metrics import SumOf, SymmetricDifference
+from tmlt.core.metrics import SymmetricDifference
 from tmlt.core.transformations.spark_transformations.groupby import (
     create_groupby_from_column_domains,
 )
 from tmlt.core.utils.exact_number import ExactNumberInput
+
+from benchmarking_utils import write_as_html
 
 
 def evaluate_runtime(
@@ -260,8 +262,7 @@ def main():
     """Evaluate quantile runtime for different group counts and sizes."""
     spark = SparkSession.builder.getOrCreate()
     benchmark_result = benchmark_groupby_quantile(spark, 0.5, 10)
-    benchmark_result_html = benchmark_result.to_html()
-    print(benchmark_result_html)
+    write_as_html(benchmark_result, "quantile.html")
 
 
 if __name__ == "__main__":
