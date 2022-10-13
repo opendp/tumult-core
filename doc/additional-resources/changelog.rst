@@ -1,4 +1,5 @@
-.. _Changelog^
+.. _Changelog:
+
 Changelog
 =========
 
