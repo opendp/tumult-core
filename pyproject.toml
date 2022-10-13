@@ -96,7 +96,7 @@ click = "8.0.4"
 
 [build-system]
 build-backend = "poetry_dynamic_versioning.backend"
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+requires = ["poetry-core>=1.3.2", "poetry-dynamic-versioning"]
 
 [tool.poetry-dynamic-versioning]
 enable = true
