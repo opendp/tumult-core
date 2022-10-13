@@ -9,16 +9,15 @@ environment (i.e. with nox's --no-venv option) or in a nox-managed virtualenv
 (as they would run in the CI). Sessions that only work in one or the other will
 indicate this in their docstrings.
 """
-# TODO(#2140): Once support for is added to nox-poetry (see this issue[0]), some
-#   of the installation lists here can be rewritten in terms of dependency
-#   groups, making the pyproject file more of a single source for information
-#   about dependencies.
-# [0] https://github.com/cjolowicz/nox-poetry/issues/663
+# TODO(#2140): Once support for is added to nox-poetry (see
+#   https://github.com/cjolowicz/nox-poetry/issues/663), some of the
+#   installation lists here can be rewritten in terms of dependency groups,
+#   making the pyproject file more of a single source for information about
+#   dependencies.
 
 import datetime
 import os
 import re
-import signal
 import subprocess
 import tempfile
 from functools import wraps
@@ -29,7 +28,8 @@ from typing import Dict, List
 # automatically limits installations to the version numbers in the Poetry lock
 # file, while nox_session does not. Otherwise, their interfaces should be
 # identical.
-from nox import parametrize, session as nox_session
+import nox
+from nox import session as nox_session
 from nox_poetry import session as poetry_session
 
 #### Project-specific settings ####
@@ -155,23 +155,6 @@ def show_installed(f):
         return f(session, *args, **kwargs)
     return inner
 
-class TimeOut:
-    """Context manager for time-outs."""
-
-    def __init__(self, seconds=1, error_message="Timeout"):
-        self.seconds = seconds
-        self.error_message = error_message
-
-    def handle_timeout(self, signum, frame):
-        raise TimeoutError(self.error_message)
-
-    def __enter__(self):
-        signal.signal(signal.SIGALRM, self.handle_timeout)
-        signal.alarm(self.seconds)
-
-    def __exit__(self, type, value, traceback):
-        signal.alarm(0)
-
 def with_clean_workdir(f):
     """If in a sandboxed virtualenv, execute session from an empty tempdir.
 
@@ -256,7 +239,7 @@ def _test(
     test_paths = test_dirs or CODE_DIRS
     extra_args = extra_args or []
     test_options = [
-        "--verbosity=2", "--nocapture", "--logging-level=INFO", "--with-doctest",
+        "--verbosity=2", "--nocapture", "--logging-level=INFO",
         "--with-xunit", f"--xunit-file={CWD}/junit.xml",
         "--with-coverage", f"--cover-min-percentage={min_coverage}%",
         f"--cover-package={PACKAGE_NAME}", "--cover-branches",
@@ -267,8 +250,9 @@ def _test(
     ]
     session.run("nosetests", *test_options)
 
-# Only this session and the test_examples one get the 'test' tag, because the
-# others are just subsets of this session so there's no need to run them again.
+# Only this session, test_doctest, and test_examples one get the 'test' tag,
+# because the others are just subsets of this session so there's no need to run
+# them again.
 @poetry_session(tags=["test"], python="3.7")
 def test(session):
     """Run all tests."""
@@ -284,10 +268,13 @@ def test_slow(session):
     """Run tests with the slow attribute."""
     _test(session, extra_args=["-a", "slow"], min_coverage=0)
 
-@poetry_session(python="3.7")
+@poetry_session(tags=["test"], python="3.7")
 def test_doctest(session):
     """Run doctest on code examples in docstrings."""
-    _test(session, test_dirs=[Path(PACKAGE_SOURCE_DIR).resolve()], min_coverage=0)
+    _test(
+        session, test_dirs=[Path(PACKAGE_SOURCE_DIR).resolve()],
+        min_coverage=0, extra_args=["--with-doctest"]
+    )
 
 @poetry_session(tags=["test"], python="3.7")
 @install_package
@@ -312,8 +299,8 @@ def test_examples(session):
                 ignored.append(f)
         else:
             unknown.append(f)
-    for f in examples_py:
-        session.run("python", str(f))
+    for py in examples_py:
+        session.run("python", str(py))
     for nb in examples_ipynb:
         session.run("jupyter", "nbconvert", "--to=notebook", "--execute", str(nb))
     if ignored:
@@ -357,17 +344,6 @@ def docs(session):
     _run_sphinx(session, "html")
 
 #### Release management ####
-
-@poetry_session()
-@install("cibuildwheel")
-def build(session):
-    """Build packages for distribution.
-
-    Positional arguments given to nox are passed to the cibuildwheel command,
-    allowing it to be run outside of the CI if needed.
-    """
-    session.run("poetry", "build", "--format", "sdist", external=True)
-    session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
 
 @nox_session(python=None)
 def prepare_release(session):
@@ -414,7 +390,7 @@ def prepare_release(session):
     with Path("doc/additional-resources/changelog.rst").open("r") as fp:
         changelog_rst_content = fp.read()
     with Path("doc/additional-resources/changelog.rst").open("w") as fp:
-        fp.write(".. _Changelog^\n" + changelog_rst_content)
+        fp.write(".. _Changelog:\n\n" + changelog_rst_content)
 
     session.run("poetry", "lock", "--no-update", "--no-interaction", external=True)
 
@@ -449,8 +425,19 @@ def release_test(session):
 
 #### Project-specific sessions ####
 
+@poetry_session()
+@install("cibuildwheel")
+def build(session):
+    """Build packages for distribution.
+
+    Positional arguments given to nox are passed to the cibuildwheel command,
+    allowing it to be run outside of the CI if needed.
+    """
+    session.run("poetry", "build", "--format", "sdist", external=True)
+    session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
+
 @poetry_session(tags=["benchmark"], python="3.7")
-@parametrize(["benchmark", "timeout"], [
+@nox.parametrize(["benchmark", "timeout"], [
     ("private_join", 17),
     ("count_sum", 25),
     ("quantile", 84),
