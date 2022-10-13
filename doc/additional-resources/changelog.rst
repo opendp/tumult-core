@@ -1,7 +1,22 @@
-.. _Changelog:
-
+.. _Changelog^
 Changelog
 =========
+
+Unreleased
+----------
+
+Changed
+~~~~~~~
+
+-  Core no longer depends on the ``python-flint`` package, and instead packages libflint and libarb itself.
+   Binary wheels are available, and the source distribution includes scripting to build these dependencies from source.
+
+Fixed
+~~~~~
+
+-  Equality checks on ``SparkGroupedDataFrameDomain``\ s used to occasionally fail with a Spark ``AnalysisException`` in some environments.
+   That should no longer happen.
+-  ``AddRemoveKeys`` now allows different names for the key column in each dataframe.
 
 0.4.3 - 2022-09-01
 ------------------
@@ -12,6 +27,8 @@ Changelog
 
 0.4.2 - 2022-08-24
 ------------------
+
+.. _changed-1:
 
 Changed
 ~~~~~~~
@@ -31,7 +48,7 @@ Added
 -  Add new ``TransformValue`` base class for wrapping transformations to support ``AddRemoveKeys``.
 -  Add many new transformations using ``TransformValue``: ``FilterValue``, ``PublicJoinValue``, ``FlatMapValue``, ``MapValue``, ``DropInfsValue``, ``DropNaNsValue``, ``DropNullsValue``, ``ReplaceInfsValue``, ``ReplaceNaNsValue``, ``ReplaceNullsValue``, ``PersistValue``, ``UnpersistValue``, ``SparkActionValue``, ``RenameValue``, ``SelectValue``.
 
-.. _changed-1:
+.. _changed-2:
 
 Changed
 ~~~~~~~
@@ -44,7 +61,7 @@ Changed
 0.3.2 - 2022-06-23
 ------------------
 
-.. _changed-2:
+.. _changed-3:
 
 Changed
 ~~~~~~~
@@ -56,7 +73,7 @@ Changed
 0.3.1 - 2022-06-23
 ------------------
 
-.. _changed-3:
+.. _changed-4:
 
 Changed
 ~~~~~~~
@@ -84,7 +101,7 @@ Added
 -  Added ``AddUniqueColumn`` for switching from ``SymmetricDifference`` to ``IfGroupedBy(X, SymmetricDifference())``.
 -  Added a topic guide around NaNs, nulls and infinities.
 
-.. _changed-4:
+.. _changed-5:
 
 Changed
 ~~~~~~~
@@ -137,7 +154,7 @@ Added
 -  Installation on Python 3.7.1 through 3.7.3 is now allowed.
 -  Added ``DecorateQueryable``, ``DecoratedQueryable`` and ``create_adaptive_composition`` components.
 
-.. _changed-5:
+.. _changed-6:
 
 Changed
 ~~~~~~~
