@@ -29,7 +29,7 @@ from typing import Dict, List
 # automatically limits installations to the version numbers in the Poetry lock
 # file, while nox_session does not. Otherwise, their interfaces should be
 # identical.
-from nox import session as nox_session
+from nox import parametrize, session as nox_session
 from nox_poetry import session as poetry_session
 
 #### Project-specific settings ####
@@ -390,20 +390,24 @@ def prepare_release(session):
         session.error(f"VERSION {version} is not a valid version number.")
     session.debug(f"Preparing release {version}")
 
-    # Replace "Unreleased" section header in changelog
-    with Path("CHANGELOG.md").open("r") as fp:
-        changelog_md_content = fp.readlines()
-    for i in range(len(changelog_md_content)):
-        if re.match('^## Unreleased$', changelog_md_content[i]):
-            changelog_md_content[i] = f'## {version} - {datetime.date.today()}\n'
-            break
-    else:
-        session.error(
-            "Renaming unreleased section in changelog failed, "
-            "unable to find matching line"
-        )
-    with Path("CHANGELOG.md").open("w") as fp:
-        fp.writelines(changelog_md_content)
+    # Replace "Unreleased" section header in changelog for non-prerelease
+    # releases. Between the base version and prerelease number is the only place
+    # a hyphen can appear in the version number, so just checking for that
+    # indicates whether a version is a prerelease.
+    if "-" not in version:
+        with Path("CHANGELOG.md").open("r") as fp:
+            changelog_md_content = fp.readlines()
+        for i in range(len(changelog_md_content)):
+            if re.match('^## Unreleased$', changelog_md_content[i]):
+                changelog_md_content[i] = f'## {version} - {datetime.date.today()}\n'
+                break
+        else:
+            session.error(
+                "Renaming unreleased section in changelog failed, "
+                "unable to find matching line"
+            )
+        with Path("CHANGELOG.md").open("w") as fp:
+            fp.writelines(changelog_md_content)
 
     # Convert changelog to RST for docs and insert anchor for linking to it.
     session.run("pandoc", "--wrap=preserve", "CHANGELOG.md", "-o", "doc/additional-resources/changelog.rst", external=True)
@@ -446,34 +450,27 @@ def release_test(session):
 #### Project-specific sessions ####
 
 @poetry_session(tags=["benchmark"], python="3.7")
+@parametrize(["benchmark", "timeout"], [
+    ("private_join", 17),
+    ("count_sum", 25),
+    ("quantile", 84),
+    ("noise_mechanism", 7),
+    ("sparkmap", 17),
+    ("sparkflatmap", 7),
+    ("public_join", 14)
+])
 @install_package
 @install("nose")
 @show_installed
-def benchmark(session):
+@with_clean_workdir
+def benchmark(session, benchmark: str, timeout: int):
     """Run all benchmarks."""
     (CWD / "benchmark_output").mkdir(exist_ok=True)
-    benchmark_timeouts = {
-        "private_join": 17,
-        "count_sum": 25,
-        "quantile": 42,
-        "noise_mechanism": 7,
-        "sparkmap": 17,
-        "sparkflatmap": 7,
-        "public_join": 14,
-    }
-    failures = []
-    for benchmark, timeout in benchmark_timeouts.items():
-        session.log(f"Running benchmark {benchmark} (timeout: {timeout})...")
-        try:
-            with TimeOut(timeout * 60):
-                session.run(
-                    "python", f"{CWD}/benchmark/benchmark_{benchmark}.py"
-                )
-        except TimeoutError:
-            failures += benchmark
-
-    if failures:
-        session.log(
-            f"{len(failures)} of {len(benchmark_timeouts)} benchmarks timed-out..."
-        )
-        session.error(f"Timed-out benchmarks: {failures}")
+    session.log("Exit code 124 indicates a timeout, others are script errors")
+    # If we want to run benchmarks on non-Linux platforms this will probably
+    # have to be reworked, but it's fine for now.
+    session.run(
+        "timeout", f"{timeout}m",
+        "python", f"{CWD}/benchmark/benchmark_{benchmark}.py",
+        external=True
+    )
