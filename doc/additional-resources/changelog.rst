@@ -3,8 +3,8 @@
 Changelog
 =========
 
-Unreleased
-----------
+0.5.0 - 2022-10-14
+------------------
 
 Changed
 ~~~~~~~
@@ -19,12 +19,14 @@ Fixed
    That should no longer happen.
 -  ``AddRemoveKeys`` now allows different names for the key column in each dataframe.
 
+.. _section-1:
+
 0.4.3 - 2022-09-01
 ------------------
 
 -  Core now checks to see if the user is running Java 11 or higher. If they are, Core either sets the appropriate Spark options (if Spark is not yet running) or raises an informative exception (if Spark is running and configured incorrectly).
 
-.. _section-1:
+.. _section-2:
 
 0.4.2 - 2022-08-24
 ------------------
@@ -36,7 +38,7 @@ Changed
 
 -  Replaced uses of PySpark DataFrame’s ``intersect`` with inner joins. See https://issues.apache.org/jira/browse/SPARK-40181 for background.
 
-.. _section-2:
+.. _section-3:
 
 0.4.1 - 2022-07-25
 ------------------
@@ -57,7 +59,7 @@ Changed
 -  Fixed bug in ``ReplaceNulls`` to not allow replacing values for grouping column in ``IfGroupedBy``
 -  Changed ``ReplaceNulls``, ``ReplaceNaNs``, and ``ReplaceInfs`` to only support specific ``IfGroupedBy`` metrics
 
-.. _section-3:
+.. _section-4:
 
 0.3.2 - 2022-06-23
 ------------------
@@ -69,7 +71,7 @@ Changed
 
 -  Moved ``IMMUTABLE_TYPES`` from utils/testing.py to utils/type_utils to avoid importing nose when accessing ``IMMUTABLE_TYPES``
 
-.. _section-4:
+.. _section-5:
 
 0.3.1 - 2022-06-23
 ------------------
@@ -83,7 +85,7 @@ Changed
 -  Reverted change from 0.3.0 “Add checks in ``ParallelComposition`` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.”
 -  Temporarily disabled flaky statistical tests.
 
-.. _section-5:
+.. _section-6:
 
 0.3.0 - 2022-06-22
 ------------------
