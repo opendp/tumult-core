@@ -32,6 +32,8 @@ variables:
     - java -version
     - python --version
     - poetry self show
+    # Fail if the Poetry lock file is out of date.
+    - poetry lock --check
     # TODO(#2140): This could be done more cleanly using Poetry 1.2 dependency
     #              groups with `--only` instead of using --constraint.
     - pip install nox nox-poetry --constraint=<(poetry export --dev -f constraints.txt --without-hashes)
@@ -129,7 +131,7 @@ test:
   stage: test
   needs: ["package_linux"]
   script:
-    - nox -s test_fast test_doctest
+    - nox -s test_doctest test_fast
   coverage: '/^TOTAL.+?(\d+\%)$/'
   artifacts:
     paths: ["coverage/"]
@@ -251,6 +253,8 @@ test_release_linux:
   timeout: 1h
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "trigger"'
+      when: never
     - when: manual
       allow_failure: true
   tags: [aws-large]
