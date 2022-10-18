@@ -113,7 +113,12 @@ if [[ ! -f $PREFIX/lib/ARBVER || "$(cat $PREFIX/lib/ARBVER)" != "$ARBVER" ]]; th
     echo "$ARBVER" > $PREFIX/lib/ARBVER
     popd
 else
-    echo "Using existing FLINT..."
+    echo "Using existing Arb..."
 fi
+
+# The source archives for some of these libraries include Python files, which
+# can be spuriously picked up by our linters when run locally. There's no reason
+# to keep the sources around, so just delete them to get around this problem.
+rm -rf $PREFIX/src/
 
 popd

@@ -53,7 +53,12 @@ randomgen = "^1.18.1"
 scipy = "^1.4.1,<1.6.1"
 sympy = "^1.8,<1.10"
 typeguard = "^2.12.1,<2.13.0"
-typing_extensions = "^3.10.0.0"
+# typing_extensions uses a mixture of 3-segment and 4-segment versions. When
+# specifying version numbers here (in particular using the ^ notation), only use
+# 3-segment version numbers as the minimum version -- using a 4-segment version
+# can cause some unexpected behaviors, like allowing 3-segment versions that
+# should be excluded.
+typing_extensions = "^3.10.0"
 
 [tool.poetry.dev-dependencies]
 # Give Poetry some help locking -- Pandas evidently has complicated
