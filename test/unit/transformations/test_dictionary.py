@@ -279,7 +279,7 @@ class TestGetValue(TestCase):
         self.assertEqual(transformation.output_metric, output_metric)
         self.assertEqual(transformation.key, "key1")
 
-    @parameterized.expand([("A", np.int(20)), (("B", "B"), np.int(123))])
+    @parameterized.expand([("A", np.int_(20)), (("B", "B"), np.int_(123))])
     def test_correctness(self, key: Any, expected: Any):
         """Tests that GetValue correctly applies transformation."""
         transformation = GetValue(
@@ -291,7 +291,7 @@ class TestGetValue(TestCase):
             ),
             key=key,
         )
-        actual = transformation({"A": np.int(20), ("B", "B"): np.int(123)})
+        actual = transformation({"A": np.int_(20), ("B", "B"): np.int_(123)})
         self.assertEqual(actual, expected)
 
     @parameterized.expand(
@@ -452,10 +452,10 @@ class TestSubset(TestCase):
         [
             (
                 ["A", ("B", "B"), "C"],
-                {"A": np.int(20), ("B", "B"): "XYZ", "C": np.float(10.11)},
+                {"A": np.int_(20), ("B", "B"): "XYZ", "C": np.float_(10.11)},
             ),
-            (["A"], {"A": np.int(20)}),
-            ([("B", "B"), "C"], {("B", "B"): "XYZ", "C": np.float(10.11)}),
+            (["A"], {"A": np.int_(20)}),
+            ([("B", "B"), "C"], {("B", "B"): "XYZ", "C": np.float_(10.11)}),
         ]
     )
     def test_correctness(
@@ -482,7 +482,7 @@ class TestSubset(TestCase):
             input_domain=input_domain, input_metric=input_metric, keys=keys
         )
         actual = transformation(
-            {"A": np.int(20), ("B", "B"): "XYZ", "C": np.float(10.11)}
+            {"A": np.int_(20), ("B", "B"): "XYZ", "C": np.float_(10.11)}
         )
         self.assertEqual(actual, expected)
 

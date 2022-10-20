@@ -6,7 +6,7 @@
 # pylint: disable=no-member
 
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 from pyspark.sql import DataFrame, SparkSession
@@ -637,7 +637,11 @@ def create_average_measurement(
 
         def postprocess_sod_and_count(
             answers: List[Union[np.int64, np.float64]]
-        ) -> Union[np.int64, np.float64, Dict[str, Union[np.int64, np.float64]]]:
+        ) -> Union[
+            np.int64,
+            np.float64,
+            Dict[str, Union[Union[float, np.int64], Union[int, np.float64]]],
+        ]:
             """Computes average from noisy count and sum of deviations."""
             sod, count = answers
             average = sod / max(1, count) + midpoint_of_measure_column
@@ -888,9 +892,14 @@ def create_variance_measurement(
 
         def postprocess_sums_and_count(
             answers: List[Union[np.int64, np.float64]]
-        ) -> Union[np.int64, np.float64, Dict[str, Union[np.int64, np.float64]]]:
+        ) -> Union[
+            np.int64,
+            np.float64,
+            Dict[str, Union[Union[float, np.int64], Union[int, np.float64]]],
+        ]:
             """Computes variance from noisy count and sums of deviations."""
             sod, sos, count = answers
+            variance: Any
             if count <= 1:
                 variance = (
                     midpoint_of_squared_measure_column - midpoint_of_measure_column ** 2

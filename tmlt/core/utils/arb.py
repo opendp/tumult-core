@@ -8,28 +8,35 @@ from typing import Any, Tuple, Union
 
 # pylint: disable=protected-access
 
-with importlib.resources.path("tmlt.core", "ext") as ext:
-    _lib_dir_path = ext / "lib"
-    if platform.system() == "Windows":
-        _arb_path = _lib_dir_path / "libarb.dll"
-        _flint_path = _lib_dir_path / "libflint.dll.a"
+if platform.system() == "Windows":
+    with importlib.resources.path(
+        "tmlt.core.ext.lib", "libarb.dll"
+    ) as _arb_path, importlib.resources.path(
+        "tmlt.core.ext.lib", "libflint.dll.a"
+    ) as _flint_path:
         arblib = ctypes.WinDLL(str(_arb_path))  # type: ignore
         flintlib = ctypes.WinDLL(str(_flint_path))  # type: ignore
-    elif platform.system() == "Linux":
-        _arb_path = _lib_dir_path / "libarb.so.2.14.0"
-        _flint_path = _lib_dir_path / "libflint.so.17.0.0"
+elif platform.system() == "Linux":
+    with importlib.resources.path(
+        "tmlt.core.ext.lib", "libarb.so.2.14.0"
+    ) as _arb_path, importlib.resources.path(
+        "tmlt.core.ext.lib", "libflint.so.17.0.0"
+    ) as _flint_path:
         arblib = ctypes.CDLL(str(_arb_path))
         flintlib = ctypes.CDLL(str(_flint_path))
-    elif platform.system() == "Darwin":
-        _arb_path = _lib_dir_path / "libarb-2.14.0.dylib"
-        _flint_path = _lib_dir_path / "libflint-17.dylib"
+elif platform.system() == "Darwin":
+    with importlib.resources.path(
+        "tmlt.core.ext.lib", "libarb-2.14.0.dylib"
+    ) as _arb_path, importlib.resources.path(
+        "tmlt.core.ext.lib", "libflint-17.dylib"
+    ) as _flint_path:
         arblib = ctypes.CDLL(str(_arb_path))
         flintlib = ctypes.CDLL(str(_flint_path))
-    else:
-        raise RuntimeError(
-            "Unrecognized platform. Expected platform.system() to be one of"
-            f" 'Windows', 'Linux', or 'Darwin' not ({platform.system()})."
-        )
+else:
+    raise RuntimeError(
+        "Unrecognized platform. Expected platform.system() to be one of"
+        f" 'Windows', 'Linux', or 'Darwin' not ({platform.system()})."
+    )
 
 
 class _PtrStruct(ctypes.Structure):

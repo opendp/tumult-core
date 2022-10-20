@@ -131,7 +131,7 @@ class Count(Transformation):
         d_in = ExactNumber(d_in)
         return d_in if self.input_metric == SymmetricDifference() else d_in * 2
 
-    def __call__(self, df: DataFrame) -> int:
+    def __call__(self, df: DataFrame) -> np.int64:
         """Returns the number of records in given DataFrame."""
         return np.int64(df.count())
 

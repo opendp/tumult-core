@@ -6,6 +6,7 @@
 # pylint: disable=no-self-use
 
 import unittest
+from typing import Any
 
 import numpy as np
 import sympy as sp
@@ -25,7 +26,7 @@ class TestDoubleSidedGeometric(unittest.TestCase):
     """Test :func:`double_sided_geometric_pmf` and :func:`double_sided_geometric_cmf."""
 
     @parameterized.expand([(0.3,), (17.3,)])
-    def test_double_sided_geometric_pmf_and_cmf(self, alpha: float):
+    def test_double_sided_geometric_pmf_and_cmf(self, alpha: Any):
         """Test that the double sided geometric stat functions have the expected values.
 
         Approximates the answer by calculating the pmf/cdf using scipy.stats.geom.
@@ -44,11 +45,11 @@ class TestDoubleSidedGeometric(unittest.TestCase):
                 )
         double_sided_cmf = np.cumsum(double_sided_pmf)
 
-        def approx_pmf(k: int) -> float:
+        def approx_pmf(k) -> float:
             """Return the approximate probability mass function at k."""
             return double_sided_pmf[k - min_value]
 
-        def approx_cmf(k: int) -> float:
+        def approx_cmf(k) -> float:
             """Return the approximate cumulative probability mass function at k."""
             return double_sided_cmf[k - min_value]
 
@@ -124,6 +125,7 @@ class TestDiscreteGaussian(unittest.TestCase):
             """Return the approximate cumulative probability mass function at k."""
             return cmf[k - min_value]
 
+        ks_to_test: Any
         ks_to_test = [-10, -5, -3, -1, 0, 1, 3, 5, 10]
         # Test passing multiple ks as an np.ndarray
         ks_to_test.append(np.array(ks_to_test))
