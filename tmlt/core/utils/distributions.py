@@ -22,6 +22,11 @@ def double_sided_geometric_pmf(k: np.ndarray, alpha: float) -> np.ndarray:
     ...
 
 
+@overload
+def double_sided_geometric_pmf(k: int, alpha: np.ndarray) -> np.ndarray:
+    ...
+
+
 def double_sided_geometric_pmf(
     k, alpha
 ):  # pylint: disable=missing-type-doc, missing-return-type-doc

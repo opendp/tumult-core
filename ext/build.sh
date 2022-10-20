@@ -122,3 +122,7 @@ fi
 rm -rf $PREFIX/src/
 
 popd
+
+# Define init files in core/ext and core/ext/lib so that importlib pathing will work
+touch $PREFIX/__init__.py
+touch $PREFIX/lib/__init__.py

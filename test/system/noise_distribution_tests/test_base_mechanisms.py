@@ -61,16 +61,10 @@ def _create_discrete_gaussian_pmf(loc: int):
 def _create_base_laplace_sampler(
     loc: float, noise_scale: ExactNumberInput, sample_size: int
 ):
-    return lambda: {
-        "noisy_vals": np.array(
-            list(
-                map(
-                    AddLaplaceNoise(scale=noise_scale, input_domain=NumpyFloatDomain()),
-                    [loc] * sample_size,
-                )
-            )
-        )
-    }
+    laplace_map_func = np.vectorize(
+        AddLaplaceNoise(scale=noise_scale, input_domain=NumpyFloatDomain())
+    )
+    return lambda: {"noisy_vals": laplace_map_func([loc] * sample_size)}
 
 
 def _create_vector_laplace_sampler(
@@ -112,11 +106,8 @@ BASE_LAPLACE_TEST_INSTANCES = [
 def _create_base_geometric_sampler(
     loc: int, noise_scale: ExactNumberInput, sample_size: int
 ):
-    return lambda: {
-        "noisy_vals": np.array(
-            list(map(AddGeometricNoise(alpha=noise_scale), [loc] * sample_size))
-        )
-    }
+    geom_map_func = np.vectorize(AddGeometricNoise(alpha=noise_scale))
+    return lambda: {"noisy_vals": geom_map_func([loc] * sample_size)}
 
 
 def _create_vector_geometric_sampler(
@@ -160,16 +151,10 @@ def _create_vector_discrete_gaussian_sampler(
 def _create_base_discrete_gaussian_sampler(
     loc: int, noise_scale: ExactNumberInput, sample_size: int
 ):
-    return lambda: {
-        "noisy_vals": np.array(
-            list(
-                map(
-                    AddDiscreteGaussianNoise(sigma_squared=noise_scale),
-                    [loc] * sample_size,
-                )
-            )
-        )
-    }
+    add_discrete_gauss_func = np.vectorize(
+        AddDiscreteGaussianNoise(sigma_squared=noise_scale)
+    )
+    return lambda: {"noisy_vals": add_discrete_gauss_func([loc] * sample_size)}
 
 
 BASE_GEOMETRIC_TEST_INSTANCES = [

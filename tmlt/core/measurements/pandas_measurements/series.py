@@ -8,6 +8,7 @@
 
 import math
 from abc import abstractmethod
+from typing import Any  # pylint: disable=unused-import
 from typing import List, NamedTuple, Tuple, Union, cast
 
 import numpy as np
@@ -309,7 +310,7 @@ class _RankedInterval(NamedTuple):
 
 
 def _get_intervals_with_ranks(
-    values: List[float], lower: float, upper: float
+    values: Union[List[float], "np.ndarray[Any, Any]"], lower: float, upper: float
 ) -> List[_RankedInterval]:
     """Returns a list of intervals constructed from `values`.
 
