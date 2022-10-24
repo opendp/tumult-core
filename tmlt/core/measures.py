@@ -4,12 +4,14 @@
 # Copyright Tumult Labs 2022
 
 from abc import ABC, abstractmethod
-from typing import Any, Tuple
+from typing import Any, Tuple, Union
 
 from typeguard import check_type
 
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.validation import validate_exact_number
+
+PrivacyBudget = Union[ExactNumber, Tuple[ExactNumber, ExactNumber]]
 
 
 class Measure(ABC):

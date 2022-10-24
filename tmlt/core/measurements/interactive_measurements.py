@@ -14,7 +14,7 @@ from typeguard import check_type, typechecked
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.measurements.base import Measurement
-from tmlt.core.measures import PureDP, RhoZCDP
+from tmlt.core.measures import ApproxDP, PrivacyBudget, PureDP, RhoZCDP
 from tmlt.core.metrics import Metric, RootSumOfSquared, SumOf
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
@@ -548,7 +548,7 @@ class ParallelComposition(Measurement):
         self,
         input_domain: ListDomain,
         input_metric: Union[SumOf, RootSumOfSquared],
-        output_measure: Union[PureDP, RhoZCDP],
+        output_measure: Union[PureDP, ApproxDP, RhoZCDP],
         measurements: List[Measurement],
     ):
         """Constructor.
@@ -569,6 +569,7 @@ class ParallelComposition(Measurement):
             )
         valid_metric_measure_combinations = [
             (SumOf, PureDP),
+            (SumOf, ApproxDP),
             (RootSumOfSquared, RhoZCDP),
         ]
         if (
@@ -621,7 +622,7 @@ class ParallelComposition(Measurement):
         return self._measurements.copy()
 
     @typechecked
-    def privacy_function(self, d_in: Any) -> ExactNumber:
+    def privacy_function(self, d_in: Any) -> PrivacyBudget:
         """Returns the smallest d_out satisfied by the measurement.
 
         Returns the largest `d_out` from the :meth:`~.Measurement.privacy_function` of
@@ -635,9 +636,17 @@ class ParallelComposition(Measurement):
                 :meth:`~.Measurement.privacy_relation` raise
                 :class:`NotImplementedError`.
         """
-        d_out = max(
-            measurement.privacy_function(d_in) for measurement in self.measurements
-        )
+        if isinstance(self._output_measure, ApproxDP):
+            privacy_functions = [
+                measurement.privacy_function(d_in) for measurement in self.measurements
+            ]
+            (epsilons, deltas) = zip(*privacy_functions)
+            d_out = (max(epsilons), max(deltas))
+        else:
+            d_out = max(
+                measurement.privacy_function(d_in) for measurement in self.measurements
+            )
+
         assert all(
             measurement.privacy_relation(d_in, d_out)
             for measurement in self.measurements

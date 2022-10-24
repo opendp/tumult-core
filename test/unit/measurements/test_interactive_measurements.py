@@ -44,7 +44,7 @@ from tmlt.core.measurements.interactive_measurements import (
     TransformationQuery,
     create_adaptive_composition,
 )
-from tmlt.core.measures import Measure, PureDP, RhoZCDP
+from tmlt.core.measures import ApproxDP, Measure, PureDP, RhoZCDP
 from tmlt.core.metrics import (
     AbsoluteDifference,
     DictMetric,
@@ -163,6 +163,34 @@ class TestParallelComposition(PySparkTest):
             output_measure=self.output_measure,
             measurements=self.composed_measurements,
         )
+
+        self.approxdp_composed_measurements = [
+            create_mock_measurement(
+                output_measure=ApproxDP(),
+                is_interactive=True,
+                privacy_function_implemented=True,
+                privacy_function_return_value=(ExactNumber(6), ExactNumber(0)),
+            ),
+            create_mock_measurement(
+                output_measure=ApproxDP(),
+                is_interactive=True,
+                privacy_function_implemented=True,
+                privacy_function_return_value=(ExactNumber(2), ExactNumber(2)),
+            ),
+            create_mock_measurement(
+                output_measure=ApproxDP(),
+                is_interactive=True,
+                privacy_function_implemented=True,
+                privacy_function_return_value=(ExactNumber(1), ExactNumber(6)),
+            ),
+        ]
+        self.approxdp_measurement = ParallelComposition(
+            input_domain=ListDomain(NumpyIntegerDomain(), length=3),
+            input_metric=self.input_metric,
+            output_measure=ApproxDP(),
+            measurements=self.approxdp_composed_measurements,
+        )
+
         self.data = [np.int64(10), np.int64(30)]
 
     @parameterized.expand(get_all_props(ParallelComposition))
@@ -186,6 +214,14 @@ class TestParallelComposition(PySparkTest):
                 [create_mock_measurement(is_interactive=True)],
                 r"Length of input domain \(2\) does not match the number of"
                 r" measurements \(1\)",
+            ),
+            (
+                ListDomain(NumpyIntegerDomain(), length=2),
+                RootSumOfSquared(AbsoluteDifference()),
+                ApproxDP(),
+                [create_mock_measurement(is_interactive=True)],
+                f"Input metric {RootSumOfSquared} is incompatible with output measure"
+                f" {ApproxDP}",
             ),
             (
                 ListDomain(NumpyIntegerDomain(), length=1),
@@ -236,18 +272,25 @@ class TestParallelComposition(PySparkTest):
             )
 
     def test_properties(self):
-        """SequentialComposition's properties have the expected values."""
+        """ParallelComposition's properties have the expected values."""
         self.assertEqual(self.measurement.input_domain, self.input_domain)
         self.assertEqual(self.measurement.input_metric, self.input_metric)
         self.assertEqual(self.measurement.output_measure, self.output_measure)
         self.assertEqual(self.measurement.is_interactive, True)
 
+    def test_privacy_function_approxdp(self):
+        """ParallelComposition privacy function is correct for ApproxDP"""
+        self.assertEqual(
+            self.approxdp_measurement.privacy_function(1),
+            (ExactNumber(6), ExactNumber(6)),
+        )
+
     def test_privacy_function(self):
-        """SequentialComposition's privacy function is correct."""
+        """ParallelComposition's privacy function is correct."""
         self.assertEqual(self.measurement.privacy_function(1), ExactNumber(6))
 
     def test_correctness(self):
-        """SequentialComposition returns the expected Queryable object."""
+        """ParallelComposition returns the expected Queryable object."""
         # pylint: disable=protected-access
         actual = self.measurement(self.data)
         self.assertIsInstance(actual, ParallelQueryable)
