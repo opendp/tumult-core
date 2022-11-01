@@ -10,13 +10,28 @@ from pyspark.sql import functions as sf
 from pyspark.sql.types import IntegerType, StructField, StructType
 
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
-from tmlt.core.utils.testing import PySparkTest
+from tmlt.core.utils.testing import (
+    PySparkTest,
+    assert_property_immutability,
+    get_all_props,
+)
 
 # pylint: disable=no-member
 
 
 class TestGroupedDataFrame(PySparkTest):
     """Tests for GroupedDataFrame."""
+
+    @parameterized.expand(get_all_props(GroupedDataFrame))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        grouped_df = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(
+                [("A", 1), ("B", 2)], schema=["X", "Y"]
+            ),
+            group_keys=self.spark.createDataFrame([("A",), ("B",)], schema=["X"]),
+        )
+        assert_property_immutability(grouped_df, prop_name)
 
     @parameterized.expand(
         [

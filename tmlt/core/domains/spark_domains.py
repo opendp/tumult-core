@@ -26,7 +26,7 @@ from pyspark.sql.types import (
     StructType,
     TimestampType,
 )
-from typeguard import check_type
+from typeguard import check_type, typechecked
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.numpy_domains import (
@@ -301,16 +301,26 @@ class SparkTimestampColumnDescriptor(SparkColumnDescriptor):
         return TimestampType()
 
 
-@dataclass(frozen=True, eq=False)
 class SparkRowDomain(Domain):
     """Domain of Spark DataFrame rows."""
 
-    schema: SparkColumnsDescriptor
-    """Mapping from column name to column descriptors."""
+    @typechecked
+    def __init__(self, schema: SparkColumnsDescriptor):
+        """Constructor.
 
-    def __post_init__(self):
-        """Checks arguments to constructor."""
-        check_type("schema", self.schema, SparkColumnsDescriptor)
+        Args:
+            schema: Mapping from column names to column descriptors.
+        """
+        self._schema = schema.copy()
+
+    def __repr__(self) -> str:
+        """Return string representation of the object."""
+        return f"{self.__class__.__name__}(schema={self.schema})"
+
+    @property
+    def schema(self) -> SparkColumnsDescriptor:
+        """Returns mapping from column names to column descriptors."""
+        return self._schema.copy()
 
     def validate(self, value: Any):
         """Raises error if value is not a row with matching schema."""
@@ -332,16 +342,26 @@ class SparkRowDomain(Domain):
         return Row
 
 
-@dataclass(frozen=True, eq=False)
 class SparkDataFrameDomain(Domain):
     """Domain of Spark DataFrames."""
 
-    schema: SparkColumnsDescriptor
-    """Mapping from column name to column descriptors."""
+    @typechecked
+    def __init__(self, schema: SparkColumnsDescriptor):
+        """Constructor.
 
-    def __post_init__(self):
-        """Checks arguments to constructor."""
-        check_type("schema", self.schema, SparkColumnsDescriptor)
+        Args:
+            schema: Mapping from column names to column descriptors.
+        """
+        self._schema = schema.copy()
+
+    def __repr__(self) -> str:
+        """Return string representation of the object."""
+        return f"{self.__class__.__name__}(schema={self.schema})"
+
+    @property
+    def schema(self) -> SparkColumnsDescriptor:
+        """Returns mapping from column names to column descriptors."""
+        return self._schema.copy()
 
     def validate(self, value: Any):
         """Raises error if value is not a DataFrame with matching schema."""
@@ -458,33 +478,48 @@ def _spark_type_to_descriptor(
     raise ValueError(f"Invalid spark_type: {spark_type}")
 
 
-@dataclass(frozen=True, eq=False)
 class SparkGroupedDataFrameDomain(Domain):
     """Domain of grouped DataFrames."""
 
-    schema: SparkColumnsDescriptor
-    """Mapping from column name to column descriptors for all columns."""
+    @typechecked
+    def __init__(self, schema: SparkColumnsDescriptor, group_keys: DataFrame):
+        """Constructor.
 
-    group_keys: DataFrame
-    """DataFrame containing group keys as rows."""
-
-    def __post_init__(self):
-        """Checks arguments to constructor."""
-        check_type("schema", self.schema, SparkColumnsDescriptor)
-        check_type("group_keys", self.group_keys, DataFrame)
-
-        groupby_columns = self.group_keys.columns
+        Args:
+            schema: Mapping from column name to column descriptors for all columns.
+            group_keys: DataFrame containing group keys as rows.
+        """
+        groupby_columns = group_keys.columns
         if len(groupby_columns) != len(set(groupby_columns)):
             raise ValueError("group_keys contains duplicate column names.")
-        invalid_groupby_column = set(groupby_columns) - set(self.schema)
+        invalid_groupby_column = set(groupby_columns) - set(schema)
         if invalid_groupby_column:
             raise ValueError(f"Invalid groupby column: {invalid_groupby_column}")
 
-        for column in self.group_keys.columns:
-            if isinstance(self.schema[column], SparkFloatColumnDescriptor):
+        for column in group_keys.columns:
+            if isinstance(schema[column], SparkFloatColumnDescriptor):
                 raise ValueError(f"Can not group by a floating point column: {column}")
-            self.schema[column].validate_column(sdf=self.group_keys, col_name=column)
-        object.__setattr__(self, "group_keys", self.group_keys.distinct())
+            schema[column].validate_column(sdf=group_keys, col_name=column)
+
+        self._schema = schema.copy()
+        self._group_keys = group_keys.distinct()
+
+    @property
+    def group_keys(self) -> DataFrame:
+        """Returns DataFrame containing group keys as rows."""
+        return self._group_keys
+
+    @property
+    def schema(self) -> SparkColumnsDescriptor:
+        """Returns mapping from column names to column descriptors."""
+        return self._schema.copy()
+
+    def __repr__(self) -> str:
+        """Return string representation of the object."""
+        return (
+            f"{self.__class__.__name__}(schema={self.schema},"
+            f" group_keys={self.group_keys})"
+        )
 
     @property
     def carrier_type(self) -> type:

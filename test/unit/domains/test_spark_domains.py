@@ -39,7 +39,92 @@ from tmlt.core.domains.spark_domains import (
     SparkTimestampColumnDescriptor,
 )
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
-from tmlt.core.utils.testing import PySparkTest
+from tmlt.core.utils.testing import (
+    PySparkTest,
+    assert_property_immutability,
+    get_all_props,
+)
+
+
+class TestSparkDataFrameDomain(PySparkTest):
+    """Tests for :class:`SparkDataFrameDomain`."""
+
+    def setUp(self):
+        """Setup."""
+        self.domain = SparkDataFrameDomain(
+            schema={
+                "A": SparkIntegerColumnDescriptor(),
+                "B": SparkStringColumnDescriptor(),
+            }
+        )
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        schema = {
+            "A": SparkIntegerColumnDescriptor(),
+            "B": SparkStringColumnDescriptor(),
+        }
+        domain = SparkDataFrameDomain(schema=schema)
+        schema["A"] = NumpyFloatDomain()
+        self.assertDictEqual(
+            domain.schema,
+            {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},
+        )
+
+    @parameterized.expand(get_all_props(SparkDataFrameDomain))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        assert_property_immutability(self.domain, prop_name)
+
+    def test_repr(self):
+        """Tests that __repr__ works correctly."""
+        expected = (
+            "SparkDataFrameDomain(schema={'A':"
+            " SparkIntegerColumnDescriptor(allow_null=False, size=64), 'B':"
+            " SparkStringColumnDescriptor(allow_null=False)})"
+        )
+        print(repr(self.domain))
+        self.assertEqual(repr(self.domain), expected)
+
+
+class TestSparkRowDomain(PySparkTest):
+    """Tests for :class:`SparkRowDomain`."""
+
+    def setUp(self):
+        """Setup."""
+        self.domain = SparkRowDomain(
+            schema={
+                "A": SparkIntegerColumnDescriptor(),
+                "B": SparkStringColumnDescriptor(),
+            }
+        )
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        schema = {
+            "A": SparkIntegerColumnDescriptor(),
+            "B": SparkStringColumnDescriptor(),
+        }
+        domain = SparkRowDomain(schema=schema)
+        schema["A"] = NumpyFloatDomain()
+        self.assertDictEqual(
+            domain.schema,
+            {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},
+        )
+
+    @parameterized.expand(get_all_props(SparkRowDomain))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+
+        assert_property_immutability(self.domain, prop_name)
+
+    def test_repr(self):
+        """Tests that __repr__ works correctly."""
+        expected = (
+            "SparkRowDomain(schema={'A': SparkIntegerColumnDescriptor(allow_null=False,"
+            " size=64), 'B': SparkStringColumnDescriptor(allow_null=False)})"
+        )
+        self.assertEqual(repr(self.domain), expected)
 
 
 class TestSparkBasedDomains(PySparkTest):
@@ -202,6 +287,24 @@ class TestSparkGroupedDataFrameDomain(PySparkTest):
         self.domain = SparkGroupedDataFrameDomain(
             schema=self.schema, group_keys=self.group_keys
         )
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        schema = {
+            "A": SparkIntegerColumnDescriptor(),
+            "B": SparkStringColumnDescriptor(),
+        }
+        domain = SparkGroupedDataFrameDomain(schema=schema, group_keys=self.group_keys)
+        schema["A"] = NumpyFloatDomain()
+        self.assertDictEqual(
+            domain.schema,
+            {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},
+        )
+
+    @parameterized.expand(get_all_props(SparkGroupedDataFrameDomain))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        assert_property_immutability(self.domain, prop_name)
 
     def test_carrier_type(self):
         """Tests that SparkGroupedDataFrameDomain has expected carrier type."""
@@ -387,6 +490,16 @@ class TestSparkGroupedDataFrameDomain(PySparkTest):
             ),
         )
         self.assertNotEqual(domain_with_nulls1, domain_without_nulls)
+
+    def test_repr(self):
+        """Tests that __repr__ works correctly."""
+        expected = (
+            "SparkGroupedDataFrameDomain(schema={'A': SparkIntegerColumnDescriptor("
+            "allow_null=True, size=64), 'B': SparkStringColumnDescriptor(allow_null="
+            "True), 'C': SparkIntegerColumnDescriptor(allow_null=True, size=64)},"
+            " group_keys=DataFrame[A: bigint, B: string])"
+        )
+        self.assertEqual(repr(self.domain), expected)
 
 
 class TestSparkColumnDescriptors(PySparkTest):

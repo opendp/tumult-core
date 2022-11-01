@@ -59,7 +59,7 @@ class GroupedDataFrame:
     @property
     def groupby_columns(self) -> List[str]:
         """Returns DataFrame containing group keys."""
-        return self._groupby_columns
+        return self._groupby_columns.copy()
 
     def select(self, columns: List[str]) -> "GroupedDataFrame":
         """Returns a new GroupedDataFrame object with specified subset of columns.

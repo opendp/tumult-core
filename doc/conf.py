@@ -128,6 +128,8 @@ nitpick_ignore = [
     ("py:class", "ClipType"),
     ("py:class", "Row"),
     ("py:class", "SparkColumnsDescriptor"),
+    ("py:class", "PandasColumnsDescriptor"),
+    ("py:class", "PrivacyBudget"),
     ("py:class", "Aggregation"),
     ("py:class", "tmlt.core.utils.exact_number.ExactNumberInput"),
     # Numpy dtypes

@@ -9,7 +9,7 @@ from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
-from typeguard import check_type
+from typeguard import check_type, typechecked
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.numpy_domains import NumpyDomain
@@ -57,16 +57,26 @@ PandasColumnsDescriptor = Dict[str, PandasSeriesDomain]
 """Mapping from column name to column domain."""
 
 
-@dataclass(frozen=True, eq=False)
 class PandasDataFrameDomain(Domain):
     """Domain of Pandas DataFrames."""
 
-    schema: PandasColumnsDescriptor
-    """Mapping from column name to column domain."""
+    @typechecked
+    def __init__(self, schema: PandasColumnsDescriptor):
+        """Constructor.
 
-    def __post_init__(self):
-        """Checks arguments to constructor."""
-        check_type("schema", self.schema, PandasColumnsDescriptor)
+        Args:
+            schema: Mapping from column name to column domain.
+        """
+        self._schema = schema.copy()
+
+    def __repr__(self) -> str:
+        """Return string representation of the object."""
+        return f"{self.__class__.__name__}(schema={self._schema})"
+
+    @property
+    def schema(self) -> PandasColumnsDescriptor:
+        """Returns mapping from column name to associated domain."""
+        return self._schema.copy()
 
     @property
     def carrier_type(self) -> type:
