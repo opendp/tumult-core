@@ -6,7 +6,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, List, Optional, Union, cast
+from typing import Any, Callable, List, Optional, Tuple, Union, cast
 from warnings import warn
 
 from typeguard import check_type, typechecked
@@ -14,7 +14,7 @@ from typeguard import check_type, typechecked
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.measurements.base import Measurement
-from tmlt.core.measures import ApproxDP, PrivacyBudget, PureDP, RhoZCDP
+from tmlt.core.measures import ApproxDP, PureDP, RhoZCDP
 from tmlt.core.metrics import Metric, RootSumOfSquared, SumOf
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
@@ -621,8 +621,14 @@ class ParallelComposition(Measurement):
         """Returns list of composed measurements."""
         return self._measurements.copy()
 
+    # You can use a type alias here when this bug is fixed:
+    # https://github.com/sphinx-doc/sphinx/issues/10785
+    # Until it is fixed, using a type alias here will cause the doc
+    # build to fail.
     @typechecked
-    def privacy_function(self, d_in: Any) -> PrivacyBudget:
+    def privacy_function(
+        self, d_in: Any
+    ) -> Union[ExactNumber, Tuple[ExactNumber, ExactNumber]]:
         """Returns the smallest d_out satisfied by the measurement.
 
         Returns the largest `d_out` from the :meth:`~.Measurement.privacy_function` of
