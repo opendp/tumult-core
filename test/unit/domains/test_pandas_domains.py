@@ -16,6 +16,7 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
+from tmlt.core.utils.testing import assert_property_immutability, get_all_props
 
 
 class TestPandasSeriesDomain(TestCase):
@@ -152,6 +153,20 @@ class TestPandasDataFrameDomain(TestCase):
             }
         )
 
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        schema = {"A": PandasSeriesDomain(NumpyIntegerDomain())}
+        domain = PandasDataFrameDomain(schema=schema)
+        schema["A"] = NumpyFloatDomain()
+        self.assertDictEqual(
+            domain.schema, {"A": PandasSeriesDomain(NumpyIntegerDomain())}
+        )
+
+    @parameterized.expand(get_all_props(PandasDataFrameDomain))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        assert_property_immutability(self.pdfd, prop_name)
+
     def test_bad_init(self):
         """Test that PandasDataFrameDomain raises error when create with wrong type."""
         with self.assertRaises(TypeError):
@@ -243,3 +258,13 @@ class TestPandasDataFrameDomain(TestCase):
     def test_eq(self, other: Any, is_match: bool):
         """Test that to_spark_domain works as expected."""
         self.assertEqual(self.pdfd == other, is_match)
+
+    def test_repr(self):
+        """Tests that __repr__ works correctly"""
+        domain = PandasDataFrameDomain({"A": PandasSeriesDomain(NumpyIntegerDomain())})
+
+        expected = (
+            "PandasDataFrameDomain(schema={'A':"
+            " PandasSeriesDomain(element_domain=NumpyIntegerDomain(size=64))})"
+        )
+        self.assertEqual(repr(domain), expected)

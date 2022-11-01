@@ -13,6 +13,7 @@ from pyspark.sql.types import StringType
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.collections import DictDomain, ListDomain
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
+from tmlt.core.utils.testing import assert_property_immutability, get_all_props
 
 
 class TestListDomain(TestCase):
@@ -67,6 +68,18 @@ class TestDictDomain(TestCase):
         self.domain_a = create_autospec(spec=Domain, instance=True)
         self.domain_b = create_autospec(spec=Domain, instance=True)
         self.dict_domain = DictDomain({"A": self.domain_a, "B": self.domain_b})
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        domain_map = {"A": NumpyIntegerDomain()}
+        domain = DictDomain(key_to_domain=domain_map)
+        domain_map["A"] = NumpyFloatDomain()
+        self.assertDictEqual(domain.key_to_domain, {"A": NumpyIntegerDomain()})
+
+    @parameterized.expand(get_all_props(DictDomain))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        assert_property_immutability(self.dict_domain, prop_name)
 
     @parameterized.expand(
         [
@@ -141,3 +154,13 @@ class TestDictDomain(TestCase):
         """Tests that __eq__ works correctly."""
         domain = DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()})
         self.assertEqual(domain == candidate, expected)
+
+    def test_repr(self):
+        """Tests that __repr__ works correctly"""
+        domain = DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()})
+
+        expected = (
+            "DictDomain(key_to_domain={'A': NumpyIntegerDomain(size=64), "
+            "'B': NumpyFloatDomain(allow_nan=False, allow_inf=False, size=64)})"
+        )
+        self.assertEqual(repr(domain), expected)

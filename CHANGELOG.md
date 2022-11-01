@@ -9,6 +9,7 @@
 - Equality checks on `SparkGroupedDataFrameDomain`s used to occasionally fail with a Spark `AnalysisException` in some environments.
   That should no longer happen.
 - `AddRemoveKeys` now allows different names for the key column in each dataframe.
+- Domains and Metrics make copies of mutable constructor arguments and return copies of mutable properties.
 
 ## 0.4.3 - 2022-09-01
 - Core now checks to see if the user is running Java 11 or higher. If they are, Core either sets the appropriate Spark options (if Spark is not yet running) or raises an informative exception (if Spark is running and configured incorrectly).

@@ -47,7 +47,11 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
-from tmlt.core.utils.testing import PySparkTest
+from tmlt.core.utils.testing import (
+    PySparkTest,
+    assert_property_immutability,
+    get_all_props,
+)
 
 
 class TestNullMetric(TestCase):
@@ -1849,6 +1853,19 @@ class TestIfGroupedBy(TestCase):
 
 class TestDictMetric(TestCase):
     """TestCase for DictMetric"""
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        metric_map = {"A": SymmetricDifference()}
+        metric = DictMetric(key_to_metric=metric_map)
+        metric_map["A"] = HammingDistance()
+        self.assertDictEqual(metric.key_to_metric, {"A": SymmetricDifference()})
+
+    @parameterized.expand(get_all_props(DictMetric))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        metric = DictMetric(key_to_metric={"A": SymmetricDifference()})
+        assert_property_immutability(metric, prop_name)
 
     @patch("tmlt.core.metrics.AbsoluteDifference")
     @patch("tmlt.core.metrics.AbsoluteDifference")

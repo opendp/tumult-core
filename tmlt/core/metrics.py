@@ -1178,12 +1178,12 @@ class DictMetric(Metric):
         Args:
             key_to_metric: Mapping from dictionary key to metric.
         """
-        self._key_to_metric = key_to_metric
+        self._key_to_metric = key_to_metric.copy()
 
     @property
     def key_to_metric(self) -> Dict[Any, Metric]:
         """Returns mapping from keys to metrics."""
-        return self._key_to_metric
+        return self._key_to_metric.copy()
 
     def validate(self, value: Dict[Any, Any]):
         """Raises an error if `value` not a valid distance.

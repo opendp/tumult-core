@@ -6,12 +6,12 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from typeguard import check_type
+from typeguard import check_type, typechecked
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=True)
 class ListDomain(Domain):
     """Domain of lists of elements of a particular domain."""
 
@@ -41,16 +41,32 @@ class ListDomain(Domain):
                 raise OutOfDomainError(f"Found invalid value in list: {exception}")
 
 
-@dataclass(frozen=True, eq=True)
 class DictDomain(Domain):
     """Domain of dictionaries."""
 
-    key_to_domain: Dict[Any, Domain]
-    """Mapping from key to domain."""
+    @typechecked
+    def __init__(self, key_to_domain: Dict[Any, Domain]):
+        """Constructor.
 
-    def __post_init__(self):
-        """Check argument types to constructor."""
-        check_type("key_to_domain", self.key_to_domain, Dict[Any, Domain])
+        Args:
+            key_to_domain: Mapping from key to domain.
+        """
+        self._key_to_domain = key_to_domain.copy()
+
+    def __repr__(self) -> str:
+        """Return string representation of the object."""
+        return f"{self.__class__.__name__}(key_to_domain={self.key_to_domain})"
+
+    def __eq__(self, other: Any) -> bool:
+        """Returns True if both domains are identical."""
+        if other.__class__ != self.__class__:
+            return False
+        return self.key_to_domain == other.key_to_domain
+
+    @property
+    def key_to_domain(self) -> Dict[Any, Domain]:
+        """Returns dictionary mapping each key in the domain with its domain."""
+        return self._key_to_domain.copy()
 
     @property
     def length(self) -> int:
