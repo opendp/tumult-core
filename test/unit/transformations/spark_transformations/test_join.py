@@ -17,6 +17,7 @@ from tmlt.core.domains.spark_domains import (
     SparkStringColumnDescriptor,
 )
 from tmlt.core.metrics import (
+    AddRemoveKeys,
     DictMetric,
     HammingDistance,
     IfGroupedBy,
@@ -26,9 +27,11 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.transformations.spark_transformations.join import (
     PrivateJoin,
+    PrivateJoinOnKey,
     PublicJoin,
     TruncationStrategy,
 )
+from tmlt.core.utils.exact_number import ExactNumberInput
 from tmlt.core.utils.testing import (
     PySparkTest,
     TestComponent,
@@ -434,8 +437,8 @@ class TestPrivateJoin(PySparkTest):
         )
         assert_property_immutability(transformation, prop_name)
 
-    @parameterized.expand([(["B"],), (None,)])
-    def test_properties(self, join_cols: Optional[List[str]]):
+    @parameterized.expand([(["B"], True), (None, False)])
+    def test_properties(self, join_cols: Optional[List[str]], join_on_nulls: bool):
         """Tests that PrivateJoin's properties have expected values."""
         input_domain = DictDomain(
             {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
@@ -449,6 +452,7 @@ class TestPrivateJoin(PySparkTest):
             left_truncation_threshold=1,
             right_truncation_threshold=2,
             join_cols=join_cols,
+            join_on_nulls=join_on_nulls,
         )
 
         expected_output_metric = DictMetric(
@@ -480,6 +484,7 @@ class TestPrivateJoin(PySparkTest):
         self.assertEqual(transformation.left_truncation_threshold, 1)
         self.assertEqual(transformation.right_truncation_threshold, 2)
         self.assertEqual(transformation.join_cols, ["B"])
+        self.assertEqual(transformation.join_on_nulls, join_on_nulls)
 
     @parameterized.expand(
         [
@@ -899,3 +904,186 @@ class TestPrivateJoin(PySparkTest):
         )
         actual = private_join({"left": left, "right": right}).toPandas()
         self.assert_frame_equal_with_sort(actual, expected)
+
+
+class TestPrivateJoinOnKey(PySparkTest):
+    """Tests for class PrivateJoinOnKey.
+
+    Tests :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnKey`.
+    """  # pylint: disable=line-too-long
+
+    def setUp(self):
+        """Setup."""
+        self.left_domain = SparkDataFrameDomain(
+            {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+        )
+        self.right_domain = SparkDataFrameDomain(
+            {"B": SparkStringColumnDescriptor(), "C": SparkStringColumnDescriptor()}
+        )
+
+    def test_constructor_mutable_arguments(self):
+        """Tests that mutable constructor arguments are copied."""
+        join_cols = ["B"]
+        transformation = PrivateJoinOnKey(
+            input_domain=DictDomain(
+                {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
+            ),
+            input_metric=AddRemoveKeys({"l": "B", ("r", "i", "g", "h", "t"): "B"}),
+            left_key="l",
+            right_key=("r", "i", "g", "h", "t"),
+            new_key="joined",
+            join_cols=join_cols,
+        )
+        join_cols.append("C")
+        self.assertListEqual(transformation.join_cols, ["B"])
+
+    @parameterized.expand(get_all_props(PrivateJoinOnKey))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        transformation = PrivateJoinOnKey(
+            input_domain=DictDomain(
+                {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
+            ),
+            input_metric=AddRemoveKeys({"l": "B", ("r", "i", "g", "h", "t"): "B"}),
+            left_key="l",
+            right_key=("r", "i", "g", "h", "t"),
+            new_key="joined",
+            join_cols=["B"],
+        )
+        assert_property_immutability(transformation, prop_name)
+
+    @parameterized.expand([(["B"], True), (None, False)])
+    def test_properties(self, join_cols: Optional[List[str]], join_on_nulls: bool):
+        """Tests that PrivateJoinOnKey's properties have expected values."""
+        input_domain = DictDomain(
+            {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
+        )
+        transformation = PrivateJoinOnKey(
+            input_domain=DictDomain(
+                {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
+            ),
+            input_metric=AddRemoveKeys({"l": "B", ("r", "i", "g", "h", "t"): "B"}),
+            left_key="l",
+            right_key=("r", "i", "g", "h", "t"),
+            new_key="joined",
+            join_cols=join_cols,
+            join_on_nulls=join_on_nulls,
+        )
+
+        expected_output_metric = AddRemoveKeys(
+            {"l": "B", ("r", "i", "g", "h", "t"): "B"}
+        )
+        expected_output_domain = DictDomain(
+            {
+                "l": self.left_domain,
+                ("r", "i", "g", "h", "t"): self.right_domain,
+                "joined": SparkDataFrameDomain(
+                    {
+                        "B": SparkStringColumnDescriptor(),
+                        "A": SparkIntegerColumnDescriptor(),
+                        "C": SparkStringColumnDescriptor(),
+                    }
+                ),
+            }
+        )
+
+        self.assertEqual(transformation.input_domain, input_domain)
+        self.assertEqual(transformation.input_metric, expected_output_metric)
+        self.assertEqual(transformation.output_domain, expected_output_domain)
+        self.assertEqual(
+            transformation.output_metric,
+            AddRemoveKeys({"l": "B", ("r", "i", "g", "h", "t"): "B", "joined": "B"}),
+        )
+        self.assertEqual(transformation.left_key, "l")
+        self.assertEqual(transformation.right_key, ("r", "i", "g", "h", "t"))
+        self.assertEqual(transformation.new_key, "joined")
+        self.assertEqual(transformation.join_cols, ["B"])
+        self.assertEqual(transformation.join_on_nulls, join_on_nulls)
+
+    @parameterized.expand(
+        [
+            (left_cols, right_cols, join_cols, expected_ordering, join_on_nulls)
+            for (left_cols, right_cols, join_cols, expected_ordering) in [
+                (["A", "B", "C"], ["B", "D"], ["B"], ["B", "A", "C", "D"]),
+                (
+                    ["A", "B", "C"],
+                    ["B", "D", "C"],
+                    ["B"],
+                    ["B", "A", "C_left", "D", "C_right"],
+                ),
+                (
+                    ["A", "B", "C"],
+                    ["B", "D", "C"],
+                    ["B"],
+                    ["B", "A", "C_left", "D", "C_right"],
+                ),
+                (["A", "B", "C"], ["B", "C", "D"], ["C", "B"], ["C", "B", "A", "D"]),
+                (["A", "B"], ["B", "C"], ["B"], ["B", "A", "C"]),
+            ]
+            for join_on_nulls in [True, False]
+        ]
+    )
+    def test_columns_ordering(
+        self,
+        left_cols: List[str],
+        right_cols: List[str],
+        join_cols: List[str],
+        expected_ordering: List[str],
+        join_on_nulls: bool,
+    ):
+        """Tests that the output columns of join are in expected order.
+
+        This checks:
+            - Join columns (in the order given by the user) appear first.
+            - Columns of left table (with _left appended as required) appear
+             next in the input order. (excluding join columns)
+            - Columns of the right table (with _right appended as required) appear
+             last in the input order. (excluding join columns)
+        """
+        left_domain = SparkDataFrameDomain(
+            {col: SparkStringColumnDescriptor() for col in left_cols}
+        )
+        right_domain = SparkDataFrameDomain(
+            {col: SparkStringColumnDescriptor() for col in right_cols}
+        )
+
+        left_df = self.spark.createDataFrame(
+            [("x",) * len(left_cols)], schema=left_cols
+        )
+        right_df = self.spark.createDataFrame(
+            [("x",) * len(right_cols)], schema=right_cols
+        )
+
+        private_join = PrivateJoinOnKey(
+            input_domain=DictDomain({"left": left_domain, "right": right_domain}),
+            input_metric=AddRemoveKeys({"left": "B", "right": "B"}),
+            left_key="left",
+            right_key="right",
+            new_key="joined",
+            join_cols=join_cols,
+            join_on_nulls=join_on_nulls,
+        )
+
+        answer = private_join({"left": left_df, "right": right_df})
+        self.assertTrue(answer in private_join.output_domain)
+        self.assertEqual(answer["joined"].columns, expected_ordering)
+
+    @parameterized.expand(
+        [(1, 1, True), (0, 0, True), (float("inf"), float("inf"), True), (2, 1, False)]
+    )
+    def test_stability_relation_and_function(
+        self, d_in: ExactNumberInput, d_out: ExactNumberInput, expected: bool
+    ):
+        """Test that PrivateJoinOnKey's stability relation and function are correct"""
+        private_join = PrivateJoinOnKey(
+            input_domain=DictDomain(
+                {"left": self.left_domain, "right": self.right_domain}
+            ),
+            input_metric=AddRemoveKeys({"left": "B", "right": "B"}),
+            left_key="left",
+            right_key="right",
+            new_key="new",
+            join_cols=["B"],
+        )
+        self.assertEqual(private_join.stability_relation(d_in, d_out), expected)
+        self.assertEqual(private_join.stability_function(d_in) <= d_out, expected)
