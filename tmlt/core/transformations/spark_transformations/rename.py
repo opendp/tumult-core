@@ -121,7 +121,7 @@ class Rename(Transformation):
             )
         for old, new in rename_mapping.items():
             if new in input_domain.schema and new != old:
-                raise ValueError(f"Cannot rename {new} to {old}. {old} already exists.")
+                raise ValueError(f"Cannot rename {old} to {new}. {new} already exists.")
         output_metric = metric
         if isinstance(metric, IfGroupedBy):
             if metric.inner_metric not in (

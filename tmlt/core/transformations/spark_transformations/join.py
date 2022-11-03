@@ -19,6 +19,7 @@ from tmlt.core.domains.spark_domains import (
     SparkFloatColumnDescriptor,
 )
 from tmlt.core.metrics import (
+    AddRemoveKeys,
     DictMetric,
     IfGroupedBy,
     RootSumOfSquared,
@@ -727,6 +728,11 @@ class PrivateJoin(Transformation):
         """Returns list of column names to join on."""
         return self._join_cols.copy()
 
+    @property
+    def join_on_nulls(self) -> bool:
+        """Returns whether to consider null equal to null."""
+        return self._join_on_nulls
+
     @staticmethod
     def truncation_strategy_stability(
         truncation_strategy: TruncationStrategy, threshold: int
@@ -793,3 +799,342 @@ class PrivateJoin(Transformation):
             (cast(SparkDataFrameDomain, self.output_domain)).schema
         )
         return joined_df.select(output_columns_order)
+
+
+class PrivateJoinOnKey(Transformation):
+    r"""Join two private SparkDataFrames including a key column.
+
+    Example:
+        ..
+            >>> import pandas as pd
+            >>> from pyspark.sql import SparkSession
+            >>> from tmlt.core.domains.spark_domains import (
+            ...     SparkDataFrameDomain,
+            ...     SparkIntegerColumnDescriptor,
+            ...     SparkStringColumnDescriptor,
+            ... )
+            >>> from tmlt.core.utils.misc import print_sdf
+            >>> spark = SparkSession.builder.getOrCreate()
+            >>> left_spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "A": ["a1", "a1", "a1", "a1", "a1", "a2"],
+            ...             "B": ["b1", "b1", "b1", "b2", "b2", "b1"],
+            ...             "X": [2, 3, 5, -1, 4, -5],
+            ...         }
+            ...     )
+            ... )
+            >>> right_spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "B": ["b1", "b2", "b2"],
+            ...             "C": ["c1", "c2", "c3"],
+            ...         }
+            ...     )
+            ... )
+            >>> # This input dataframe is not involved in the join but will be included in the output
+            >>> ignored_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "B": ["b1", "b2", "b2"],
+            ...             "D": ["d1", "d1", "d2"],
+            ...         }
+            ...     )
+            ... )
+
+        >>> # Example input
+        >>> print_sdf(left_spark_dataframe)
+            A   B  X
+        0  a1  b1  2
+        1  a1  b1  3
+        2  a1  b1  5
+        3  a1  b2 -1
+        4  a1  b2  4
+        5  a2  b1 -5
+        >>> print_sdf(right_spark_dataframe)
+            B   C
+        0  b1  c1
+        1  b2  c2
+        2  b2  c3
+        >>> print_sdf(ignored_dataframe)
+            B   D
+        0  b1  d1
+        1  b2  d1
+        2  b2  d2
+        >>> # Create transformation
+        >>> left_domain = SparkDataFrameDomain(
+        ...     {
+        ...         "A": SparkStringColumnDescriptor(),
+        ...         "B": SparkStringColumnDescriptor(),
+        ...         "X": SparkIntegerColumnDescriptor(),
+        ...     },
+        ... )
+        >>> assert left_spark_dataframe in left_domain
+        >>> right_domain = SparkDataFrameDomain(
+        ...     {
+        ...         "B": SparkStringColumnDescriptor(),
+        ...         "C": SparkStringColumnDescriptor(),
+        ...     },
+        ... )
+        >>> assert right_spark_dataframe in right_domain
+        >>> ignored_domain = SparkDataFrameDomain(
+        ...     {
+        ...         "B": SparkStringColumnDescriptor(),
+        ...         "D": SparkStringColumnDescriptor(),
+        ...     },
+        ... )
+        >>> assert ignored_dataframe in ignored_domain
+        >>> private_join = PrivateJoinOnKey(
+        ...     input_domain=DictDomain(
+        ...         {
+        ...             "left": left_domain,
+        ...             "right": right_domain,
+        ...             "ignored": ignored_domain,
+        ...         }
+        ...     ),
+        ...     input_metric=AddRemoveKeys(
+        ...         {
+        ...            "left": "B",
+        ...            "right": "B",
+        ...            "ignored": "B",
+        ...         }
+        ...     ),
+        ...     left_key="left",
+        ...     right_key="right",
+        ...     new_key="joined",
+        ... )
+        >>> input_dictionary = {
+        ...     "left": left_spark_dataframe,
+        ...     "right": right_spark_dataframe,
+        ...     "ignored": ignored_dataframe,
+        ... }
+        >>> # Apply transformation to data
+        >>> output_dictionary = private_join(input_dictionary)
+        >>> assert left_spark_dataframe is output_dictionary["left"]
+        >>> assert right_spark_dataframe is output_dictionary["right"]
+        >>> assert ignored_dataframe is output_dictionary["ignored"]
+        >>> joined_dataframe = output_dictionary["joined"]
+        >>> print_sdf(joined_dataframe)
+            B   A  X   C
+        0  b1  a1  2  c1
+        1  b1  a1  3  c1
+        2  b1  a1  5  c1
+        3  b1  a2 -5  c1
+        4  b2  a1 -1  c2
+        5  b2  a1 -1  c3
+        6  b2  a1  4  c2
+        7  b2  a1  4  c3
+
+    .. Note:
+        This join works similarly to :class:`~.PublicJoin`, see it for more examples.
+
+    .. Note:
+        Unlike :class:`~.PrivateJoin`, this join allows for other dataframes to be present in the input dictionary, and
+        will output a dictionary containing all of the input dataframes along with the joined dataframe.
+        This is because of the stability analysis for AddRemoveKeys. See :mod:`~.add_remove_keys` for more details.
+
+    Transformation Contract:
+        * Input domain - :class:`~.DictDomain` containing two or more SparkDataFrame domains.
+        * Output domain - The same as the input :class:`~.DictDomain` with the addition of a new
+          :class:`~.SparkDataFrameDomain` for the joined table.
+        * Input metric - :class:`~.AddRemoveKeys`
+        * Output metric - :class:`~.AddRemoveKeys`
+
+    >>> private_join.input_domain
+    DictDomain(key_to_domain={'left': SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}), 'right': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'C': SparkStringColumnDescriptor(allow_null=False)}), 'ignored': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'D': SparkStringColumnDescriptor(allow_null=False)})})
+    >>> private_join.output_domain
+    DictDomain(key_to_domain={'left': SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}), 'right': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'C': SparkStringColumnDescriptor(allow_null=False)}), 'ignored': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'D': SparkStringColumnDescriptor(allow_null=False)}), 'joined': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64), 'C': SparkStringColumnDescriptor(allow_null=False)})})
+    >>> private_join.input_metric
+    AddRemoveKeys(df_to_key_column={'left': 'B', 'right': 'B', 'ignored': 'B'})
+    >>> private_join.output_metric
+    AddRemoveKeys(df_to_key_column={'left': 'B', 'right': 'B', 'ignored': 'B', 'joined': 'B'})
+
+    Stability Guarantee:
+        :class:`~.PrivateJoinOnKey`'s :meth:`~.stability_function` returns `d_in`
+
+        >>> private_join.stability_function(1)
+        1
+        >>> private_join.stability_function(2)
+        2
+    """  # pylint: disable=line-too-long
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
+        left_key: Any,
+        right_key: Any,
+        new_key: Any,
+        join_cols: Optional[List[str]] = None,
+        join_on_nulls: bool = False,
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: Domain of the input dictionaries. Must contain `left_key` and `right_key`,
+                but may also contain other keys.
+            input_metric: AddRemoveKeys metric for the input dictionaries. The left and right dataframes
+                must use the same key column.
+            left_key: Key for the left DataFrame.
+            right_key: Key for the right DataFrame.
+            new_key: Key for the output DataFrame.
+            join_cols: Columns to perform join on. If None, or empty, natural join is
+                computed.
+            join_on_nulls: If True, null values on corresponding join columns of
+                both dataframes will be considered to be equal.
+        """
+        if left_key == right_key:
+            raise ValueError("Left and right keys must be distinct.")
+        if left_key not in input_domain.key_to_domain:
+            raise ValueError(f"Invalid key: Key '{left_key}' not in input domain.")
+        if right_key not in input_domain.key_to_domain:
+            raise ValueError(f"Invalid key: Key '{right_key}' not in input domain.")
+
+        left_domain, right_domain = input_domain[left_key], input_domain[right_key]
+        if not isinstance(left_domain, SparkDataFrameDomain) or not isinstance(
+            right_domain, SparkDataFrameDomain
+        ):
+            raise ValueError("Input domain must be SparkDataFrameDomin for both keys.")
+
+        common_cols = set(left_domain.schema) & set(right_domain.schema)
+        if not join_cols:
+            if not common_cols:
+                raise ValueError("Can not join: No common columns.")
+            join_cols = sorted(common_cols, key=list(left_domain.schema).index)
+        else:
+            join_cols = join_cols.copy()
+
+        join_cols_schema = {}
+        for key in join_cols:
+            if left_domain[key] != right_domain[key]:
+                raise ValueError(
+                    "Left and right DataFrame domains have mismatching types on"
+                    f" join column {key}."
+                )
+            if join_on_nulls:
+                join_cols_schema[key] = left_domain[key]
+            else:
+                join_cols_schema[key] = replace(left_domain[key], allow_null=False)
+        overlapping_cols = common_cols - set(join_cols)
+        all_input_cols = set(left_domain.schema) | set(right_domain.schema)
+        for col in overlapping_cols:
+            if f"{col}_left" in all_input_cols or f"{col}_right" in all_input_cols:
+                raise ValueError(
+                    f"Join would rename overlapping column '{col}' to an existing"
+                    " column name."
+                )
+
+        left_schema = {
+            col + ("_left" if col in overlapping_cols else ""): left_domain[col]
+            for col in left_domain.schema
+            if col not in join_cols
+        }
+        right_schema = {
+            col + ("_right" if col in overlapping_cols else ""): right_domain[col]
+            for col in right_domain.schema
+            if col not in join_cols
+        }
+
+        new_df_domain = SparkDataFrameDomain(
+            {**join_cols_schema, **left_schema, **right_schema}
+        )
+        output_domain = DictDomain(
+            {**input_domain.key_to_domain, new_key: new_df_domain}
+        )
+
+        if left_key not in input_metric.df_to_key_column:
+            raise ValueError(f"Invalid key: Key '{left_key}' not in input metric.")
+        if right_key not in input_metric.df_to_key_column:
+            raise ValueError(f"Invalid key: Key '{right_key}' not in input metric.")
+        if (
+            input_metric.df_to_key_column[left_key]
+            != input_metric.df_to_key_column[right_key]
+        ):
+            raise ValueError("Left and right keys must have the same key column.")
+        key_column = input_metric.df_to_key_column[left_key]
+        if key_column not in join_cols:
+            raise ValueError("Key column must be joined on.")
+
+        output_metric = AddRemoveKeys(
+            {**input_metric.df_to_key_column, new_key: key_column}
+        )
+
+        super().__init__(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            output_domain=output_domain,
+            output_metric=output_metric,
+        )
+        self._left_key = left_key
+        self._right_key = right_key
+        self._new_key = new_key
+        self._join_cols = join_cols
+        self._overlapping_cols = overlapping_cols
+        self._join_on_nulls = join_on_nulls
+
+    @property
+    def left_key(self) -> Any:
+        """Returns key to left DataFrame."""
+        return self._left_key
+
+    @property
+    def right_key(self) -> Any:
+        """Returns key to right DataFrame."""
+        return self._right_key
+
+    @property
+    def new_key(self) -> Any:
+        """Returns key to output DataFrame."""
+        return self._new_key
+
+    @property
+    def join_cols(self) -> List[str]:
+        """Returns list of column names to join on."""
+        return self._join_cols.copy()
+
+    @property
+    def join_on_nulls(self) -> bool:
+        """Returns whether to consider null equal to null."""
+        return self._join_on_nulls
+
+    @typechecked
+    def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
+        """Returns the smallest d_out satisfied by the transformation.
+
+        See the privacy and stability tutorial for more information. # TODO(#1320)
+
+        Args:
+            d_in: Distance between inputs under input_metric.
+        """
+        self.input_metric.validate(d_in)
+        return ExactNumber(d_in)
+
+    def __call__(self, dfs: Dict[Any, DataFrame]):
+        """Perform join."""
+        left = dfs[self.left_key]
+        right = dfs[self.right_key]
+        for col in self._overlapping_cols:
+            left = left.withColumnRenamed(col, f"{col}_left")
+            right = right.withColumnRenamed(col, f"{col}_right")
+
+        if not self._join_on_nulls:
+            right = right.dropna()
+            joined_df = left.join(right, on=self.join_cols, how="inner")
+        else:
+            joined_df = left.join(
+                right, on=[left[col].eqNullSafe(right[col]) for col in self.join_cols]
+            )
+            for col in self.join_cols:
+                joined_df = joined_df.drop(right[col])
+        output_columns_order = list(
+            (
+                cast(
+                    SparkDataFrameDomain,
+                    cast(DictDomain, self.output_domain).key_to_domain[self.new_key],
+                )
+            ).schema
+        )
+        new_dfs = dfs.copy()
+        new_dfs[self.new_key] = joined_df.select(output_columns_order)
+        return new_dfs

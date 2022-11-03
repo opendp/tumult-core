@@ -6,6 +6,103 @@ Note that several of the transformations in :mod:`~.dictionary` also support
 * :class:`~.CreateDictFromValue`
 * :class:`~.GetValue`
 * :class:`~.Subset`
+
+The transformations defined in this module are required because
+:class:`~.AugmentDictTransformation` is not stable under :class:`~.AddRemoveKeys` for
+all transformations.
+
+For example, consider the following example:
+
+..
+    >>> from pyspark.sql import SparkSession
+    >>> from tmlt.core.transformations.spark_transformations.truncation import (
+    ...     LimitRowsPerGroup
+    ... )
+    >>> from tmlt.core.domains.spark_domains import SparkStringColumnDescriptor
+    >>> from tmlt.core.transformations.spark_transformations.id import AddUniqueColumn
+    >>> from tmlt.core.utils.misc import print_sdf
+    >>> spark = SparkSession.builder.getOrCreate()
+
+>>> # Create transformation
+>>> input_domain = SparkDataFrameDomain(
+...     {
+...         "A": SparkStringColumnDescriptor(),
+...         "B": SparkStringColumnDescriptor(),
+...     }
+... )
+>>> input_metric = IfGroupedBy("A", SymmetricDifference())
+>>> truncate = LimitRowsPerGroup(
+...     input_domain=input_domain,
+...     grouping_column="A",
+...     threshold=1,
+... )
+>>> rename = Rename(
+...     input_domain=input_domain,
+...     metric=SymmetricDifference(),
+...     rename_mapping={"A": "C", "B": "D"},
+... )
+>>> create_unique_column = AddUniqueColumn(
+...     input_domain=rename.output_domain,
+...     column="A",
+... )
+>>> transformation = truncate | rename | create_unique_column
+>>> # Create data
+>>> x1 = spark.createDataFrame(
+...     [["a", "1"], ["b", "2"], ["c", "3"]], ["A", "B"]
+... )
+>>> x2 = spark.createDataFrame(
+...     [["b", "2"], ["c", "3"]], ["A", "B"]
+... )
+>>> print_sdf(x1)
+   A  B
+0  a  1
+1  b  2
+2  c  3
+>>> print_sdf(x2)
+   A  B
+0  b  2
+1  c  3
+>>> y1 = transformation(x1)
+>>> y2 = transformation(x2)
+>>> print_sdf(y1)  # Note that the values below are in fact unique (after the 5B226)
+   C  D                           A
+0  a  1  5B2261222C2231222C2231225D
+1  b  2  5B2262222C2232222C2231225D
+2  c  3  5B2263222C2233222C2231225D
+>>> print_sdf(y2)
+   C  D                           A
+0  b  2  5B2262222C2232222C2231225D
+1  c  3  5B2263222C2233222C2231225D
+>>> # Check stability
+>>> input_metric.distance(x1, x2, input_domain)
+1
+>>> input_metric.distance(y1, y2, transformation.output_domain)
+1
+>>> # Check stability as if it was Augmented using AugmentDictTransformation
+>>> dict_x1 = {"start": x1}
+>>> dict_x2 = {"start": x2}
+>>> dict_y1 = {"start": x1, "end": y1}
+>>> dict_y2 = {"start": x2, "end": y2}
+>>> dict_input_domain = DictDomain({"start": input_domain})
+>>> dict_input_metric = AddRemoveKeys({"start": "A"})
+>>> dict_output_domain = DictDomain(
+...     {
+...         "start": input_domain,
+...         "end": transformation.output_domain
+...     }
+... )
+>>> dict_output_metric = AddRemoveKeys({"start": "A", "end": "A"})
+>>> # Naively you would expect the stability to be 1, but in this example it is 2
+>>> dict_input_metric.distance(dict_x1, dict_x2, dict_input_domain)
+1
+>>> dict_output_metric.distance(dict_y1, dict_y2, dict_output_domain)
+2
+
+Conceptually, what is happening in the example above is that the transformation is
+changing the meaning of the key column. The column "A" that is in the input data is
+not the same as the column "A" that is in the output data, so removing one value, "a",
+in the input dictionary results in both "a" and "a,1" being removed in the output
+dictionary.
 """
 
 # <placeholder: boilerplate>
