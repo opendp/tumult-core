@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.1 - 2022-11-03
 ### Fixed
 - Domains and metrics make copies of mutable constructor arguments and return copies of mutable properties.
 
