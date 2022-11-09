@@ -88,6 +88,23 @@ class TestAddLaplaceNoise(TestComponent):
         ):
             AddLaplaceNoise(input_domain=domain, scale=1)
 
+    @parameterized.expand(
+        [
+            (1, 0.5, 0),
+            (2, 0.5, 0),
+            (3.1415, 0.5, 0),
+            (1, 0.75, 0.693147),
+            (1, 0.25, -0.693147),
+            (3.5, 0.86, 4.45538),
+            (3.5, 0.14, -4.45538),
+        ]
+    )
+    def test_inverse_cdf(self, scale, p, expected):
+        """Tests that the inverse CDF is calculated correctly."""
+        self.assertAlmostEqual(
+            AddLaplaceNoise.inverse_cdf(scale=scale, probability=p), expected, places=6
+        )
+
 
 class TestAddGeometricNoise(TestComponent):
     """Tests for class AddGeometricNoise.
@@ -137,6 +154,27 @@ class TestAddGeometricNoise(TestComponent):
             ValueError, "Invalid alpha: oo is not strictly less than inf"
         ):
             AddGeometricNoise(alpha=sp.oo)
+
+    @parameterized.expand(
+        [
+            (1, 0.5, 0),
+            (2, 0.5, 0),
+            (3.1415, 0.5, 0),
+            (1, 0.75, 1),
+            (1, 0.25, -1),
+            (3.5, 0.86, 4),
+            (3.5, 0.14, -4),
+        ]
+    )
+    def test_inverse_cdf(self, alpha, p, expected):
+        """Tests that the inverse CDF is calculated correctly."""
+        self.assertAlmostEqual(
+            AddGeometricNoise.inverse_cdf(
+                alpha=alpha, probability=p
+            ),  # pylint: disable=protected-access
+            expected,
+            places=5,
+        )
 
 
 class TestAddDiscreteGaussianNoise(TestComponent):
@@ -195,3 +233,24 @@ class TestAddDiscreteGaussianNoise(TestComponent):
         """
         for _ in range(10):  # Unfortunately, the failure was somewhat flaky.
             AddDiscreteGaussianNoise(sigma_squared=sp.Rational("0.9999999999999999"))(0)
+
+    @parameterized.expand(
+        [
+            (1, 0.5, 0),
+            (2, 0.5, 0),
+            (3.1415, 0.5, 0),
+            (1, 0.75, 1),
+            (1, 0.25, -1),
+            (3.5, 0.86, 2),
+            (3.5, 0.14, -2),
+        ]
+    )
+    def test_inverse_cdf(self, sigma_squared, p, expected):
+        """Tests that the inverse CDF is calculated correctly."""
+        self.assertAlmostEqual(
+            AddDiscreteGaussianNoise.inverse_cdf(
+                sigma_squared=sigma_squared, probability=p
+            ),  # pylint: disable=protected-access
+            expected,
+            places=5,
+        )
