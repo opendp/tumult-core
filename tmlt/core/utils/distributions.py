@@ -125,6 +125,45 @@ def double_sided_geometric_cmf_exact(
     return ExactNumber(p)
 
 
+@overload
+def double_sided_geometric_inverse_cmf(p: float, alpha: float) -> int:
+    ...
+
+
+@overload
+def double_sided_geometric_inverse_cmf(p: np.ndarray, alpha: float) -> np.ndarray:
+    ...
+
+
+def double_sided_geometric_inverse_cmf(
+    p, alpha
+):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    r"""Returns the inverse cmf of a double-sided geometric distribution at p.
+
+    In other words, it returns the smallest k s.t. CMF(k) >= p.
+
+    For :math:`p \in [0, 1]`
+
+    .. math::
+
+        F(k) = \begin{cases}
+        \alpha\ln(p\cdot\frac{e^{\frac{1}{\alpha}} + 1}{e^{\frac{1}{\alpha}}}) &
+        \text{if p} \le 0.5 \\
+        -\alpha\ln((e^{\frac{1}{\alpha}} + 1)(1 - p)) &
+        \text{otherwise} \\
+        \end{cases}
+
+    See :func:`double_sided_geometric_pmf` for more information.
+    """
+    if isinstance(p, float):
+        return double_sided_geometric_inverse_cmf(np.array([p]), alpha)[0]
+    return np.where(
+        p <= 0.5,
+        np.ceil(alpha * np.log(p * (np.exp(1 / alpha) + 1) / np.exp(1 / alpha))),
+        np.ceil(-alpha * np.log((np.exp(1 / alpha) + 1) * (1 - p))),
+    )
+
+
 @lru_cache(None)
 def _discrete_gaussian_normalizing_constant(sigma_squared: float):
     """Returns the normalizing factor for :func:`discrete_gaussian_pmf`."""
@@ -203,3 +242,58 @@ def discrete_gaussian_cmf(k, sigma_squared):
     return unnormalized_cmf[k - lower_bound] / _discrete_gaussian_normalizing_constant(
         sigma_squared
     )
+
+
+@overload
+def discrete_gaussian_inverse_cmf(p: float, sigma_squared: float) -> int:
+    ...
+
+
+@overload
+def discrete_gaussian_inverse_cmf(p: np.ndarray, sigma_squared: float) -> np.ndarray:
+    ...
+
+
+def discrete_gaussian_inverse_cmf(p, sigma_squared):
+    """Returns the inverse cmf for a discrete gaussian distribution at p.
+
+    In other words, it returns the smallest k s.t. CMF(k) >= p.
+
+    This is not terribly performant. Don't use it in places where it's
+    going to get called a lot.
+    """
+    if isinstance(p, np.ndarray):
+        return np.vectorize(discrete_gaussian_inverse_cmf)(p, sigma_squared)
+
+    unnormalized_cmf = p * _discrete_gaussian_normalizing_constant(sigma_squared)
+
+    def unnormalized_pmf(k):
+        return np.exp(-(k ** 2) / (2 * sigma_squared))
+
+    # _discrete_gaussian_normalizing_constant explains calculating the bound this way
+    lower_bound = min(-10000, -int(sigma_squared * 50))
+
+    # if k < lower bound, cmf(k) returns pmf(k), so we can binary search for k.
+    if unnormalized_pmf(lower_bound) > unnormalized_cmf:
+        hi = lower_bound
+        lo = lower_bound * 2
+        while unnormalized_pmf(lo) > unnormalized_cmf:
+            hi = lo
+            lo *= 2
+        while hi != lo:
+            mid = hi / 2 + lo / 2
+            if unnormalized_pmf(mid) == unnormalized_cmf:
+                return mid
+            elif unnormalized_pmf(mid) < unnormalized_cmf:
+                lo = mid
+            else:
+                hi = mid
+        return hi
+
+    remaining_cmf = unnormalized_cmf
+    current_step = lower_bound
+    while remaining_cmf > 0:
+        remaining_cmf -= unnormalized_pmf(current_step)
+        current_step += 1
+
+    return current_step - 1
