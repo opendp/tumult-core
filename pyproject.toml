@@ -151,7 +151,6 @@ disable = [
   'unbalanced-tuple-unpacking',
   'unsubscriptable-object',
   'wrong-import-order',
-  
 ]
 
 [tool.pylint.FORMAT]
@@ -166,7 +165,7 @@ add-ignore = [
 ]
 
 [tool.cibuildwheel]
-build = "cp37-* cp38-*"
+build = "cp37-* cp38-* cp39-*"
 before-all = """
 if [ -d tmlt/core/ext ]; then
     echo 'Found existing extensions in tmlt/core/ext -- please clean your environment before building'
