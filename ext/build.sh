@@ -38,6 +38,12 @@ if [[ "$(uname)" = "Darwin" ]]; then
         echo "Using existing GMP..."
     fi
 else
+    if ! (command -v make && command -v curl && command -v bzip2 && command -v m4) >/dev/null
+    then
+        echo "make, curl, bzip2, and m4 are required to build dependencies from source."
+        exit 1
+    fi
+
     FLINTARB_WITHGMP="--with-mpir=$PREFIX"
 
     # YASM (dependency of MPIR)

@@ -18,12 +18,18 @@ if platform.system() == "Windows":
         flintlib = ctypes.WinDLL(str(_flint_path))  # type: ignore
 elif platform.system() == "Linux":
     with importlib.resources.path(
-        "tmlt.core.ext.lib", "libarb.so.2.14.0"
-    ) as _arb_path, importlib.resources.path(
+        "tmlt.core.ext.lib", "libgmp.so.23.0.3"
+    ) as _gmp_path, importlib.resources.path(
+        "tmlt.core.ext.lib", "libmpfr.so.6.1.0"
+    ) as _mpfr_path, importlib.resources.path(
         "tmlt.core.ext.lib", "libflint.so.17.0.0"
-    ) as _flint_path:
-        arblib = ctypes.CDLL(str(_arb_path))
+    ) as _flint_path, importlib.resources.path(
+        "tmlt.core.ext.lib", "libarb.so.2.14.0"
+    ) as _arb_path:
+        ctypes.CDLL(str(_gmp_path))
+        ctypes.CDLL(str(_mpfr_path))
         flintlib = ctypes.CDLL(str(_flint_path))
+        arblib = ctypes.CDLL(str(_arb_path))
 elif platform.system() == "Darwin":
     with importlib.resources.path(
         "tmlt.core.ext.lib", "libarb-2.14.0.dylib"
