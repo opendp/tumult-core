@@ -32,12 +32,20 @@ elif platform.system() == "Linux":
         arblib = ctypes.CDLL(str(_arb_path))
 elif platform.system() == "Darwin":
     with importlib.resources.path(
+        "tmlt.core.ext.lib", "libgmp.10.dylib"
+    ) as _gmp_path, importlib.resources.path(
+        "tmlt.core.ext.lib", "libmpfr.6.dylib"
+    ) as _mpfr_path, importlib.resources.path(
         "tmlt.core.ext.lib", "libarb-2.14.0.dylib"
     ) as _arb_path, importlib.resources.path(
         "tmlt.core.ext.lib", "libflint-17.dylib"
     ) as _flint_path:
-        arblib = ctypes.CDLL(str(_arb_path))
+        # NOTE: Below, loading with mode=`RTLD_GLOBAL` makes symbols in GMP available
+        # for loading MPFR.
+        ctypes.CDLL(str(_gmp_path), mode=ctypes.RTLD_GLOBAL)
+        ctypes.CDLL(str(_mpfr_path))
         flintlib = ctypes.CDLL(str(_flint_path))
+        arblib = ctypes.CDLL(str(_arb_path))
 else:
     raise RuntimeError(
         "Unrecognized platform. Expected platform.system() to be one of"
