@@ -250,7 +250,7 @@ def create_mock_measurement(
         output_measure: Output measure for the mock.
         is_interactive: Whether the mock should be interactive.
         return_value: Return value for the Measurement's __call__.
-        privacy_function_implemented: If True, raises a :class:`NotImplementedError`
+        privacy_function_implemented: If False, raises a :class:`NotImplementedError`
             with the message "TEST" when the privacy function is called.
         privacy_function_return_value: Return value for the Measurement's privacy
             function.
