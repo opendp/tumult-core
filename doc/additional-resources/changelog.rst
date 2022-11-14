@@ -3,6 +3,17 @@
 Changelog
 =========
 
+0.6.0 - 2022-11-14
+------------------
+
+Added
+~~~~~
+
+-  Added new ``PrivateJoinOnKey`` transformation that works with ``AddRemoveKeys``
+-  Added inverse CDF methods to noise mechanisms.
+
+.. _section-1:
+
 0.5.1 - 2022-11-03
 ------------------
 
@@ -11,7 +22,7 @@ Fixed
 
 -  Domains and metrics make copies of mutable constructor arguments and return copies of mutable properties.
 
-.. _section-1:
+.. _section-2:
 
 0.5.0 - 2022-10-14
 ------------------
@@ -31,14 +42,14 @@ Fixed
    That should no longer happen.
 -  ``AddRemoveKeys`` now allows different names for the key column in each dataframe.
 
-.. _section-2:
+.. _section-3:
 
 0.4.3 - 2022-09-01
 ------------------
 
 -  Core now checks to see if the user is running Java 11 or higher. If they are, Core either sets the appropriate Spark options (if Spark is not yet running) or raises an informative exception (if Spark is running and configured incorrectly).
 
-.. _section-3:
+.. _section-4:
 
 0.4.2 - 2022-08-24
 ------------------
@@ -50,10 +61,12 @@ Changed
 
 -  Replaced uses of PySpark DataFrame’s ``intersect`` with inner joins. See https://issues.apache.org/jira/browse/SPARK-40181 for background.
 
-.. _section-4:
+.. _section-5:
 
 0.4.1 - 2022-07-25
 ------------------
+
+.. _added-1:
 
 Added
 ~~~~~
@@ -71,7 +84,7 @@ Changed
 -  Fixed bug in ``ReplaceNulls`` to not allow replacing values for grouping column in ``IfGroupedBy``
 -  Changed ``ReplaceNulls``, ``ReplaceNaNs``, and ``ReplaceInfs`` to only support specific ``IfGroupedBy`` metrics
 
-.. _section-5:
+.. _section-6:
 
 0.3.2 - 2022-06-23
 ------------------
@@ -83,7 +96,7 @@ Changed
 
 -  Moved ``IMMUTABLE_TYPES`` from utils/testing.py to utils/type_utils to avoid importing nose when accessing ``IMMUTABLE_TYPES``
 
-.. _section-6:
+.. _section-7:
 
 0.3.1 - 2022-06-23
 ------------------
@@ -97,12 +110,12 @@ Changed
 -  Reverted change from 0.3.0 “Add checks in ``ParallelComposition`` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.”
 -  Temporarily disabled flaky statistical tests.
 
-.. _section-7:
+.. _section-8:
 
 0.3.0 - 2022-06-22
 ------------------
 
-.. _added-1:
+.. _added-2:
 
 Added
 ~~~~~
@@ -142,7 +155,7 @@ Removed
 0.2.0 - 2022-04-12 (internal release)
 -------------------------------------
 
-.. _added-2:
+.. _added-3:
 
 Added
 ~~~~~
@@ -158,7 +171,7 @@ Added
 0.1.1 - 2022-02-24 (internal release)
 -------------------------------------
 
-.. _added-3:
+.. _added-4:
 
 Added
 ~~~~~
@@ -198,7 +211,7 @@ Removed
 0.1.0 - 2022-02-14 (internal release)
 -------------------------------------
 
-.. _added-4:
+.. _added-5:
 
 Added
 ~~~~~
