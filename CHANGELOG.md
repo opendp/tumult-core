@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 - 2022-11-14
 ### Added
 - Added new `PrivateJoinOnKey` transformation that works with `AddRemoveKeys`
 - Added inverse CDF methods to noise mechanisms.
