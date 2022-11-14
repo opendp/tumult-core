@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
+import datetime
 import logging
 import os
 import sys
-import datetime
 
 _logger = logging.getLogger(__name__)
 
@@ -123,6 +123,10 @@ nitpick_ignore = [
     ("py:class", "ndarray}"),
     # Type Alias not resolved in type hint
     ("py:class", "ExactNumberInput"),
+    ("py:class", "PrivacyBudgetInput"),
+    ("py:class", "PrivacyBudgetValue"),
+    ("py:class", "tmlt.core.measures.PrivacyBudgetInput"),
+    ("py:class", "tmlt.core.measures.PrivacyBudgetValue"),
     # Unable to resolve Base classes
     ("py:class", "Transformation"),
     ("py:class", "ClipType"),

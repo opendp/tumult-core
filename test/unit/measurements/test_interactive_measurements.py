@@ -5,11 +5,12 @@
 
 # pylint: disable=no-self-use
 
-from typing import Any, List, Optional, Type, Union
+from typing import Any, List, Optional, Tuple, Type, Union
 from unittest import TestCase
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import numpy as np
+import sympy as sp
 from parameterized import parameterized, parameterized_class
 
 from tmlt.core.domains.base import Domain
@@ -66,12 +67,21 @@ from tmlt.core.utils.testing import (
 )
 
 
-@parameterized_class([{"output_measure": PureDP()}, {"output_measure": RhoZCDP()}])
+@parameterized_class(
+    [
+        {"output_measure": PureDP(), "privacy_budget": 6},
+        {"output_measure": ApproxDP(), "privacy_budget": (6, sp.Rational("0.1"))},
+        {"output_measure": RhoZCDP(), "privacy_budget": 6},
+    ]
+)
 class TestSequentialComposition(PySparkTest):
     """Tests for :class:`~.SequentialComposition`."""
 
-    output_measure: Union[PureDP, RhoZCDP]
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP]
     """The output measure to use during the tests."""
+
+    privacy_budget: Union[int, Tuple[int, sp.Rational]]
+    """The privacy budget to use during the tests."""
 
     def setUp(self):
         """Set up class."""
@@ -81,7 +91,7 @@ class TestSequentialComposition(PySparkTest):
             input_metric=AbsoluteDifference(),
             output_measure=self.output_measure,
             d_in=1,
-            privacy_budget=6,
+            privacy_budget=self.privacy_budget,
         )
 
     def test_constructor_mutable_arguments(self):
@@ -92,7 +102,7 @@ class TestSequentialComposition(PySparkTest):
             input_metric=DictMetric({"A": AbsoluteDifference()}),
             output_measure=self.output_measure,
             d_in=d_in,
-            privacy_budget=6,
+            privacy_budget=self.privacy_budget,
         )
         d_in["A"] = 1
         d_in["B"] = 2
@@ -106,7 +116,7 @@ class TestSequentialComposition(PySparkTest):
             input_metric=DictMetric({"A": AbsoluteDifference()}),
             output_measure=self.output_measure,
             d_in={"A": 1},
-            privacy_budget=6,
+            privacy_budget=self.privacy_budget,
         )
         assert_property_immutability(measurement, prop_name)
 
@@ -117,11 +127,11 @@ class TestSequentialComposition(PySparkTest):
         self.assertEqual(self.measurement.output_measure, self.output_measure)
         self.assertEqual(self.measurement.is_interactive, True)
         self.assertEqual(self.measurement.d_in, 1)
-        self.assertEqual(self.measurement.privacy_budget, 6)
+        self.assertEqual(self.measurement.privacy_budget, self.privacy_budget)
 
     def test_privacy_function(self):
         """SequentialComposition's privacy function is correct."""
-        self.assertEqual(self.measurement.privacy_function(1), 6)
+        self.assertEqual(self.measurement.privacy_function(1), self.privacy_budget)
 
     def test_privacy_function_invalid_d_in(self):
         """SequentialComposition's privacy function raises error if d_in is invalid."""
@@ -136,27 +146,96 @@ class TestSequentialComposition(PySparkTest):
         self.assertEqual(actual._input_domain, self.measurement.input_domain)
         self.assertEqual(actual._input_metric, self.measurement.input_metric)
         self.assertEqual(actual._output_measure, self.measurement.output_measure)
-        self.assertEqual(actual._remaining_budget, self.measurement.privacy_budget)
+        self.assertEqual(
+            actual._remaining_budget.value, self.measurement.privacy_budget
+        )
         self.assertEqual(actual._data, self.data)
 
 
+@parameterized_class(
+    [
+        {
+            "output_measure": PureDP(),
+            "input_metric": SumOf(AbsoluteDifference()),
+            "composed_measurements": [
+                create_mock_measurement(
+                    output_measure=PureDP(),
+                    is_interactive=True,
+                    privacy_function_implemented=True,
+                    privacy_function_return_value=ExactNumber(6),
+                )
+                for _ in range(3)
+            ],
+            "privacy_budget": 6,
+        },
+        {
+            "output_measure": ApproxDP(),
+            "input_metric": SumOf(AbsoluteDifference()),
+            "composed_measurements": [
+                create_mock_measurement(
+                    output_measure=ApproxDP(),
+                    is_interactive=True,
+                    privacy_function_implemented=True,
+                    privacy_function_return_value=(
+                        ExactNumber(6),
+                        ExactNumber(sp.Rational("0.1")),
+                    ),
+                ),
+                create_mock_measurement(
+                    output_measure=ApproxDP(),
+                    is_interactive=True,
+                    privacy_function_implemented=True,
+                    privacy_function_return_value=(
+                        ExactNumber(2),
+                        ExactNumber(sp.Rational("0.3")),
+                    ),
+                ),
+                create_mock_measurement(
+                    output_measure=ApproxDP(),
+                    is_interactive=True,
+                    privacy_function_implemented=True,
+                    privacy_function_return_value=(
+                        ExactNumber(1),
+                        ExactNumber(sp.Rational("0.2")),
+                    ),
+                ),
+            ],
+            "privacy_budget": (6, sp.Rational("0.3")),
+        },
+        {
+            "output_measure": RhoZCDP(),
+            "input_metric": RootSumOfSquared(AbsoluteDifference()),
+            "composed_measurements": [
+                create_mock_measurement(
+                    output_measure=RhoZCDP(),
+                    is_interactive=True,
+                    privacy_function_implemented=True,
+                    privacy_function_return_value=ExactNumber(6),
+                )
+                for _ in range(3)
+            ],
+            "privacy_budget": 6,
+        },
+    ]
+)
 class TestParallelComposition(PySparkTest):
     """Tests for :class:`~.ParallelComposition`."""
 
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP]
+    """The output measure to use during the tests."""
+
+    composed_measurements: List[Measurement]
+    """The measurements to compose."""
+
+    privacy_budget: Union[int, Tuple[int, sp.Rational]]
+    """The privacy budget to use during the tests."""
+
+    input_metric: Union[SumOf, RootSumOfSquared]
+    """The input metric to use during the tests."""
+
     def setUp(self):
         """Test setup."""
-        self.input_metric = SumOf(AbsoluteDifference())
-        self.input_domain = ListDomain(NumpyIntegerDomain(), length=2)
-        self.output_measure = PureDP()
-        self.composed_measurements = [
-            create_mock_measurement(
-                output_measure=self.output_measure,
-                is_interactive=True,
-                privacy_function_implemented=True,
-                privacy_function_return_value=ExactNumber(6),
-            )
-            for _ in range(2)
-        ]
+        self.input_domain = ListDomain(NumpyIntegerDomain(), length=3)
         self.measurement = ParallelComposition(
             input_domain=self.input_domain,
             input_metric=self.input_metric,
@@ -164,34 +243,7 @@ class TestParallelComposition(PySparkTest):
             measurements=self.composed_measurements,
         )
 
-        self.approxdp_composed_measurements = [
-            create_mock_measurement(
-                output_measure=ApproxDP(),
-                is_interactive=True,
-                privacy_function_implemented=True,
-                privacy_function_return_value=(ExactNumber(6), ExactNumber(0)),
-            ),
-            create_mock_measurement(
-                output_measure=ApproxDP(),
-                is_interactive=True,
-                privacy_function_implemented=True,
-                privacy_function_return_value=(ExactNumber(2), ExactNumber(2)),
-            ),
-            create_mock_measurement(
-                output_measure=ApproxDP(),
-                is_interactive=True,
-                privacy_function_implemented=True,
-                privacy_function_return_value=(ExactNumber(1), ExactNumber(6)),
-            ),
-        ]
-        self.approxdp_measurement = ParallelComposition(
-            input_domain=ListDomain(NumpyIntegerDomain(), length=3),
-            input_metric=self.input_metric,
-            output_measure=ApproxDP(),
-            measurements=self.approxdp_composed_measurements,
-        )
-
-        self.data = [np.int64(10), np.int64(30)]
+        self.data = [np.int64(10), np.int64(30), np.int64(20)]
 
     @parameterized.expand(get_all_props(ParallelComposition))
     def test_property_immutability(self, prop_name: str):
@@ -278,16 +330,9 @@ class TestParallelComposition(PySparkTest):
         self.assertEqual(self.measurement.output_measure, self.output_measure)
         self.assertEqual(self.measurement.is_interactive, True)
 
-    def test_privacy_function_approxdp(self):
-        """ParallelComposition privacy function is correct for ApproxDP"""
-        self.assertEqual(
-            self.approxdp_measurement.privacy_function(1),
-            (ExactNumber(6), ExactNumber(6)),
-        )
-
     def test_privacy_function(self):
         """ParallelComposition's privacy function is correct."""
-        self.assertEqual(self.measurement.privacy_function(1), ExactNumber(6))
+        self.assertEqual(self.measurement.privacy_function(1), self.privacy_budget)
 
     def test_correctness(self):
         """ParallelComposition returns the expected Queryable object."""
@@ -398,17 +443,46 @@ class TestRetirableQueryable(PySparkTest):
             queryable(None)
 
 
+@parameterized_class(
+    [
+        {
+            "output_measure": PureDP(),
+            "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
+        },
+        {
+            "output_measure": ApproxDP(),
+            "budget_quarters": [
+                (0, 0),
+                (sp.Rational("2.5"), sp.Rational("0.1")),
+                (5, sp.Rational("0.2")),
+                (sp.Rational("7.5"), sp.Rational("0.3")),
+                (10, sp.Rational("0.4")),
+            ],
+        },
+        {
+            "output_measure": RhoZCDP(),
+            "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
+        },
+    ]
+)
 class TestSequentialQueryable(PySparkTest):
     """Tests for :class:`~.SequentialQueryable`."""
 
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP]
+    """The output measure to use during the tests."""
+
+    budget_quarters: List
+    """Zero, one quarter, one half, three quarters, and all of the privacy budget."""
+
     def setUp(self):
         """Test setup."""
-        self.construct_queryable = lambda budget=10: SequentialQueryable(
+        self.privacy_budget = self.budget_quarters[4]
+        self.construct_queryable = lambda: SequentialQueryable(
             input_domain=NumpyIntegerDomain(),
             input_metric=AbsoluteDifference(),
             d_in=1,
-            output_measure=PureDP(),
-            privacy_budget=budget,
+            output_measure=self.output_measure,
+            privacy_budget=self.privacy_budget,
             data=np.int64(10),
         )
 
@@ -429,25 +503,23 @@ class TestSequentialQueryable(PySparkTest):
             queryable._d_in, {"A": 2}  # pylint: disable=protected-access
         )
 
-    @parameterized.expand([(10, 9), (float("inf"), float("inf"))])
-    def test_queryable_budget_is_decreased_correctly(
-        self, budget: Any, expected_remaining: Any
-    ):
+    def test_queryable_budget_is_decreased_correctly(self):
         """SequentialQueryable's internal budget is correctly decreased on query."""
-        queryable = self.construct_queryable(budget)
+        queryable = self.construct_queryable()
         queryable(
             MeasurementQuery(
                 measurement=create_mock_measurement(
+                    output_measure=self.output_measure,
                     is_interactive=True,
                     privacy_function_implemented=True,
-                    privacy_function_return_value=1,
+                    privacy_function_return_value=self.budget_quarters[1],
                     return_value=create_mock_queryable(),
                 )
             )
         )
         self.assertEqual(
-            queryable._remaining_budget,  # pylint: disable=protected-access
-            expected_remaining,
+            queryable._remaining_budget.value,  # pylint: disable=protected-access
+            self.budget_quarters[3],
         )
 
     def test_insufficient_budget_remaining(self):
@@ -456,9 +528,10 @@ class TestSequentialQueryable(PySparkTest):
         queryable(
             MeasurementQuery(
                 measurement=create_mock_measurement(
+                    output_measure=self.output_measure,
                     is_interactive=True,
                     privacy_function_implemented=True,
-                    privacy_function_return_value=1,
+                    privacy_function_return_value=self.budget_quarters[2],
                     return_value=create_mock_queryable(),
                 )
             )
@@ -469,9 +542,10 @@ class TestSequentialQueryable(PySparkTest):
             queryable(
                 MeasurementQuery(
                     measurement=create_mock_measurement(
+                        output_measure=self.output_measure,
                         is_interactive=True,
                         privacy_function_implemented=True,
-                        privacy_function_return_value=10,
+                        privacy_function_return_value=self.budget_quarters[3],
                     )
                 )
             )
@@ -483,7 +557,11 @@ class TestSequentialQueryable(PySparkTest):
             ValueError,
             "SequentialQueryable does not answer non-interactive measurement",
         ):
-            queryable(MeasurementQuery(create_mock_measurement()))
+            queryable(
+                MeasurementQuery(
+                    create_mock_measurement(output_measure=self.output_measure)
+                )
+            )
 
     @parameterized.expand(
         [
@@ -518,7 +596,14 @@ class TestSequentialQueryable(PySparkTest):
         expected_error_message: str,
     ):
         """SequentialQueryable raises error if query is incompatible."""
-        queryable = self.construct_queryable()
+        queryable = SequentialQueryable(
+            input_domain=NumpyIntegerDomain(),
+            input_metric=AbsoluteDifference(),
+            d_in=1,
+            output_measure=PureDP(),
+            privacy_budget=10,
+            data=np.int64(10),
+        )
         with self.assertRaisesRegex(ValueError, expected_error_message):
             queryable(
                 MeasurementQuery(
@@ -540,17 +625,19 @@ class TestSequentialQueryable(PySparkTest):
         queryable(
             MeasurementQuery(
                 create_mock_measurement(
+                    output_measure=self.output_measure,
                     is_interactive=True,
                     privacy_function_implemented=privacy_function_implemented,
                     privacy_relation_return_value=True,
-                    privacy_function_return_value=1,
+                    privacy_function_return_value=self.budget_quarters[1],
                     return_value=create_mock_queryable(),
                 ),
-                d_out=6,
+                d_out=self.budget_quarters[2],
             )
         )
         self.assertEqual(
-            queryable._remaining_budget, 4  # pylint: disable=protected-access
+            queryable._remaining_budget.value,  # pylint: disable=protected-access
+            self.budget_quarters[2],
         )
 
     def test_measurement_query_stability_relation_returns_false(self):
@@ -558,17 +645,17 @@ class TestSequentialQueryable(PySparkTest):
         queryable = self.construct_queryable()
         with self.assertRaisesRegex(
             ValueError,
-            "Measurement's privacy relation cannot be satisfied with given d_out"
-            r" \(11\)",
+            "Measurement's privacy relation cannot be satisfied with given d_out",
         ):
             queryable(
                 MeasurementQuery(
                     create_mock_measurement(
+                        output_measure=self.output_measure,
                         is_interactive=True,
                         privacy_function_implemented=False,
                         privacy_relation_return_value=False,
                     ),
-                    d_out=11,
+                    d_out=self.privacy_budget,
                 )
             )
 
@@ -661,9 +748,11 @@ class TestSequentialQueryable(PySparkTest):
         answer = queryable(
             MeasurementQuery(
                 create_mock_measurement(
+                    output_measure=self.output_measure,
                     is_interactive=True,
                     return_value=create_mock_queryable(),
                     privacy_function_implemented=True,
+                    privacy_function_return_value=self.privacy_budget,
                 )
             )
         )
@@ -675,18 +764,20 @@ class TestSequentialQueryable(PySparkTest):
             input_domain=NumpyIntegerDomain(),
             input_metric=AbsoluteDifference(),
             d_in=1,
-            output_measure=PureDP(),
-            privacy_budget=10,
+            output_measure=self.output_measure,
+            privacy_budget=self.privacy_budget,
             data=np.int64(10),
         )
         child1_queryable = queryable(
             MeasurementQuery(
                 create_mock_measurement(
+                    output_measure=self.output_measure,
                     is_interactive=True,
                     privacy_function_implemented=True,
                     return_value=create_mock_queryable(
                         return_value=create_mock_queryable()
                     ),
+                    privacy_function_return_value=self.budget_quarters[1],
                 )
             )
         )
@@ -694,9 +785,11 @@ class TestSequentialQueryable(PySparkTest):
         _ = queryable(
             MeasurementQuery(
                 create_mock_measurement(
+                    output_measure=self.output_measure,
                     is_interactive=True,
                     return_value=create_mock_queryable(),
                     privacy_function_implemented=True,
+                    privacy_function_return_value=self.budget_quarters[1],
                 )
             )
         )
@@ -704,8 +797,18 @@ class TestSequentialQueryable(PySparkTest):
             grandchild_queryable(None)
 
 
+@parameterized_class(
+    [
+        {"output_measure": PureDP()},
+        {"output_measure": ApproxDP()},
+        {"output_measure": RhoZCDP()},
+    ]
+)
 class TestParallelQueryable(PySparkTest):
     """Tests for :class:`~.ParallelQueryable`."""
+
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP]
+    """The output measure to use during the tests."""
 
     def setUp(self):
         """Test setup."""
@@ -713,6 +816,7 @@ class TestParallelQueryable(PySparkTest):
             data=[np.int64(10), np.int64(1)],
             measurements=[
                 create_mock_measurement(
+                    output_measure=self.output_measure,
                     is_interactive=True,
                     return_value=create_mock_queryable(
                         return_value=create_mock_queryable()
@@ -780,11 +884,46 @@ class TestGetAnswerQueryable(PySparkTest):
         )
 
 
+@parameterized_class(
+    [
+        {
+            "output_measure": PureDP(),
+            "splitting_output_metric": SumOf(AbsoluteDifference()),
+            "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
+        },
+        {
+            "output_measure": ApproxDP(),
+            "splitting_output_metric": SumOf(AbsoluteDifference()),
+            "budget_quarters": [
+                (0, 0),
+                (sp.Rational("2.5"), sp.Rational("0.1")),
+                (5, sp.Rational("0.2")),
+                (sp.Rational("7.5"), sp.Rational("0.3")),
+                (10, sp.Rational("0.4")),
+            ],
+        },
+        {
+            "output_measure": RhoZCDP(),
+            "splitting_output_metric": RootSumOfSquared(AbsoluteDifference()),
+            "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
+        },
+    ]
+)
 class TestPrivacyAccountant(PySparkTest):
     """Tests for :class:`~.PrivacyAccountant`."""
 
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP]
+    """The output measure to use during the tests."""
+
+    splitting_output_metric: Union[SumOf, RootSumOfSquared]
+    """The output metric for splitting transformations."""
+
+    budget_quarters: List
+    """Zero, one quarter, one half, three quarters, and all of the privacy budget."""
+
     def setUp(self):
         """Test Setup."""
+        self.privacy_budget = self.budget_quarters[4]
         self.data = self.spark.createDataFrame(
             [(1, "X"), (2, "Y"), (3, "Z")], schema=["A", "B"]
         )
@@ -796,9 +935,9 @@ class TestPrivacyAccountant(PySparkTest):
                 }
             ),
             input_metric=SymmetricDifference(),
-            output_measure=PureDP(),
+            output_measure=self.output_measure,
             d_in=1,
-            privacy_budget=6,
+            privacy_budget=self.privacy_budget,
         )
         self.get_queryable = lambda: self.measurement(self.data)
 
@@ -810,15 +949,15 @@ class TestPrivacyAccountant(PySparkTest):
                 input_domain=DictDomain({"A": NumpyIntegerDomain()}),
                 input_metric=DictMetric({"A": AbsoluteDifference()}),
                 d_in=d_in,
-                output_measure=PureDP(),
-                privacy_budget=10,
+                output_measure=self.output_measure,
+                privacy_budget=self.privacy_budget,
                 data={"A": np.int64(10)},
             ),
             input_metric=DictMetric({"A": AbsoluteDifference()}),
             input_domain=DictDomain({"A": NumpyIntegerDomain()}),
-            output_measure=PureDP(),
+            output_measure=self.output_measure,
             d_in=d_in,
-            privacy_budget=10,
+            privacy_budget=self.privacy_budget,
         )
         d_in["A"] = 1
         d_in["B"] = 2
@@ -834,11 +973,11 @@ class TestPrivacyAccountant(PySparkTest):
                 input_domain=self.measurement.input_domain,
                 input_metric=self.measurement.input_metric,
                 output_domain=ListDomain(NumpyIntegerDomain(), length=4),
-                output_metric=SumOf(AbsoluteDifference()),
+                output_metric=self.splitting_output_metric,
                 return_value=[np.int64(0) for _ in range(4)],
                 stability_function_implemented=True,
             ),
-            privacy_budget=2,
+            privacy_budget=self.budget_quarters[1],
         )
         self.assertEqual(children, accountant.children)
         children.append(accountant)
@@ -878,9 +1017,9 @@ class TestPrivacyAccountant(PySparkTest):
                 parent=parent,
                 input_metric=AbsoluteDifference(),
                 input_domain=NumpyIntegerDomain(),
-                output_measure=PureDP(),
+                output_measure=self.output_measure,
                 d_in=1,
-                privacy_budget=1,
+                privacy_budget=self.privacy_budget,
             )
 
     @patch.object(PrivacyAccountant, "__init__", autospec=True, return_value=None)
@@ -892,10 +1031,10 @@ class TestPrivacyAccountant(PySparkTest):
             spec=SequentialComposition, return_value=mock_queryable
         )
         mock_sequential_composition.d_in = 1
-        mock_sequential_composition.privacy_budget = 10
+        mock_sequential_composition.privacy_budget = self.privacy_budget
         mock_sequential_composition.input_domain = NumpyIntegerDomain()
         mock_sequential_composition.input_metric = AbsoluteDifference()
-        mock_sequential_composition.output_measure = PureDP()
+        mock_sequential_composition.output_measure = self.output_measure
 
         PrivacyAccountant.launch(
             measurement=mock_sequential_composition, data=self.data
@@ -905,9 +1044,9 @@ class TestPrivacyAccountant(PySparkTest):
             queryable=mock_queryable,
             input_domain=NumpyIntegerDomain(),
             input_metric=AbsoluteDifference(),
-            output_measure=PureDP(),
+            output_measure=self.output_measure,
             d_in=1,
-            privacy_budget=10,
+            privacy_budget=self.privacy_budget,
         )
 
     def test_privacy_accountant_properties(self):
@@ -1045,7 +1184,19 @@ class TestPrivacyAccountant(PySparkTest):
     ):
         """PrivacyAccountant raises error when a measurement cannot be answered."""
         accountant = PrivacyAccountant.launch(
-            measurement=self.measurement, data=self.data
+            measurement=SequentialComposition(
+                input_domain=SparkDataFrameDomain(
+                    {
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                ),
+                input_metric=SymmetricDifference(),
+                output_measure=PureDP(),
+                d_in=1,
+                privacy_budget=6,
+            ),
+            data=self.data,
         )
         with self.assertRaisesRegex(error_type, error_message):
             accountant.measure(measurement=measurement)
@@ -1055,7 +1206,6 @@ class TestPrivacyAccountant(PySparkTest):
         accountant = PrivacyAccountant.launch(
             measurement=self.measurement, data=self.data
         )
-        starting_privacy_budget = accountant.privacy_budget
         mock_measurement = create_mock_measurement(
             input_domain=SparkDataFrameDomain(
                 {
@@ -1064,14 +1214,14 @@ class TestPrivacyAccountant(PySparkTest):
                 }
             ),
             input_metric=SymmetricDifference(),
-            output_measure=PureDP(),
+            output_measure=self.output_measure,
             privacy_function_implemented=True,
-            privacy_function_return_value=5,
+            privacy_function_return_value=self.budget_quarters[3],
             return_value=np.int64(2),
         )
         actual_answer = accountant.measure(measurement=mock_measurement)
         self.assertEqual(actual_answer, np.int64(2))
-        self.assertEqual(accountant.privacy_budget, starting_privacy_budget - 5)
+        self.assertEqual(accountant.privacy_budget, self.budget_quarters[1])
 
     def test_measure_consumes_all_privacy_budget(self):
         """Test that measurements are allowed to consume the entire budget."""
@@ -1086,14 +1236,14 @@ class TestPrivacyAccountant(PySparkTest):
                 }
             ),
             input_metric=SymmetricDifference(),
-            output_measure=PureDP(),
+            output_measure=self.output_measure,
             privacy_function_implemented=True,
             privacy_function_return_value=accountant.privacy_budget,
             return_value=np.int64(2),
         )
         actual_answer = accountant.measure(measurement=mock_measurement)
         self.assertEqual(actual_answer, np.int64(2))
-        self.assertEqual(accountant.privacy_budget, ExactNumber(0))
+        self.assertEqual(accountant.privacy_budget, self.budget_quarters[0])
 
     @parameterized.expand(
         [
@@ -1222,7 +1372,6 @@ class TestPrivacyAccountant(PySparkTest):
         accountant = PrivacyAccountant.launch(
             measurement=self.measurement, data=self.data
         )
-        initial_budget = accountant.privacy_budget
         transformation = create_mock_transformation(
             input_domain=SparkDataFrameDomain(
                 {
@@ -1232,16 +1381,16 @@ class TestPrivacyAccountant(PySparkTest):
             ),
             input_metric=SymmetricDifference(),
             output_domain=ListDomain(element_domain=NumpyIntegerDomain(), length=2),
-            output_metric=SumOf(AbsoluteDifference()),
+            output_metric=self.splitting_output_metric,
             stability_function_implemented=True,
             stability_function_return_value=10,
             return_value=[np.int64(2), np.int64(3)],
         )
-        split_budget = 2
+        split_budget = self.budget_quarters[1]
         child_accountants = accountant.split(
             splitting_transformation=transformation, privacy_budget=split_budget
         )
-        self.assertEqual(accountant.privacy_budget, initial_budget - split_budget)
+        self.assertEqual(accountant.privacy_budget, self.budget_quarters[3])
         self.assertEqual(accountant.state, PrivacyAccountantState.WAITING_FOR_CHILDREN)
         self.assertEqual(len(child_accountants), 2)
         for index, child in enumerate(child_accountants):
@@ -1253,7 +1402,7 @@ class TestPrivacyAccountant(PySparkTest):
             )
             self.assertEqual(child.output_measure, accountant.output_measure)
             self.assertEqual(child.d_in, 10)
-            self.assertEqual(child.privacy_budget, 2)
+            self.assertEqual(child.privacy_budget, split_budget)
             expected_state = (
                 PrivacyAccountantState.ACTIVE
                 if index == 0
@@ -1302,12 +1451,12 @@ class TestPrivacyAccountant(PySparkTest):
             ),
             input_metric=SymmetricDifference(),
             output_domain=ListDomain(element_domain=NumpyIntegerDomain(), length=2),
-            output_metric=SumOf(AbsoluteDifference()),
+            output_metric=self.splitting_output_metric,
             stability_function_implemented=True,
             stability_function_return_value=10,
             return_value=[np.int64(2), np.int64(3)],
         )
-        split_budget = 2
+        split_budget = self.budget_quarters[1]
         child_accountants = accountant.split(
             splitting_transformation=split_transformation, privacy_budget=split_budget
         )
@@ -1395,12 +1544,12 @@ class TestPrivacyAccountant(PySparkTest):
             ),
             input_metric=SymmetricDifference(),
             output_domain=ListDomain(element_domain=NumpyIntegerDomain(), length=2),
-            output_metric=SumOf(AbsoluteDifference()),
+            output_metric=self.splitting_output_metric,
             stability_function_implemented=True,
             stability_function_return_value=10,
             return_value=[np.int64(2), np.int64(3)],
         )
-        split_budget = 2
+        split_budget = self.budget_quarters[1]
         accountant.split(
             splitting_transformation=split_transformation, privacy_budget=split_budget
         )
@@ -1456,12 +1605,12 @@ class TestPrivacyAccountant(PySparkTest):
             ),
             input_metric=SymmetricDifference(),
             output_domain=ListDomain(element_domain=NumpyIntegerDomain(), length=2),
-            output_metric=SumOf(AbsoluteDifference()),
+            output_metric=self.splitting_output_metric,
             stability_function_implemented=True,
             stability_function_return_value=10,
             return_value=[np.int64(2), np.int64(3)],
         )
-        split_budget = 2
+        split_budget = self.budget_quarters[1]
         accountant.split(
             splitting_transformation=split_transformation, privacy_budget=split_budget
         )
@@ -1516,13 +1665,14 @@ class TestPrivacyAccountant(PySparkTest):
             ),
             input_metric=SymmetricDifference(),
             output_domain=ListDomain(element_domain=NumpyIntegerDomain(), length=4),
-            output_metric=SumOf(AbsoluteDifference()),
+            output_metric=self.splitting_output_metric,
             stability_function_implemented=True,
             stability_function_return_value=10,
             return_value=[np.int64(2), np.int64(3), np.int64(4), np.int64(5)],
         )
         child_accountants = accountant.split(
-            splitting_transformation=transformation, privacy_budget=2
+            splitting_transformation=transformation,
+            privacy_budget=self.budget_quarters[1],
         )
 
         child_accountants[2].force_activate()
@@ -1559,11 +1709,11 @@ class TestPrivacyAccountant(PySparkTest):
                 input_domain=self.measurement.input_domain,
                 input_metric=self.measurement.input_metric,
                 output_domain=ListDomain(NumpyIntegerDomain(), length=4),
-                output_metric=SumOf(AbsoluteDifference()),
+                output_metric=self.splitting_output_metric,
                 return_value=[np.int64(0) for _ in range(4)],
                 stability_function_implemented=True,
             ),
-            privacy_budget=2,
+            privacy_budget=self.budget_quarters[1],
         )
         with self.assertWarnsRegex(
             RuntimeWarning,
@@ -1582,11 +1732,11 @@ class TestPrivacyAccountant(PySparkTest):
                 input_domain=self.measurement.input_domain,
                 input_metric=self.measurement.input_metric,
                 output_domain=ListDomain(NumpyIntegerDomain(), length=4),
-                output_metric=SumOf(AbsoluteDifference()),
+                output_metric=self.splitting_output_metric,
                 return_value=[np.int64(0) for _ in range(4)],
                 stability_function_implemented=True,
             ),
-            privacy_budget=2,
+            privacy_budget=self.budget_quarters[1],
         )
         assert len(children) == 4
         assert children[0].state == PrivacyAccountantState.ACTIVE
@@ -1613,11 +1763,11 @@ class TestPrivacyAccountant(PySparkTest):
                 input_domain=self.measurement.input_domain,
                 input_metric=self.measurement.input_metric,
                 output_domain=ListDomain(NumpyIntegerDomain(), length=2),
-                output_metric=SumOf(AbsoluteDifference()),
+                output_metric=self.splitting_output_metric,
                 return_value=[np.int64(0) for _ in range(2)],
                 stability_function_implemented=True,
             ),
-            privacy_budget=2,
+            privacy_budget=self.budget_quarters[1],
         )
         assert accountant.state == PrivacyAccountantState.WAITING_FOR_CHILDREN
         for child in children:
@@ -1626,8 +1776,21 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.state, PrivacyAccountantState.ACTIVE)
 
 
+@parameterized_class(
+    [
+        {"output_measure": PureDP(), "privacy_budget": 6},
+        {"output_measure": ApproxDP(), "privacy_budget": (6, sp.Rational("0.3"))},
+        {"output_measure": RhoZCDP(), "privacy_budget": 6},
+    ]
+)
 class TestDecorateQueryable(TestCase):
     """Tests for DecorateQueryable."""
+
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP]
+    """The output measure to use during the tests."""
+
+    privacy_budget: Union[int, Tuple[int, sp.Rational]]
+    """The privacy budget to use during the tests."""
 
     def setUp(self):
         """Set up class."""
@@ -1636,10 +1799,10 @@ class TestDecorateQueryable(TestCase):
             measurement=create_mock_measurement(
                 input_domain=NumpyIntegerDomain(),
                 input_metric=AbsoluteDifference(),
-                output_measure=PureDP(),
+                output_measure=self.output_measure,
                 is_interactive=True,
                 privacy_function_implemented=True,
-                privacy_function_return_value=6,
+                privacy_function_return_value=self.privacy_budget,
                 return_value=self.mock_queryable,
             ),
             preprocess_query=lambda x: x,
@@ -1655,12 +1818,12 @@ class TestDecorateQueryable(TestCase):
         """SequentialComposition's properties have the expected values."""
         self.assertEqual(self.measurement.input_domain, NumpyIntegerDomain())
         self.assertEqual(self.measurement.input_metric, AbsoluteDifference())
-        self.assertEqual(self.measurement.output_measure, PureDP())
+        self.assertEqual(self.measurement.output_measure, self.output_measure)
         self.assertEqual(self.measurement.is_interactive, True)
 
     def test_privacy_function(self):
         """SequentialComposition's privacy function is correct."""
-        self.assertEqual(self.measurement.privacy_function(1), 6)
+        self.assertEqual(self.measurement.privacy_function(1), self.privacy_budget)
 
     def test_correctness(self):
         """SequentialComposition returns the expected Queryable object."""
@@ -1674,8 +1837,21 @@ class TestDecorateQueryable(TestCase):
         self.assertEqual(actual._queryable, self.mock_queryable)
 
 
+@parameterized_class(
+    [
+        {"output_measure": PureDP(), "privacy_budget": 6},
+        {"output_measure": ApproxDP(), "privacy_budget": (6, sp.Rational("0.3"))},
+        {"output_measure": RhoZCDP(), "privacy_budget": 6},
+    ]
+)
 class TestDecoratedQueryable(TestCase):
     """Tests for DecoratedQueryable."""
+
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP]
+    """The output measure to use during the tests."""
+
+    privacy_budget: Union[int, Tuple[int, sp.Rational]]
+    """The privacy budget to use during the tests."""
 
     def test_correctness(self):
         """Set up class."""
@@ -1685,10 +1861,10 @@ class TestDecoratedQueryable(TestCase):
             measurement=create_mock_measurement(
                 input_domain=NumpyIntegerDomain(),
                 input_metric=AbsoluteDifference(),
-                output_measure=PureDP(),
+                output_measure=self.output_measure,
                 is_interactive=True,
                 privacy_function_implemented=True,
-                privacy_function_return_value=6,
+                privacy_function_return_value=self.privacy_budget,
                 return_value=mock_queryable,
             ),
             preprocess_query=lambda x: 2 * x,
@@ -1699,17 +1875,46 @@ class TestDecoratedQueryable(TestCase):
         self.assertEqual(actual, 2)
 
 
+@parameterized_class(
+    [
+        {
+            "output_measure": PureDP(),
+            "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
+        },
+        {
+            "output_measure": ApproxDP(),
+            "budget_quarters": [
+                (0, 0),
+                (sp.Rational("2.5"), sp.Rational("0.1")),
+                (5, sp.Rational("0.2")),
+                (sp.Rational("7.5"), sp.Rational("0.3")),
+                (10, sp.Rational("0.4")),
+            ],
+        },
+        {
+            "output_measure": RhoZCDP(),
+            "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
+        },
+    ]
+)
 class TestCreateAdaptiveComposition(TestCase):
     """Tests for :func:`~.create_adaptive_composition`."""
 
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP]
+    """The output measure to use during the tests."""
+
+    budget_quarters: List
+    """Zero, one quarter, one half, three quarters, and all of the privacy budget."""
+
     def setUp(self):
         """Test setup."""
+        self.privacy_budget = self.budget_quarters[4]
         self.queryable = create_adaptive_composition(
             input_domain=NumpyIntegerDomain(),
             input_metric=AbsoluteDifference(),
             d_in=1,
-            privacy_budget=2,
-            output_measure=PureDP(),
+            privacy_budget=self.privacy_budget,
+            output_measure=self.output_measure,
         )(np.int64(10))
 
     def test_create_adaptive_composition(self):
@@ -1718,8 +1923,8 @@ class TestCreateAdaptiveComposition(TestCase):
             input_domain=NumpyIntegerDomain(),
             input_metric=AbsoluteDifference(),
             d_in=1,
-            privacy_budget=2,
-            output_measure=PureDP(),
+            privacy_budget=self.privacy_budget,
+            output_measure=self.output_measure,
         )
         self.assertIsInstance(adaptive_composition, DecorateQueryable)
         self.assertIsInstance(adaptive_composition.measurement, SequentialComposition)
@@ -1730,16 +1935,21 @@ class TestCreateAdaptiveComposition(TestCase):
             adaptive_composition.measurement.input_metric, AbsoluteDifference()
         )
         self.assertEqual(adaptive_composition.measurement.d_in, 1)
-        self.assertEqual(adaptive_composition.measurement.privacy_budget, 2)
-        self.assertEqual(adaptive_composition.measurement.output_measure, PureDP())
+        self.assertEqual(
+            adaptive_composition.measurement.privacy_budget, self.privacy_budget
+        )
+        self.assertEqual(
+            adaptive_composition.measurement.output_measure, self.output_measure
+        )
         self.assertIsInstance(adaptive_composition(np.int64(10)), DecoratedQueryable)
 
     def test_correctness(self):
         """Queryable works as expected."""
         query = MeasurementQuery(
             create_mock_measurement(
+                output_measure=self.output_measure,
                 privacy_function_implemented=True,
-                privacy_function_return_value=1,
+                privacy_function_return_value=self.budget_quarters[1],
                 return_value=np.int64(22),
             )
         )
@@ -1758,13 +1968,17 @@ class TestCreateAdaptiveComposition(TestCase):
         """Raises error on insufficient budget."""
         query1 = MeasurementQuery(
             create_mock_measurement(
-                privacy_function_implemented=True, privacy_function_return_value=2
+                output_measure=self.output_measure,
+                privacy_function_implemented=True,
+                privacy_function_return_value=self.budget_quarters[2],
             )
         )
         self.queryable(query1)
         query2 = MeasurementQuery(
             create_mock_measurement(
-                privacy_function_implemented=True, privacy_function_return_value=2
+                output_measure=self.output_measure,
+                privacy_function_implemented=True,
+                privacy_function_return_value=self.budget_quarters[3],
             )
         )
         with self.assertRaisesRegex(

@@ -6,7 +6,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, List, Optional, Union, cast
 from warnings import warn
 
 from typeguard import check_type, typechecked
@@ -14,12 +14,18 @@ from typeguard import check_type, typechecked
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.measurements.base import Measurement
-from tmlt.core.measures import ApproxDP, PureDP, RhoZCDP
+from tmlt.core.measures import (
+    ApproxDP,
+    PrivacyBudget,
+    PrivacyBudgetInput,
+    PrivacyBudgetValue,
+    PureDP,
+    RhoZCDP,
+)
 from tmlt.core.metrics import Metric, RootSumOfSquared, SumOf
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
 from tmlt.core.transformations.identity import Identity
-from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.misc import copy_if_mutable
 
 
@@ -197,8 +203,8 @@ class SequentialQueryable(Queryable):
         input_domain: Domain,
         input_metric: Metric,
         d_in: Any,
-        output_measure: Union[PureDP, RhoZCDP],
-        privacy_budget: ExactNumberInput,
+        output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+        privacy_budget: PrivacyBudgetInput,
         data: Any,
     ):
         """Constructor.
@@ -215,7 +221,7 @@ class SequentialQueryable(Queryable):
         self._input_metric = input_metric
         self._output_measure = output_measure
         self._d_in = copy_if_mutable(d_in)
-        self._remaining_budget = ExactNumber(privacy_budget)
+        self._remaining_budget = PrivacyBudget.cast(output_measure, privacy_budget)
         self._data = copy_if_mutable(data)
         self._previous_queryable: Optional[RetirableQueryable] = None
 
@@ -256,7 +262,7 @@ class SequentialQueryable(Queryable):
             else:
                 privacy_loss = query.measurement.privacy_function(self._d_in)
 
-            if not self._output_measure.compare(privacy_loss, self._remaining_budget):
+            if not self._remaining_budget.can_spend_budget(privacy_loss):
                 raise ValueError(
                     "Cannot answer query without exceeding available privacy budget."
                 )
@@ -264,8 +270,8 @@ class SequentialQueryable(Queryable):
                 self._previous_queryable(RetireQuery())
                 self._previous_queryable = None
 
-            if self._remaining_budget.is_finite:
-                self._remaining_budget = self._remaining_budget - privacy_loss
+            if self._remaining_budget.is_finite():
+                self._remaining_budget = self._remaining_budget.subtract(privacy_loss)
             retirable_answer = RetirableQueryable(query.measurement(self._data))
             self._previous_queryable = retirable_answer
             return retirable_answer
@@ -463,9 +469,9 @@ class SequentialComposition(Measurement):
         self,
         input_domain: Domain,
         input_metric: Metric,
-        output_measure: Union[PureDP, RhoZCDP],
+        output_measure: Union[PureDP, ApproxDP, RhoZCDP],
         d_in: Any,
-        privacy_budget: ExactNumberInput,
+        privacy_budget: PrivacyBudgetInput,
     ):
         """Constructor.
 
@@ -483,9 +489,8 @@ class SequentialComposition(Measurement):
             is_interactive=True,
         )
         self.input_metric.validate(d_in)
-        self.output_measure.validate(privacy_budget)
         self._d_in = copy_if_mutable(d_in)
-        self._privacy_budget = ExactNumber(privacy_budget)
+        self._privacy_budget = PrivacyBudget.cast(output_measure, privacy_budget)
 
     @property
     def d_in(self) -> Any:
@@ -493,17 +498,17 @@ class SequentialComposition(Measurement):
         return copy_if_mutable(self._d_in)
 
     @property
-    def privacy_budget(self) -> ExactNumber:
+    def privacy_budget(self) -> PrivacyBudgetValue:
         """Total privacy budget across all measurements."""
-        return self._privacy_budget
+        return self._privacy_budget.value
 
     @property
-    def output_measure(self) -> Union[PureDP, RhoZCDP]:
+    def output_measure(self) -> Union[PureDP, ApproxDP, RhoZCDP]:
         """Return input domain for the measurement."""
-        return cast(Union[PureDP, RhoZCDP], super().output_measure)
+        return cast(Union[PureDP, ApproxDP, RhoZCDP], super().output_measure)
 
     @typechecked
-    def privacy_function(self, d_in: Any) -> ExactNumber:
+    def privacy_function(self, d_in: Any) -> PrivacyBudgetValue:
         """Returns the smallest d_out satisfied by the measurement.
 
         The returned d_out is the privacy_budget.
@@ -626,9 +631,7 @@ class ParallelComposition(Measurement):
     # Until it is fixed, using a type alias here will cause the doc
     # build to fail.
     @typechecked
-    def privacy_function(
-        self, d_in: Any
-    ) -> Union[ExactNumber, Tuple[ExactNumber, ExactNumber]]:
+    def privacy_function(self, d_in: Any) -> PrivacyBudgetValue:
         """Returns the smallest d_out satisfied by the measurement.
 
         Returns the largest `d_out` from the :meth:`~.Measurement.privacy_function` of
@@ -835,9 +838,9 @@ class PrivacyAccountant:
         queryable: Optional[Queryable],
         input_domain: Domain,
         input_metric: Metric,
-        output_measure: Union[PureDP, RhoZCDP],
+        output_measure: Union[PureDP, ApproxDP, RhoZCDP],
         d_in: Any,
-        privacy_budget: ExactNumberInput,
+        privacy_budget: PrivacyBudgetInput,
         parent: Optional["PrivacyAccountant"] = None,
     ):
         """Constructor.
@@ -857,7 +860,6 @@ class PrivacyAccountant:
             parent: The parent of this :class:`~.PrivacyAccountant`.
         """
         input_metric.validate(d_in)
-        output_measure.validate(privacy_budget)
 
         if parent is None and queryable is None:
             raise ValueError(
@@ -876,7 +878,7 @@ class PrivacyAccountant:
         self._input_metric = input_metric
         self._output_measure = output_measure
         self._d_in = copy_if_mutable(d_in)
-        self._privacy_budget = ExactNumber(privacy_budget)
+        self._privacy_budget = PrivacyBudget.cast(output_measure, privacy_budget)
         self._parent = parent
 
         self._parallel_queryable: Optional[Queryable] = None
@@ -900,7 +902,7 @@ class PrivacyAccountant:
         return self._input_metric
 
     @property
-    def output_measure(self) -> Union[PureDP, RhoZCDP]:
+    def output_measure(self) -> Union[PureDP, ApproxDP, RhoZCDP]:
         """Returns the output measure for measurement outputs."""
         return self._output_measure
 
@@ -910,9 +912,9 @@ class PrivacyAccountant:
         return self._d_in
 
     @property
-    def privacy_budget(self) -> ExactNumber:
+    def privacy_budget(self) -> PrivacyBudgetValue:
         """Returns the remaining privacy budget."""
-        return self._privacy_budget
+        return self._privacy_budget.value
 
     @property
     def state(self) -> PrivacyAccountantState:
@@ -1123,7 +1125,7 @@ class PrivacyAccountant:
         self._d_in = d_out if d_out else transformation.stability_function(self._d_in)
 
     def measure(
-        self, measurement: Measurement, d_out: Optional[ExactNumberInput] = None
+        self, measurement: Measurement, d_out: Optional[PrivacyBudgetInput] = None
     ) -> Any:
         """Returns the answer to `measurement`.
 
@@ -1255,15 +1257,16 @@ class PrivacyAccountant:
                 )
         else:
             d_out = measurement.privacy_function(self.d_in)
+        d_out = cast(PrivacyBudgetInput, d_out)
 
-        if not self.output_measure.compare(d_out, self.privacy_budget):
+        if not self._privacy_budget.can_spend_budget(d_out):
             raise InsufficientBudgetError(
                 f"PrivacyAccountant's remaining privacy budget ({self.privacy_budget})"
                 " is insufficient to answer given measurement."
             )
 
-        if self.privacy_budget.is_finite:
-            self._privacy_budget -= d_out
+        if self._privacy_budget.is_finite():
+            self._privacy_budget = self._privacy_budget.subtract(d_out)
         return self._queryable(
             MeasurementQuery(measurement=MakeInteractive(measurement), d_out=d_out)
         )(None)
@@ -1271,7 +1274,7 @@ class PrivacyAccountant:
     def split(
         self,
         splitting_transformation: Transformation,
-        privacy_budget: ExactNumberInput,
+        privacy_budget: PrivacyBudgetInput,
         d_out: Optional[Any] = None,
     ) -> List["PrivacyAccountant"]:
         r"""Returns new :class:`~.PrivacyAccountant`\ s from splitting the private data.
@@ -1489,7 +1492,7 @@ class PrivacyAccountant:
             )
 
         valid_output_metric = (
-            SumOf if self.output_measure == PureDP() else RootSumOfSquared
+            SumOf if self.output_measure in (PureDP(), ApproxDP()) else RootSumOfSquared
         )
         if not isinstance(splitting_transformation.output_metric, valid_output_metric):
             raise ValueError(
@@ -1500,14 +1503,14 @@ class PrivacyAccountant:
         assert isinstance(
             splitting_transformation.output_metric, (SumOf, RootSumOfSquared)
         )
-        if not self.output_measure.compare(privacy_budget, self.privacy_budget):
+        if not self._privacy_budget.can_spend_budget(privacy_budget):
             raise InsufficientBudgetError(
                 f"PrivacyAccountant's privacy budget ({self.privacy_budget}) is"
                 " insufficient for this operation."
             )
 
-        if self.privacy_budget.is_finite:
-            self._privacy_budget -= privacy_budget
+        if self._privacy_budget.is_finite():
+            self._privacy_budget = self._privacy_budget.subtract(privacy_budget)
 
         self._parallel_queryable = self._queryable(
             MeasurementQuery(
@@ -1777,8 +1780,8 @@ def create_adaptive_composition(
     input_domain: Domain,
     input_metric: Metric,
     d_in: Any,
-    privacy_budget: ExactNumberInput,
-    output_measure: Union[PureDP, RhoZCDP],
+    privacy_budget: PrivacyBudgetInput,
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP],
 ) -> DecorateQueryable:
     r"""Returns a measurement to launch a :class:`~.DecoratedQueryable`.
 
