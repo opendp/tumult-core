@@ -504,7 +504,7 @@ class SequentialComposition(Measurement):
 
     @property
     def output_measure(self) -> Union[PureDP, ApproxDP, RhoZCDP]:
-        """Return input domain for the measurement."""
+        """Return output measure for the measurement."""
         return cast(Union[PureDP, ApproxDP, RhoZCDP], super().output_measure)
 
     @typechecked
