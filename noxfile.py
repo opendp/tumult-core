@@ -312,6 +312,65 @@ def test_examples(session):
             f"Found unknown files in examples: {', '.join(str(f) for f in unknown)}"
         )
 
+### Test various dependency configurations ###
+# Test each with oldest and newest allowable deps. Typeguard and typing-extensions
+# excluded because all of the allowed versions in pyproject.toml claim support
+# for all allowable python versions.
+
+@nox_session
+@install("nose", "parameterized", "coverage")
+@with_clean_workdir
+@nox.parametrize(
+    "python,pyspark,sympy,pandas,numpy,scipy,randomgen",
+[
+    ("3.7", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.4.1", "1.19.0"),
+    ("3.7", "3.1.1", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1"),
+    ("3.7", "3.2.0", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1"),
+    ("3.7", "3.3.1", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1"),
+    ("3.8", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.5.0", "1.19.3"),
+    ("3.8", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
+    ("3.9", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.6.0", "1.20.0"),
+    ("3.9", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
+    ("3.10", "3.0.0", "1.8", "1.3.5", "1.21.2", "1.7.2", "1.23.1"),
+    ("3.10", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
+],
+ids= [
+"3.7-oldest",
+"3.7-pyspark3.1",
+"3.7-pyspark3.2",
+"3.7-newest",
+"3.8-oldest",
+"3.8-newest",
+"3.9-oldest",
+"3.9-newest",
+"3.10-oldest",
+"3.10-newest"],
+)
+def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen):
+    """Run tests using various dependencies."""
+    session.install(
+                f"{PACKAGE_NAME}=={PACKAGE_VERSION}",
+                "--find-links", f"{CWD}/dist/", "--only-binary", PACKAGE_NAME
+            )
+    session.install(
+        f"pyspark=={pyspark}",
+        f"sympy=={sympy}",
+        f"pandas=={pandas}",
+        f"numpy=={numpy}",
+        f"scipy=={scipy}",
+        f"randomgen=={randomgen}")
+    test_options = [
+        "--verbosity=2", "--nocapture", "--logging-level=INFO",
+        "--with-xunit", f"--xunit-file={CWD}/junit.xml",
+        "--with-coverage", "--cover-min-percentage=75%",
+        f"--cover-package={PACKAGE_NAME}", "--cover-branches",
+        "--cover-xml", f"--cover-xml-file={CWD}/coverage.xml",
+        "--cover-html", f"--cover-html-dir={CWD}/coverage/",
+        "-a", "!slow",
+        *[str(p) for p in CODE_DIRS],
+    ]
+    session.run("nosetests", *test_options)
+
 #### Documentation ####
 
 @install_package
@@ -442,7 +501,7 @@ def build(session):
     ("count_sum", 25),
     ("quantile", 84),
     ("noise_mechanism", 7),
-    ("sparkmap", 17),
+    ("sparkmap", 20),
     ("sparkflatmap", 7),
     ("public_join", 14)
 ])

@@ -50,10 +50,10 @@ def _get_java_version() -> Optional[int]:
     # If Spark is running, you can find the current Java version in a non-ugly way
     spark = SparkSession.getActiveSession()
     if spark is not None:
-        # pylint: disable=protected-access
-        long_version = spark.sparkContext._jvm.System.getProperty("java.version")
-        # pylint: enable=protected-access
-        return _simple_java_version(long_version)
+        jvm = spark.sparkContext._jvm  # pylint: disable=protected-access
+        if jvm:
+            long_version = jvm.System.getProperty("java.version")
+            return _simple_java_version(long_version)
 
     # If Spark isn't running, you have to do this the ugly way
     subprocess_env = os.environ.copy()
@@ -128,7 +128,7 @@ def check_java11():
             # This sets the option on the base builder,
             # so it will apply to all SparkSessions created in the future
             # from SparkSession.builder.getOrCreate()
-            SparkSession.builder.config(k, v)
+            SparkSession.builder.config(k, v)  # pylint: disable=missing-kwoa
         # Now everything is configured correctly!
         return
     for k, v in _java11_config_opts().items():
