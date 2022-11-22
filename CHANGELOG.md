@@ -1,10 +1,13 @@
 # Changelog
 
+## Unreleased
+### Added
+- Added approximate DP support to interactive mechanisms.
+
 ## 0.6.0 - 2022-11-14
 ### Added
 - Added new `PrivateJoinOnKey` transformation that works with `AddRemoveKeys`
 - Added inverse CDF methods to noise mechanisms.
-- Added approximate DP support to interactive mechanisms.
 
 ## 0.5.1 - 2022-11-03
 ### Fixed
