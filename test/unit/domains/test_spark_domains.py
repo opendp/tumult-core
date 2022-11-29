@@ -165,8 +165,8 @@ class TestSparkBasedDomains(PySparkTest):
                     [["A", "B", 10], ["V", "E", 12], ["A", "V", 13]],
                     columns=["A", "B", "C"],
                 ),
-                "Found invalid value in column 'C': Column must be "
-                "DoubleType, instead it is LongType.",
+                "Found invalid value in column 'C': Column must be"
+                r" DoubleType(\(\))?, instead it is LongType(\(\))?.",
             ),
             (  # Missing Columns
                 SparkDataFrameDomain,
@@ -616,7 +616,7 @@ class TestSparkColumnDescriptors(PySparkTest):
         else:
             with self.assertRaisesRegex(
                 OutOfDomainError,
-                "Column must be IntegerType, instead it is "
+                r"Column must be IntegerType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.int32_column_descriptor.validate_column(self.test_df, col_name)
@@ -626,7 +626,7 @@ class TestSparkColumnDescriptors(PySparkTest):
         else:
             with self.assertRaisesRegex(
                 OutOfDomainError,
-                "Column must be LongType, instead it is "
+                r"Column must be LongType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.int64_column_descriptor.validate_column(self.test_df, col_name)
@@ -636,7 +636,7 @@ class TestSparkColumnDescriptors(PySparkTest):
         else:
             with self.assertRaisesRegex(
                 OutOfDomainError,
-                "Column must be FloatType, instead it is "
+                r"Column must be FloatType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.float32_column_descriptor.validate_column(self.test_df, col_name)
@@ -649,7 +649,7 @@ class TestSparkColumnDescriptors(PySparkTest):
         else:
             with self.assertRaisesRegex(
                 OutOfDomainError,
-                "Column must be StringType, instead it is "
+                r"Column must be StringType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.str_column_descriptor.validate_column(self.test_df, col_name)
@@ -659,7 +659,7 @@ class TestSparkColumnDescriptors(PySparkTest):
         else:
             with self.assertRaisesRegex(
                 OutOfDomainError,
-                "Column must be DateType, instead it is "
+                r"Column must be DateType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.date_column_descriptor.validate_column(self.test_df, col_name)
@@ -669,7 +669,7 @@ class TestSparkColumnDescriptors(PySparkTest):
         else:
             with self.assertRaisesRegex(
                 OutOfDomainError,
-                "Column must be TimestampType, instead it is "
+                r"Column must be TimestampType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.timestamp_column_descriptor.validate_column(self.test_df, col_name)

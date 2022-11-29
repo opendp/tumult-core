@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-import re
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -106,7 +105,7 @@ class TestGroupBy(PySparkTest):
                 IfGroupedBy("A", SumOf(SymmetricDifference())),
                 [("1",), ("2",)],
                 StructType([StructField("A", StringType())]),
-                "Column must be LongType, instead it is StringType",
+                r"Column must be LongType(\(\))?, instead it is StringType(\(\))?.",
                 OutOfDomainError,
             ),
             (
@@ -151,7 +150,7 @@ class TestGroupBy(PySparkTest):
         """Tests that GroupBy constructor raises appropriate error."""
         if input_domain is None:
             input_domain = self.domain
-        with self.assertRaisesRegex(error_type, re.escape(error_msg)):
+        with self.assertRaisesRegex(error_type, error_msg):
             GroupBy(
                 input_domain=input_domain,
                 input_metric=input_metric,

@@ -4,7 +4,6 @@
 # Copyright Tumult Labs 2022
 
 import datetime
-import functools
 import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
@@ -37,7 +36,6 @@ from tmlt.core.domains.numpy_domains import (
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
-from tmlt.core.utils.misc import get_nonconflicting_string
 
 
 class SparkColumnDescriptor(ABC):
@@ -92,7 +90,7 @@ SparkColumnsDescriptor = Dict[str, SparkColumnDescriptor]
 class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
     """Describes an integer attribute in Spark."""
 
-    SIZE_TO_TYPE = {32: IntegerType, 64: LongType}
+    SIZE_TO_TYPE = {32: IntegerType(), 64: LongType()}
     """Mapping from size to Spark type."""
 
     SIZE_TO_MIN_MAX = {
@@ -131,14 +129,14 @@ class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
     @property
     def data_type(self) -> DataType:
         """Returns data type associated with Spark column."""
-        return self.SIZE_TO_TYPE[self.size]()
+        return self.SIZE_TO_TYPE[self.size]
 
 
 @dataclass(frozen=True)
 class SparkFloatColumnDescriptor(SparkColumnDescriptor):
     """Describes a float attribute in Spark."""
 
-    SIZE_TO_TYPE = {32: FloatType, 64: DoubleType}
+    SIZE_TO_TYPE = {32: FloatType(), 64: DoubleType()}
     """Mapping from size to Spark type."""
 
     allow_nan: bool = False
@@ -213,7 +211,7 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
     @property
     def data_type(self) -> DataType:
         """Returns data type associated with Spark column."""
-        return self.SIZE_TO_TYPE[self.size]()
+        return self.SIZE_TO_TYPE[self.size]
 
 
 @dataclass(frozen=True)
@@ -561,28 +559,24 @@ class SparkGroupedDataFrameDomain(Domain):
 
         # Note that we are using an inner join instead of intersect
         # This is b/c intersect sometimes drops rows for unknown reasons
-        # see https://issues.apache.org/jira/browse/SPARK-40181
-        # We are using column aliases to prevent Spark from raising a warning when
-        # identical domains are being compared.
-        aliases = functools.reduce(
-            lambda all_keys, _: all_keys + [get_nonconflicting_string(all_keys)],
-            self.group_keys.columns,
-            self.group_keys.columns,
-        )[len(self.group_keys.columns) :]
+        #
+        # A previous implementation of this comparison would fail during the
+        # join in some environments (notably on Databricks) with
+        # "AnalysisException: Column ... are ambiguous"; this failure also happens
+        # in the CI when testing environments with pyspark>=3.1.0
+        value_group_keys = value.group_keys.alias("value")
         intersection = self.group_keys.join(
-            value.group_keys,
+            value_group_keys,
             on=[
-                self.group_keys[column].eqNullSafe(
-                    value.group_keys[column].alias(aliases[idx])
-                )
-                for idx, column in enumerate(self.group_keys.columns)
+                self.group_keys[column].eqNullSafe(value_group_keys[column])
+                for column in self.group_keys.columns
             ],
             how="inner",
         )
         # this join duplicates columns, drop the duplicates
-        for column in value.group_keys.columns:
-            intersection = intersection.drop(value.group_keys[column])
-        invalid_group_keys = self.group_keys.union(value.group_keys).subtract(
+        for column in value_group_keys.columns:
+            intersection = intersection.drop(value_group_keys[column])
+        invalid_group_keys = self.group_keys.union(value_group_keys).subtract(
             intersection
         )
         if invalid_group_keys.first():
@@ -634,10 +628,8 @@ class SparkGroupedDataFrameDomain(Domain):
         #
         # A previous implementation of this comparison would fail during the
         # join in some environments (notably on Databricks) with
-        # "AnalysisException: Column ... are ambiguous"; this failure was never
-        # successfully replicated in the CI, so there is no automated test for
-        # it, but the current tests do catch it if run in environments where the
-        # error occurs.
+        # "AnalysisException: Column ... are ambiguous"; this failure also happens
+        # in the CI when testing environments with pyspark>=3.1.0
         other_group_keys = other.group_keys.alias("other")
         intersection = self.group_keys.join(
             other_group_keys,

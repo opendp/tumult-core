@@ -3,6 +3,12 @@
 ## Unreleased
 ### Added
 - Added approximate DP support to interactive mechanisms.
+- Added support for newer Spark versions. Supported versions now include 
+ >=3.0.0, <=3.3.1. 
+
+### Fixed
+- Validation for `SparkedGroupDataFrameDomain`'s used to fail with a Spark `AnalysisException` in some environments. 
+  That should no longer happen.
 
 ## 0.6.0 - 2022-11-14
 ### Added

@@ -353,12 +353,13 @@ def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen):
                 "--find-links", f"{CWD}/dist/", "--only-binary", PACKAGE_NAME
             )
     session.install(
-        f"pyspark=={pyspark}",
+        f"pyspark[sql]=={pyspark}",
         f"sympy=={sympy}",
         f"pandas=={pandas}",
         f"numpy=={numpy}",
         f"scipy=={scipy}",
         f"randomgen=={randomgen}")
+    session.run("pip", "freeze")
     test_options = [
         "--verbosity=2", "--nocapture", "--logging-level=INFO",
         "--with-xunit", f"--xunit-file={CWD}/junit.xml",
