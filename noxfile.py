@@ -502,8 +502,8 @@ def build(session):
     ("count_sum", 25),
     ("quantile", 84),
     ("noise_mechanism", 7),
-    ("sparkmap", 20),
-    ("sparkflatmap", 7),
+    ("sparkmap", 25),
+    ("sparkflatmap", 10),
     ("public_join", 14)
 ])
 @install_package
