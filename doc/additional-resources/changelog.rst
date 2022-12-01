@@ -3,8 +3,26 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Added
+~~~~~
+
+-  Added approximate DP support to interactive mechanisms.
+-  Added support for newer Spark versions. Supported versions now include
+   >=3.0.0, <=3.3.1.
+
+Fixed
+~~~~~
+
+-  Validation for ``SparkedGroupDataFrameDomain``\ ’s used to fail with a Spark ``AnalysisException`` in some environments.
+   That should no longer happen.
+
 0.6.0 - 2022-11-14
 ------------------
+
+.. _added-1:
 
 Added
 ~~~~~
@@ -16,6 +34,8 @@ Added
 
 0.5.1 - 2022-11-03
 ------------------
+
+.. _fixed-1:
 
 Fixed
 ~~~~~
@@ -33,7 +53,7 @@ Changed
 -  Core no longer depends on the ``python-flint`` package, and instead packages libflint and libarb itself.
    Binary wheels are available, and the source distribution includes scripting to build these dependencies from source.
 
-.. _fixed-1:
+.. _fixed-2:
 
 Fixed
 ~~~~~
@@ -66,7 +86,7 @@ Changed
 0.4.1 - 2022-07-25
 ------------------
 
-.. _added-1:
+.. _added-2:
 
 Added
 ~~~~~
@@ -115,7 +135,7 @@ Changed
 0.3.0 - 2022-06-22
 ------------------
 
-.. _added-2:
+.. _added-3:
 
 Added
 ~~~~~
@@ -155,7 +175,7 @@ Removed
 0.2.0 - 2022-04-12 (internal release)
 -------------------------------------
 
-.. _added-3:
+.. _added-4:
 
 Added
 ~~~~~
@@ -171,7 +191,7 @@ Added
 0.1.1 - 2022-02-24 (internal release)
 -------------------------------------
 
-.. _added-4:
+.. _added-5:
 
 Added
 ~~~~~
@@ -211,7 +231,7 @@ Removed
 0.1.0 - 2022-02-14 (internal release)
 -------------------------------------
 
-.. _added-5:
+.. _added-6:
 
 Added
 ~~~~~
