@@ -17,3 +17,4 @@ The following pages explain concepts and advanced topics that come up in Tumult 
    privacy-guarantee
    known-vulnerabilities
    special-values
+   spark

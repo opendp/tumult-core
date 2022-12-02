@@ -22,19 +22,7 @@ session and read in the data:
     from pyspark.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
 
-.. note::
-
-   When using Java 11, some additional configuration must be passed to Spark, so the previous code block would instead be:
-
-   .. code-block::
-
-      from pyspark.sql import SparkSession
-      spark = (
-          SparkSession.builder
-          .config("spark.driver.extraJavaOptions", "-Dio.netty.tryReflectionSetAccessible=true")
-          .config("spark.executor.extraJavaOptions", "-Dio.netty.tryReflectionSetAccessible=true")
-          .getOrCreate()
-      )
+This creates an Core-ready Spark Session. For more details on using Spark sessions with Core, or to troubleshoot, see the :ref:`Spark Topic Guide<Spark>`.
 
 .. testcode::
 
