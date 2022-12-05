@@ -82,7 +82,7 @@ New users probably want to start with the :ref:`installation instructions`.
    **Additional resources**
    ^^^^^^^^^^^^^^^^^^^^^^^^
 
-   Additional resources include the :ref:`changelog <Changelog>`, which
+   Additional resources include the :ref:`changelog <core-changelog>`, which
    describes notable changes to the library,
    :ref:`supporting materials <Bibliography>`,
    as well as :ref:`license information <License>`.
@@ -91,7 +91,7 @@ Contact Information
 ^^^^^^^^^^^^^^^^^^^
 The best place to ask questions, file feature requests, or give feedback about Tumult Core
 is our `Slack server <https://tmltdev.slack.com/join/shared_invite/zt-1bky0mh9v-vOB8azKAVoxmzJDUdWd5Wg#>`__.
-We also use it for announcements of new releases and feature additions. 
+We also use it for announcements of new releases and feature additions.
 
 Documentation License
 ^^^^^^^^^^^^^^^^^^^^^
