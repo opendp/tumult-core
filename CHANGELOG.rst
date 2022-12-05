@@ -1,3 +1,5 @@
+.. _core-changelog:
+
 Changelog
 =========
 
@@ -8,12 +10,12 @@ Added
 ~~~~~
 
 -  Added approximate DP support to interactive mechanisms.
--  Added support for newer Spark versions. Supported versions now include >=3.0.0, <=3.3.1.
+-  Added support for Spark 3.1 through 3.3, in addition to existing support for Spark 3.0.
 
 Fixed
 ~~~~~
 
--  Validation for ``SparkedGroupDataFrameDomain``\ ’s used to fail with a Spark ``AnalysisException`` in some environments.
+-  Validation for ``SparkedGroupDataFrameDomain``\ s used to fail with a Spark ``AnalysisException`` in some environments.
    That should no longer happen.
 
 0.6.0 - 2022-11-14
@@ -22,7 +24,7 @@ Fixed
 Added
 ~~~~~
 
--  Added new ``PrivateJoinOnKey`` transformation that works with ``AddRemoveKeys``
+-  Added new ``PrivateJoinOnKey`` transformation that works with ``AddRemoveKeys``.
 -  Added inverse CDF methods to noise mechanisms.
 
 0.5.1 - 2022-11-03
@@ -76,8 +78,8 @@ Added
 Changed
 ~~~~~~~
 
--  Fixed bug in ``ReplaceNulls`` to not allow replacing values for grouping column in ``IfGroupedBy``
--  Changed ``ReplaceNulls``, ``ReplaceNaNs``, and ``ReplaceInfs`` to only support specific ``IfGroupedBy`` metrics
+-  Fixed bug in ``ReplaceNulls`` to not allow replacing values for grouping column in ``IfGroupedBy``.
+-  Changed ``ReplaceNulls``, ``ReplaceNaNs``, and ``ReplaceInfs`` to only support specific ``IfGroupedBy`` metrics.
 
 0.3.2 - 2022-06-23
 ------------------
@@ -85,7 +87,7 @@ Changed
 Changed
 ~~~~~~~
 
--  Moved ``IMMUTABLE_TYPES`` from utils/testing.py to utils/type_utils to avoid importing nose when accessing ``IMMUTABLE_TYPES``
+-  Moved ``IMMUTABLE_TYPES`` from ``utils/testing.py`` to ``utils/type_utils.py`` to avoid importing nose when accessing ``IMMUTABLE_TYPES``.
 
 0.3.1 - 2022-06-23
 ------------------
