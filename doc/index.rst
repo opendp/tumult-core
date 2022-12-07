@@ -17,17 +17,18 @@ Introduction to Tumult Core
 Tumult Core is a collection of composable components for implementing
 algorithms to perform differentially private computations. The design of Tumult Core
 is based on the design proposed in the `OpenDP White Paper
-<https://projects.iq.harvard.edu/files/opendifferentialprivacy/files/opendp_white_paper_11may2020.pdf>`_,
+<https://projects.iq.harvard.edu/files/opendifferentialprivacy/files/opendp_white_paper_11may2020.pdf>`__,
 and can automatically verify the privacy properties of algorithms constructed
 from Tumult Core components. Tumult Core is scalable, includes a wide variety of components,
 and supports multiple privacy definitions.
 
+A good starting point for new users is the :ref:`installation instructions <installation instructions>`.
+
 Intended Users
 ^^^^^^^^^^^^^^
 
-This library is intended to be used by data scientists and programmers who are familiar with differential privacy.
-
-New users probably want to start with the :ref:`installation instructions`.
+This library is intended for advanced users who need capabilities beyond those available in Tumult Analytics.
+Most users should use `Tumult Analytics <https://docs.tmlt.dev/analytics/>`__ rather than using Tumult Core directly.
 
 .. panels::
    :card: + intro-card text-center

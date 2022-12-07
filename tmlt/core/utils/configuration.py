@@ -62,9 +62,25 @@ def _get_java_version() -> Optional[int]:
         orig_path = os.environ.get("PATH")
         new_path = f"{os.path.join(java_home, 'bin')}:{orig_path}"
         subprocess_env["PATH"] = new_path
-    version = subprocess.check_output(
-        ["java", "-version"], stderr=subprocess.STDOUT, env=subprocess_env
-    )
+    try:
+        version = subprocess.check_output(
+            ["java", "-version"], stderr=subprocess.STDOUT, env=subprocess_env
+        )
+    except FileNotFoundError:
+        warnings.warn(
+            "Unable to locate Java executable to determine version, Tumult Core will "
+            "assume Java 11 or higher. This may indicate that Java is missing from "
+            "your environment.",
+            RuntimeWarning,
+        )
+        return None
+    except subprocess.CalledProcessError:
+        warnings.warn(
+            "Error detecting Java version from executable, Tumult Core will "
+            "assume Java 11 or higher",
+            RuntimeWarning,
+        )
+        return None
     # version is now a bytes() object, which ought to contain a substring
     # that looks like "1.2.345" (including the quotation marks)
     m = re.search(r'"(\d+)\.(\d+).*"', str(version))
