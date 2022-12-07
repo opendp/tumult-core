@@ -3,6 +3,16 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+This is a maintenance release which introduces a number of documentation improvements, but has no publicly-visible API changes.
+
+Fixed
+~~~~~
+
+- :func:`~tmlt.core.utils.configuration.check_java11()` now has the correct behavior when Java is not installed.
+
 0.6.1 - 2022-12-05
 ------------------
 
