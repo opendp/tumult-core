@@ -189,12 +189,15 @@ trigger_analytics_with_core_commit_hash_nightly:
   needs:
     - job: test_nightly
       artifacts: false
+    - job: package_linux
+      artifacts: true
   trigger:
     project: tumult-labs/analytics
     branch: dev
     strategy: depend
   variables:
     CORE_COMMIT_HASH: "$CI_COMMIT_SHA"
+    PARENT_PIPELINE_ID: "$CI_PIPELINE_ID"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       allow_failure: true
