@@ -3,6 +3,15 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Fixed
+~~~~~
+
+- Fixed a bug where PrivateJoin's privacy relation would only accept string keys in the d_in. It now accepts any type of key.
+
+
 0.6.2 - 2022-12-07
 ------------------
 

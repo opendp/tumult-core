@@ -574,10 +574,10 @@ class TestPrivateJoin(PySparkTest):
         """Tests that PrivateJoin's stability relation is correct."""
         join_transformation = PrivateJoin(
             input_domain=DictDomain(
-                {"left": self.left_domain, "right": self.right_domain}
+                {"left": self.left_domain, ("right",): self.right_domain}
             ),
             left_key="left",
-            right_key="right",
+            right_key=("right",),
             left_truncation_strategy=truncation_strategy,
             right_truncation_strategy=truncation_strategy,
             left_truncation_threshold=threshold_left,
@@ -585,7 +585,7 @@ class TestPrivateJoin(PySparkTest):
             join_cols=["B"],
         )
         self.assertEqual(
-            join_transformation.stability_function({"left": 1, "right": 1}), d_out
+            join_transformation.stability_function({"left": 1, ("right",): 1}), d_out
         )
 
     @parameterized.expand(

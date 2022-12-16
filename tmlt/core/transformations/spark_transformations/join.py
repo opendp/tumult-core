@@ -743,7 +743,7 @@ class PrivateJoin(Transformation):
         ]
 
     @typechecked
-    def stability_function(self, d_in: Dict[str, ExactNumberInput]) -> ExactNumber:
+    def stability_function(self, d_in: Dict[Any, ExactNumberInput]) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
         See the privacy and stability tutorial for more information. # TODO(#1320)
