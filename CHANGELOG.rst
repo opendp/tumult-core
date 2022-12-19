@@ -6,6 +6,13 @@ Changelog
 Unreleased
 ----------
 
+Changed
+~~~~~~~
+
+- On Linux, Core previously used `MPIR <https://en.wikipedia.org/wiki/MPIR_(mathematics_software)>`__ as a multi-precision arithmetic library to support `FLINT <https://flintlib.org/>`__ and `Arb <https://arblib.org/>`__.
+  MPIR is no longer maintained, so Core now uses `GMP <https://gmplib.org/>`__ instead.
+  This change does not affect macOS builds, which have always used GMP, and does not change Core's Python API.
+
 Fixed
 ~~~~~
 
