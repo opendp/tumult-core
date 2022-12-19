@@ -18,63 +18,32 @@ case "$(uname)" in
     *) nproc=$(getconf _NPROCESSORS_ONLN) || nproc=2
 esac
 
-if [[ "$(uname)" = "Darwin" ]]; then
-    FLINTARB_WITHGMP="--with-gmp=$PREFIX"
+if ! (command -v make && command -v curl && command -v m4) >/dev/null
+then
+    echo "make, curl, and m4 are required to build dependencies from source."
+    exit 1
+fi
 
-    # GMP
-    if [[ ! -f $PREFIX/lib/GMPVER || "$(cat $PREFIX/lib/GMPVER)" != "$GMPVER" ]]; then
-        curl -O https://gmplib.org/download/gmp/gmp-$GMPVER.tar.xz
-        tar xf gmp-$GMPVER.tar.xz
-        pushd gmp-$GMPVER
-        # Show the output of configfsf.guess
-        ./configfsf.guess
-        ./configure --prefix=$PREFIX --enable-fat --enable-shared=yes --enable-static=no --host=x86_64-apple-darwin
-        make -j $nproc
-        make install
-        echo "$GMPVER" > $PREFIX/lib/GMPVER
-        rm -f $PREFIX/lib/MPFRVER
-        popd
-    else
-        echo "Using existing GMP..."
+# GMP
+if [[ ! -f $PREFIX/lib/GMPVER || "$(cat $PREFIX/lib/GMPVER)" != "$GMPVER" ]]; then
+    configure_args="--prefix=$PREFIX --enable-fat --enable-shared=yes --enable-static=no"
+    if [[ "$(uname)" = "Darwin" ]]; then
+        configure_args="$configure_args --host=x86_64-apple-darwin"
     fi
+    curl -O https://gmplib.org/download/gmp/gmp-$GMPVER.tar.xz
+    tar xf gmp-$GMPVER.tar.xz
+    pushd gmp-$GMPVER
+    # Show the output of configfsf.guess
+    ./configfsf.guess
+    ./configure $configure_args
+    make -j $nproc
+    make check
+    make install
+    echo "$GMPVER" > $PREFIX/lib/GMPVER
+    rm -f $PREFIX/lib/MPFRVER
+    popd
 else
-    if ! (command -v make && command -v curl && command -v bzip2 && command -v m4) >/dev/null
-    then
-        echo "make, curl, bzip2, and m4 are required to build dependencies from source."
-        exit 1
-    fi
-
-    FLINTARB_WITHGMP="--with-mpir=$PREFIX"
-
-    # YASM (dependency of MPIR)
-    if [[ ! -f $PREFIX/lib/YASMVER || "$(cat $PREFIX/lib/YASMVER)" != "$YASMVER" ]]; then
-        curl -L -O https://github.com/yasm/yasm/releases/download/v$YASMVER/yasm-$YASMVER.tar.gz
-        tar xf yasm-$YASMVER.tar.gz
-        pushd yasm-$YASMVER
-        ./configure --prefix=$PREFIX
-        make -j $nproc
-        make install
-        echo "$YASMVER" > $PREFIX/lib/YASMVER
-        rm -f $PREFIX/lib/MPIRVER
-        popd
-    else
-        echo "Using existing YASM..."
-    fi
-
-    # MPIR
-    if [[ ! -f $PREFIX/lib/MPIRVER || "$(cat $PREFIX/lib/MPIRVER)" != "$MPIRVER" ]]; then
-        curl -O https://mpir.org/mpir-$MPIRVER.tar.bz2
-        tar xf mpir-$MPIRVER.tar.bz2
-        pushd mpir-$MPIRVER
-        ./configure --prefix=$PREFIX --with-yasm=$PREFIX/bin/yasm --enable-fat --enable-shared=yes --enable-static=no --enable-gmpcompat
-        make -j $nproc
-        make install
-        echo "$MPIRVER" > $PREFIX/lib/MPIRVER
-        rm -f $PREFIX/lib/MPFRVER
-        popd
-    else
-        echo "Using existing MPIR..."
-    fi
+    echo "Using existing GMP..."
 fi
 
 # MPFR
@@ -97,7 +66,7 @@ if [[ ! -f $PREFIX/lib/FLINTVER || "$(cat $PREFIX/lib/FLINTVER)" != "$FLINTVER" 
     curl -O https://www.flintlib.org/flint-$FLINTVER.tar.gz
     tar xf flint-$FLINTVER.tar.gz
     pushd flint-$FLINTVER
-    ./configure --prefix=$PREFIX $FLINTARB_WITHGMP --with-mpfr=$PREFIX --disable-static
+    ./configure --prefix=$PREFIX --with-gmp=$PREFIX --with-mpfr=$PREFIX --disable-static
     make -j $nproc
     make install
     echo "$FLINTVER" > $PREFIX/lib/FLINTVER
@@ -113,7 +82,7 @@ if [[ ! -f $PREFIX/lib/ARBVER || "$(cat $PREFIX/lib/ARBVER)" != "$ARBVER" ]]; th
     mv $ARBVER.tar.gz arb-$ARBVER.tar.gz
     tar xf arb-$ARBVER.tar.gz
     pushd arb-$ARBVER
-    ./configure --prefix=$PREFIX --with-flint=$PREFIX $FLINTARB_WITHGMP --with-mpfr=$PREFIX --disable-static
+    ./configure --prefix=$PREFIX --with-flint=$PREFIX --with-gmp=$PREFIX --with-mpfr=$PREFIX --disable-static
     make -j $nproc
     make install
     echo "$ARBVER" > $PREFIX/lib/ARBVER
