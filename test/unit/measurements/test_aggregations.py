@@ -19,6 +19,7 @@ from tmlt.core.measurements.aggregations import (
     create_average_measurement,
     create_count_distinct_measurement,
     create_count_measurement,
+    create_partition_selection_measurement,
     create_quantile_measurement,
     create_standard_deviation_measurement,
     create_sum_measurement,
@@ -33,6 +34,8 @@ from tmlt.core.metrics import (
     SymmetricDifference,
 )
 from tmlt.core.transformations.spark_transformations.groupby import GroupBy
+from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
+from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.testing import PySparkTest
 
 
@@ -802,3 +805,61 @@ class TestAggregationMeasurement(PySparkTest):
         self.assertIsInstance(answer, float)
         self.assertLessEqual(answer, 10)
         self.assertGreaterEqual(answer, 0)
+
+    @parameterized.expand(
+        [
+            (float("inf"), 0, 1, 0, 9223372036854775807, None),
+            (
+                ExactNumber(1) / ExactNumber(3),
+                1 - double_sided_geometric_cmf_exact(7 - 2, 3),
+                1,
+                3,
+                7,
+                None,
+            ),
+            (
+                ExactNumber(1) / ExactNumber(17),
+                1 - double_sided_geometric_cmf_exact(10 - 2, 17),
+                1,
+                17,
+                10,
+                None,
+            ),
+            (
+                ExactNumber(2) / ExactNumber(13),
+                2
+                * ExactNumber(sp.E) ** (ExactNumber(2) / ExactNumber(13))
+                * (1 - double_sided_geometric_cmf_exact(50 - 2, 13)),
+                2,
+                13,
+                50,
+                "my_count_column",
+            ),
+        ]
+    )
+    def test_create_partition_selection_measurement(
+        self,
+        epsilon: ExactNumberInput,
+        delta: ExactNumberInput,
+        d_in: ExactNumberInput,
+        expected_alpha: ExactNumberInput,
+        expected_threshold: ExactNumberInput,
+        count_column: Optional[str] = None,
+    ) -> None:
+        """Test create_partition_selection_measurement works correctly."""
+        measurement = create_partition_selection_measurement(
+            input_domain=self.input_domain,
+            epsilon=epsilon,
+            delta=delta,
+            d_in=d_in,
+            count_column=count_column,
+        )
+        self.assertEqual(measurement.alpha, expected_alpha)
+        self.assertEqual(measurement.threshold, expected_threshold)
+        self.assertEqual(measurement.input_domain, self.input_domain)
+        if count_column is not None:
+            self.assertEqual(measurement.count_column, count_column)
+        # Check that measurement.privacy_function(d_in) = (epsilon, delta)
+        measurement_epsilon, measurement_delta = measurement.privacy_function(d_in)
+        self.assertEqual(measurement_epsilon, epsilon)
+        self.assertEqual(measurement_delta, delta)

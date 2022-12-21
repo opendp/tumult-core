@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
+import sympy as sp
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as sf
 from pyspark.sql.types import StructType
@@ -36,7 +37,11 @@ from tmlt.core.measurements.pandas_measurements.series import (
     NoisyQuantile,
 )
 from tmlt.core.measurements.postprocess import PostProcess
-from tmlt.core.measurements.spark_measurements import AddNoiseToColumn, ApplyInPandas
+from tmlt.core.measurements.spark_measurements import (
+    AddNoiseToColumn,
+    ApplyInPandas,
+    GeometricPartitionSelection,
+)
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import (
     HammingDistance,
@@ -57,6 +62,7 @@ from tmlt.core.transformations.spark_transformations.map import (
     Map,
     RowToRowTransformation,
 )
+from tmlt.core.utils.distributions import double_sided_geometric_inverse_cmf
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.misc import get_nonconflicting_string
 from tmlt.core.utils.parameters import calculate_noise_scale
@@ -1389,4 +1395,77 @@ def _create_map_to_compute_deviations(
         ),
         deviations_column,
         squared_deviations_column,
+    )
+
+
+@typechecked
+def create_partition_selection_measurement(
+    input_domain: SparkDataFrameDomain,
+    epsilon: ExactNumberInput,
+    delta: ExactNumberInput,
+    d_in: ExactNumberInput = 1,
+    count_column: Optional[str] = None,
+) -> GeometricPartitionSelection:
+    """Returns a partition selection measurement.
+
+    A partition selection measurement created by this function will have a
+    privacy guarantee such that
+    ``measurement.privacy_function(d_in) = (epsilon, delta)``.
+
+    Args:
+        input_domain: Domain of the input Spark DataFrames. Input cannot contain
+            floating point columns.
+        epsilon: The epsilon portion of the (epsilon, delta) privacy budget that
+            you want this measurement to satisfy.
+        delta: The delta portion of the (epsilon, delta) privacy budget that
+            you want this measurement to satisfy.
+        d_in: The given d_in such that
+            ``measurement.privacy_function(d_in) = (epsilon, delta)``.
+        count_column: Column name for output group counts. If None, output column
+            will be named "count".
+    """
+    d_in = ExactNumber(d_in)
+    epsilon = ExactNumber(epsilon)
+    delta = ExactNumber(delta)
+    alpha: ExactNumberInput
+    threshold: int
+
+    if d_in < 1:
+        raise NotImplementedError(
+            "Creating a partition selection measurement with d_in < 1 is not yet"
+            " supported."
+        )
+    if delta > 1 or delta < 0:
+        raise RuntimeError(
+            f"Delta should be between 0 and 1 (inclusive). Instead, it is {delta}"
+        )
+
+    if d_in != 1:
+        # Convert everything to its d_in=1 equivalent
+        epsilon = epsilon / d_in
+        delta = delta / (d_in * sp.E ** (d_in * epsilon))
+
+    # Special case for infinite privacy budget
+    if epsilon == float("inf"):
+        alpha = 0
+        threshold = 9223372036854775807  # largest Long that Spark supports
+    # Normal cases
+    else:
+        alpha = 1 / epsilon
+        threshold = (
+            int(
+                double_sided_geometric_inverse_cmf(
+                    # These both need to be round_up=False
+                    # otherwise you will not get the result you want
+                    (1 - delta).to_float(round_up=False),
+                    alpha.to_float(round_up=False),
+                )
+            )
+            + 2
+        )
+    return GeometricPartitionSelection(
+        input_domain=input_domain,
+        threshold=threshold,
+        alpha=alpha,
+        count_column=count_column,
     )
