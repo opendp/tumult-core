@@ -57,8 +57,7 @@ def get_immutable_types() -> Tuple[Type, ...]:
     import pandas as pd
     import sympy as sp
     from pyspark.sql import DataFrame
-    from pyspark.sql.types import DataType
-    from pyspark.sql.types import StructType
+    from pyspark.sql.types import DataType, StructType
 
     from tmlt.core.domains.base import Domain
     from tmlt.core.domains.spark_domains import SparkColumnDescriptor

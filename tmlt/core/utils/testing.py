@@ -18,7 +18,7 @@ import pandas as pd
 from nose.tools import nottest
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
-from scipy.stats import chisquare, kstest, laplace
+from scipy.stats import chisquare, kstest, laplace, norm
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
@@ -454,7 +454,8 @@ class FixedGroupDataSet:
         return GroupBy(
             input_domain=self.domain,
             input_metric=SymmetricDifference(),
-            use_l2=noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN,
+            use_l2=noise_mechanism
+            in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN),
             group_keys=self.group_keys,
         )
 
@@ -751,25 +752,28 @@ def get_noise_scales(
     """Get noise scale per output column for an aggregation."""
     budget = ExactNumber(budget)
     assert budget > 0
-    second_if_dgauss = (
-        lambda s1, s2: s1 if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN else s2
+    second_if_gauss = (
+        lambda s1, s2: s1
+        if noise_mechanism
+        not in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN]
+        else s2
     )
     if agg == "count":
-        scale = second_if_dgauss(1 / budget, 1 / (2 * budget))
+        scale = second_if_gauss(1 / budget, 1 / (2 * budget))
         return {"count": scale}
     if agg == "sum":
-        scale = second_if_dgauss(
+        scale = second_if_gauss(
             dataset.upper / budget, dataset.upper ** 2 / (2 * budget)
         )
         return {"sum": scale}
     if agg == "average":
         sod_sensitivity = (dataset.upper - dataset.lower) / 2
         budget_per_subagg = budget / 2
-        sod_scale = second_if_dgauss(
+        sod_scale = second_if_gauss(
             sod_sensitivity / budget_per_subagg,
             sod_sensitivity ** 2 / (2 * budget_per_subagg),
         )
-        count_scale = second_if_dgauss(
+        count_scale = second_if_gauss(
             1 / budget_per_subagg, 1 / (2 * budget_per_subagg)
         )
         return {"sum": sod_scale, "count": count_scale}
@@ -777,15 +781,15 @@ def get_noise_scales(
         sod_sensitivity = (dataset.upper - dataset.lower) / 2
         sos_sensitivity = (dataset.upper ** 2 - dataset.lower ** 2) / 2
         budget_per_subagg = budget / 3
-        sod_scale = second_if_dgauss(
+        sod_scale = second_if_gauss(
             sod_sensitivity / budget_per_subagg,
             sod_sensitivity ** 2 / (2 * budget_per_subagg),
         )
-        sos_scale = second_if_dgauss(
+        sos_scale = second_if_gauss(
             sos_sensitivity / budget_per_subagg,
             sos_sensitivity ** 2 / (2 * budget_per_subagg),
         )
-        count_scale = second_if_dgauss(
+        count_scale = second_if_gauss(
             1 / budget_per_subagg, 1 / (2 * budget_per_subagg)
         )
         return {"sum": sod_scale, "count": count_scale, "sum_of_squares": sos_scale}
@@ -810,6 +814,10 @@ def _create_discrete_gaussian_cmf(loc: int):
 
 def _create_discrete_gaussian_pmf(loc: int):
     return lambda k, noise_scale: discrete_gaussian_pmf(k - loc, noise_scale)
+
+
+def _create_gaussian_cdf(loc: float):
+    return lambda value, noise_scale: norm.cdf(value, loc=loc, scale=noise_scale)
 
 
 def get_prob_functions(
@@ -843,5 +851,9 @@ def get_prob_functions(
                 col: _create_discrete_gaussian_cmf(int(loc))
                 for col, loc in locations.items()
             },
+        }
+    if noise_mechanism == NoiseMechanism.GAUSSIAN:
+        return {
+            "cdfs": {col: _create_gaussian_cdf(loc) for col, loc in locations.items()}
         }
     raise ValueError("This should be unreachable.")

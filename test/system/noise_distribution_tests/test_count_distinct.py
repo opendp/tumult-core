@@ -58,7 +58,8 @@ def _get_count_distinct_test_cases(noise_mechanism: NoiseMechanism):
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
             output_measure=PureDP()
-            if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+            if noise_mechanism
+            not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
             else RhoZCDP(),
             d_out=budget,
             noise_mechanism=noise_mechanism,
@@ -113,3 +114,13 @@ class TestCountDistinctNoiseDistributions(PySparkTest):
         ]
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
+
+    @attr("slow")
+    def test_count_distinct_with_gaussian_noise(self):
+        """`create_count_distinct` adds appropriate Gaussian noise."""
+        cases = [
+            KSTestCase.from_dict(e)
+            for e in _get_count_distinct_test_cases(NoiseMechanism.GAUSSIAN)
+        ]
+        for case in cases:
+            run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)

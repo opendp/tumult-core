@@ -28,6 +28,7 @@ from tmlt.core.measurements.composition import Composition
 from tmlt.core.measurements.converters import PureDPToRhoZCDP
 from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,
+    AddGaussianNoise,
     AddGeometricNoise,
     AddLaplaceNoise,
 )
@@ -74,6 +75,35 @@ class NoiseMechanism(Enum):
     LAPLACE = 1
     GEOMETRIC = 2
     DISCRETE_GAUSSIAN = 3
+    GAUSSIAN = 4
+
+    def check_output_measure(self, output_measure: Union[PureDP, RhoZCDP]) -> None:
+        """Checks if the specified output measure is supported."""
+        if output_measure not in self.supported_output_measure():
+            str_output_measures = ", ".join(
+                [repr(measure) for measure in self.supported_output_measure()]
+            )
+            raise ValueError(
+                f"Output measure {output_measure}"
+                f" is not supported by noise mechanism {self}."
+                f" Supported output measures are {str_output_measures}."
+            )
+
+    def supported_output_measure(self) -> List[Union[PureDP, RhoZCDP]]:
+        """Returns a list of output measures supported by this noise mechanism."""
+        if self == NoiseMechanism.LAPLACE:
+            return [PureDP(), RhoZCDP()]
+        if self == NoiseMechanism.GEOMETRIC:
+            return [PureDP(), RhoZCDP()]
+        if self == NoiseMechanism.DISCRETE_GAUSSIAN:
+            return [RhoZCDP()]
+        if self == NoiseMechanism.GAUSSIAN:
+            return [RhoZCDP()]
+        raise ValueError(f"Unknown noise mechanism {self}")
+
+    def __str__(self) -> str:
+        """Returns a string representation of the noise mechanism."""
+        return self.name.lower().capitalize().replace("_", " ")
 
 
 @typechecked
@@ -121,13 +151,7 @@ def create_count_measurement(
     """
     d_in = ExactNumber(d_in)
     d_out = ExactNumber(d_out)
-    if (
-        noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
-        and output_measure != RhoZCDP()
-    ):
-        raise ValueError(
-            "Discrete Gaussian noise mechanism can only be used with RhoZCDP."
-        )
+    noise_mechanism.check_output_measure(output_measure)
     count_aggregation: Transformation
     if groupby_transformation is None:
         if isinstance(input_metric, IfGroupedBy):
@@ -151,15 +175,24 @@ def create_count_measurement(
             )
         elif noise_mechanism == NoiseMechanism.GEOMETRIC:
             add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
-        else:
-            assert noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+        elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
             add_noise_to_number = AddDiscreteGaussianNoise(
                 sigma_squared=noise_scale ** 2
+            )
+        elif noise_mechanism == NoiseMechanism.GAUSSIAN:
+            add_noise_to_number = AddGaussianNoise(
+                sigma_squared=noise_scale ** 2, input_domain=NumpyIntegerDomain()
+            )
+        else:
+            raise ValueError(
+                f"Unrecognized noise mechanism {noise_mechanism}. "
+                "Supported noise mechanisms are LAPLACE, "
+                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
             )
         count_measurement: Measurement = count_aggregation | add_noise_to_number
         if (
             output_measure == RhoZCDP()
-            and noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+            and PureDP() in noise_mechanism.supported_output_measure()
         ):
             # count_measurement has output_measure PureDP and needs to be wrapped in a
             # converter.
@@ -185,11 +218,24 @@ def create_count_measurement(
         )
     elif noise_mechanism == NoiseMechanism.GEOMETRIC:
         add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
-    else:
-        assert noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+    elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
         add_noise_to_series = AddNoiseToSeries(
             AddDiscreteGaussianNoise(sigma_squared=noise_scale ** 2)
         )
+    elif noise_mechanism == NoiseMechanism.GAUSSIAN:
+        add_noise_to_series = AddNoiseToSeries(
+            AddGaussianNoise(
+                sigma_squared=noise_scale ** 2, input_domain=NumpyIntegerDomain()
+            )
+        )
+
+    else:
+        raise ValueError(
+            f"Unrecognized noise mechanism {noise_mechanism}. "
+            "Supported noise mechanisms are LAPLACE, "
+            "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+        )
+
     assert isinstance(groupby_count.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
         input_domain=groupby_count.output_domain,
@@ -199,7 +245,7 @@ def create_count_measurement(
     count_measurement = groupby_count | add_noise_to_column
     if (
         output_measure == RhoZCDP()
-        and noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+        and PureDP() in noise_mechanism.supported_output_measure()
     ):
         # count_measurement has output_measure PureDP and needs to be wrapped in a
         # converter.
@@ -256,13 +302,7 @@ def create_count_distinct_measurement(
     """
     d_in = ExactNumber(d_in)
     d_out = ExactNumber(d_out)
-    if (
-        noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
-        and output_measure != RhoZCDP()
-    ):
-        raise ValueError(
-            "Discrete Gaussian noise mechanism can only be used with RhoZCDP."
-        )
+    noise_mechanism.check_output_measure(output_measure)
     count_distinct_aggregation: Transformation
     if groupby_transformation is None:
         if isinstance(input_metric, IfGroupedBy):
@@ -286,22 +326,27 @@ def create_count_distinct_measurement(
             )
         elif noise_mechanism == NoiseMechanism.GEOMETRIC:
             add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
-        else:
-            if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN:
-                raise ValueError(
-                    f"Unrecognized noise mechanism {noise_mechanism}. "
-                    "Supported noise mechanisms are LAPLACE, "
-                    "GEOMETRIC, and DISCRETE_GAUSSIAN."
-                )
+        elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
             add_noise_to_number = AddDiscreteGaussianNoise(
                 sigma_squared=noise_scale ** 2
             )
+        elif noise_mechanism == NoiseMechanism.GAUSSIAN:
+            add_noise_to_number = AddGaussianNoise(
+                sigma_squared=noise_scale ** 2, input_domain=NumpyIntegerDomain()
+            )
+        else:
+            raise ValueError(
+                f"Unrecognized noise mechanism {noise_mechanism}. "
+                "Supported noise mechanisms are LAPLACE, "
+                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+            )
+
         count_distinct_measurement: Measurement = (
             count_distinct_aggregation | add_noise_to_number
         )
         if (
             output_measure == RhoZCDP()
-            and noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+            and PureDP() in noise_mechanism.supported_output_measure()
         ):
             # the measurement created above has output_measure PureDP,
             # so it needs to be converted
@@ -337,15 +382,21 @@ def create_count_distinct_measurement(
         )
     elif noise_mechanism == NoiseMechanism.GEOMETRIC:
         add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
-    else:
-        if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN:
-            raise ValueError(
-                f"Unrecognized noise mechanism {noise_mechanism}. "
-                "Supported noise mechanisms are LAPLACE, "
-                "GEOMETRIC, and DISCRETE_GAUSSIAN."
-            )
+    elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
         add_noise_to_series = AddNoiseToSeries(
             AddDiscreteGaussianNoise(sigma_squared=noise_scale ** 2)
+        )
+    elif noise_mechanism == NoiseMechanism.GAUSSIAN:
+        add_noise_to_series = AddNoiseToSeries(
+            AddGaussianNoise(
+                sigma_squared=noise_scale ** 2, input_domain=NumpyIntegerDomain()
+            )
+        )
+    else:
+        raise ValueError(
+            f"Unrecognized noise mechanism {noise_mechanism}. "
+            "Supported noise mechanisms are LAPLACE, "
+            "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
         )
     assert isinstance(groupby_count_distinct.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -356,7 +407,7 @@ def create_count_distinct_measurement(
     count_distinct_measurement = groupby_count_distinct | add_noise_to_column
     if (
         output_measure == RhoZCDP()
-        and noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+        and PureDP() in noise_mechanism.supported_output_measure()
     ):
         # the count_distinct_measurement generated above has the
         # output_measure PureDP, and needs to be converted
@@ -418,13 +469,7 @@ def create_sum_measurement(
     upper = ExactNumber(upper)
     d_in = ExactNumber(d_in)
     d_out = ExactNumber(d_out)
-    if (
-        noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
-        and output_measure != RhoZCDP()
-    ):
-        raise ValueError(
-            "Discrete Gaussian noise mechanism can only be used with RhoZCDP."
-        )
+    noise_mechanism.check_output_measure(output_measure)
     sum_aggregation: Transformation
     measure_column_domain = input_domain[measure_column].to_numpy_domain()
     if not isinstance(measure_column_domain, (NumpyIntegerDomain, NumpyFloatDomain)):
@@ -454,15 +499,25 @@ def create_sum_measurement(
             )
         elif noise_mechanism == NoiseMechanism.GEOMETRIC:
             add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
-        else:
-            assert noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+
+        elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
             add_noise_to_number = AddDiscreteGaussianNoise(
                 sigma_squared=noise_scale ** 2
+            )
+        elif noise_mechanism == NoiseMechanism.GAUSSIAN:
+            add_noise_to_number = AddGaussianNoise(
+                sigma_squared=noise_scale ** 2, input_domain=measure_column_domain
+            )
+        else:
+            raise ValueError(
+                f"Unrecognized noise mechanism d P {noise_mechanism}. "
+                "Supported noise mechanisms are LAPLACE, "
+                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
             )
         sum_measurement: Measurement = sum_aggregation | add_noise_to_number
         if (
             output_measure == RhoZCDP()
-            and noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+            and PureDP() in noise_mechanism.supported_output_measure()
         ):
             # sum_measurement has output_measure PureDP and needs to be wrapped in a
             # converter.
@@ -491,10 +546,21 @@ def create_sum_measurement(
         )
     elif noise_mechanism == NoiseMechanism.GEOMETRIC:
         add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
-    else:
-        assert noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+    elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
         add_noise_to_series = AddNoiseToSeries(
             AddDiscreteGaussianNoise(sigma_squared=noise_scale ** 2)
+        )
+    elif noise_mechanism == NoiseMechanism.GAUSSIAN:
+        add_noise_to_series = AddNoiseToSeries(
+            AddGaussianNoise(
+                sigma_squared=noise_scale ** 2, input_domain=measure_column_domain
+            )
+        )
+    else:
+        raise ValueError(
+            f"Unrecognized noise mechanism {noise_mechanism}. "
+            "Supported noise mechanisms are LAPLACE, "
+            "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
         )
     assert isinstance(sum_aggregation.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -505,7 +571,7 @@ def create_sum_measurement(
     sum_measurement = groupby_sum | add_noise_to_column
     if (
         output_measure == RhoZCDP()
-        and noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+        and PureDP() in noise_mechanism.supported_output_measure()
     ):
         # sum_measurement has output_measure PureDP and needs to be wrapped in a
         # converter.

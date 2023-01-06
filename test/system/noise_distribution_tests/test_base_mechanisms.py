@@ -5,15 +5,18 @@
 
 # pylint: disable=no-member, no-self-use
 
+from typing import Callable, Dict
+
 import numpy as np
 import pandas as pd
 from nose.plugins.attrib import attr
 from parameterized import parameterized
-from scipy.stats import kstest, laplace
+from scipy.stats import kstest, laplace, norm
 
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain
 from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,
+    AddGaussianNoise,
     AddGeometricNoise,
     AddLaplaceNoise,
 )
@@ -57,6 +60,10 @@ def _create_discrete_gaussian_pmf(loc: int):
     return lambda k, noise_scale: discrete_gaussian_pmf(k - loc, noise_scale)
 
 
+def _create_gaussian_cdf(loc: float):
+    return lambda value, noise_scale: norm.cdf(value, loc=loc, scale=noise_scale)
+
+
 # Base Mechanisms Test Instances
 def _create_base_laplace_sampler(
     loc: float, noise_scale: ExactNumberInput, sample_size: int
@@ -71,12 +78,12 @@ def _create_vector_laplace_sampler(
     loc: float, noise_scale: ExactNumberInput, iterations: int = 1
 ):
     def vector_laplace_sampler():
-        add_noise_measuerment = AddNoiseToSeries(
+        add_noise_measurement = AddNoiseToSeries(
             AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=noise_scale)
         )
         samples = np.concatenate(
             [
-                add_noise_measuerment(
+                add_noise_measurement(
                     pd.Series([loc] * (SAMPLE_SIZE // iterations))
                 ).to_numpy()
                 for _ in range(iterations)
@@ -114,10 +121,10 @@ def _create_vector_geometric_sampler(
     loc: int, noise_scale: ExactNumberInput, iterations: int = 1
 ):
     def vector_geometric_sampler():
-        add_noise_measuerment = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
+        add_noise_measurement = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
         samples = np.concatenate(
             [
-                add_noise_measuerment(
+                add_noise_measurement(
                     pd.Series([loc] * (SAMPLE_SIZE // iterations))
                 ).to_numpy()
                 for _ in range(iterations)
@@ -132,12 +139,12 @@ def _create_vector_discrete_gaussian_sampler(
     loc: int, noise_scale: ExactNumberInput, iterations: int = 1
 ):
     def vector_discrete_gaussian_sampler():
-        add_noise_measuerment = AddNoiseToSeries(
+        add_noise_measurement = AddNoiseToSeries(
             AddDiscreteGaussianNoise(sigma_squared=noise_scale)
         )
         samples = np.concatenate(
             [
-                add_noise_measuerment(
+                add_noise_measurement(
                     pd.Series([loc] * (SAMPLE_SIZE // iterations))
                 ).to_numpy()
                 for _ in range(iterations)
@@ -155,6 +162,37 @@ def _create_base_discrete_gaussian_sampler(
         AddDiscreteGaussianNoise(sigma_squared=noise_scale)
     )
     return lambda: {"noisy_vals": add_discrete_gauss_func([loc] * sample_size)}
+
+
+def _create_base_gaussian_sampler(
+    loc: float, noise_scale: ExactNumberInput, sample_size: int
+):
+    add_discrete_gauss_func = np.vectorize(
+        AddGaussianNoise(sigma_squared=noise_scale, input_domain=NumpyFloatDomain())
+    )
+    return lambda: {"noisy_vals": add_discrete_gauss_func([loc] * sample_size)}
+
+
+def _create_vector_gaussian_sampler(
+    loc: float, sigma_squared: ExactNumberInput, iterations: int = 1
+):
+    def vector_gaussian_sampler():
+        add_noise_measurement = AddNoiseToSeries(
+            AddGaussianNoise(
+                input_domain=NumpyFloatDomain(), sigma_squared=sigma_squared
+            )
+        )
+        samples = np.concatenate(
+            [
+                add_noise_measurement(
+                    pd.Series([loc] * (SAMPLE_SIZE // iterations))
+                ).to_numpy()
+                for _ in range(iterations)
+            ]
+        )
+        return {"noisy_vals": samples}
+
+    return vector_gaussian_sampler
 
 
 BASE_GEOMETRIC_TEST_INSTANCES = [
@@ -192,6 +230,32 @@ BASE_DISCRETE_GAUSSIAN_TEST_INSTANCES = [
 ]
 
 
+def create_base_gaussian_sampler(
+    loc: float, sigma_squared: ExactNumberInput, sample_size: int
+) -> Callable[[], Dict[str, np.ndarray]]:
+    """Creates a sampler for the base Gaussian mechanism."""
+    add_gauss_func = np.vectorize(
+        AddGaussianNoise(sigma_squared=sigma_squared, input_domain=NumpyFloatDomain())
+    )
+    return lambda: {"noisy_vals": add_gauss_func([loc] * sample_size)}
+
+
+BASE_GAUSSIAN_TEST_INSTANCES = [
+    {
+        "sampler": sampler,
+        "locations": {"noisy_vals": loc},
+        "scales": {"noisy_vals": noise_scale},
+        "cdfs": {"noisy_vals": _create_gaussian_cdf(loc)},
+    }
+    for loc, noise_scale in [(3.5, "0.3"), (111.3, "10.123")]
+    for sampler in [
+        _create_base_gaussian_sampler(loc, noise_scale, SAMPLE_SIZE),
+        _create_vector_gaussian_sampler(loc, noise_scale),
+        _create_vector_gaussian_sampler(loc, noise_scale, iterations=200),
+    ]
+]
+
+
 class TestBaseMechanismsNoiseDistributions(PySparkTest):
     """KS Tests for continuous noise mechanisms."""
 
@@ -204,20 +268,27 @@ class TestBaseMechanismsNoiseDistributions(PySparkTest):
 
     @attr("slow")
     def test_geometric_noise_distributions(self):
-        """Performs a KS test."""
+        """Performs a Chi Squared test."""
         cases = [ChiSquaredTestCase.from_dict(e) for e in BASE_GEOMETRIC_TEST_INSTANCES]
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
     @attr("slow")
     def test_discrete_gaussian_noise_distributions(self):
-        """Performs a KS test."""
+        """Performs a Chi Squared test."""
         cases = [
             ChiSquaredTestCase.from_dict(e)
             for e in BASE_DISCRETE_GAUSSIAN_TEST_INSTANCES
         ]
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
+
+    @attr("slow")
+    def test_gaussian_noise_distributions(self):
+        """Performs a KS test."""
+        cases = [KSTestCase.from_dict(e) for e in BASE_GAUSSIAN_TEST_INSTANCES]
+        for case in cases:
+            run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
 
 class TestCorrelationDetection(PySparkTest):

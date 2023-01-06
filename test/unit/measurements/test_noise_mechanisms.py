@@ -12,6 +12,7 @@ from parameterized import parameterized
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,
+    AddGaussianNoise,
     AddGeometricNoise,
     AddLaplaceNoise,
 )
@@ -254,3 +255,64 @@ class TestAddDiscreteGaussianNoise(TestComponent):
             expected,
             places=5,
         )
+
+
+class TestAddGaussianNoise(TestComponent):
+    """
+    Tests for class AddGaussianNoise.
+
+    Tests :class:`~tmlt.core.measurements.noise_mechanisms.AddGaussianNoise`.
+    """
+
+    @parameterized.expand(get_all_props(AddGaussianNoise))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        measurement = AddGaussianNoise(
+            input_domain=NumpyIntegerDomain(), sigma_squared=0
+        )
+        assert_property_immutability(measurement, prop_name)
+
+    def test_properties(self):
+        """AddGaussianNoise's properties have the expected values."""
+        measurement = AddGaussianNoise(
+            NumpyFloatDomain(), sigma_squared=sp.Rational("0.5")
+        )
+        self.assertEqual(measurement.input_domain, NumpyFloatDomain())
+        self.assertEqual(measurement.input_metric, AbsoluteDifference())
+        self.assertEqual(measurement.output_measure, RhoZCDP())
+        self.assertEqual(measurement.is_interactive, False)
+        self.assertEqual(measurement.sigma_squared, sp.Rational("0.5"))
+
+    @parameterized.expand([(-0.4,), (np.nan,), ("invalid",)])
+    def test_sigma_squared_validity(self, sigma_squared):
+        """Tests that invalid sigma_squared values are rejected."""
+        with self.assertRaises((ValueError, TypeError)):
+            AddGaussianNoise(
+                input_domain=NumpyIntegerDomain(), sigma_squared=sigma_squared
+            )
+
+    def test_no_noise(self):
+        """Works correctly with no noise."""
+        measurement = AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0)
+        self.assertTrue(measurement.privacy_function(1), sp.oo)
+        self.assertTrue(measurement.privacy_relation(1, sp.oo))
+        self.assertFalse(measurement.privacy_relation(1, sp.Pow(10, 6)))
+        self.assertEqual(measurement(5), 5)
+
+    def test_some_noise(self):
+        """Works correctly with some noise."""
+        measurement = AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=2)
+        self.assertTrue(measurement.privacy_function(1), sp.Rational("0.5"))
+        self.assertTrue(measurement.privacy_relation(1, sp.Rational("0.25")))
+        self.assertFalse(measurement.privacy_relation(1, sp.Rational("0.2499")))
+
+    def test_infinite_noise(self):
+        """Works correctly with infinite noise."""
+        measurement = AddGaussianNoise(
+            input_domain=NumpyFloatDomain(), sigma_squared=sp.oo
+        )
+        self.assertEqual(measurement.privacy_function(1), 0)
+        self.assertTrue(measurement.privacy_relation(1, 0))
+        self.assertTrue(measurement.privacy_relation(1, 1))
+        # Equally likely to return -inf or inf
+        self.assertTrue(np.isinf(measurement(5.0)))
