@@ -531,10 +531,12 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.LAPLACE,
                 NoiseMechanism.GEOMETRIC,
                 NoiseMechanism.DISCRETE_GAUSSIAN,
+                NoiseMechanism.GAUSSIAN,
             ]
             for output_measure in [PureDP(), RhoZCDP()]
             if not (
-                noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+                noise_mechanism
+                in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
                 and output_measure != RhoZCDP()
             )
         ]
@@ -569,10 +571,12 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.LAPLACE,
                 NoiseMechanism.GEOMETRIC,
                 NoiseMechanism.DISCRETE_GAUSSIAN,
+                NoiseMechanism.GAUSSIAN,
             ]
             for output_measure in [PureDP(), RhoZCDP()]
             if not (
-                noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+                noise_mechanism
+                in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
                 and output_measure != RhoZCDP()
             )
         ]
@@ -608,10 +612,12 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.LAPLACE,
                 NoiseMechanism.GEOMETRIC,
                 NoiseMechanism.DISCRETE_GAUSSIAN,
+                NoiseMechanism.GAUSSIAN,
             ]
             for output_measure in [PureDP(), RhoZCDP()]
             if not (
-                noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+                noise_mechanism
+                in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
                 and output_measure != RhoZCDP()
             )
         ]
@@ -650,10 +656,12 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.LAPLACE,
                 NoiseMechanism.GEOMETRIC,
                 NoiseMechanism.DISCRETE_GAUSSIAN,
+                NoiseMechanism.GAUSSIAN,
             ]
             for output_measure in [PureDP(), RhoZCDP()]
             if not (
-                noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+                noise_mechanism
+                in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
                 and output_measure != RhoZCDP()
             )
         ]
@@ -693,10 +701,12 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.LAPLACE,
                 NoiseMechanism.GEOMETRIC,
                 NoiseMechanism.DISCRETE_GAUSSIAN,
+                NoiseMechanism.GAUSSIAN,
             ]
             for output_measure in [PureDP(), RhoZCDP()]
             if not (
-                noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+                noise_mechanism
+                in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
                 and output_measure != RhoZCDP()
             )
         ]
@@ -736,10 +746,12 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.LAPLACE,
                 NoiseMechanism.GEOMETRIC,
                 NoiseMechanism.DISCRETE_GAUSSIAN,
+                NoiseMechanism.GAUSSIAN,
             ]
             for output_measure in [PureDP(), RhoZCDP()]
             if not (
-                noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
+                noise_mechanism
+                in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
                 and output_measure != RhoZCDP()
             )
         ]

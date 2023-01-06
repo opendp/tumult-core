@@ -21,6 +21,7 @@ from tmlt.core.domains.pandas_domains import PandasSeriesDomain
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,
+    AddGaussianNoise,
     AddGeometricNoise,
     AddLaplaceNoise,
 )
@@ -237,7 +238,10 @@ class AddNoiseToSeries(Measurement):
     def __init__(
         self,
         noise_measurement: Union[
-            AddLaplaceNoise, AddGeometricNoise, AddDiscreteGaussianNoise
+            AddLaplaceNoise,
+            AddGeometricNoise,
+            AddDiscreteGaussianNoise,
+            AddGaussianNoise,
         ],
     ):
         """Constructor.
@@ -266,7 +270,9 @@ class AddNoiseToSeries(Measurement):
     @property
     def noise_measurement(
         self,
-    ) -> Union[AddLaplaceNoise, AddGeometricNoise, AddDiscreteGaussianNoise]:
+    ) -> Union[
+        AddLaplaceNoise, AddGeometricNoise, AddDiscreteGaussianNoise, AddGaussianNoise
+    ]:
         """Returns measurement that adds noise to each number in pandas Series."""
         return self._noise_measurement
 

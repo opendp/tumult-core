@@ -44,9 +44,13 @@ def _get_var_stddev_test_cases(
     for count, sum and sum of squares, the expected locations and noise scales for each
     and corresponding cdfs (if noise_mechanism is Laplace) or cmfs and pmfs (otherwise)
     """
+    supports_continuous = noise_mechanism in (
+        NoiseMechanism.LAPLACE,
+        NoiseMechanism.GAUSSIAN,
+    )
     test_cases = []
     sum_locations: Union[List[float], List[int]]
-    if noise_mechanism != NoiseMechanism.LAPLACE:
+    if not supports_continuous:
         sum_locations = [100, 14]
     else:
         sum_locations = [99.78, 13.63]
@@ -59,7 +63,7 @@ def _get_var_stddev_test_cases(
         dataset = FixedGroupDataSet(
             group_vals=group_values,
             num_groups=SAMPLE_SIZE,
-            float_measure_column=noise_mechanism == NoiseMechanism.LAPLACE,
+            float_measure_column=supports_continuous,
         )
         create_measurement = (
             create_standard_deviation_measurement
@@ -70,7 +74,8 @@ def _get_var_stddev_test_cases(
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
             output_measure=PureDP()
-            if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+            if noise_mechanism
+            not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
             else RhoZCDP(),
             measure_column="B",
             lower=dataset.lower,
@@ -179,6 +184,20 @@ class TestVarianceNoiseDistributions(PySparkTest):
         ]
         for case in cases:
             run_test_using_chi_squared_test(
+                case,
+                p_threshold=P_THRESHOLD,
+                noise_scale_fudge_factor=NOISE_SCALE_FUDGE_FACTOR,
+            )
+
+    @attr("slow")
+    def test_variance_with_gaussian_noise(self):
+        """`create_variance_measurement` adds appropriate Gaussian noise."""
+        cases = [
+            KSTestCase.from_dict(e)
+            for e in _get_var_stddev_test_cases(NoiseMechanism.GAUSSIAN, stddev=False)
+        ]
+        for case in cases:
+            run_test_using_ks_test(
                 case,
                 p_threshold=P_THRESHOLD,
                 noise_scale_fudge_factor=NOISE_SCALE_FUDGE_FACTOR,

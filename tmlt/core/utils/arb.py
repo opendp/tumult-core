@@ -484,6 +484,14 @@ def arb_erfinv(x: Arb, prec: int) -> Arb:
     return Arb(z)
 
 
+def arb_sqrt(x: Arb, prec: int) -> Arb:
+    """Returns square root of `x`."""
+    z = ctypes.pointer(_ArbStruct())
+    arblib.arb_init(z)
+    arblib.arb_sqrt(z, x._ptr, prec)
+    return Arb(z)
+
+
 def _int_to_fmpz_t(val: int) -> "ctypes._PointerLike":
     """Returns pointer to a C arbitrary precision integer from a python integer.
 

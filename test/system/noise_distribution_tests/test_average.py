@@ -43,7 +43,11 @@ def _get_average_test_cases(noise_mechanism: NoiseMechanism) -> List[Dict]:
     """
     test_cases = []
     sum_locations: Union[List[float], List[int]]
-    if noise_mechanism != NoiseMechanism.LAPLACE:
+    supports_continuous = noise_mechanism in (
+        NoiseMechanism.LAPLACE,
+        NoiseMechanism.GAUSSIAN,
+    )
+    if not supports_continuous:
         sum_locations = [100, 14]  # Must be integers
     else:
         sum_locations = [99.78, 13.63]
@@ -56,13 +60,14 @@ def _get_average_test_cases(noise_mechanism: NoiseMechanism) -> List[Dict]:
         dataset = FixedGroupDataSet(
             group_vals=group_values,
             num_groups=SAMPLE_SIZE,
-            float_measure_column=noise_mechanism == NoiseMechanism.LAPLACE,
+            float_measure_column=supports_continuous,
         )
         measurement = create_average_measurement(
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
             output_measure=PureDP()
-            if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+            if noise_mechanism
+            not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
             else RhoZCDP(),
             measure_column="B",
             lower=dataset.lower,
@@ -138,3 +143,13 @@ class TestAverageNoiseDistributions(PySparkTest):
         ]
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
+
+    @attr("slow")
+    def test_average_with_gaussian_noise(self):
+        """Average adds noise from expected Gaussian distribution."""
+        cases = [
+            KSTestCase.from_dict(e)
+            for e in _get_average_test_cases(NoiseMechanism.GAUSSIAN)
+        ]
+        for case in cases:
+            run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)

@@ -48,16 +48,18 @@ def _get_sum_test_cases(noise_mechanism: NoiseMechanism):
 
     """
     test_cases = []
-    sum_locations = (
-        [3.5, 111.3] if noise_mechanism == NoiseMechanism.LAPLACE else [3, 111]
+    supports_continuous = noise_mechanism in (
+        NoiseMechanism.LAPLACE,
+        NoiseMechanism.GAUSSIAN,
     )
+    sum_locations = [3.5, 111.3] if supports_continuous else [3, 111]
     privacy_budgets = ["3.3", "0.11"]
     for sum_loc, budget in zip(sum_locations, privacy_budgets):
         group_values = get_values_summing_to_loc(sum_loc, n=3)  # Fixed group size of 3
         dataset = FixedGroupDataSet(
             group_vals=group_values,
             num_groups=SAMPLE_SIZE,
-            float_measure_column=noise_mechanism == NoiseMechanism.LAPLACE,
+            float_measure_column=supports_continuous,
         )
 
         true_answers: Dict[str, Union[float, int]] = {"sum": sum(dataset.group_vals)}
@@ -66,7 +68,8 @@ def _get_sum_test_cases(noise_mechanism: NoiseMechanism):
             input_metric=SymmetricDifference(),
             measure_column="B",
             output_measure=PureDP()
-            if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+            if noise_mechanism
+            not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
             else RhoZCDP(),
             lower=ExactNumber.from_float(min(group_values), round_up=False),
             upper=ExactNumber.from_float(max(group_values), round_up=True),
@@ -75,6 +78,7 @@ def _get_sum_test_cases(noise_mechanism: NoiseMechanism):
             groupby_transformation=dataset.groupby(noise_mechanism),
             sum_column="sum",
         )
+        print(measurement)
         sampler = get_sampler(measurement, dataset, lambda df: df.select("sum"))
         noise_scales = get_noise_scales(
             agg="sum", budget=budget, dataset=dataset, noise_mechanism=noise_mechanism
@@ -88,6 +92,7 @@ def _get_sum_test_cases(noise_mechanism: NoiseMechanism):
                 **prob_functions,
             }
         )
+
     return test_cases
 
 
@@ -122,3 +127,13 @@ class TestUsingKSTest(PySparkTest):
         ]
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
+
+    @attr("slow")
+    def test_sum_with_gaussian_noise(self):
+        """`create_sum_measurement` has expected Gaussian distribution."""
+        cases = [
+            KSTestCase.from_dict(e)
+            for e in _get_sum_test_cases(NoiseMechanism.GAUSSIAN)
+        ]
+        for case in cases:
+            run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)

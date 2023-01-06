@@ -46,7 +46,11 @@ def _get_var_stddev_test_cases(
     """
     test_cases = []
     sum_locations: Union[List[float], List[int]]
-    if noise_mechanism != NoiseMechanism.LAPLACE:
+    supports_continuous = noise_mechanism in (
+        NoiseMechanism.LAPLACE,
+        NoiseMechanism.GAUSSIAN,
+    )
+    if not supports_continuous:
         sum_locations = [100, 14]
     else:
         sum_locations = [99.78, 13.63]
@@ -59,7 +63,7 @@ def _get_var_stddev_test_cases(
         dataset = FixedGroupDataSet(
             group_vals=group_values,
             num_groups=SAMPLE_SIZE,
-            float_measure_column=noise_mechanism == NoiseMechanism.LAPLACE,
+            float_measure_column=supports_continuous,
         )
         create_measurement = (
             create_standard_deviation_measurement
@@ -70,7 +74,8 @@ def _get_var_stddev_test_cases(
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
             output_measure=PureDP()
-            if noise_mechanism != NoiseMechanism.DISCRETE_GAUSSIAN
+            if noise_mechanism
+            not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
             else RhoZCDP(),
             measure_column="B",
             lower=dataset.lower,
@@ -168,6 +173,16 @@ class TestStandardDeviationNoiseDistributions(PySparkTest):
         cases = [
             KSTestCase.from_dict(e)
             for e in _get_var_stddev_test_cases(NoiseMechanism.LAPLACE, stddev=True)
+        ]
+        for case in cases:
+            run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
+
+    @attr("slow")
+    def test_stddev_with_gaussian_noise(self):
+        """`create_standard_deviation_measurement` adds appropriate Gaussian noise."""
+        cases = [
+            KSTestCase.from_dict(e)
+            for e in _get_var_stddev_test_cases(NoiseMechanism.GAUSSIAN, stddev=True)
         ]
         for case in cases:
             run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)

@@ -20,6 +20,7 @@ from tmlt.core.domains.numpy_domains import (
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import AbsoluteDifference
+from tmlt.core.random.continuous_gaussian import gaussian
 from tmlt.core.random.discrete_gaussian import (
     _sample_dlaplace,
     _sample_geometric_exp_slow,
@@ -59,7 +60,7 @@ class AddLaplaceNoise(Measurement):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid scale: {e}")
+            raise ValueError(f"Invalid scale: {e}") from e
 
         if isinstance(input_domain, NumpyFloatDomain) and (
             input_domain.allow_nan or input_domain.allow_inf
@@ -177,7 +178,7 @@ class AddGeometricNoise(Measurement):
                 maximum_is_inclusive=False,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid alpha: {e}")
+            raise ValueError(f"Invalid alpha: {e}") from e
 
         super().__init__(
             input_domain=NumpyIntegerDomain(),
@@ -319,7 +320,7 @@ class AddDiscreteGaussianNoise(Measurement):
                 maximum_is_inclusive=False,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid sigma_squared: {e}")
+            raise ValueError(f"Invalid sigma_squared: {e}") from e
 
         super().__init__(
             input_domain=NumpyIntegerDomain(),
@@ -416,3 +417,101 @@ class AddDiscreteGaussianNoise(Measurement):
             return float("inf")
 
         return discrete_gaussian_inverse_cmf(p=probability, sigma_squared=sigma_squared)
+
+
+class AddGaussianNoise(Measurement):
+    """Add Gaussian noise to a number."""
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: Union[NumpyIntegerDomain, NumpyFloatDomain],
+        sigma_squared: ExactNumberInput,
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: Domain of the input.
+            sigma_squared: Noise scale. This is the variance of the Gaussian
+                distribution to be used for sampling noise.
+        """
+        try:
+            validate_exact_number(
+                value=sigma_squared,
+                allow_nonintegral=True,
+                minimum=0,
+                minimum_is_inclusive=True,
+                maximum=float("inf"),
+                maximum_is_inclusive=True,
+            )
+        except ValueError as e:
+            raise ValueError(f"Invalid sigma_squared: {e}") from e
+
+        super().__init__(
+            input_domain=input_domain,
+            input_metric=AbsoluteDifference(),
+            output_measure=RhoZCDP(),
+            is_interactive=False,
+        )
+        self._sigma_squared = ExactNumber(sigma_squared)
+        self._output_type = DoubleType()
+
+    @property
+    def input_domain(self) -> NumpyDomain:
+        """Return input domain for the measurement."""
+        return cast(NumpyDomain, super().input_domain)
+
+    @property
+    def output_type(self) -> DataType:
+        """Return the output data type after being used as a UDF."""
+        return self._output_type
+
+    @property
+    def sigma_squared(self) -> ExactNumber:
+        """Returns the noise scale."""
+        return self._sigma_squared
+
+    @typechecked
+    def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
+        r"""Returns the smallest d_out satisfied by the measurement.
+
+        The returned d_out is :math:`\frac{d_{in}^2}{2 \cdot \sigma^2}`
+        (:math:`\infty` if :math:`\sigma^2 = 0`).
+
+        where:
+
+        * :math:`d_{in}` is the input argument "d_in"
+        * :math:`\sigma^2` is :attr:`~.sigma_squared`
+
+        See Proposition 1.6 in `this <https://arxiv.org/pdf/1605.02065.pdf>`_ paper.
+
+        Args:
+            d_in: Distance between inputs under input_metric.
+        """
+        self.input_metric.validate(d_in)
+        if self.sigma_squared == 0:
+            return ExactNumber(float("inf"))
+        return (ExactNumber(d_in) ** 2) / (2 * self._sigma_squared)
+
+    def __call__(
+        self, value: Union[np.int32, np.int64, np.float32, np.float64]
+    ) -> float:
+        r"""Adds Gaussian noise with specified scale.
+
+        The added noise has the probability density function
+
+        .. math::
+
+            f(x) = \frac
+            {e^{-(x-\mu)^2/2\sigma^2}}
+            {\sqrt{2\pi}\sigma}
+
+        If :math:`\sigma^2 = \infty`) then the
+        value returned is (:math:`\infty` with probability 1/2 and
+        :math:`-\infty` with probability 1/2
+        """
+        if not self.sigma_squared.is_finite:
+            return random.choice([float("inf"), -float("inf")])
+
+        float_scale = self.sigma_squared.to_float(round_up=True)
+        return float(value + gaussian(u=0, sigma_squared=float_scale))
