@@ -3,6 +3,14 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Added
+~~~~~
+
+- Added measurement for adding Gaussian noise.
+
 0.6.3 - 2022-12-20
 ------------------
 
