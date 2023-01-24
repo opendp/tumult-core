@@ -285,6 +285,11 @@ test_dep_matrix:
   script:
     - pip install -U pip setuptools
     - nox -s "test_multi_deps(${PYTHON_VERSION}-${TEST_TYPE})"
+  cache:
+    - key:
+        prefix: "$PYTHON_VERSION-$TEST_TYPE"
+        files: ["poetry.lock"]
+      paths: [".cache/pip"]
   timeout: 2h
   tags: [aws-c6a.xlarge]
   interruptible: true
