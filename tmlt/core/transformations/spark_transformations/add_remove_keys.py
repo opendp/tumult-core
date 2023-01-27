@@ -33,6 +33,7 @@ For example, consider the following example:
 >>> input_metric = IfGroupedBy("A", SymmetricDifference())
 >>> truncate = LimitRowsPerGroup(
 ...     input_domain=input_domain,
+...     output_metric=SymmetricDifference(),
 ...     grouping_column="A",
 ...     threshold=1,
 ... )
@@ -139,6 +140,7 @@ from tmlt.core.transformations.spark_transformations.persist import (
 )
 from tmlt.core.transformations.spark_transformations.rename import Rename
 from tmlt.core.transformations.spark_transformations.select import Select
+from tmlt.core.transformations.spark_transformations.truncation import LimitRowsPerGroup
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
@@ -149,6 +151,8 @@ class TransformValue(Transformation):
     Transformation (like :class:`~.Filter`) can be applied to a DataFrame and augment
     the input dictionary with the output without violating the closeness of neighboring
     dataframes with :class:`~.AddRemoveKeys`.
+
+    NOTE: This class cannot be instantiated directly.
     """
 
     @typechecked
@@ -173,6 +177,11 @@ class TransformValue(Transformation):
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
         """
+        if self.__class__ == TransformValue:
+            raise ValueError(
+                "Cannot instantiate a TransformValue transformation directly. "
+                "Use one of the subclasses deriving this."
+            )
         if key not in input_domain.key_to_domain:
             raise KeyError(f"{repr(key)} is not one of the input domain's keys")
         if new_key in input_domain.key_to_domain:
@@ -265,6 +274,43 @@ class TransformValue(Transformation):
         output = data.copy()
         output[self.new_key] = self.transformation(output[self.key])
         return output
+
+
+class LimitRowsPerGroupValue(TransformValue):
+    """Applies a :class:`~.LimitRowsPerGroup` to the specified key.
+
+    See :class:`~.TransformValue` and :class:`~.LimitRowsPerGroup` for more
+    information.
+    """
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
+        key: Any,
+        new_key: Any,
+        threshold: int,
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: Domain of input dictionary of Spark DataFrames.
+            input_metric: Input metric for the outer dictionary to dictionary
+                transformation.
+            key: The key for the DataFrame to transform.
+            new_key: The key to put the transformed output in. The key must not already
+                be in the input domain.
+            threshold: The maximum number of rows per group after truncation.
+        """
+        grouping_column = input_metric.df_to_key_column[key]
+        transformation = LimitRowsPerGroup(
+            input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
+            output_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
+            grouping_column=grouping_column,
+            threshold=threshold,
+        )
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
 class FilterValue(TransformValue):

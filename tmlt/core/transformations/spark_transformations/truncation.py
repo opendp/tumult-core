@@ -58,6 +58,7 @@ class LimitRowsPerGroup(Transformation):
         ...             "B": SparkStringColumnDescriptor(),
         ...         }
         ...     ),
+        ...     output_metric=SymmetricDifference(),
         ...     grouping_column="A",
         ...     threshold=2,
         ... )
@@ -77,7 +78,8 @@ class LimitRowsPerGroup(Transformation):
         * Output domain - :class:`~.SparkDataFrameDomain` (matches input domain)
         * Input metric - :class:`~.IfGroupedBy` on the grouping column, with inner
           metric :class:`~.SymmetricDifference`
-        * Output metric - :class:`~.SymmetricDifference`
+        * Output metric - :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`
+          on the grouping column, with inner metric :class:`~.SymmetricDifference`
 
         >>> truncate.input_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
@@ -90,7 +92,8 @@ class LimitRowsPerGroup(Transformation):
 
         Stability Guarantee:
             :class:`~.LimitRowsPerGroup`'s :meth:`~.stability_function` returns
-            `threshold * d_in`.
+            `threshold * d_in` if `output_metric` is `SymmetricDifference()` and `d_in`
+            otherwise.
 
             >>> truncate.stability_function(1)
             2
@@ -100,12 +103,19 @@ class LimitRowsPerGroup(Transformation):
 
     @typechecked
     def __init__(
-        self, input_domain: SparkDataFrameDomain, grouping_column: str, threshold: int
+        self,
+        input_domain: SparkDataFrameDomain,
+        output_metric: Union[SymmetricDifference, IfGroupedBy],
+        grouping_column: str,
+        threshold: int,
     ):
         """Constructor.
 
         Args:
             input_domain: Domain of input DataFrame.
+            output_metric: Distance metric for output DataFrames. This should be
+                `SymmetricDifference()` or
+                `IfGroupedBy(grouping_column, SymmetricDifference())`.
             grouping_column: Name of column defining the groups to truncate.
             threshold: The maximum number of rows per group after truncation.
         """
@@ -113,12 +123,21 @@ class LimitRowsPerGroup(Transformation):
             raise ValueError("Threshold must be nonnegative")
         self._grouping_column = grouping_column
         self._threshold = threshold
+        if isinstance(output_metric, IfGroupedBy):
+            if (
+                output_metric.column != grouping_column
+                or output_metric.inner_metric != SymmetricDifference()
+            ):
+                raise ValueError(
+                    "Output metric must be `SymmetricDifference()` or"
+                    f" `IfGroupedBy({grouping_column}, SymmetricDifference())`"
+                )
         # super init checks that grouping_column is in the domain
         super().__init__(
             input_domain=input_domain,
             input_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
             output_domain=input_domain,
-            output_metric=SymmetricDifference(),
+            output_metric=output_metric,
         )
 
     @property
@@ -141,7 +160,9 @@ class LimitRowsPerGroup(Transformation):
             d_in: Distance between inputs under input_metric.
         """
         self.input_metric.validate(d_in)
-        return ExactNumber(d_in) * self.threshold
+        if self.output_metric == SymmetricDifference():
+            return ExactNumber(d_in) * self.threshold
+        return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns a truncated dataframe."""

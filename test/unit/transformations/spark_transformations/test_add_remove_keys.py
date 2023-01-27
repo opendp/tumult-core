@@ -24,6 +24,7 @@ from tmlt.core.transformations.spark_transformations.add_remove_keys import (
     DropNullsValue,
     FilterValue,
     FlatMapValue,
+    LimitRowsPerGroupValue,
     MapValue,
     PersistValue,
     PublicJoinValue,
@@ -191,6 +192,11 @@ from tmlt.core.utils.testing import (
             "extra_kwargs": {"columns": ["A", "B"]},
             "pandas_to_spark_kwargs": {},
         },
+        {
+            "test_class": LimitRowsPerGroupValue,
+            "extra_kwargs": {"threshold": 2},
+            "pandas_to_spark_kwargs": {},
+        },
     ]
 )
 class TestTransformValueSubclasses(PySparkTest):
@@ -302,6 +308,24 @@ class TestTransformValue(PySparkTest):
             key="key1",
             new_key="key3",
         )
+
+    def test_direct_instantiation_error(self):
+        """Error is raised appropriately when `TransformValue` is instantiated."""
+        df_domain = SparkDataFrameDomain({"A": SparkIntegerColumnDescriptor()})
+        with self.assertRaisesRegex(
+            ValueError, "Cannot instantiate a TransformValue transformation directly"
+        ):
+            TransformValue(
+                input_domain=DictDomain({"OLD": df_domain}),
+                input_metric=AddRemoveKeys({"OLD": "A"}),
+                transformation=create_mock_transformation(
+                    input_domain=df_domain,
+                    input_metric=IfGroupedBy("A", SymmetricDifference()),
+                    output_metric=IfGroupedBy("A", SymmetricDifference()),
+                ),
+                key="OLD",
+                new_key="NEW",
+            )
 
     @parameterized.expand(get_all_props(TransformValue))
     def test_property_immutability(self, prop_name: str):

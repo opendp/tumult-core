@@ -41,6 +41,7 @@ class TestLimitRowsPerGroup(PySparkTest):
         """Tests that given property is immutable."""
         truncate = LimitRowsPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
+            output_metric=SymmetricDifference(),
             grouping_column="A",
             threshold=2,
         )
@@ -50,6 +51,7 @@ class TestLimitRowsPerGroup(PySparkTest):
         """LimitRowsPerGroup's properties have the expected values."""
         transformation = LimitRowsPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
+            output_metric=SymmetricDifference(),
             grouping_column="A",
             threshold=2,
         )
@@ -75,6 +77,7 @@ class TestLimitRowsPerGroup(PySparkTest):
         """Tests that LimitRowsPerGroup works correctly."""
         transformation = LimitRowsPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
+            output_metric=SymmetricDifference(),
             grouping_column=grouping_column,
             threshold=threshold,
         )
@@ -89,6 +92,7 @@ class TestLimitRowsPerGroup(PySparkTest):
         """Tests that supported metrics have the correct stability functions."""
         transformation = LimitRowsPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
+            output_metric=SymmetricDifference(),
             grouping_column="A",
             threshold=threshold,
         )
@@ -103,6 +107,18 @@ class TestLimitRowsPerGroup(PySparkTest):
                 ValueError,
                 "Input metric .* and input domain .* are not compatible.",
             ),
+            (
+                {"output_metric": IfGroupedBy("notA", SymmetricDifference())},
+                ValueError,
+                r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(A,"
+                r" SymmetricDifference\(\)\)`",
+            ),
+            (
+                {"output_metric": IfGroupedBy("A", SumOf(SymmetricDifference()))},
+                ValueError,
+                r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(A,"
+                r" SymmetricDifference\(\)\)`",
+            ),
         ]
     )
     def test_invalid_parameters(
@@ -113,6 +129,7 @@ class TestLimitRowsPerGroup(PySparkTest):
             "input_domain": SparkDataFrameDomain(self.schema),
             "grouping_column": "A",
             "threshold": 1,
+            "output_metric": SymmetricDifference(),
         }
         args.update(updated_args)
         with self.assertRaisesRegex(error_type, error_msg):
