@@ -3,6 +3,23 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Added
+~~~~~
+
+- Added `LimitRowsPerGroupValue` transformation
+
+Changed
+~~~~~~~
+
+- Updated `LimitRowsPerGroup` to require an output metric, and to support the
+  `IfGroupedBy(column, SymmetricDifference())` output metric.
+- Added a check so that `TransformValue` can no longer be instantiated without
+  subclassing.
+
+
 0.7.0 - 2023-02-02
 ------------------
 
