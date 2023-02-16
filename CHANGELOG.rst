@@ -3,6 +3,14 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Changed
+~~~~~~~
+
+- Faster implementation of discrete_gaussian_inverse_cmf.
+
 0.8.0 - 2023-02-14
 ------------------
 

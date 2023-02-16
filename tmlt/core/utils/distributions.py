@@ -265,7 +265,14 @@ def discrete_gaussian_inverse_cmf(p, sigma_squared):
     if isinstance(p, np.ndarray):
         return np.vectorize(discrete_gaussian_inverse_cmf)(p, sigma_squared)
 
-    unnormalized_cmf = p * _discrete_gaussian_normalizing_constant(sigma_squared)
+    # The discrete gaussian distribution is symmetrical with a mean of 0, so CMF(p) =
+    # -CMF(1.0 - p). We use this to always calculate the inverse CMF on a probability
+    # <= 0.5, which reduces the number of cases we need to cover.
+    adjusted_p = p if p <= 0.5 else 1.0 - p
+
+    unnormalized_cmf = adjusted_p * _discrete_gaussian_normalizing_constant(
+        sigma_squared
+    )
 
     def unnormalized_pmf(k):
         return np.exp(-(k ** 2) / (2 * sigma_squared))
@@ -283,17 +290,18 @@ def discrete_gaussian_inverse_cmf(p, sigma_squared):
         while hi != lo:
             mid = hi / 2 + lo / 2
             if unnormalized_pmf(mid) == unnormalized_cmf:
-                return mid
+                return mid if p <= 0.5 else -mid
             elif unnormalized_pmf(mid) < unnormalized_cmf:
                 lo = mid
             else:
                 hi = mid
-        return hi
+        return hi if p <= 0.5 else -hi
 
-    remaining_cmf = unnormalized_cmf
-    current_step = lower_bound
-    while remaining_cmf > 0:
-        remaining_cmf -= unnormalized_pmf(current_step)
-        current_step += 1
+    k = (
+        np.searchsorted(
+            np.cumsum(unnormalized_pmf(np.arange(lower_bound, 0))), unnormalized_cmf
+        )
+        + lower_bound
+    )
 
-    return current_step - 1
+    return k if p <= 0.5 else -k
