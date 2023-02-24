@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+
+- Added `LimitRowsPerKeyPerGroup` and `LimitRowsPerKeyPerGroupValue` transformations
+
 Changed
 ~~~~~~~
 
