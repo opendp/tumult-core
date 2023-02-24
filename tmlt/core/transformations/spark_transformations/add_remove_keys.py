@@ -140,7 +140,10 @@ from tmlt.core.transformations.spark_transformations.persist import (
 )
 from tmlt.core.transformations.spark_transformations.rename import Rename
 from tmlt.core.transformations.spark_transformations.select import Select
-from tmlt.core.transformations.spark_transformations.truncation import LimitRowsPerGroup
+from tmlt.core.transformations.spark_transformations.truncation import (
+    LimitRowsPerGroup,
+    LimitRowsPerKeyPerGroup,
+)
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
@@ -308,6 +311,47 @@ class LimitRowsPerGroupValue(TransformValue):
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             output_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
             grouping_column=grouping_column,
+            threshold=threshold,
+        )
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
+
+
+class LimitRowsPerKeyPerGroupValue(TransformValue):
+    """Applies a :class:`~.LimitRowsPerKeyPerGroup` to the specified key.
+
+    See :class:`~.TransformValue` and :class:`~.LimitRowsPerKeyPerGroup` for more
+    information.
+    """
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
+        key: Any,
+        new_key: Any,
+        key_column: str,
+        threshold: int,
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: Domain of input dictionary of Spark DataFrames.
+            input_metric: Input metric for the outer dictionary to dictionary
+                transformation.
+            key: The key for the DataFrame to transform.
+            new_key: The key to put the transformed output in. The key must not already
+                be in the input domain.
+            key_column: Name of column defining the keys.
+            threshold: The maximum number of rows each unique (key, grouping column
+                value) pair may appear in after truncation.
+        """
+        grouping_column = input_metric.df_to_key_column[key]
+        transformation = LimitRowsPerKeyPerGroup(
+            input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
+            input_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
+            grouping_column=grouping_column,
+            key_column=key_column,
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
