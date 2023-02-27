@@ -475,7 +475,7 @@ class FlatMap(Transformation):
 
             - IfGroupedBy(column, SymmetricDifference())
 
-            :class:`~.PublicJoin`'s :meth:`~.stability_function` returns `d_in`
+            :class:`~.FlatMap`'s :meth:`~.stability_function` returns `d_in`.
     """  # pylint: disable=line-too-long
 
     @typechecked
@@ -483,7 +483,7 @@ class FlatMap(Transformation):
         self,
         metric: Union[SymmetricDifference, IfGroupedBy],
         row_transformer: RowToRowsTransformation,
-        max_num_rows: int,
+        max_num_rows: Optional[int],
     ):
         """Constructor.
 
@@ -491,9 +491,21 @@ class FlatMap(Transformation):
             metric: Distance metric for input and output DataFrames.
             row_transformer: Transformation to apply to each row.
             max_num_rows: The maximum number of rows to allow from `row_transformer`. If
-                more rows are output, the additional rows are suppressed.
+                more rows are output, the additional rows are suppressed. If this value
+                is None, the transformation will not impose a limit on the number of
+                rows. None is only allowed if the metric is
+                IfGroupedBy(SymmetricDifference()).
         """
-        if max_num_rows < 0:
+        if not (
+            isinstance(metric, IfGroupedBy)
+            and isinstance(metric.inner_metric, SymmetricDifference)
+        ):
+            if max_num_rows is None:
+                raise ValueError(
+                    "max_num_rows must be specified if metric is not"
+                    " IfGroupedBy(column, SymmetricDifference())."
+                )
+        if max_num_rows is not None and max_num_rows < 0:
             raise ValueError(f"max_num_rows ({max_num_rows}) must be nonnegative.")
 
         # NOTE: asserts are redundant but needed for mypy
@@ -529,8 +541,8 @@ class FlatMap(Transformation):
         self._row_transformer = row_transformer
 
     @property
-    def max_num_rows(self) -> int:
-        """Returns the enforced stability of this transformation."""
+    def max_num_rows(self) -> Optional[int]:
+        """Returns the enforced stability of this transformation, or None."""
         return self._max_num_rows
 
     @property
@@ -552,11 +564,18 @@ class FlatMap(Transformation):
             self.input_metric.inner_metric, SymmetricDifference
         ):
             return ExactNumber(d_in)
+        # help mypy
+        assert self.max_num_rows is not None
         return ExactNumber(d_in) * self.max_num_rows
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Flat Map."""
-        stable_row_map = lambda row: self.row_transformer(row)[: self.max_num_rows]
+        if self.max_num_rows is None:
+            stable_row_map: Union[
+                Callable[[Any], List[Row]], RowToRowsTransformation
+            ] = self.row_transformer
+        else:
+            stable_row_map = lambda row: self.row_transformer(row)[: self.max_num_rows]
         mapped_rdd = sdf.rdd.flatMap(stable_row_map)
         assert isinstance(self.output_domain, SparkDataFrameDomain)
         spark = SparkSession.builder.getOrCreate()

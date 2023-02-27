@@ -460,7 +460,7 @@ class FlatMapValue(TransformValue):
         key: Any,
         new_key: Any,
         row_transformer: RowToRowsTransformation,
-        max_num_rows: int,
+        max_num_rows: Optional[int],
     ):
         """Constructor.
 
@@ -473,7 +473,9 @@ class FlatMapValue(TransformValue):
                 be in the input domain.
             row_transformer: Transformation to apply to each row.
             max_num_rows: The maximum number of rows to allow from `row_transformer`. If
-                more rows are output, the additional rows are suppressed.
+                more rows are output, the additional rows are suppressed. If this value
+                is None, the transformation will not impose a limit on the number of
+                rows.
         """
         transformation = FlatMap(
             metric=IfGroupedBy(
