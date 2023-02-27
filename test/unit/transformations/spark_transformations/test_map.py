@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-from typing import Callable, List, Union
+from typing import Callable, List, Optional, Union
 
 import pandas as pd
 import sympy as sp
@@ -333,6 +333,53 @@ class TestFlatMap(TestComponent):
 
     @parameterized.expand(
         [
+            (
+                IfGroupedBy("B", SumOf(SymmetricDifference())),
+                1,
+                pd.DataFrame([[1.2, "X"]], columns=["A", "B"]),
+                1,
+            ),
+            (
+                IfGroupedBy("B", SumOf(SymmetricDifference())),
+                2,
+                pd.DataFrame([[1.2, "X"], [1.2, "X"]], columns=["A", "B"]),
+                2,
+            ),
+            (
+                IfGroupedBy("B", SymmetricDifference()),
+                0,
+                pd.DataFrame([], columns=["A", "B"]),
+                1,
+            ),
+            (
+                IfGroupedBy("B", SymmetricDifference()),
+                None,
+                pd.DataFrame([[1.2, "X"], [1.2, "X"]], columns=["A", "B"]),
+                1,
+            ),
+        ]
+    )
+    def test_flat_map_augmenting(
+        self,
+        metric: IfGroupedBy,
+        max_num_rows: int,
+        expected_df: pd.DataFrame,
+        stability: int,
+    ):
+        """Tests that flat_map transformation works correctly on IfGroupedBy metrics."""
+
+        flat_map_transformation = FlatMap(
+            metric=metric,
+            row_transformer=self.augmenting_duplicate_transformer,
+            max_num_rows=max_num_rows,
+        )
+        self.assertEqual(flat_map_transformation.stability_function(1), stability)
+        self.assertTrue(flat_map_transformation.stability_relation(1, stability))
+        actual_df = flat_map_transformation(self.df_a).toPandas()
+        self.assert_frame_equal_with_sort(actual_df, expected_df)
+
+    @parameterized.expand(
+        [
             (  # Bad input_domain
                 ListDomain(SparkRowDomain({})),
                 ListDomain(SparkRowDomain({})),
@@ -366,13 +413,19 @@ class TestFlatMap(TestComponent):
 
     @parameterized.expand(
         [
-            (SymmetricDifference(), 2),
-            (IfGroupedBy("B", SumOf(SymmetricDifference())), 2),
-            (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())), 2),
-            (IfGroupedBy("B", SymmetricDifference()), 1),
+            (SymmetricDifference(), 2, 2),
+            (IfGroupedBy("B", SumOf(SymmetricDifference())), 2, 2),
+            (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())), 2, 2),
+            (IfGroupedBy("B", SymmetricDifference()), 1, 2),
+            (IfGroupedBy("B", SymmetricDifference()), 1, None),
         ]
     )
-    def test_metrics(self, metric: Union[SymmetricDifference, IfGroupedBy], d_out: int):
+    def test_metrics(
+        self,
+        metric: Union[SymmetricDifference, IfGroupedBy],
+        d_out: int,
+        max_num_rows: Optional[int],
+    ):
         """Tests that FlatMap works correctly with supported metrics."""
         split_map = FlatMap(
             metric=metric,
@@ -389,7 +442,7 @@ class TestFlatMap(TestComponent):
                 ],
                 augment=True,
             ),
-            max_num_rows=2,
+            max_num_rows=max_num_rows,
         )
         self.assertTrue(split_map.input_metric == metric == split_map.output_metric)
         self.assertTrue(split_map.stability_function(1), d_out)
@@ -438,6 +491,29 @@ class TestFlatMap(TestComponent):
                     augment=augment,
                 ),
                 max_num_rows=2,
+            )
+
+    @parameterized.expand(
+        [
+            (SymmetricDifference(),),
+            (IfGroupedBy("B", SumOf(SymmetricDifference())),),
+            (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),),
+        ]
+    )
+    def test_none_stability(self, metric: Union[SymmetricDifference, IfGroupedBy]):
+        """Tests that FlatMap raises exaception when None stability not allowed."""
+        with self.assertRaisesRegex(
+            ValueError, "max_num_rows must be specified if metric is not"
+        ):
+            FlatMap(
+                metric=metric,
+                row_transformer=RowToRowsTransformation(
+                    input_domain=SparkRowDomain(self.schema_a),
+                    output_domain=ListDomain(SparkRowDomain(self.schema_a)),
+                    trusted_f=lambda row: [row],
+                    augment=True,
+                ),
+                max_num_rows=None,
             )
 
 

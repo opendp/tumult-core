@@ -412,6 +412,14 @@ class TestComponent(PySparkTest):
             trusted_f=lambda x: [x, x],
             augment=False,
         )
+        # augments with identical columns, which are then overwritten. So this is
+        # identical to the duplicate_transformer.
+        self.augmenting_duplicate_transformer = RowToRowsTransformation(
+            input_domain=SparkRowDomain(self.schema_a),
+            output_domain=ListDomain(SparkRowDomain(self.schema_a)),
+            trusted_f=lambda x: [x, x],
+            augment=True,
+        )
 
 
 def skip(reason):
