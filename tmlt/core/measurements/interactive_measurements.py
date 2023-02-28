@@ -802,6 +802,34 @@ class InsufficientBudgetError(ValueError):
     operation that exceeds its budget.
     """
 
+    def __init__(
+        self, remaining_budget: PrivacyBudgetValue, requested_budget: PrivacyBudgetValue
+    ):
+        """Constructor.
+
+        Args:
+            remaining_budget: The remaining budget.
+            requested_budget: The requested budget.
+        """
+        self._remaining_budget = remaining_budget
+        self._requested_budget = requested_budget
+        message = (
+            f"PrivacyAccountant's remaining privacy budget is {self._remaining_budget},"
+            " which is insufficient for this operation that requires privacy loss"
+            f" {self._requested_budget}."
+        )
+        super().__init__(message)
+
+    @property
+    def remaining_budget(self) -> PrivacyBudgetValue:
+        """Returns the remaining budget."""
+        return self._remaining_budget
+
+    @property
+    def requested_budget(self) -> PrivacyBudgetValue:
+        """Returns the requested budget."""
+        return self._requested_budget
+
 
 class InactiveAccountantError(RuntimeError):
     """Raised when trying to perform operations on an accountant that is not ACTIVE.
@@ -1261,8 +1289,8 @@ class PrivacyAccountant:
 
         if not self._privacy_budget.can_spend_budget(d_out):
             raise InsufficientBudgetError(
-                f"PrivacyAccountant's remaining privacy budget ({self.privacy_budget})"
-                " is insufficient to answer given measurement."
+                self.privacy_budget,
+                PrivacyBudget.cast(self.output_measure, d_out).value,
             )
 
         if self._privacy_budget.is_finite():
@@ -1505,8 +1533,8 @@ class PrivacyAccountant:
         )
         if not self._privacy_budget.can_spend_budget(privacy_budget):
             raise InsufficientBudgetError(
-                f"PrivacyAccountant's privacy budget ({self.privacy_budget}) is"
-                " insufficient for this operation."
+                self.privacy_budget,
+                PrivacyBudget.cast(self.output_measure, privacy_budget).value,
             )
 
         if self._privacy_budget.is_finite():

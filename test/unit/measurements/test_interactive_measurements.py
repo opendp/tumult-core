@@ -1317,7 +1317,8 @@ class TestPrivacyAccountant(PySparkTest):
                 8,
             ),
             (
-                r"PrivacyAccountant's privacy budget \(10\) is insufficient",
+                r"PrivacyAccountant's remaining privacy budget is 10, which is"
+                r" insufficient for this operation that requires privacy loss 11.",
                 NumpyIntegerDomain(),
                 AbsoluteDifference(),
                 ListDomain(NumpyIntegerDomain(), length=2),
