@@ -24,6 +24,7 @@ from tmlt.core.transformations.spark_transformations.add_remove_keys import (
     DropNullsValue,
     FilterValue,
     FlatMapValue,
+    LimitKeysPerGroupValue,
     LimitRowsPerGroupValue,
     LimitRowsPerKeyPerGroupValue,
     MapValue,
@@ -201,6 +202,11 @@ from tmlt.core.utils.testing import (
         {
             "test_class": LimitRowsPerKeyPerGroupValue,
             "extra_kwargs": {"threshold": 2, "key_column": "B"},
+            "pandas_to_spark_kwargs": {},
+        },
+        {
+            "test_class": LimitKeysPerGroupValue,
+            "extra_kwargs": {"threshold": 2, "key_column": "C"},
             "pandas_to_spark_kwargs": {},
         },
     ]

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
-from typing import Type, Union
+from typing import Union
 
 from pyspark.sql import DataFrame
 from typeguard import typechecked
@@ -213,10 +213,10 @@ class LimitKeysPerGroup(Transformation):
         ...             "B": SparkStringColumnDescriptor(),
         ...         }
         ...     ),
+        ...     output_metric=IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference()))),
         ...     grouping_column="A",
         ...     key_column="B",
         ...     threshold=2,
-        ...     use_l2=False,
         ... )
         >>> # Apply transformation to data
         >>> truncated_spark_dataframe = truncate(spark_dataframe)
@@ -235,9 +235,9 @@ class LimitKeysPerGroup(Transformation):
         * Output domain - :class:`~.SparkDataFrameDomain` (matches input domain)
         * Input metric - :class:`~.IfGroupedBy` on the grouping column, with inner
           metric :class:`~.SymmetricDifference`
-        * Output metric - :class:`~.IfGroupedBy` on the key column, with inner
-          metric as a :class:`~.SumOf` (`use_l2` is `False`) or
-          :class:`~.RootSumOfSquared` (`use_l2` is `True`) over a
+        * Output metric - :class:`~.IfGroupedBy` on the grouping column, with inner
+          metric :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy` on the key column, with inner
+          metric as a :class:`~.SumOf` or :class:`~.RootSumOfSquared` over a
           :class:`~.IfGroupedBy` on the grouping column, with inner metric
           :class:`~.SymmetricDifference`
 
@@ -252,8 +252,10 @@ class LimitKeysPerGroup(Transformation):
 
         Stability Guarantee:
             :class:`~.LimitKeysPerGroup`'s :meth:`~.stability_function` returns
-            `threshold * d_in` if `use_l2` is `False` and `sqrt(threshold) * d_in`
-            otherwise.
+            `d_in` if `output_metric` is IfGroupedBy(grouping_column, SymmetricDifference()),
+            `sqrt(threshold) * d_in` if `output_metric` is
+            `IfGroupedBy(key_column, RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())))`,
+            and `threshold * d_in` otherwise.
 
             >>> truncate.stability_function(1)
             2
@@ -265,21 +267,22 @@ class LimitKeysPerGroup(Transformation):
     def __init__(
         self,
         input_domain: SparkDataFrameDomain,
+        output_metric: IfGroupedBy,
         grouping_column: str,
         key_column: str,
         threshold: int,
-        use_l2: bool,
     ):
         """Constructor.
 
         Args:
             input_domain: Domain of input DataFrame.
+            output_metric: Distance metric for output DataFrames. This should be
+                `IfGroupedBy(key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference())))` or
+                `IfGroupedBy(key_column, RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())))`
+                or `IfGroupedBy(grouping_column, SymmetricDifference())`.
             grouping_column: Name of column defining the groups to truncate.
             key_column: Name of column defining the keys.
             threshold: The maximum number of keys per group after truncation.
-            use_l2: If True, use :class:`~.RootSumOfSquared` as the inner metric
-                of the output :class:`~.IfGroupedBy` metric of this transformation
-                instead of :class:`~.SumOf`.
         """
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
@@ -288,19 +291,31 @@ class LimitKeysPerGroup(Transformation):
         self._grouping_column = grouping_column
         self._key_column = key_column
         self._threshold = threshold
-        self._use_l2 = use_l2
-        lx_class: Union[Type[SumOf], Type[RootSumOfSquared]] = (
-            RootSumOfSquared if use_l2 else SumOf
-        )
+        valid_output_metrics = [
+            IfGroupedBy(
+                key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference()))
+            ),
+            IfGroupedBy(
+                key_column,
+                RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())),
+            ),
+            IfGroupedBy(grouping_column, SymmetricDifference()),
+        ]
+        if output_metric not in valid_output_metrics:
+            raise ValueError(
+                f"Output metric must be one of `IfGroupedBy({key_column},"
+                f" SumOf(IfGroupedBy({grouping_column}, SymmetricDifference())))` or"
+                f" `IfGroupedBy({key_column},"
+                f" RootSumOfSquared(IfGroupedBy({grouping_column},"
+                f" SymmetricDifference())))` or `IfGroupedBy({grouping_column},"
+                " SymmetricDifference())`."
+            )
         # super init checks that grouping_column and key_column are in the domain
         super().__init__(
             input_domain=input_domain,
             input_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
             output_domain=input_domain,
-            output_metric=IfGroupedBy(
-                key_column,
-                lx_class(IfGroupedBy(grouping_column, SymmetricDifference())),
-            ),
+            output_metric=output_metric,
         )
 
     @property
@@ -318,11 +333,6 @@ class LimitKeysPerGroup(Transformation):
         """Returns the maximum number of keys per group after truncation."""
         return self._threshold
 
-    @property
-    def use_l2(self) -> bool:
-        """Returns whether the output metric will use :class:`~.RootSumOfSquared`."""
-        return self._use_l2
-
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -334,7 +344,14 @@ class LimitKeysPerGroup(Transformation):
         """
         d_in = ExactNumber(d_in)
         self.input_metric.validate(d_in)
-        if self.use_l2:
+        if self.output_metric == IfGroupedBy(
+            self.grouping_column, SymmetricDifference()
+        ):
+            return d_in
+        if self.output_metric == IfGroupedBy(
+            self.key_column,
+            RootSumOfSquared(IfGroupedBy(self.grouping_column, SymmetricDifference())),
+        ):
             return d_in * self.threshold ** ExactNumber("1/2")
         return d_in * self.threshold
 
