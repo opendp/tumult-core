@@ -141,6 +141,7 @@ from tmlt.core.transformations.spark_transformations.persist import (
 from tmlt.core.transformations.spark_transformations.rename import Rename
 from tmlt.core.transformations.spark_transformations.select import Select
 from tmlt.core.transformations.spark_transformations.truncation import (
+    LimitKeysPerGroup,
     LimitRowsPerGroup,
     LimitRowsPerKeyPerGroup,
 )
@@ -311,6 +312,46 @@ class LimitRowsPerGroupValue(TransformValue):
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             output_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
             grouping_column=grouping_column,
+            threshold=threshold,
+        )
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
+
+
+class LimitKeysPerGroupValue(TransformValue):
+    """Applies a :class:`~.LimitKeysPerGroup` to the specified key.
+
+    See :class:`~.TransformValue` and :class:`~.LimitKeysPerGroup` for more
+    information.
+    """
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
+        key: Any,
+        new_key: Any,
+        key_column: str,
+        threshold: int,
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: Domain of input dictionary of Spark DataFrames.
+            input_metric: Input metric for the outer dictionary to dictionary
+                transformation.
+            key: The key for the DataFrame to transform.
+            new_key: The key to put the transformed output in. The key must not already
+                be in the input domain.
+            key_column: Name of column defining the keys.
+            threshold: The maximum number of keys per group after truncation.
+        """
+        grouping_column = input_metric.df_to_key_column[key]
+        transformation = LimitKeysPerGroup(
+            input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
+            output_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
+            grouping_column=grouping_column,
+            key_column=key_column,
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)

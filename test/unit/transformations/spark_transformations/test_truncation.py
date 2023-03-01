@@ -155,22 +155,25 @@ class TestLimitKeysPerGroup(PySparkTest):
         """Tests that given property is immutable."""
         truncate = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
+            output_metric=IfGroupedBy(
+                "B", SumOf(IfGroupedBy("A", SymmetricDifference()))
+            ),
             grouping_column="A",
             key_column="B",
             threshold=2,
-            use_l2=False,
         )
         assert_property_immutability(truncate, prop_name)
 
-    @parameterized.expand([(True,), (False,)])
-    def test_properties(self, use_l2: bool):
+    def test_properties(self):
         """LimitKeysPerGroup's properties have the expected values."""
         transformation = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
+            output_metric=IfGroupedBy(
+                "B", SumOf(IfGroupedBy("A", SymmetricDifference()))
+            ),
             grouping_column="A",
             key_column="B",
             threshold=2,
-            use_l2=use_l2,
         )
         self.assertEqual(transformation.input_domain, SparkDataFrameDomain(self.schema))
         self.assertEqual(
@@ -182,14 +185,11 @@ class TestLimitKeysPerGroup(PySparkTest):
 
         self.assertEqual(
             transformation.output_metric,
-            IfGroupedBy("B", RootSumOfSquared(IfGroupedBy("A", SymmetricDifference())))
-            if use_l2
-            else IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference()))),
+            IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference()))),
         )
         self.assertEqual(transformation.grouping_column, "A")
         self.assertEqual(transformation.key_column, "B")
         self.assertEqual(transformation.threshold, 2)
-        self.assertEqual(transformation.use_l2, use_l2)
 
     @parameterized.expand(
         [
@@ -203,10 +203,12 @@ class TestLimitKeysPerGroup(PySparkTest):
         key_column = "A" if grouping_column == "B" else "B"
         transformation = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
+            output_metric=IfGroupedBy(
+                key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference()))
+            ),
             grouping_column=grouping_column,
             key_column=key_column,
             threshold=threshold,
-            use_l2=False,
         )
         actual_df = transformation(self.df).toPandas()
         expected_df = limit_keys_per_group(
@@ -216,24 +218,47 @@ class TestLimitKeysPerGroup(PySparkTest):
 
     @parameterized.expand(
         [
-            (3, 1, 3, False),
-            (2, 2, 4, False),
-            (0, 1, 0, False),
-            (9, 1, 3, True),
-            (4, 2, 4, True),
-            (0, 1, 0, True),
+            (3, 1, 3, IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference())))),
+            (2, 2, 4, IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference())))),
+            (0, 1, 0, IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference())))),
+            (
+                9,
+                1,
+                3,
+                IfGroupedBy(
+                    "B", RootSumOfSquared(IfGroupedBy("A", SymmetricDifference()))
+                ),
+            ),
+            (
+                4,
+                2,
+                4,
+                IfGroupedBy(
+                    "B", RootSumOfSquared(IfGroupedBy("A", SymmetricDifference()))
+                ),
+            ),
+            (
+                0,
+                1,
+                0,
+                IfGroupedBy(
+                    "B", RootSumOfSquared(IfGroupedBy("A", SymmetricDifference()))
+                ),
+            ),
+            (5, 2, 2, IfGroupedBy("A", SymmetricDifference())),
+            (0, 4, 4, IfGroupedBy("A", SymmetricDifference())),
         ]
     )
     def test_stability_function(
-        self, threshold: int, d_in: int, expected_d_out: int, use_l2: bool
+        self, threshold: int, d_in: int, expected_d_out: int, output_metric: IfGroupedBy
     ):
         """Tests that supported metrics have the correct stability functions."""
         transformation = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
+            output_metric=output_metric,
             grouping_column="A",
             key_column="B",
             threshold=threshold,
-            use_l2=use_l2,
         )
         self.assertEqual(transformation.stability_function(d_in), expected_d_out)
         self.assertTrue(transformation.stability_relation(d_in, expected_d_out))
@@ -242,14 +267,33 @@ class TestLimitKeysPerGroup(PySparkTest):
         [
             ({"threshold": -1}, ValueError, "Threshold must be nonnegative"),
             (
-                {"grouping_column": "invalid"},
+                {
+                    "grouping_column": "invalid",
+                    "output_metric": IfGroupedBy(
+                        "B", SumOf(IfGroupedBy("invalid", SymmetricDifference()))
+                    ),
+                },
                 ValueError,
                 "Input metric .* and input domain .* are not compatible.",
             ),
             (
-                {"key_column": "invalid"},
+                {
+                    "key_column": "invalid",
+                    "output_metric": IfGroupedBy(
+                        "invalid", SumOf(IfGroupedBy("A", SymmetricDifference()))
+                    ),
+                },
                 ValueError,
                 "Output metric .* and output domain .* are not compatible.",
+            ),
+            (
+                {"output_metric": IfGroupedBy("B", SymmetricDifference())},
+                ValueError,
+                r"Output metric must be one of `IfGroupedBy\(B, SumOf\(IfGroupedBy\(A,"
+                r" SymmetricDifference\(\)\)\)\)` "
+                r"or `IfGroupedBy\(B, RootSumOfSquared\(IfGroupedBy\(A,"
+                r" SymmetricDifference\(\)\)\)\)` "
+                r"or `IfGroupedBy\(A, SymmetricDifference\(\)\)",
             ),
         ]
     )
@@ -259,10 +303,12 @@ class TestLimitKeysPerGroup(PySparkTest):
         """Tests that appropriate errors are raised for invalid params."""
         args = {
             "input_domain": SparkDataFrameDomain(self.schema),
+            "output_metric": IfGroupedBy(
+                "B", SumOf(IfGroupedBy("A", SymmetricDifference()))
+            ),
             "grouping_column": "A",
             "key_column": "B",
             "threshold": 1,
-            "use_l2": False,
         }
         args.update(updated_args)
         with self.assertRaisesRegex(error_type, error_msg):

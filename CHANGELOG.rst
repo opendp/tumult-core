@@ -3,6 +3,18 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Added
+~~~~~
+- Added `LimitKeysPerGroupValue` transformation
+
+Changed
+~~~~~~~
+- Updated `LimitKeysPerGroup` to require an output metric, and to support the
+  `IfGroupedBy(grouping_column, SymmetricDifference())` output metric. Dropped the 'use_l2' parameter.
+
 0.8.1 - 2023-02-24
 ------------------
 
