@@ -4,7 +4,7 @@
 # Copyright Tumult Labs 2022
 
 from abc import ABC, abstractmethod
-from typing import Any, Tuple, Union, cast
+from typing import Any, Tuple, Union, cast, overload
 
 from typeguard import check_type, typechecked
 
@@ -158,10 +158,25 @@ class PrivacyBudget(ABC):
     """
 
     @classmethod
+    @overload
+    def cast(cls, measure: RhoZCDP, value: PrivacyBudgetInput) -> "RhoZCDPBudget":
+        ...
+
+    @classmethod
+    @overload
+    def cast(cls, measure: PureDP, value: PrivacyBudgetInput) -> "PureDPBudget":
+        ...
+
+    @classmethod
+    @overload
+    def cast(cls, measure: ApproxDP, value: PrivacyBudgetInput) -> "ApproxDPBudget":
+        ...
+
+    @classmethod
     @typechecked
     def cast(
         cls, measure: Union[PureDP, ApproxDP, RhoZCDP], value: PrivacyBudgetInput
-    ) -> "PrivacyBudget":
+    ) -> Union["PureDPBudget", "ApproxDPBudget", "RhoZCDPBudget"]:
         """Return a privacy budget matching the passed measure.
 
         Args:

@@ -2,7 +2,9 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
-from typing import List, Optional, Tuple, Union, cast
+import functools
+import unittest
+from typing import Callable, List, Optional, Tuple, Union, cast
 
 import sympy as sp
 from parameterized import parameterized, parameterized_class
@@ -25,7 +27,7 @@ from tmlt.core.measurements.aggregations import (
     create_sum_measurement,
     create_variance_measurement,
 )
-from tmlt.core.measures import PureDP, RhoZCDP
+from tmlt.core.measures import ApproxDP, PrivacyBudgetInput, PureDP, RhoZCDP
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -70,7 +72,13 @@ class TestGroupByAggregationMeasurements(PySparkTest):
 
     @parameterized.expand(
         [
-            (input_metric, groupby_output_metric, output_measure, noise_mechanism)
+            (
+                input_metric,
+                groupby_output_metric,
+                output_measure,
+                d_out,
+                noise_mechanism,
+            )
             for noise_mechanism, groupby_output_metric in [
                 (NoiseMechanism.LAPLACE, SumOf(SymmetricDifference())),
                 (NoiseMechanism.GEOMETRIC, SumOf(SymmetricDifference())),
@@ -86,7 +94,11 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                     "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(2)),
+                (RhoZCDP(), sp.Integer(2)),
+                (ApproxDP(), (sp.Integer(2), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
@@ -97,7 +109,8 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self,
         input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
         groupby_output_metric: Union[SumOf, RootSumOfSquared],
-        output_measure: Union[PureDP, RhoZCDP],
+        output_measure: Union[PureDP, RhoZCDP, ApproxDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_count_measurement works correctly with groupby."""
@@ -109,7 +122,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             output_measure=output_measure,
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(2),
+            d_out=d_out,
             groupby_transformation=GroupBy(
                 input_domain=self.input_domain,
                 input_metric=input_metric,
@@ -120,16 +133,20 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         )
         self.assertEqual(count_measurement.input_domain, self.input_domain)
         self.assertEqual(count_measurement.output_measure, output_measure)
-        self.assertEqual(
-            count_measurement.privacy_function(sp.Integer(1)), sp.Integer(2)
-        )
+        self.assertEqual(count_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = count_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
         self.assertEqual(answer.columns, self.groupby_columns + ["test_count"])
 
     @parameterized.expand(
         [
-            (input_metric, groupby_output_metric, output_measure, noise_mechanism)
+            (
+                input_metric,
+                groupby_output_metric,
+                output_measure,
+                d_out,
+                noise_mechanism,
+            )
             for noise_mechanism, groupby_output_metric in [
                 (NoiseMechanism.LAPLACE, SumOf(SymmetricDifference())),
                 (NoiseMechanism.GEOMETRIC, SumOf(SymmetricDifference())),
@@ -145,7 +162,11 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                     "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(2)),
+                (RhoZCDP(), sp.Integer(2)),
+                (ApproxDP(), (sp.Integer(2), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
@@ -156,7 +177,8 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self,
         input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
         groupby_output_metric: Union[SumOf, RootSumOfSquared],
-        output_measure: Union[PureDP, RhoZCDP],
+        output_measure: Union[PureDP, RhoZCDP, ApproxDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_count_distinct_measurement works correctly with groupby."""
@@ -168,7 +190,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             output_measure=output_measure,
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(2),
+            d_out=d_out,
             groupby_transformation=GroupBy(
                 input_domain=self.input_domain,
                 input_metric=input_metric,
@@ -180,7 +202,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(count_distinct_measurement.input_domain, self.input_domain)
         self.assertEqual(count_distinct_measurement.output_measure, output_measure)
         self.assertEqual(
-            count_distinct_measurement.privacy_function(sp.Integer(1)), sp.Integer(2)
+            count_distinct_measurement.privacy_function(sp.Integer(1)), d_out
         )
         answer = count_distinct_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
@@ -188,7 +210,13 @@ class TestGroupByAggregationMeasurements(PySparkTest):
 
     @parameterized.expand(
         [
-            (input_metric, groupby_output_metric, output_measure, noise_mechanism)
+            (
+                input_metric,
+                groupby_output_metric,
+                output_measure,
+                d_out,
+                noise_mechanism,
+            )
             for noise_mechanism, groupby_output_metric in [
                 (NoiseMechanism.LAPLACE, SumOf(SymmetricDifference())),
                 (NoiseMechanism.GEOMETRIC, SumOf(SymmetricDifference())),
@@ -204,7 +232,11 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                     "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(4)),
+                (RhoZCDP(), sp.Integer(4)),
+                (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
@@ -216,6 +248,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
         groupby_output_metric: Union[SumOf, RootSumOfSquared],
         output_measure: Union[PureDP, RhoZCDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_sum_measurement works correctly with groupby."""
@@ -230,7 +263,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             lower=sp.Integer(0),
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             groupby_transformation=GroupBy(
                 input_domain=self.input_domain,
                 input_metric=input_metric,
@@ -241,14 +274,20 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         )
         self.assertEqual(sum_measurement.input_domain, self.input_domain)
         self.assertEqual(sum_measurement.output_measure, output_measure)
-        self.assertEqual(sum_measurement.privacy_function(sp.Integer(1)), sp.Integer(4))
+        self.assertEqual(sum_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = sum_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
         self.assertEqual(answer.columns, self.groupby_columns + ["sumB"])
 
     @parameterized.expand(
         [
-            (input_metric, groupby_output_metric, output_measure, noise_mechanism)
+            (
+                input_metric,
+                groupby_output_metric,
+                output_measure,
+                d_out,
+                noise_mechanism,
+            )
             for noise_mechanism, groupby_output_metric in [
                 (NoiseMechanism.LAPLACE, SumOf(SymmetricDifference())),
                 (NoiseMechanism.GEOMETRIC, SumOf(SymmetricDifference())),
@@ -264,7 +303,11 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                     "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(4)),
+                (RhoZCDP(), sp.Integer(4)),
+                (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
@@ -275,7 +318,8 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self,
         input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
         groupby_output_metric: Union[SumOf, RootSumOfSquared],
-        output_measure: Union[PureDP, RhoZCDP],
+        output_measure: Union[PureDP, RhoZCDP, ApproxDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_average_measurement works correctly with groupby."""
@@ -290,7 +334,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             lower=sp.Integer(0),
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             groupby_transformation=GroupBy(
                 input_domain=self.input_domain,
                 input_metric=input_metric,
@@ -301,9 +345,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         )
         self.assertEqual(average_measurement.input_domain, self.input_domain)
         self.assertEqual(average_measurement.output_measure, output_measure)
-        self.assertEqual(
-            average_measurement.privacy_function(sp.Integer(1)), sp.Integer(4)
-        )
+        self.assertEqual(average_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = average_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
         self.assertEqual(answer.columns, self.groupby_columns + ["AVG(B)"])
@@ -315,6 +357,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 groupby_output_metric,
                 output_measure,
                 noise_mechanism,
+                d_out,
                 output_column,
             )
             for noise_mechanism, groupby_output_metric in [
@@ -332,7 +375,11 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                     "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(4)),
+                (RhoZCDP(), sp.Integer(4)),
+                (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
+            ]
             for output_column in ["XYZ", None]
             if not (
                 noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
@@ -346,6 +393,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         groupby_output_metric: Union[SumOf, RootSumOfSquared],
         output_measure: Union[PureDP, RhoZCDP],
         noise_mechanism: NoiseMechanism,
+        d_out: PrivacyBudgetInput,
         output_column: Optional[str] = None,
     ):
         """Tests that create_standard_deviation_measurement works correctly."""
@@ -360,7 +408,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             lower=sp.Integer(0),
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             groupby_transformation=GroupBy(
                 input_domain=self.input_domain,
                 input_metric=input_metric,
@@ -373,8 +421,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(standard_deviation_measurement.input_domain, self.input_domain)
         self.assertEqual(standard_deviation_measurement.output_measure, output_measure)
         self.assertEqual(
-            standard_deviation_measurement.privacy_function(sp.Integer(1)),
-            sp.Integer(4),
+            standard_deviation_measurement.privacy_function(sp.Integer(1)), d_out
         )
         answer = standard_deviation_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
@@ -390,6 +437,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 groupby_output_metric,
                 output_measure,
                 noise_mechanism,
+                d_out,
                 output_column,
             )
             for noise_mechanism, groupby_output_metric in [
@@ -407,8 +455,12 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                     "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
-            for output_column in [None, "XYZ"]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(4)),
+                (RhoZCDP(), sp.Integer(4)),
+                (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
+            ]
+            for output_column in ["XYZ", None]
             if not (
                 noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
@@ -421,6 +473,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         groupby_output_metric: Union[SumOf, RootSumOfSquared],
         output_measure: Union[PureDP, RhoZCDP],
         noise_mechanism: NoiseMechanism,
+        d_out: PrivacyBudgetInput,
         output_column: Optional[str] = None,
     ):
         """Tests that create_variance_measurement works correctly with groupby."""
@@ -435,7 +488,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             lower=sp.Integer(0),
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             groupby_transformation=GroupBy(
                 input_domain=self.input_domain,
                 input_metric=input_metric,
@@ -447,9 +500,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         )
         self.assertEqual(variance_measurement.input_domain, self.input_domain)
         self.assertEqual(variance_measurement.output_measure, output_measure)
-        self.assertEqual(
-            variance_measurement.privacy_function(sp.Integer(1)), sp.Integer(4)
-        )
+        self.assertEqual(variance_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = variance_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
         if not output_column:
@@ -459,10 +510,15 @@ class TestGroupByAggregationMeasurements(PySparkTest):
 
     @parameterized.expand(
         [
-            (input_metric, groupby_output_metric, output_measure)
-            for output_measure, groupby_output_metric in [
-                (PureDP(), SumOf(SymmetricDifference())),
-                (RhoZCDP(), RootSumOfSquared(SymmetricDifference())),
+            (input_metric, groupby_output_metric, d_out, output_measure)
+            for output_measure, d_out, groupby_output_metric in [
+                (PureDP(), sp.Integer(4), SumOf(SymmetricDifference())),
+                (RhoZCDP(), sp.Integer(4), RootSumOfSquared(SymmetricDifference())),
+                (
+                    ApproxDP(),
+                    (sp.Integer(4), sp.Integer(0)),
+                    SumOf(SymmetricDifference()),
+                ),
             ]
             for input_metric in [
                 SymmetricDifference(),
@@ -477,6 +533,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self,
         input_metric: Union[HammingDistance, SymmetricDifference],
         groupby_output_metric: Union[SumOf, RootSumOfSquared],
+        d_out: PrivacyBudgetInput,
         output_measure: Union[PureDP, RhoZCDP],
     ):
         """Tests that create_quantile_measurement works correctly with groupby."""
@@ -491,7 +548,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             upper=10,
             lower=0,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             groupby_transformation=GroupBy(
                 input_domain=self.input_domain,
                 input_metric=input_metric,
@@ -503,9 +560,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(quantile_measurement.input_domain, self.input_domain)
         self.assertEqual(quantile_measurement.input_metric, input_metric)
         self.assertEqual(quantile_measurement.output_measure, output_measure)
-        self.assertEqual(
-            quantile_measurement.privacy_function(sp.Integer(1)), sp.Integer(4)
-        )
+        self.assertEqual(quantile_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = quantile_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
         self.assertEqual(answer.columns, self.groupby_columns + ["MEDIAN(B)"])
@@ -525,7 +580,7 @@ class TestAggregationMeasurement(PySparkTest):
 
     @parameterized.expand(
         [
-            (input_metric, output_measure, noise_mechanism)
+            (input_metric, output_measure, d_out, noise_mechanism)
             for input_metric in [SymmetricDifference(), HammingDistance()]
             for noise_mechanism in [
                 NoiseMechanism.LAPLACE,
@@ -533,7 +588,11 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.DISCRETE_GAUSSIAN,
                 NoiseMechanism.GAUSSIAN,
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(2)),
+                (RhoZCDP(), sp.Integer(2)),
+                (ApproxDP(), (sp.Integer(2), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism
                 in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
@@ -545,6 +604,7 @@ class TestAggregationMeasurement(PySparkTest):
         self,
         input_metric: Union[SymmetricDifference, HammingDistance],
         output_measure: Union[PureDP, RhoZCDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_count_measurement works correctly without groupby."""
@@ -553,19 +613,19 @@ class TestAggregationMeasurement(PySparkTest):
             input_metric=input_metric,
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(2),
+            d_out=d_out,
             output_measure=output_measure,
         )
         self.assertEqual(count_measurement.input_domain, self.input_domain)
         self.assertEqual(count_measurement.input_metric, input_metric)
         self.assertEqual(count_measurement.output_measure, output_measure)
-        self.assertEqual(count_measurement.privacy_function(1), 2)
+        self.assertEqual(count_measurement.privacy_function(1), d_out)
         answer = count_measurement(self.sdf)
         self.assertIsInstance(answer, (float, int))
 
     @parameterized.expand(
         [
-            (input_metric, output_measure, noise_mechanism)
+            (input_metric, output_measure, d_out, noise_mechanism)
             for input_metric in [SymmetricDifference(), HammingDistance()]
             for noise_mechanism in [
                 NoiseMechanism.LAPLACE,
@@ -573,7 +633,11 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.DISCRETE_GAUSSIAN,
                 NoiseMechanism.GAUSSIAN,
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(2)),
+                (RhoZCDP(), sp.Integer(2)),
+                (ApproxDP(), (sp.Integer(2), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism
                 in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
@@ -585,6 +649,7 @@ class TestAggregationMeasurement(PySparkTest):
         self,
         input_metric: Union[SymmetricDifference, HammingDistance],
         output_measure: Union[PureDP, RhoZCDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests create_count_distinct_measurement without groupby."""
@@ -593,20 +658,20 @@ class TestAggregationMeasurement(PySparkTest):
             input_metric=input_metric,
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(2),
+            d_out=d_out,
             output_measure=output_measure,
         )
 
         self.assertEqual(count_distinct_measurement.input_domain, self.input_domain)
         self.assertEqual(count_distinct_measurement.input_metric, input_metric)
         self.assertEqual(count_distinct_measurement.output_measure, output_measure)
-        self.assertEqual(count_distinct_measurement.privacy_function(1), 2)
+        self.assertEqual(count_distinct_measurement.privacy_function(1), d_out)
         answer = count_distinct_measurement(self.sdf)
         self.assertIsInstance(answer, (int, float))
 
     @parameterized.expand(
         [
-            (input_metric, output_measure, noise_mechanism)
+            (input_metric, output_measure, d_out, noise_mechanism)
             for input_metric in [SymmetricDifference(), HammingDistance()]
             for noise_mechanism in [
                 NoiseMechanism.LAPLACE,
@@ -614,7 +679,11 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.DISCRETE_GAUSSIAN,
                 NoiseMechanism.GAUSSIAN,
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(4)),
+                (RhoZCDP(), sp.Integer(4)),
+                (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism
                 in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
@@ -626,6 +695,7 @@ class TestAggregationMeasurement(PySparkTest):
         self,
         input_metric: Union[SymmetricDifference, HammingDistance],
         output_measure: Union[PureDP, RhoZCDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_sum_measurement works correctly without groupby."""
@@ -637,20 +707,20 @@ class TestAggregationMeasurement(PySparkTest):
             lower=sp.Integer(0),
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             output_measure=output_measure,
         )
 
         self.assertEqual(sum_measurement.input_domain, self.input_domain)
         self.assertEqual(sum_measurement.input_metric, input_metric)
         self.assertEqual(sum_measurement.output_measure, output_measure)
-        self.assertEqual(sum_measurement.privacy_function(1), 4)
+        self.assertEqual(sum_measurement.privacy_function(1), d_out)
         answer = sum_measurement(self.sdf)
         self.assertIsInstance(answer, (float, int))
 
     @parameterized.expand(
         [
-            (input_metric, output_measure, noise_mechanism)
+            (input_metric, output_measure, d_out, noise_mechanism)
             for input_metric in [SymmetricDifference(), HammingDistance()]
             for noise_mechanism in [
                 NoiseMechanism.LAPLACE,
@@ -658,7 +728,11 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.DISCRETE_GAUSSIAN,
                 NoiseMechanism.GAUSSIAN,
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(4)),
+                (RhoZCDP(), sp.Integer(4)),
+                (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism
                 in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
@@ -670,6 +744,7 @@ class TestAggregationMeasurement(PySparkTest):
         self,
         input_metric: Union[SymmetricDifference, HammingDistance],
         output_measure: Union[PureDP, RhoZCDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_average_measurement works correctly without groupby."""
@@ -681,7 +756,7 @@ class TestAggregationMeasurement(PySparkTest):
             lower=sp.Integer(0),
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             keep_intermediates=False,
             output_measure=output_measure,
         )
@@ -689,13 +764,13 @@ class TestAggregationMeasurement(PySparkTest):
         self.assertEqual(average_measurement.input_domain, self.input_domain)
         self.assertEqual(average_measurement.input_metric, input_metric)
         self.assertEqual(average_measurement.output_measure, output_measure)
-        self.assertEqual(average_measurement.privacy_function(1), 4)
+        self.assertEqual(average_measurement.privacy_function(1), d_out)
         answer = average_measurement(self.sdf)
         self.assertIsInstance(answer, (float, int))
 
     @parameterized.expand(
         [
-            (input_metric, output_measure, noise_mechanism)
+            (input_metric, output_measure, d_out, noise_mechanism)
             for input_metric in [SymmetricDifference(), HammingDistance()]
             for noise_mechanism in [
                 NoiseMechanism.LAPLACE,
@@ -703,7 +778,11 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.DISCRETE_GAUSSIAN,
                 NoiseMechanism.GAUSSIAN,
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(4)),
+                (RhoZCDP(), sp.Integer(4)),
+                (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism
                 in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
@@ -715,6 +794,7 @@ class TestAggregationMeasurement(PySparkTest):
         self,
         input_metric: Union[SymmetricDifference, HammingDistance],
         output_measure: Union[PureDP, RhoZCDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_standard_deviation_measurement works correctly."""
@@ -726,7 +806,7 @@ class TestAggregationMeasurement(PySparkTest):
             lower=sp.Integer(0),
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             keep_intermediates=False,
             output_measure=output_measure,
         )
@@ -734,13 +814,13 @@ class TestAggregationMeasurement(PySparkTest):
         self.assertEqual(standard_deviation_measurement.input_domain, self.input_domain)
         self.assertEqual(standard_deviation_measurement.input_metric, input_metric)
         self.assertEqual(standard_deviation_measurement.output_measure, output_measure)
-        self.assertEqual(standard_deviation_measurement.privacy_function(1), 4)
+        self.assertEqual(standard_deviation_measurement.privacy_function(1), d_out)
         answer = standard_deviation_measurement(self.sdf)
         self.assertIsInstance(answer, float)
 
     @parameterized.expand(
         [
-            (input_metric, output_measure, noise_mechanism)
+            (input_metric, output_measure, d_out, noise_mechanism)
             for input_metric in [SymmetricDifference(), HammingDistance()]
             for noise_mechanism in [
                 NoiseMechanism.LAPLACE,
@@ -748,7 +828,11 @@ class TestAggregationMeasurement(PySparkTest):
                 NoiseMechanism.DISCRETE_GAUSSIAN,
                 NoiseMechanism.GAUSSIAN,
             ]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(4)),
+                (RhoZCDP(), sp.Integer(4)),
+                (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
+            ]
             if not (
                 noise_mechanism
                 in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
@@ -760,6 +844,7 @@ class TestAggregationMeasurement(PySparkTest):
         self,
         input_metric: Union[SymmetricDifference, HammingDistance],
         output_measure: Union[PureDP, RhoZCDP],
+        d_out: PrivacyBudgetInput,
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_variance_measurement works correctly without groupby."""
@@ -771,7 +856,7 @@ class TestAggregationMeasurement(PySparkTest):
             lower=sp.Integer(0),
             noise_mechanism=noise_mechanism,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             keep_intermediates=False,
             output_measure=output_measure,
         )
@@ -779,21 +864,26 @@ class TestAggregationMeasurement(PySparkTest):
         self.assertEqual(variance_measurement.input_domain, self.input_domain)
         self.assertEqual(variance_measurement.input_metric, input_metric)
         self.assertEqual(variance_measurement.output_measure, output_measure)
-        self.assertEqual(variance_measurement.privacy_function(1), 4)
+        self.assertEqual(variance_measurement.privacy_function(1), d_out)
         answer = variance_measurement(self.sdf)
         self.assertIsInstance(answer, (int, float))
 
     @parameterized.expand(
         [
-            (input_metric, output_measure)
+            (input_metric, output_measure, d_out)
             for input_metric in [SymmetricDifference(), HammingDistance()]
-            for output_measure in [PureDP(), RhoZCDP()]
+            for output_measure, d_out in [
+                (PureDP(), sp.Integer(4)),
+                (RhoZCDP(), sp.Integer(4)),
+                (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
+            ]
         ]
     )
     def test_create_quantile_measurement_without_groupby(
         self,
         input_metric: Union[HammingDistance, SymmetricDifference],
-        output_measure: Union[PureDP, RhoZCDP],
+        output_measure: Union[PureDP, RhoZCDP, ApproxDP],
+        d_out: PrivacyBudgetInput,
     ):
         """Tests that create_quantile_measurement works correctly without groupby."""
         quantile_measurement = create_quantile_measurement(
@@ -805,14 +895,14 @@ class TestAggregationMeasurement(PySparkTest):
             upper=10,
             lower=0,
             d_in=sp.Integer(1),
-            d_out=sp.Integer(4),
+            d_out=d_out,
             groupby_transformation=None,
             quantile_column="MEDIAN(B)",
         )
         self.assertEqual(quantile_measurement.input_domain, self.input_domain)
         self.assertEqual(quantile_measurement.input_metric, input_metric)
         self.assertEqual(quantile_measurement.output_measure, output_measure)
-        self.assertEqual(quantile_measurement.privacy_function(1), 4)
+        self.assertEqual(quantile_measurement.privacy_function(1), d_out)
         answer = quantile_measurement(self.sdf)
         self.assertIsInstance(answer, float)
         self.assertLessEqual(answer, 10)
@@ -875,3 +965,96 @@ class TestAggregationMeasurement(PySparkTest):
         measurement_epsilon, measurement_delta = measurement.privacy_function(d_in)
         self.assertEqual(measurement_epsilon, epsilon)
         self.assertEqual(measurement_delta, delta)
+
+
+INPUT_DOMAIN = SparkDataFrameDomain(
+    {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+)
+
+
+class TestBadDelta(unittest.TestCase):
+    """Tests for :mod:`tmlt.core.measurements.aggregations`."""
+
+    @parameterized.expand(
+        [
+            (noise_mechanism, d_out, f)
+            for noise_mechanism, d_out in [
+                (NoiseMechanism.LAPLACE, (sp.Integer(1), sp.Rational(1, 2))),
+                (NoiseMechanism.GEOMETRIC, (sp.Integer(1), sp.Rational(1, 2))),
+                (NoiseMechanism.GAUSSIAN, (sp.Integer(1), sp.Rational(1, 2))),
+                (NoiseMechanism.DISCRETE_GAUSSIAN, (sp.Integer(1), sp.Rational(1, 2))),
+                (NoiseMechanism.GAUSSIAN, (sp.Integer(1), sp.Integer(0))),
+                (NoiseMechanism.DISCRETE_GAUSSIAN, (sp.Integer(1), sp.Integer(0))),
+            ]
+            for f in [
+                functools.partial(
+                    create_count_measurement,
+                    input_domain=INPUT_DOMAIN,
+                    input_metric=SymmetricDifference(),
+                    output_measure=ApproxDP(),
+                ),
+                functools.partial(
+                    create_count_distinct_measurement,
+                    input_domain=INPUT_DOMAIN,
+                    input_metric=SymmetricDifference(),
+                    output_measure=ApproxDP(),
+                ),
+                functools.partial(
+                    create_sum_measurement,
+                    input_domain=INPUT_DOMAIN,
+                    input_metric=SymmetricDifference(),
+                    measure_column="B",
+                    upper=sp.Integer(10),
+                    lower=sp.Integer(0),
+                    output_measure=ApproxDP(),
+                ),
+                functools.partial(
+                    create_average_measurement,
+                    input_domain=INPUT_DOMAIN,
+                    input_metric=SymmetricDifference(),
+                    measure_column="B",
+                    upper=sp.Integer(10),
+                    lower=sp.Integer(0),
+                    output_measure=ApproxDP(),
+                ),
+                functools.partial(
+                    create_standard_deviation_measurement,
+                    input_domain=INPUT_DOMAIN,
+                    input_metric=SymmetricDifference(),
+                    measure_column="B",
+                    upper=sp.Integer(10),
+                    lower=sp.Integer(0),
+                    output_measure=ApproxDP(),
+                ),
+                functools.partial(
+                    create_variance_measurement,
+                    input_domain=INPUT_DOMAIN,
+                    input_metric=SymmetricDifference(),
+                    measure_column="B",
+                    upper=sp.Integer(10),
+                    lower=sp.Integer(0),
+                    output_measure=ApproxDP(),
+                ),
+            ]
+        ]
+    )
+    def test_functions_with_noise_mechanism(
+        self, noise_mechanism: NoiseMechanism, d_out: PrivacyBudgetInput, f: Callable
+    ) -> None:
+        """Test error is raised for invalid delta/noise mechanism combination."""
+        with self.assertRaises(ValueError):
+            f(noise_mechanism=noise_mechanism, d_out=d_out)
+
+    def test_quantile(self) -> None:
+        """Test error is raised for nonzero delta for create quantile."""
+        with self.assertRaises(ValueError):
+            create_quantile_measurement(
+                input_domain=INPUT_DOMAIN,
+                input_metric=SymmetricDifference(),
+                measure_column="B",
+                quantile=0.5,
+                upper=10,
+                lower=0,
+                d_out=(sp.Integer(1), sp.Rational(1, 2)),
+                output_measure=ApproxDP(),
+            )
