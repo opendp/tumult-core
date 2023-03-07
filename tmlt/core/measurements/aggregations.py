@@ -25,7 +25,7 @@ from tmlt.core.domains.spark_domains import (
 )
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.composition import Composition
-from tmlt.core.measurements.converters import PureDPToRhoZCDP
+from tmlt.core.measurements.converters import PureDPToApproxDP, PureDPToRhoZCDP
 from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,
     AddGaussianNoise,
@@ -43,7 +43,14 @@ from tmlt.core.measurements.spark_measurements import (
     ApplyInPandas,
     GeometricPartitionSelection,
 )
-from tmlt.core.measures import PureDP, RhoZCDP
+from tmlt.core.measures import (
+    ApproxDP,
+    ApproxDPBudget,
+    PrivacyBudget,
+    PrivacyBudgetInput,
+    PureDP,
+    RhoZCDP,
+)
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -110,8 +117,8 @@ class NoiseMechanism(Enum):
 def create_count_measurement(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-    output_measure: Union[PureDP, RhoZCDP],
-    d_out: ExactNumberInput,
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+    d_out: PrivacyBudgetInput,
     noise_mechanism: NoiseMechanism,
     d_in: ExactNumberInput = 1,
     groupby_transformation: Optional[GroupBy] = None,
@@ -127,17 +134,23 @@ def create_count_measurement(
 
     Note:
         `d_out` is interpreted as the "epsilon" parameter if `output_measure` is
-        :class:`~.PureDP`, otherwise it is interpreted as the "rho" parameter (if
-        `output_measure` is :class:`~.RhoZCDP`).
+        :class:`~.PureDP`, the "rho" parameter if `output_measure` is
+        :class:`~.RhoZCDP`, and ("epsilon", "delta") if `output_measure` is
+        :class:`~.ApproxDP`.
+
+    Note:
+        :class:`~.ApproxDP` budgets with delta>0 are not yet supported.
+
 
     Args:
         input_domain: Domain of input spark DataFrames.
         input_metric: Distance metric on input DataFrames.
-        output_measure: Desired privacy guarantee (one of :class:`~.PureDP` or
-            :class:`~.RhoZCDP`).
+        output_measure: Desired privacy guarantee (one of :class:`~.PureDP`,
+            :class:`~.RhoZCDP`, or :class:`~.ApproxDP`).
         d_out: Desired distance between output distributions w.r.t. `d_in`. This is
-            interpreted as "epsilon" if output_measure is :class:`~.PureDP` and as
-            "rho" if it is :class:`~.RhoZCDP`.
+            interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
+            is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
+            :class:`~.ApproxDP`.
         noise_mechanism: Noise mechanism to apply to count(s).
         d_in: Distance between inputs under the `input_metric`. The returned
             measurement is guaranteed to have output distributions that are `d_out`
@@ -149,8 +162,52 @@ def create_count_measurement(
             name to be used for counts in the dataframe output by the measurement. If
             None, this column will be named "count".
     """
+    if isinstance(output_measure, ApproxDP):
+        epsilon, delta = ApproxDPBudget(d_out).value
+        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+            if delta > 0:
+                raise ValueError(
+                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                )
+            return PureDPToApproxDP(
+                create_count_measurement(
+                    input_domain=input_domain,
+                    input_metric=input_metric,
+                    output_measure=PureDP(),
+                    d_out=epsilon,
+                    noise_mechanism=noise_mechanism,
+                    d_in=d_in,
+                    groupby_transformation=groupby_transformation,
+                    count_column=count_column,
+                )
+            )
+        elif noise_mechanism in (
+            NoiseMechanism.GAUSSIAN,
+            NoiseMechanism.DISCRETE_GAUSSIAN,
+        ):
+            if delta > 0:
+                # Once supported, we will compute the corresponding zCDP budget and set
+                # the ouptut measure to zCDP.
+                raise ValueError(
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism} is not yet supported. Use either"
+                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                )
+            raise ValueError(
+                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                f" {NoiseMechanism.GEOMETRIC}."
+            )
+        else:
+            assert False
+    elif isinstance(output_measure, (RhoZCDP, PureDP)):
+        d_out = PrivacyBudget.cast(output_measure, d_out).value
+    else:
+        assert False
     d_in = ExactNumber(d_in)
-    d_out = ExactNumber(d_out)
+    # help mypy
+    assert isinstance(output_measure, (PureDP, RhoZCDP))
     noise_mechanism.check_output_measure(output_measure)
     count_aggregation: Transformation
     if groupby_transformation is None:
@@ -258,8 +315,8 @@ def create_count_measurement(
 def create_count_distinct_measurement(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-    output_measure: Union[PureDP, RhoZCDP],
-    d_out: ExactNumberInput,
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+    d_out: PrivacyBudgetInput,
     noise_mechanism: NoiseMechanism,
     d_in: ExactNumberInput = 1,
     groupby_transformation: Optional[GroupBy] = None,
@@ -276,18 +333,22 @@ def create_count_distinct_measurement(
 
     Note:
         `d_out` is interpreted as the "epsilon" parameter if `output_measure` is
-        :class:`~.PureDP`, otherwise it is interpreted as the "rho" parameter
-        (if `output_measure` is :class:`~.RhoZCDP`).
+        :class:`~.PureDP`, the "rho" parameter if `output_measure` is
+        :class:`~.RhoZCDP`, and ("epsilon", "delta") if `output_measure` is
+        :class:`~.ApproxDP`.
+
+    Note:
+        :class:`~.ApproxDP` budgets with delta>0 are not yet supported.
 
     Args:
         input_domain: Domain of input spark DataFrames.
         input_metric: Distance metric on input DataFrames.
-        output_measure: Desired privacy guarantee (one of :class:`~.PureDP` or
-            :class:`~.RhoZCDP`).
-        d_out: Desired distance between output distributions with respect to
-            `d_in`. This is interpreted as "epsilon" if `output_measure` is
-            :class:`~.PureDP` and as "rho" if `output_measure` is
-            :class:`~.RhoZCDP`.
+        output_measure: Desired privacy guarantee (one of :class:`~.PureDP`,
+            :class:`~.RhoZCDP`, or :class:`~.ApproxDP`).
+        d_out: Desired distance between output distributions w.r.t. `d_in`. This is
+            interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
+            is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
+            :class:`~.ApproxDP`.
         noise_mechanism: Noise mechanism to apply to count(s).
         d_in: Distance between inputs under the `input_metric`. The returned
             measurement is guaranteed to have output distributions that are
@@ -300,8 +361,52 @@ def create_count_distinct_measurement(
             column name to be used for counts in the dataframe output by the
             measurement. If None, this column will be named "count".
     """
+    if isinstance(output_measure, ApproxDP):
+        epsilon, delta = ApproxDPBudget(d_out).value
+        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+            if delta > 0:
+                raise ValueError(
+                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                )
+            return PureDPToApproxDP(
+                create_count_distinct_measurement(
+                    input_domain=input_domain,
+                    input_metric=input_metric,
+                    output_measure=PureDP(),
+                    d_out=epsilon,
+                    noise_mechanism=noise_mechanism,
+                    d_in=d_in,
+                    groupby_transformation=groupby_transformation,
+                    count_column=count_column,
+                )
+            )
+        elif noise_mechanism in (
+            NoiseMechanism.GAUSSIAN,
+            NoiseMechanism.DISCRETE_GAUSSIAN,
+        ):
+            if delta > 0:
+                # Once supported, we will compute the corresponding zCDP budget and set
+                # the ouptut measure to zCDP.
+                raise ValueError(
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism} is not yet supported. Use either"
+                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                )
+            raise ValueError(
+                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                f" {NoiseMechanism.GEOMETRIC}."
+            )
+        else:
+            assert False
+    elif isinstance(output_measure, (RhoZCDP, PureDP)):
+        d_out = PrivacyBudget.cast(output_measure, d_out).value
+    else:
+        assert False
     d_in = ExactNumber(d_in)
-    d_out = ExactNumber(d_out)
+    # help mypy
+    assert isinstance(output_measure, (PureDP, RhoZCDP))
     noise_mechanism.check_output_measure(output_measure)
     count_distinct_aggregation: Transformation
     if groupby_transformation is None:
@@ -420,8 +525,8 @@ def create_count_distinct_measurement(
 def create_sum_measurement(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-    output_measure: Union[PureDP, RhoZCDP],
-    d_out: ExactNumberInput,
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+    d_out: PrivacyBudgetInput,
     noise_mechanism: NoiseMechanism,
     measure_column: str,
     lower: ExactNumberInput,
@@ -440,17 +545,22 @@ def create_sum_measurement(
 
     Note:
         `d_out` is interpreted as the "epsilon" parameter if `output_measure` is
-        :class:`~.PureDP`, otherwise it is interpreted as the "rho" parameter (if
-        `output_measure` is :class:`~.RhoZCDP`).
+        :class:`~.PureDP`, the "rho" parameter if `output_measure` is
+        :class:`~.RhoZCDP`, and ("epsilon", "delta") if `output_measure` is
+        :class:`~.ApproxDP`.
+
+    Note:
+        :class:`~.ApproxDP` budgets with delta>0 are not yet supported.
 
     Args:
         input_domain: Domain of input spark DataFrames.
         input_metric: Distance metric on input DataFrames.
-        output_measure: Desired privacy guarantee (one of :class:`~.PureDP` or
-            :class:`~.RhoZCDP`).
+        output_measure: Desired privacy guarantee (one of :class:`~.PureDP`,
+            :class:`~.RhoZCDP`, or :class:`~.ApproxDP`).
         d_out: Desired distance between output distributions w.r.t. `d_in`. This is
-            interpreted as "epsilon" if output_measure is :class:`~.PureDP` and as
-            "rho" if it is :class:`~.RhoZCDP`.
+            interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
+            is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
+            :class:`~.ApproxDP`.
         noise_mechanism: Noise mechanism to be applied to the sum(s).
         measure_column: Column to be summed.
         lower: Lower clipping bound on `measure_column`.
@@ -465,10 +575,57 @@ def create_sum_measurement(
             name to be used for sums in the DataFrame output by the measurement. If
             None, this column will be named "sum(<measure_column>)".
     """
+    if isinstance(output_measure, ApproxDP):
+        epsilon, delta = ApproxDPBudget(d_out).value
+        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+            if delta > 0:
+                raise ValueError(
+                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                )
+            return PureDPToApproxDP(
+                create_sum_measurement(
+                    input_domain=input_domain,
+                    input_metric=input_metric,
+                    output_measure=PureDP(),
+                    d_out=epsilon,
+                    noise_mechanism=noise_mechanism,
+                    measure_column=measure_column,
+                    lower=lower,
+                    upper=upper,
+                    d_in=d_in,
+                    groupby_transformation=groupby_transformation,
+                    sum_column=sum_column,
+                )
+            )
+        elif noise_mechanism in (
+            NoiseMechanism.GAUSSIAN,
+            NoiseMechanism.DISCRETE_GAUSSIAN,
+        ):
+            if delta > 0:
+                # Once supported, we will compute the corresponding zCDP budget and set
+                # the ouptut measure to zCDP.
+                raise ValueError(
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism} is not yet supported. Use either"
+                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                )
+            raise ValueError(
+                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                f" {NoiseMechanism.GEOMETRIC}."
+            )
+        else:
+            assert False
+    elif isinstance(output_measure, (RhoZCDP, PureDP)):
+        d_out = PrivacyBudget.cast(output_measure, d_out).value
+    else:
+        assert False
+    d_in = ExactNumber(d_in)
     lower = ExactNumber(lower)
     upper = ExactNumber(upper)
-    d_in = ExactNumber(d_in)
-    d_out = ExactNumber(d_out)
+    # help mypy
+    assert isinstance(output_measure, (PureDP, RhoZCDP))
     noise_mechanism.check_output_measure(output_measure)
     sum_aggregation: Transformation
     measure_column_domain = input_domain[measure_column].to_numpy_domain()
@@ -584,8 +741,8 @@ def create_sum_measurement(
 def create_average_measurement(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-    output_measure: Union[PureDP, RhoZCDP],
-    d_out: ExactNumberInput,
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+    d_out: PrivacyBudgetInput,
     noise_mechanism: NoiseMechanism,
     measure_column: str,
     lower: ExactNumberInput,
@@ -596,7 +753,7 @@ def create_average_measurement(
     keep_intermediates: bool = False,
     sum_column: Optional[str] = None,
     count_column: Optional[str] = None,
-) -> PostProcess:
+) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy average measurement.
 
     This function constructs a measurement M with the following privacy contract -
@@ -607,17 +764,22 @@ def create_average_measurement(
 
     Note:
         `d_out` is interpreted as the "epsilon" parameter if `output_measure` is
-        :class:`~.PureDP`, otherwise it is interpreted as the "rho" parameter (if
-        `output_measure` is :class:`~.RhoZCDP`).
+        :class:`~.PureDP`, the "rho" parameter if `output_measure` is
+        :class:`~.RhoZCDP`, and ("epsilon", "delta") if `output_measure` is
+        :class:`~.ApproxDP`.
+
+    Note:
+        :class:`~.ApproxDP` budgets with delta>0 are not yet supported.
 
     Args:
         input_domain: Domain of input DataFrames.
         input_metric: Distance metric on input DataFrames.
-        output_measure: Desired privacy guarantee (one of :class:`~.PureDP` or
-            :class:`~.RhoZCDP`).
-        d_out:  Desired distance between output distributions w.r.t. `d_in`. This is
-            interpreted as "epsilon" if output_measure is :class:`~.PureDP` and as
-            "rho" if it is :class:`~.RhoZCDP`.
+        output_measure: Desired privacy guarantee (one of :class:`~.PureDP`,
+            :class:`~.RhoZCDP`, or :class:`~.ApproxDP`).
+        d_out: Desired distance between output distributions w.r.t. `d_in`. This is
+            interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
+            is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
+            :class:`~.ApproxDP`.
         noise_mechanism: Noise mechanism to apply.
         measure_column: Name to column to compute average of.
         lower: Lower clipping bound for `measure_column`.
@@ -642,10 +804,60 @@ def create_average_measurement(
             DataFrame output by the measurement. If None, this column will be named
             "count".
     """
+    if isinstance(output_measure, ApproxDP):
+        epsilon, delta = ApproxDPBudget(d_out).value
+        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+            if delta > 0:
+                raise ValueError(
+                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                )
+            return PureDPToApproxDP(
+                create_average_measurement(
+                    input_domain=input_domain,
+                    input_metric=input_metric,
+                    output_measure=PureDP(),
+                    d_out=epsilon,
+                    noise_mechanism=noise_mechanism,
+                    measure_column=measure_column,
+                    lower=lower,
+                    upper=upper,
+                    d_in=d_in,
+                    groupby_transformation=groupby_transformation,
+                    average_column=average_column,
+                    keep_intermediates=keep_intermediates,
+                    sum_column=sum_column,
+                    count_column=count_column,
+                )
+            )
+        elif noise_mechanism in (
+            NoiseMechanism.GAUSSIAN,
+            NoiseMechanism.DISCRETE_GAUSSIAN,
+        ):
+            if delta > 0:
+                # Once supported, we will compute the corresponding zCDP budget and set
+                # the ouptut measure to zCDP.
+                raise ValueError(
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism} is not yet supported. Use either"
+                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                )
+            raise ValueError(
+                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                f" {NoiseMechanism.GEOMETRIC}."
+            )
+        else:
+            assert False
+    elif isinstance(output_measure, (RhoZCDP, PureDP)):
+        d_out = PrivacyBudget.cast(output_measure, d_out).value
+    else:
+        assert False
+    d_in = ExactNumber(d_in)
     lower = ExactNumber(lower)
     upper = ExactNumber(upper)
-    d_in = ExactNumber(d_in)
-    d_out = ExactNumber(d_out)
+    # help mypy
+    assert isinstance(output_measure, (PureDP, RhoZCDP))
     if not average_column:
         average_column = f"avg({measure_column})"
     if not sum_column:
@@ -805,8 +1017,8 @@ def create_average_measurement(
 def create_variance_measurement(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-    output_measure: Union[PureDP, RhoZCDP],
-    d_out: ExactNumberInput,
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+    d_out: PrivacyBudgetInput,
     noise_mechanism: NoiseMechanism,
     measure_column: str,
     lower: ExactNumberInput,
@@ -818,7 +1030,7 @@ def create_variance_measurement(
     sum_of_deviations_column: Optional[str] = None,
     sum_of_squared_deviations_column: Optional[str] = None,
     count_column: Optional[str] = None,
-) -> PostProcess:
+) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy variance measurement.
 
     This function constructs a measurement M with the following privacy contract -
@@ -829,17 +1041,22 @@ def create_variance_measurement(
 
     Note:
         `d_out` is interpreted as the "epsilon" parameter if `output_measure` is
-        :class:`~.PureDP`, otherwise it is interpreted as the "rho" parameter (if
-        `output_measure` is :class:`~.RhoZCDP`).
+        :class:`~.PureDP`, the "rho" parameter if `output_measure` is
+        :class:`~.RhoZCDP`, and ("epsilon", "delta") if `output_measure` is
+        :class:`~.ApproxDP`.
+
+    Note:
+        :class:`~.ApproxDP` budgets with delta>0 are not yet supported.
 
     Args:
         input_domain: Domain of input DataFrames.
         input_metric: Distance metric on input DataFrames.
-        output_measure: Desired privacy guarantee (one of :class:`~.PureDP` or
-            :class:`~.RhoZCDP`).
-        d_out:  Desired distance between output distributions w.r.t. `d_in`. This is
-            interpreted as "epsilon" if output_measure is :class:`~.PureDP` and as
-            "rho" if it is :class:`~.RhoZCDP`.
+        output_measure: Desired privacy guarantee (one of :class:`~.PureDP`,
+            :class:`~.RhoZCDP`, or :class:`~.ApproxDP`).
+        d_out: Desired distance between output distributions w.r.t. `d_in`. This is
+            interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
+            is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
+            :class:`~.ApproxDP`.
         noise_mechanism: Noise mechanism to apply.
         measure_column: Name to column to compute variance of.
         lower: Lower clipping bound for `measure_column`.
@@ -870,6 +1087,59 @@ def create_variance_measurement(
             DataFrame output by the measurement. If None, this column will be named
             "count".
     """
+    if isinstance(output_measure, ApproxDP):
+        epsilon, delta = ApproxDPBudget(d_out).value
+        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+            if delta > 0:
+                raise ValueError(
+                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                )
+            return PureDPToApproxDP(
+                create_variance_measurement(
+                    input_domain=input_domain,
+                    input_metric=input_metric,
+                    output_measure=PureDP(),
+                    d_out=epsilon,
+                    noise_mechanism=noise_mechanism,
+                    measure_column=measure_column,
+                    lower=lower,
+                    upper=upper,
+                    d_in=d_in,
+                    groupby_transformation=groupby_transformation,
+                    variance_column=variance_column,
+                    keep_intermediates=keep_intermediates,
+                    sum_of_deviations_column=sum_of_deviations_column,
+                    sum_of_squared_deviations_column=sum_of_squared_deviations_column,
+                    count_column=count_column,
+                )
+            )
+        elif noise_mechanism in (
+            NoiseMechanism.GAUSSIAN,
+            NoiseMechanism.DISCRETE_GAUSSIAN,
+        ):
+            if delta > 0:
+                # Once supported, we will compute the corresponding zCDP budget and set
+                # the ouptut measure to zCDP.
+                raise ValueError(
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism} is not yet supported. Use either"
+                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                )
+            raise ValueError(
+                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                f" {NoiseMechanism.GEOMETRIC}."
+            )
+        else:
+            assert False
+    elif isinstance(output_measure, (RhoZCDP, PureDP)):
+        d_out = PrivacyBudget.cast(output_measure, d_out).value
+    else:
+        assert False
+    # help mypy
+    assert isinstance(output_measure, (PureDP, RhoZCDP))
+
     if sum_of_deviations_column is None:
         sum_of_deviations_column = f"sod({measure_column})"
     if sum_of_squared_deviations_column is None:
@@ -882,7 +1152,6 @@ def create_variance_measurement(
     lower = ExactNumber(lower)
     upper = ExactNumber(upper)
     d_in = ExactNumber(d_in)
-    d_out = ExactNumber(d_out)
     midpoint_of_measure_column, exact_midpoint_of_measure_column = get_midpoint(
         lower,
         upper,
@@ -1139,8 +1408,8 @@ def create_variance_measurement(
 def create_standard_deviation_measurement(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-    output_measure: Union[PureDP, RhoZCDP],
-    d_out: ExactNumberInput,
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+    d_out: PrivacyBudgetInput,
     noise_mechanism: NoiseMechanism,
     measure_column: str,
     lower: ExactNumberInput,
@@ -1152,7 +1421,7 @@ def create_standard_deviation_measurement(
     sum_of_deviations_column: Optional[str] = None,
     sum_of_squared_deviations_column: Optional[str] = None,
     count_column: Optional[str] = None,
-) -> PostProcess:
+) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy standard deviation measurement.
 
     This function constructs a measurement M with the following privacy contract -
@@ -1163,17 +1432,22 @@ def create_standard_deviation_measurement(
 
     Note:
         `d_out` is interpreted as the "epsilon" parameter if `output_measure` is
-        :class:`~.PureDP`, otherwise it is interpreted as the "rho" parameter (if
-        `output_measure` is :class:`~.RhoZCDP`).
+        :class:`~.PureDP`, the "rho" parameter if `output_measure` is
+        :class:`~.RhoZCDP`, and ("epsilon", "delta") if `output_measure` is
+        :class:`~.ApproxDP`.
+
+    Note:
+        :class:`~.ApproxDP` budgets with delta>0 are not yet supported.
 
     Args:
         input_domain: Domain of input DataFrames.
         input_metric: Distance metric on input DataFrames.
-        output_measure: Desired privacy guarantee (one of :class:`~.PureDP` or
-            :class:`~.RhoZCDP`).
-        d_out:  Desired distance between output distributions w.r.t. `d_in`. This is
-            interpreted as "epsilon" if output_measure is :class:`~.PureDP` and as
-            "rho" if it is :class:`~.RhoZCDP`.
+        output_measure: Desired privacy guarantee (one of :class:`~.PureDP`,
+            :class:`~.RhoZCDP`, or :class:`~.ApproxDP`).
+        d_out: Desired distance between output distributions w.r.t. `d_in`. This is
+            interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
+            is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
+            :class:`~.ApproxDP`.
         noise_mechanism: Noise mechanism to apply.
         measure_column: Name to column to compute standard deviation of.
         lower: Lower clipping bound for `measure_column`.
@@ -1205,10 +1479,61 @@ def create_standard_deviation_measurement(
             DataFrame output by the measurement. If None, this column will be named
             "count".
     """
+    if isinstance(output_measure, ApproxDP):
+        epsilon, delta = ApproxDPBudget(d_out).value
+        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+            if delta > 0:
+                raise ValueError(
+                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                )
+            return PureDPToApproxDP(
+                create_standard_deviation_measurement(
+                    input_domain=input_domain,
+                    input_metric=input_metric,
+                    output_measure=PureDP(),
+                    d_out=epsilon,
+                    noise_mechanism=noise_mechanism,
+                    measure_column=measure_column,
+                    lower=lower,
+                    upper=upper,
+                    d_in=d_in,
+                    groupby_transformation=groupby_transformation,
+                    standard_deviation_column=standard_deviation_column,
+                    keep_intermediates=keep_intermediates,
+                    sum_of_deviations_column=sum_of_deviations_column,
+                    sum_of_squared_deviations_column=sum_of_squared_deviations_column,
+                    count_column=count_column,
+                )
+            )
+        elif noise_mechanism in (
+            NoiseMechanism.GAUSSIAN,
+            NoiseMechanism.DISCRETE_GAUSSIAN,
+        ):
+            if delta > 0:
+                # Once supported, we will compute the corresponding zCDP budget and set
+                # the ouptut measure to zCDP.
+                raise ValueError(
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism} is not yet supported. Use either"
+                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                )
+            raise ValueError(
+                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                f" {NoiseMechanism.GEOMETRIC}."
+            )
+        else:
+            assert False
+    elif isinstance(output_measure, (RhoZCDP, PureDP)):
+        d_out = PrivacyBudget.cast(output_measure, d_out).value
+    else:
+        assert False
+    # help mypy
+    assert isinstance(output_measure, (PureDP, RhoZCDP))
     lower = ExactNumber(lower)
     upper = ExactNumber(upper)
     d_in = ExactNumber(d_in)
-    d_out = ExactNumber(d_out)
     if not standard_deviation_column:
         standard_deviation_column = f"stddev({measure_column})"
     variance_measurement = create_variance_measurement(
@@ -1256,8 +1581,8 @@ def create_standard_deviation_measurement(
 def create_quantile_measurement(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-    output_measure: Union[PureDP, RhoZCDP],
-    d_out: ExactNumberInput,
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+    d_out: PrivacyBudgetInput,
     measure_column: str,
     quantile: float,
     lower: Union[int, float],
@@ -1265,7 +1590,7 @@ def create_quantile_measurement(
     d_in: ExactNumberInput = 1,
     groupby_transformation: Optional[GroupBy] = None,
     quantile_column: Optional[str] = None,
-) -> PostProcess:
+) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy quantile measurement.
 
     This function constructs a measurement M with the following privacy contract -
@@ -1275,17 +1600,22 @@ def create_quantile_measurement(
 
     Note:
         `d_out` is interpreted as the "epsilon" parameter if `output_measure` is
-        :class:`~.PureDP`, otherwise it is interpreted as the "rho" parameter (if
-        `output_measure` is :class:`~.RhoZCDP`).
+        :class:`~.PureDP`, the "rho" parameter if `output_measure` is
+        :class:`~.RhoZCDP`, and ("epsilon", "delta") if `output_measure` is
+        :class:`~.ApproxDP`.
+
+    Note:
+        :class:`~.ApproxDP` budgets with delta>0 are not yet supported.
 
     Args:
         input_domain: Domain of input DataFrames.
         input_metric: Distance metric on input DataFrames.
-        output_measure: Desired privacy guarantee (:class:`~.PureDP` or
-            :class:`~.RhoZCDP`).
-        d_out:  Desired distance between output distributions w.r.t. `d_in`. This is
-            interpreted as "epsilon" if output_measure is :class:`~.PureDP` and as
-            "rho" if it is :class:`~.RhoZCDP`.
+        output_measure: Desired privacy guarantee (one of :class:`~.PureDP`,
+            :class:`~.RhoZCDP`, or :class:`~.ApproxDP`).
+        d_out: Desired distance between output distributions w.r.t. `d_in`. This is
+            interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
+            is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
+            :class:`~.ApproxDP`.
         measure_column: Name to column to compute quantile of.
         quantile: The quantile to produce.
         lower: Lower clipping bound for `measure_column`.
@@ -1301,8 +1631,39 @@ def create_quantile_measurement(
             output by the measurement. If None, this column will be named
             "q_(<quantile>)_(<measure_column>)".
     """
+    if isinstance(output_measure, ApproxDP):
+        epsilon, delta = ApproxDPBudget(d_out).value
+        if delta > 0:
+            # We could support this by finding the corresponding zCDP budget and calling
+            # the zCDP version of quantile. We should be careful about this though,
+            # because for some values of delta, this strategy might be worse than just
+            # using the epsilon budget with PureDP.
+            raise ValueError(
+                "Spending an ApproxDP budget with delta > 0 is not yet supported. Use"
+                " ApproxDP with delta = 0 or PureDP."
+            )
+        return PureDPToApproxDP(
+            create_quantile_measurement(
+                input_domain=input_domain,
+                input_metric=input_metric,
+                output_measure=PureDP(),
+                d_out=epsilon,
+                measure_column=measure_column,
+                quantile=quantile,
+                lower=lower,
+                upper=upper,
+                d_in=d_in,
+                groupby_transformation=groupby_transformation,
+                quantile_column=quantile_column,
+            )
+        )
+    elif isinstance(output_measure, (RhoZCDP, PureDP)):
+        d_out = PrivacyBudget.cast(output_measure, d_out).value
+    else:
+        assert False
+    # help mypy
+    assert isinstance(output_measure, (PureDP, RhoZCDP))
     d_in = ExactNumber(d_in)
-    d_out = ExactNumber(d_out)
     if not quantile_column:
         quantile_column = f"q_({quantile})_({measure_column})"
 

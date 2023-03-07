@@ -3,6 +3,14 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Changed
+~~~~~~~
+
+- Functions in :mod:`~.aggregations` now support :class:`~.ApproxDP`.
+
 0.8.2 - 2023-03-02
 ------------------
 
