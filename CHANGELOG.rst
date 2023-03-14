@@ -3,6 +3,14 @@
 Changelog
 =========
 
+UNRELEASED
+----------
+
+Changed
+~~~~~~~
+
+- :func:`~.truncate_large_groups` does not clump identical records together in hash-based ordering.
+
 0.8.3 - 2023-03-08
 ------------------
 
