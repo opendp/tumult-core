@@ -65,18 +65,26 @@ def truncate_large_groups(
         threshold: Maximum number of rows to include for each group.
     """
     rank_column = get_nonconflicting_string(df.columns)
-    hash_column = get_nonconflicting_string(df.columns + [rank_column])
+    row_index_column = get_nonconflicting_string(df.columns + [rank_column])
+    hash_column = get_nonconflicting_string(
+        df.columns + [row_index_column, rank_column]
+    )
+    distinct_row_partitions = Window.partitionBy(*df.columns).orderBy(*df.columns)
     shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(
         hash_column, *df.columns
     )
     return (
-        df.withColumn(hash_column, sf.hash(*df.columns))  # pylint: disable=no-member
+        df.withColumn(row_index_column, sf.row_number().over(distinct_row_partitions))
+        .withColumn(
+            hash_column,
+            sf.hash(*df.columns, row_index_column),  # pylint: disable=no-member
+        )
         .withColumn(
             rank_column,
             sf.row_number().over(shuffled_partitions),  # pylint: disable=no-member
         )
         .filter(f"{rank_column}<={threshold}")
-        .drop(rank_column, hash_column)
+        .drop(rank_column, hash_column, row_index_column)
     )
 
 

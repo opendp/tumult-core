@@ -67,6 +67,26 @@ class TestTruncateLargeGroups(PySparkTest):
         for df in truncated_dfs[1:]:
             self.assert_frame_equal_with_sort(first_df=truncated_dfs[0], second_df=df)
 
+    def test_hash_truncation_duplicate_rows_not_clumped(self):
+        """Tests that truncate_large_groups doesn't clump duplicate rows together."""
+        df = self.spark.createDataFrame(
+            [
+                (1, 2, "A"),
+                (1, 2, "A"),
+                (1, 2, "A"),
+                (1, 2, "A"),
+                (1, 2, "A"),
+                (2, 4, "A"),
+                (2, 4, "A"),
+                (2, 4, "A"),
+                (2, 4, "A"),
+                (2, 4, "A"),
+            ],
+            schema=["X", "Y", "Z"],
+        )
+        actual = truncate_large_groups(df, ["Z"], threshold=5).toPandas()
+        assert len(actual.drop_duplicates()) == 2
+
 
 class TestDropLargeGroups(PySparkTest):
     """Tests for :meth:`~tmlt.core.utils.truncation.drop_large_groups`."""
