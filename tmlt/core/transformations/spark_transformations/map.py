@@ -27,6 +27,13 @@ from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 class RowToRowTransformation(Transformation):
     """Transforms a single row into a different row using a user defined function.
 
+    .. note::
+        The transformation function must not contain any objects that
+        directly or indirectly reference Spark DataFrames or Spark contexts.
+        If the function does contain an object that directly or indirectly
+        references a Spark DataFrame or a Spark context, an
+        error will occur when the RowToRowTransformation is called on a row.
+
     Examples:
         ..
             >>> from tmlt.core.domains.spark_domains import (
@@ -188,6 +195,13 @@ class RowToRowTransformation(Transformation):
 
 class RowToRowsTransformation(Transformation):
     """Transforms a single row into multiple rows using a user defined function.
+
+    .. note::
+        The transformation function must not contain any objects that
+        directly or indirectly reference Spark DataFrames or Spark contexts.
+        If the function does contain an object that directly or indirectly
+        references a Spark DataFrame or a Spark context, an
+        error will occur when the RowToRowTransformation is called on a row
 
     Examples:
         ..
@@ -368,6 +382,13 @@ class RowToRowsTransformation(Transformation):
 
 class FlatMap(Transformation):
     """Applies a :class:`~.RowToRowsTransformation` to each row and flattens the result.
+
+    .. note::
+        The transformation function must not contain any objects that
+        directly or indirectly reference Spark DataFrames or Spark contexts.
+        If the function does contain an object that directly or indirectly
+        references a Spark DataFrame or a Spark context, an
+        error will occur when the RowToRowTransformation is called on a row
 
     Example:
         ..
@@ -595,6 +616,13 @@ class GroupingFlatMap(Transformation):
     2. For each input row, the values in the created column are distinct (This is
        enforced by the implementation).
 
+    .. note::
+        The transformation function must not contain any objects that
+        directly or indirectly reference Spark DataFrames or Spark contexts.
+        If the function does contain an object that directly or indirectly
+        references a Spark DataFrame or a Spark context, an
+        error will occur when the RowToRowTransformation is called on a row
+
     Example:
         ..
             >>> import pandas as pd
@@ -808,6 +836,13 @@ class GroupingFlatMap(Transformation):
 
 class Map(Transformation):
     """Applies a :class:`~.RowToRowTransformation` to each row in a Spark DataFrame.
+
+    .. note::
+        The transformation function must not contain any objects that
+        directly or indirectly reference Spark DataFrames or Spark contexts.
+        If the function does contain an object that directly or indirectly
+        references a Spark DataFrame or a Spark context, an
+        error will occur when the RowToRowTransformation is called on a row
 
     Example:
         ..
