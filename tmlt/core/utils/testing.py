@@ -371,7 +371,7 @@ class PySparkTest(unittest.TestCase):
             **kwargs: Keyword arguments that will be passed to assert_frame_equal().
         """
         if sorted(first_df.columns) != sorted(second_df.columns):
-            raise ValueError(
+            raise AssertionError(
                 "Dataframes must have matching columns. "
                 f"first_df: {sorted(first_df.columns)}. "
                 f"second_df: {sorted(second_df.columns)}."
