@@ -215,19 +215,16 @@ class TransformValue(Transformation):
                 "Transformation's output metric must be "
                 "IfGroupedBy(column, SymmetricDifference())"
             )
-        column = transformation.input_metric.column
-        if column != transformation.output_metric.column:
+        input_column = transformation.input_metric.column
+        if input_metric.df_to_key_column[key] != input_column:
             raise ValueError(
-                "Transformation's input and output metric must group by the same column"
-            )
-        if input_metric.df_to_key_column[key] != column:
-            raise ValueError(
-                f"Transformation's input metric grouping column, {column}, does not"
-                " match the dataframe's key column,"
+                f"Transformation's input metric grouping column, {input_column}, does"
+                " not match the dataframe's key column,"
                 f" {input_metric.df_to_key_column[key]}."
             )
+        output_column = transformation.output_metric.column
         output_metric = AddRemoveKeys(
-            {**input_metric.df_to_key_column, new_key: column}
+            {**input_metric.df_to_key_column, new_key: output_column}
         )
         output_domain = DictDomain(
             {**input_domain.key_to_domain, new_key: transformation.output_domain}

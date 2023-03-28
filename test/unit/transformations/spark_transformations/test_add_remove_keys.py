@@ -470,16 +470,6 @@ class TestTransformValue(PySparkTest):
                     "output_metric": IfGroupedBy("B", SymmetricDifference()),
                 },
             ),
-            (
-                "Transformation's input and output metric must group by the same"
-                " column",
-                ValueError,
-                {},
-                {
-                    "input_metric": IfGroupedBy("A", SymmetricDifference()),
-                    "output_metric": IfGroupedBy("B", SymmetricDifference()),
-                },
-            ),
         ]
     )
     def test_invalid_parameters(
@@ -509,3 +499,84 @@ class TestTransformValue(PySparkTest):
         )
         with self.assertRaisesRegex(error_type, re.escape(error_msg)):
             MockValue(**mock_value_args)  # type: ignore
+
+
+class TestRenameValue(PySparkTest):
+    """Tests for :class:`~.RenameValue`."""
+
+    def setUp(self):
+        """Setup."""
+        self.input_domain = DictDomain(
+            {
+                "key1": SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkFloatColumnDescriptor(
+                            allow_nan=True, allow_inf=True, allow_null=True
+                        ),
+                        "C": SparkStringColumnDescriptor(),
+                    }
+                ),
+                "key2": SparkDataFrameDomain(
+                    {
+                        "D": SparkStringColumnDescriptor(),
+                        "E": SparkIntegerColumnDescriptor(),
+                    }
+                ),
+            }
+        )
+        self.input_metric = AddRemoveKeys({"key1": "A", "key2": "D"})
+        self.input_data = {
+            "key1": self.spark.createDataFrame(
+                pd.DataFrame(
+                    [["X", 1.2, "c1"], ["Y", 0.9, "c2"]], columns=["A", "B", "C"]
+                )
+            ),
+            "key2": self.spark.createDataFrame(
+                pd.DataFrame([["X", 1], ["X", 2]], columns=["D", "E"])
+            ),
+        }
+        self.expected_output = {
+            "key1": self.spark.createDataFrame(
+                pd.DataFrame(
+                    [["X", 1.2, "c1"], ["Y", 0.9, "c2"]], columns=["A", "B", "C"]
+                )
+            ),
+            "key2": self.spark.createDataFrame(
+                pd.DataFrame([["X", 1], ["X", 2]], columns=["D", "E"])
+            ),
+        }
+
+    @parameterized.expand(
+        [
+            ("key1", "key3", {"A": "D"}),
+            ("key2", "key4", {"D": "F"}),
+            ("key1", "key5", {"B": "D", "C": "E"}),
+            ("key2", "key6", {"E": "F", "D": "G"}),
+        ]
+    )
+    def test_value_rename(self, key: str, new_key: str, rename_mapping: Dict[str, str]):
+        """Testing renaming values."""
+        expected_value = self.input_data[key].alias(new_key)
+        for k, v in rename_mapping.items():
+            expected_value = expected_value.withColumnRenamed(k, v)
+        expected_output = self.expected_output.copy()
+        expected_output[new_key] = expected_value
+
+        actual_output = RenameValue(
+            self.input_domain, self.input_metric, key, new_key, rename_mapping
+        )(self.input_data)
+
+        self.assertEqual(list(actual_output), ["key1", "key2", new_key])
+        self.assertEqual(
+            list(actual_output[new_key].columns), expected_output[new_key].columns
+        )
+        self.assert_frame_equal_with_sort(
+            actual_output["key1"].toPandas(), expected_output["key1"].toPandas()
+        )
+        self.assert_frame_equal_with_sort(
+            actual_output["key2"].toPandas(), expected_output["key2"].toPandas()
+        )
+        self.assert_frame_equal_with_sort(
+            actual_output[new_key].toPandas(), expected_output[new_key].toPandas()
+        )
