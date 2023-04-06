@@ -250,6 +250,13 @@ def _test(
     ]
     session.run("nosetests", *test_options)
 
+@install_package
+@show_installed
+@with_clean_workdir
+def _smoketest(session):
+    """Run a no-extra-dependencies smoketest on the package."""
+    session.run("python", "-c", SMOKETEST_SCRIPT)
+
 # Only this session, test_doctest, and test_examples one get the 'test' tag,
 # because the others are just subsets of this session so there's no need to run
 # them again.
@@ -275,6 +282,11 @@ def test_doctest(session):
         session, test_dirs=[Path(PACKAGE_SOURCE_DIR).resolve()],
         min_coverage=0, extra_args=["--with-doctest"]
     )
+
+@poetry_session(tags=["test"])
+def test_smoketest(session):
+    """Smoke test a wheel as it would be installed on a user's machine."""
+    _smoketest(session)
 
 @poetry_session(tags=["test"], python="3.7")
 @install_package
@@ -451,9 +463,6 @@ def prepare_release(session):
         session.log("Prerelease, skipping CHANGELOG.rst update...")
 
 @nox_session()
-@install_package
-@show_installed
-@with_clean_workdir
 def release_smoketest(session):
     """Smoke test a wheel as it would be installed on a user's machine.
 
@@ -463,7 +472,7 @@ def release_smoketest(session):
     Note: This session doesn't do anything useful when run with the `--no-venv`
           option, as it requires a clean environment to install things in.
     """
-    session.run("python", "-c", SMOKETEST_SCRIPT)
+    _smoketest(session)
 
 @nox_session()
 def release_test(session):

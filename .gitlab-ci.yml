@@ -133,7 +133,9 @@ test:
   stage: test
   needs: ["package_linux"]
   script:
-    - nox -s test_doctest test_fast
+    # Run doctest before test_fast so that it doesn't overwrite the coverage
+    # report from test_fast.
+    - nox -s test_smoketest test_doctest test_fast
   coverage: '/^TOTAL.+?(\d+\%)$/'
   artifacts:
     paths: ["coverage/"]
