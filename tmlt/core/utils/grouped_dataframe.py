@@ -12,6 +12,7 @@ from pyspark.sql import Column, DataFrame, Row, SparkSession
 from pyspark.sql import functions as sf
 from pyspark.sql.types import StructType
 
+from tmlt.core.utils.join import join
 from tmlt.core.utils.misc import get_nonconflicting_string
 
 
@@ -84,32 +85,6 @@ class GroupedDataFrame:
             dataframe=self._dataframe.select(*columns), group_keys=self.group_keys
         )
 
-    def _null_safe_join(self, df: sf.DataFrame) -> DataFrame:
-        """Join self.group_keys with another Dataframe, in a null-safe way."""
-        # By default the join operator is NOT null-safe
-        # so instead, we have to make this ugly join condition:
-        cond = [
-            self.group_keys[col].eqNullSafe(df[col]) for col in self.groupby_columns
-        ]
-        # and use that for the 'on' parameter:
-        out = self.group_keys.join(df, on=cond, how="left")
-        # Now the dataframe will have 2 copies of each column that you grouped by -
-        # one for self.group_keys, and one for the other dataframe.
-        # (For example, if you joined on columns A and B,
-        # the resulting dataframe would have two column As and two column Bs.)
-        # The column from self.group_keys will have every relevant group_key
-        # (for example, column "A" would have "a1", "a2", and "a3").
-        # The other dataframe (df) might not have every value
-        # (for example, column "A" might only have "a2").
-        # So you want to drop the columns from the other dataframe,
-        # and keep the columns from self.group_keys.
-        for col in self.groupby_columns:
-            out = out.drop(df[col])
-        # Now we finally have the dataframe we want: one that contains every
-        # value from self.group_keys, without duplicate columns, joined
-        # appropriately on null values.
-        return out
-
     def agg(self, func: Column, fill_value: Any) -> DataFrame:
         """Applies given spark function (column expression) to each group.
 
@@ -136,14 +111,18 @@ class GroupedDataFrame:
         nonempty_groups_output = (
             self._dataframe.groupBy(self.groupby_columns)
             .agg(func)
-            .withColumn(empty_indicator, sf.lit(False))
+            .withColumn(empty_indicator, sf.lit(0))
         )
-        all_groups_output = self._null_safe_join(nonempty_groups_output).fillna(
-            {empty_indicator: True}
-        )
+        all_groups_output = join(
+            left=self.group_keys,
+            right=nonempty_groups_output,
+            on=self.groupby_columns,
+            how="left",
+            nulls_are_equal=True,
+        ).fillna({empty_indicator: 1})
         return all_groups_output.withColumn(
             output_column,
-            sf.when(sf.col(empty_indicator), sf.lit(fill_value)).otherwise(
+            sf.when(sf.col(empty_indicator) == 1, sf.lit(fill_value)).otherwise(
                 sf.col(output_column)
             ),
         ).drop(empty_indicator)
@@ -177,10 +156,16 @@ class GroupedDataFrame:
 
         empty_indicator = get_nonconflicting_string(self._dataframe.columns)
         sdf = self._dataframe.withColumn(
-            empty_indicator, sf.lit(False)  # pylint: disable=no-member
+            empty_indicator, sf.lit(0)  # pylint: disable=no-member
         )
 
-        sdf = self._null_safe_join(sdf).fillna({empty_indicator: True})
+        sdf = join(
+            left=self.group_keys,
+            right=sdf,
+            on=self.groupby_columns,
+            how="left",
+            nulls_are_equal=True,
+        ).fillna({empty_indicator: 1})
 
         grouped_df = sdf.groupby(*self.groupby_columns)
         agg_input_columns = list(

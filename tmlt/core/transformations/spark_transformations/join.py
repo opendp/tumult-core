@@ -4,10 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-from dataclasses import replace
 from enum import Enum
-from functools import reduce
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union
 
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
@@ -28,6 +26,7 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.utils.join import domain_after_join, join, natural_join_columns
 from tmlt.core.utils.truncation import drop_large_groups, truncate_large_groups
 
 
@@ -272,17 +271,6 @@ class PublicJoin(Transformation):
                     "RootSumOfSquared(SymmetricDifference())"
                 )
 
-        common_cols = set(input_domain.schema) & set(public_df.columns)
-        if not join_cols:
-            if not common_cols:
-                raise ValueError("Can not join: No common columns.")
-            join_cols = sorted(common_cols, key=list(input_domain.schema).index)
-        else:
-            join_cols = join_cols.copy()
-
-        if not set(join_cols) <= set(common_cols):
-            raise ValueError("Join columns must be common to both DataFrames.")
-
         if public_df_domain:
             if public_df.schema != public_df_domain.spark_schema:
                 raise ValueError(
@@ -296,39 +284,30 @@ class PublicJoin(Transformation):
                         )
                     if not descriptor.allow_nan:
                         public_df = public_df.filter(~sf.isnan(public_df[col]))
-
         else:
             public_df_domain = SparkDataFrameDomain.from_spark_schema(public_df.schema)
-        for col in join_cols:
-            if input_domain[col].data_type != public_df_domain[col].data_type:
-                raise ValueError(
-                    "Join columns must have identical types on both "
-                    f"DataFrames. {input_domain[col].data_type} and "
-                    f"{public_df_domain[col].data_type} are incompatible."
-                )
-
-        join_cols_schema = {col: input_domain[col] for col in join_cols}
-        overlapping_cols = common_cols - set(join_cols)
-        left_schema = {
-            col + ("_left" if col in overlapping_cols else ""): input_domain[col]
-            for col in input_domain.schema
-            if col not in join_cols
-        }
-        right_schema = {
-            col + ("_right" if col in overlapping_cols else ""): public_df_domain[col]
-            for col in public_df_domain.schema
-            if col not in join_cols
-        }
-        output_domain = SparkDataFrameDomain(
-            {**join_cols_schema, **left_schema, **right_schema}
+        if join_cols is None:
+            join_cols = natural_join_columns(
+                left_columns=list(input_domain.schema),
+                right_columns=list(public_df_domain.schema),
+            )
+        output_domain = domain_after_join(
+            left_domain=input_domain,
+            right_domain=public_df_domain,
+            on=join_cols,
+            how="inner",
+            nulls_are_equal=join_on_nulls,
         )
-        if isinstance(metric, IfGroupedBy) and metric.column in overlapping_cols:
+        if (
+            isinstance(metric, IfGroupedBy)
+            and metric.column not in join_cols
+            and metric.column in input_domain.schema
+            and metric.column in public_df_domain.schema
+        ):
             raise ValueError(
-                f"IfGroupedBy column {metric.column} is an overlapping"
+                f"IfGroupedBy column '{metric.column}' is an overlapping"
                 " column but not a join key."
             )
-        for col in overlapping_cols:
-            public_df = public_df.withColumnRenamed(col, f"{col}_right")
 
         public_df_join_columns = public_df.select(*join_cols)
         if not join_on_nulls:
@@ -355,10 +334,20 @@ class PublicJoin(Transformation):
             output_metric=metric,
         )
         self._join_on_nulls = join_on_nulls
-        self._overlapping_cols = overlapping_cols
         self._public_df = public_df
         self._public_df = public_df
-        self._join_cols = join_cols
+        self._join_cols = (
+            join_cols.copy()
+            if join_cols is not None
+            else natural_join_columns(
+                list(input_domain.schema), list(public_df_domain.schema)
+            )
+        )
+
+    @property
+    def join_on_nulls(self) -> bool:
+        """Returns whether nulls are considered equal in join."""
+        return self._join_on_nulls
 
     @property
     def join_cols(self) -> List[str]:
@@ -397,26 +386,13 @@ class PublicJoin(Transformation):
         Args:
             sdf: Private DataFrame to join public DataFrame with.
         """
-        output_columns_order = list(
-            (cast(SparkDataFrameDomain, self.output_domain)).schema
+        return join(
+            left=sdf,
+            right=self.public_df,
+            how="inner",
+            on=self.join_cols,
+            nulls_are_equal=self.join_on_nulls,
         )
-        for col in self._overlapping_cols:
-            sdf = sdf.withColumnRenamed(col, f"{col}_left")
-        if not self._join_on_nulls:
-            return sdf.join(self.public_df, on=self.join_cols, how="inner").select(
-                output_columns_order
-            )
-        joined_df = sdf.join(
-            self.public_df,
-            on=reduce(
-                lambda exp, col: exp & sdf[col].eqNullSafe(self.public_df[col]),
-                self.join_cols,
-                sf.lit(True),  # pylint: disable=no-member
-            ),
-        )
-        for col in self.join_cols:
-            joined_df = joined_df.drop(self.public_df[col])
-        return joined_df.select(output_columns_order)
 
 
 class TruncationStrategy(Enum):
@@ -612,7 +588,7 @@ class PrivateJoin(Transformation):
                 combination of values of `join_cols` in the left DataFrame.
             right_truncation_threshold: The maximum number of rows to allow for each
                 combination of values of `join_cols` in the right DataFrame.
-            join_cols: Columns to perform join on. If None, or empty, natural join is
+            join_cols: Columns to perform join on. If None, a natural join is
                 computed.
             join_on_nulls: If True, null values on corresponding join columns of
                 both dataframes will be considered to be equal.
@@ -630,49 +606,14 @@ class PrivateJoin(Transformation):
         if not isinstance(left_domain, SparkDataFrameDomain) or not isinstance(
             right_domain, SparkDataFrameDomain
         ):
-            raise ValueError("Input domain must be SparkDataFrameDomin for both keys.")
+            raise ValueError("Input domain must be SparkDataFrameDomain for both keys.")
 
-        common_cols = set(left_domain.schema) & set(right_domain.schema)
-        if not join_cols:
-            if not common_cols:
-                raise ValueError("Can not join: No common columns.")
-            join_cols = sorted(common_cols, key=list(left_domain.schema).index)
-        else:
-            join_cols = join_cols.copy()
-
-        join_cols_schema = {}
-        for key in join_cols:
-            if left_domain[key] != right_domain[key]:
-                raise ValueError(
-                    "Left and right DataFrame domains have mismatching types on"
-                    f" join column {key}."
-                )
-            if join_on_nulls:
-                join_cols_schema[key] = left_domain[key]
-            else:
-                join_cols_schema[key] = replace(left_domain[key], allow_null=False)
-        overlapping_cols = common_cols - set(join_cols)
-        all_input_cols = set(left_domain.schema) | set(right_domain.schema)
-        for col in overlapping_cols:
-            if f"{col}_left" in all_input_cols or f"{col}_right" in all_input_cols:
-                raise ValueError(
-                    f"Join would rename overlapping column '{col}' to an existing"
-                    " column name."
-                )
-
-        left_schema = {
-            col + ("_left" if col in overlapping_cols else ""): left_domain[col]
-            for col in left_domain.schema
-            if col not in join_cols
-        }
-        right_schema = {
-            col + ("_right" if col in overlapping_cols else ""): right_domain[col]
-            for col in right_domain.schema
-            if col not in join_cols
-        }
-
-        output_domain = SparkDataFrameDomain(
-            {**join_cols_schema, **left_schema, **right_schema}
+        output_domain = domain_after_join(
+            left_domain=left_domain,
+            right_domain=right_domain,
+            on=join_cols,
+            how="inner",
+            nulls_are_equal=join_on_nulls,
         )
 
         super().__init__(
@@ -689,8 +630,13 @@ class PrivateJoin(Transformation):
         self._right_truncation_strategy = right_truncation_strategy
         self._left_truncation_threshold = left_truncation_threshold
         self._right_truncation_threshold = right_truncation_threshold
-        self._join_cols = join_cols
-        self._overlapping_cols = set(common_cols) - set(join_cols)
+        self._join_cols = (
+            join_cols.copy()
+            if join_cols is not None
+            else natural_join_columns(
+                list(left_domain.schema), list(right_domain.schema)
+            )
+        )
         self._join_on_nulls = join_on_nulls
 
     @property
@@ -781,24 +727,13 @@ class PrivateJoin(Transformation):
             self.right_truncation_strategy,
             self.right_truncation_threshold,
         )
-
-        for col in self._overlapping_cols:
-            left = left.withColumnRenamed(col, f"{col}_left")
-            right = right.withColumnRenamed(col, f"{col}_right")
-
-        if not self._join_on_nulls:
-            right = right.dropna()
-            return left.join(right, on=self.join_cols, how="inner")
-
-        joined_df = left.join(
-            right, on=[left[col].eqNullSafe(right[col]) for col in self.join_cols]
+        return join(
+            left=left,
+            right=right,
+            how="inner",
+            on=self.join_cols,
+            nulls_are_equal=self.join_on_nulls,
         )
-        for col in self.join_cols:
-            joined_df = joined_df.drop(right[col])
-        output_columns_order = list(
-            (cast(SparkDataFrameDomain, self.output_domain)).schema
-        )
-        return joined_df.select(output_columns_order)
 
 
 class PrivateJoinOnKey(Transformation):
@@ -972,10 +907,10 @@ class PrivateJoinOnKey(Transformation):
         """Constructor.
 
         Args:
-            input_domain: Domain of the input dictionaries. Must contain `left_key` and `right_key`,
-                but may also contain other keys.
-            input_metric: AddRemoveKeys metric for the input dictionaries. The left and right dataframes
-                must use the same key column.
+            input_domain: Domain of the input dictionaries. Must contain `left_key` and
+                `right_key`, but may also contain other keys.
+            input_metric: AddRemoveKeys metric for the input dictionaries. The left and
+                right dataframes must use the same key column.
             left_key: Key for the left DataFrame.
             right_key: Key for the right DataFrame.
             new_key: Key for the output DataFrame.
@@ -992,57 +927,25 @@ class PrivateJoinOnKey(Transformation):
             raise ValueError(f"Invalid key: Key '{right_key}' not in input domain.")
 
         left_domain, right_domain = input_domain[left_key], input_domain[right_key]
-        if not isinstance(left_domain, SparkDataFrameDomain) or not isinstance(
-            right_domain, SparkDataFrameDomain
-        ):
-            raise ValueError("Input domain must be SparkDataFrameDomin for both keys.")
 
-        common_cols = set(left_domain.schema) & set(right_domain.schema)
-        if not join_cols:
-            if not common_cols:
-                raise ValueError("Can not join: No common columns.")
-            join_cols = sorted(common_cols, key=list(left_domain.schema).index)
-        else:
-            join_cols = join_cols.copy()
-
-        join_cols_schema = {}
-        for key in join_cols:
-            if left_domain[key] != right_domain[key]:
-                raise ValueError(
-                    "Left and right DataFrame domains have mismatching types on"
-                    f" join column {key}."
-                )
-            if join_on_nulls:
-                join_cols_schema[key] = left_domain[key]
-            else:
-                join_cols_schema[key] = replace(left_domain[key], allow_null=False)
-        overlapping_cols = common_cols - set(join_cols)
-        all_input_cols = set(left_domain.schema) | set(right_domain.schema)
-        for col in overlapping_cols:
-            if f"{col}_left" in all_input_cols or f"{col}_right" in all_input_cols:
-                raise ValueError(
-                    f"Join would rename overlapping column '{col}' to an existing"
-                    " column name."
-                )
-
-        left_schema = {
-            col + ("_left" if col in overlapping_cols else ""): left_domain[col]
-            for col in left_domain.schema
-            if col not in join_cols
-        }
-        right_schema = {
-            col + ("_right" if col in overlapping_cols else ""): right_domain[col]
-            for col in right_domain.schema
-            if col not in join_cols
-        }
-
-        new_df_domain = SparkDataFrameDomain(
-            {**join_cols_schema, **left_schema, **right_schema}
-        )
         output_domain = DictDomain(
-            {**input_domain.key_to_domain, new_key: new_df_domain}
+            {
+                **input_domain.key_to_domain,
+                new_key: domain_after_join(
+                    left_domain=left_domain,
+                    right_domain=right_domain,
+                    on=join_cols,
+                    how="inner",
+                    nulls_are_equal=join_on_nulls,
+                ),
+            }
         )
-
+        assert isinstance(left_domain, SparkDataFrameDomain)
+        assert isinstance(right_domain, SparkDataFrameDomain)
+        if join_cols is None:
+            join_cols = natural_join_columns(
+                list(left_domain.schema), list(right_domain.schema)
+            )
         if left_key not in input_metric.df_to_key_column:
             raise ValueError(f"Invalid key: Key '{left_key}' not in input metric.")
         if right_key not in input_metric.df_to_key_column:
@@ -1069,8 +972,13 @@ class PrivateJoinOnKey(Transformation):
         self._left_key = left_key
         self._right_key = right_key
         self._new_key = new_key
-        self._join_cols = join_cols
-        self._overlapping_cols = overlapping_cols
+        self._join_cols = (
+            join_cols.copy()
+            if join_cols is not None
+            else natural_join_columns(
+                list(left_domain.schema), list(right_domain.schema)
+            )
+        )
         self._join_on_nulls = join_on_nulls
 
     @property
@@ -1114,27 +1022,12 @@ class PrivateJoinOnKey(Transformation):
         """Perform join."""
         left = dfs[self.left_key]
         right = dfs[self.right_key]
-        for col in self._overlapping_cols:
-            left = left.withColumnRenamed(col, f"{col}_left")
-            right = right.withColumnRenamed(col, f"{col}_right")
-
-        if not self._join_on_nulls:
-            right = right.dropna()
-            joined_df = left.join(right, on=self.join_cols, how="inner")
-        else:
-            joined_df = left.join(
-                right, on=[left[col].eqNullSafe(right[col]) for col in self.join_cols]
-            )
-            for col in self.join_cols:
-                joined_df = joined_df.drop(right[col])
-        output_columns_order = list(
-            (
-                cast(
-                    SparkDataFrameDomain,
-                    cast(DictDomain, self.output_domain).key_to_domain[self.new_key],
-                )
-            ).schema
-        )
         new_dfs = dfs.copy()
-        new_dfs[self.new_key] = joined_df.select(output_columns_order)
+        new_dfs[self.new_key] = join(
+            left,
+            right,
+            on=self.join_cols,
+            how="inner",
+            nulls_are_equal=self.join_on_nulls,
+        )
         return new_dfs

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
+import re
 from typing import List, Optional, Union, cast
 
 import pandas as pd
@@ -122,6 +123,94 @@ class TestPublicJoin(TestComponent):
 
     @parameterized.expand(
         [
+            (
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=False, allow_inf=True, allow_nan=False
+                        ),
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                    }
+                ),
+                pd.DataFrame({"B": ["X", "X", None], "C": [10.0, 11.0, 3.0]}),
+                SparkDataFrameDomain(
+                    {
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                        "C": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=False, allow_nan=True
+                        ),
+                    }
+                ),
+                ["B"],
+                False,
+                SparkDataFrameDomain(
+                    {
+                        "B": SparkStringColumnDescriptor(allow_null=False),
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=False, allow_inf=True, allow_nan=False
+                        ),
+                        "C": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=False, allow_nan=True
+                        ),
+                    }
+                ),
+            ),
+            (
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=True
+                        ),
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                    }
+                ),
+                pd.DataFrame({"A": [1.2, 1.3], "B": ["X", "X"]}),
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=False
+                        ),
+                        "B": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+                ["A"],
+                True,
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=False
+                        ),
+                        "B_left": SparkStringColumnDescriptor(allow_null=True),
+                        "B_right": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+            ),
+        ]
+    )
+    def test_output_domain_special_values(
+        self,
+        input_domain: SparkDataFrameDomain,
+        public_df: pd.DataFrame,
+        public_df_domain: SparkDataFrameDomain,
+        join_cols: List[str],
+        join_on_nulls: bool,
+        expected_domain: SparkDataFrameDomain,
+    ):
+        """Tests special values in output domain."""
+        transformation = PublicJoin(
+            input_domain=input_domain,
+            metric=SymmetricDifference(),
+            public_df=self.spark.createDataFrame(
+                public_df, schema=public_df_domain.spark_schema
+            ),
+            public_df_domain=public_df_domain,
+            join_cols=join_cols,
+            join_on_nulls=join_on_nulls,
+        )
+        self.assertEqual(transformation.output_domain, expected_domain)
+
+    @parameterized.expand(
+        [
             (SymmetricDifference(), 2),
             (IfGroupedBy("B", SumOf(SymmetricDifference())), 2),
             (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())), 2),
@@ -184,7 +273,7 @@ class TestPublicJoin(TestComponent):
                 ["B", "C"],
                 ["B"],
                 "C",
-                "C is an overlapping column but not a join key",
+                "'C' is an overlapping column but not a join key",
                 SymmetricDifference(),
             ),
             (
@@ -717,7 +806,7 @@ class TestPrivateJoin(PySparkTest):
                 "df1",
                 "df2",
                 None,
-                "No common columns",
+                "Join must involve at least one column.",
             ),
             (  # Mismatching column types
                 DictDomain(
@@ -733,7 +822,8 @@ class TestPrivateJoin(PySparkTest):
                 "df1",
                 "df2",
                 ["A"],
-                "mismatching types on join column A",
+                "'A' has different data types in left (StringType()) and right "
+                "(LongType()) domains.",
             ),
             (  # _right column already exists
                 DictDomain(
@@ -756,7 +846,7 @@ class TestPrivateJoin(PySparkTest):
                 "df1",
                 "df2",
                 ["A"],
-                "Join would rename overlapping column 'B' to an existing column name",
+                "Name collision, 'B_right' would appear more than once in the output.",
             ),
         ]
     )
@@ -769,7 +859,7 @@ class TestPrivateJoin(PySparkTest):
         error_msg: str,
     ):
         """Tests that PrivateJoin cannot be constructed with invalid arguments."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex(ValueError, re.escape(error_msg)):
             PrivateJoin(
                 input_domain=input_domain,
                 left_key=left,
@@ -780,51 +870,6 @@ class TestPrivateJoin(PySparkTest):
                 right_truncation_threshold=1,
                 join_cols=join_cols,
             )
-
-    def test_join_drops_invalid_rows(self):
-        """Tests nans are dropped from the right-hand DataFrame when disallowed.
-
-        Infinity should still be allowed.
-        """
-        left = pd.DataFrame([(1, 2), (1, 3), (2, 4)], columns=["A", "B"])
-        right_sdf = self.spark.createDataFrame(
-            [(1, 2, float("nan")), (1, 3, float("inf")), (2, 4, float(0))],
-            schema=st.StructType(
-                [
-                    st.StructField("A", st.IntegerType(), nullable=False),
-                    st.StructField("B", st.IntegerType(), nullable=False),
-                    st.StructField("C", st.DoubleType(), nullable=False),
-                ]
-            ),
-        )
-        left_domain = SparkDataFrameDomain(
-            {col: SparkIntegerColumnDescriptor() for col in left.columns}
-        )
-        right_domain = SparkDataFrameDomain(
-            {
-                "A": SparkIntegerColumnDescriptor(),
-                "B": SparkIntegerColumnDescriptor(),
-                "C": SparkFloatColumnDescriptor(allow_inf=True),
-            }
-        )
-        join_cols = ["A", "B"]
-        private_join = PrivateJoin(
-            input_domain=DictDomain({"left": left_domain, "right": right_domain}),
-            left_key="left",
-            right_key="right",
-            left_truncation_strategy=TruncationStrategy.TRUNCATE,
-            right_truncation_strategy=TruncationStrategy.TRUNCATE,
-            left_truncation_threshold=1,
-            right_truncation_threshold=1,
-            join_cols=join_cols,
-            join_on_nulls=False,
-        )
-        left_sdf = self.spark.createDataFrame(left)
-        actual = private_join({"left": left_sdf, "right": right_sdf}).toPandas()
-        expected = pd.DataFrame(
-            [[2, 4, float(0)], [1, 3, float("inf")]], columns=["A", "B", "C"]
-        )
-        self.assert_frame_equal_with_sort(actual, expected)
 
     def test_join_without_nulls_changes_domain(self):
         """Test that when join_on_null=False, output domain does not allow null."""
@@ -861,6 +906,92 @@ class TestPrivateJoin(PySparkTest):
         self.assertEqual(expected_output_domain["A"], actual["A"])
         self.assertEqual(expected_output_domain["B"], actual["B"])
         self.assertEqual(expected_output_domain["C"], actual["C"])
+
+    @parameterized.expand(
+        [
+            (
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=False, allow_inf=True, allow_nan=False
+                        ),
+                        "B": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+                SparkDataFrameDomain(
+                    {
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                        "C": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=False, allow_nan=True
+                        ),
+                    }
+                ),
+                ["B"],
+                True,
+                SparkDataFrameDomain(
+                    {
+                        "B": SparkStringColumnDescriptor(allow_null=False),
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=False, allow_inf=True, allow_nan=False
+                        ),
+                        "C": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=False, allow_nan=True
+                        ),
+                    }
+                ),
+            ),
+            (
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=True
+                        ),
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                    }
+                ),
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=False
+                        ),
+                        "B": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+                ["A"],
+                True,
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=False
+                        ),
+                        "B_left": SparkStringColumnDescriptor(allow_null=True),
+                        "B_right": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+            ),
+        ]
+    )
+    def test_output_domain_special_values(
+        self,
+        left_domain: SparkDataFrameDomain,
+        right_domain: SparkDataFrameDomain,
+        join_cols: List[str],
+        join_on_nulls: bool,
+        expected_domain: SparkDataFrameDomain,
+    ):
+        """Tests special values in output domain."""
+        transformation = PrivateJoin(
+            input_domain=DictDomain({"left": left_domain, "right": right_domain}),
+            left_key="left",
+            right_key="right",
+            left_truncation_strategy=TruncationStrategy.TRUNCATE,
+            right_truncation_strategy=TruncationStrategy.TRUNCATE,
+            left_truncation_threshold=10,
+            right_truncation_threshold=10,
+            join_cols=join_cols,
+            join_on_nulls=join_on_nulls,
+        )
+        self.assertEqual(transformation.output_domain, expected_domain)
 
     @parameterized.expand(
         [
@@ -1087,3 +1218,92 @@ class TestPrivateJoinOnKey(PySparkTest):
         )
         self.assertEqual(private_join.stability_relation(d_in, d_out), expected)
         self.assertEqual(private_join.stability_function(d_in) <= d_out, expected)
+
+    @parameterized.expand(
+        [
+            (
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=False, allow_inf=True, allow_nan=False
+                        ),
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                    }
+                ),
+                SparkDataFrameDomain(
+                    {
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                        "C": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=False, allow_nan=True
+                        ),
+                    }
+                ),
+                ["B"],
+                True,
+                SparkDataFrameDomain(
+                    {
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=False, allow_inf=True, allow_nan=False
+                        ),
+                        "C": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=False, allow_nan=True
+                        ),
+                    }
+                ),
+            ),
+            (
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=True
+                        ),
+                        "B": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=False
+                        ),
+                        "B": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+                ["B"],
+                True,
+                SparkDataFrameDomain(
+                    {
+                        "B": SparkStringColumnDescriptor(allow_null=False),
+                        "A_left": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=True
+                        ),
+                        "A_right": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_inf=True, allow_nan=False
+                        ),
+                    }
+                ),
+            ),
+        ]
+    )
+    def test_output_domain_special_values(
+        self,
+        left_domain: SparkDataFrameDomain,
+        right_domain: SparkDataFrameDomain,
+        join_cols: List[str],
+        join_on_nulls: bool,
+        expected_domain: SparkDataFrameDomain,
+    ):
+        """Tests that special values in output domain."""
+        transformation = PrivateJoinOnKey(
+            input_domain=DictDomain({"left": left_domain, "right": right_domain}),
+            input_metric=AddRemoveKeys({"left": "B", "right": "B"}),
+            left_key="left",
+            right_key="right",
+            new_key="joined",
+            join_cols=join_cols,
+            join_on_nulls=join_on_nulls,
+        )
+        self.assertEqual(
+            cast(DictDomain, transformation.output_domain).key_to_domain["joined"],
+            expected_domain,
+        )

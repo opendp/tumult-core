@@ -45,7 +45,7 @@ from tmlt.core.utils.testing import PySparkTest
     [
         {"group_keys_list": [], "struct_fields": [], "groupby_columns": []},
         {
-            "group_keys_list": [("x1",), ("x2",), ("x3",)],
+            "group_keys_list": [("x1",), ("x2",), ("x3",), (None,)],
             "struct_fields": [StructField("A", StringType())],
             "groupby_columns": ["A"],
         },
@@ -61,7 +61,10 @@ class TestGroupByAggregationMeasurements(PySparkTest):
     def setUp(self):
         """Test setup."""
         self.input_domain = SparkDataFrameDomain(
-            {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+            {
+                "A": SparkStringColumnDescriptor(allow_null=True),
+                "B": SparkIntegerColumnDescriptor(),
+            }
         )
         self.group_keys = self.spark.createDataFrame(
             self.group_keys_list, schema=StructType(self.struct_fields.copy())
