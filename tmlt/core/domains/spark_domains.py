@@ -35,7 +35,6 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
-from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 
 
 class SparkColumnDescriptor(ABC):
@@ -522,6 +521,11 @@ class SparkGroupedDataFrameDomain(Domain):
     @property
     def carrier_type(self) -> type:
         """Returns carrier type for the domain."""
+        # avoid circular import
+        from tmlt.core.utils.grouped_dataframe import (  # pylint: disable=import-outside-toplevel
+            GroupedDataFrame,
+        )
+
         return GroupedDataFrame
 
     @property
@@ -544,8 +548,12 @@ class SparkGroupedDataFrameDomain(Domain):
 
     def validate(self, value: Any):
         """Raises error if value is not a GroupedDataFrame with matching group_keys."""
-        super().validate(value)
+        # avoid circular import
+        from tmlt.core.utils.grouped_dataframe import (  # pylint: disable=import-outside-toplevel
+            GroupedDataFrame,
+        )
 
+        super().validate(value)
         assert isinstance(value, GroupedDataFrame)
         if value.group_keys.schema != self.group_keys.schema:
             raise OutOfDomainError(

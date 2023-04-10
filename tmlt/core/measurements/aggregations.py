@@ -72,6 +72,7 @@ from tmlt.core.transformations.spark_transformations.map import (
 )
 from tmlt.core.utils.distributions import double_sided_geometric_inverse_cmf
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.utils.join import join
 from tmlt.core.utils.misc import get_nonconflicting_string
 from tmlt.core.utils.parameters import calculate_noise_scale
 
@@ -988,14 +989,22 @@ def create_average_measurement(
         )
         sod_df, count_df = answers
         if groupby.groupby_columns:
-            df_with_sod_and_count = sod_df.join(count_df, on=groupby.groupby_columns)
+            df_with_sod_and_count = join(
+                left=sod_df,
+                right=count_df,
+                on=groupby.groupby_columns,
+                how="inner",  # same groups
+                nulls_are_equal=True,
+            )
         else:
             temp_column = get_nonconflicting_string(sod_df.columns + count_df.columns)
-            df_with_sod_and_count = (
-                sod_df.withColumn(temp_column, sf.lit(1))
-                .join(count_df.withColumn(temp_column, sf.lit(1)), on=[temp_column])
-                .drop(temp_column)
-            )
+            df_with_sod_and_count = join(
+                left=sod_df.withColumn(temp_column, sf.lit(1)),
+                right=count_df.withColumn(temp_column, sf.lit(1)),
+                on=[temp_column],
+                how="inner",  # only one row
+                nulls_are_equal=False,  # no nulls
+            ).drop(temp_column)
 
         df_with_all_columns = df_with_sod_and_count.withColumn(
             average_column,
@@ -1342,17 +1351,35 @@ def create_variance_measurement(
         sod_df, sos_df, count_df = answers
         assert groupby_transformation is not None
         if groupby.groupby_columns:
-            df_with_sums_and_count = sod_df.join(
-                sos_df, on=groupby.groupby_columns
-            ).join(count_df, on=groupby.groupby_columns)
-        else:
-            temp_column = get_nonconflicting_string(sod_df.columns + count_df.columns)
-            df_with_sums_and_count = (
-                sod_df.withColumn(temp_column, sf.lit(1))
-                .join(sos_df.withColumn(temp_column, sf.lit(1)), on=[temp_column])
-                .join(count_df.withColumn(temp_column, sf.lit(1)), on=[temp_column])
-                .drop(temp_column)
+            df_with_sums_and_count = join(
+                left=join(
+                    left=sod_df,
+                    right=sos_df,
+                    on=groupby.groupby_columns,
+                    how="inner",  # same groups
+                    nulls_are_equal=True,
+                ),
+                right=count_df,
+                on=groupby.groupby_columns,
+                how="inner",
+                nulls_are_equal=True,
             )
+        else:
+            temp_column = get_nonconflicting_string(sod_df.columns + sos_df.columns)
+            df_with_sums_and_count = join(
+                left=join(
+                    left=sod_df.withColumn(temp_column, sf.lit(1)),
+                    right=sos_df.withColumn(temp_column, sf.lit(1)),
+                    on=[temp_column],
+                    how="inner",  # only one row
+                    nulls_are_equal=False,  # no nulls
+                ),
+                right=count_df.withColumn(temp_column, sf.lit(1)),
+                on=[temp_column],
+                how="inner",
+                nulls_are_equal=False,
+            ).drop(temp_column)
+
         df_with_all_columns = df_with_sums_and_count.withColumn(
             variance_column,
             sf.when(

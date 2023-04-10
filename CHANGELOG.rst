@@ -6,11 +6,23 @@ Changelog
 UNRELEASED
 ----------
 
+Added
+~~~~~
+
+- :mod:`~.utils.join`, which contains utilities for validating join parameters, propogating domains through joins, and joining dataframes.
+
 Changed
 ~~~~~~~
 
 - :func:`~.truncate_large_groups` does not clump identical records together in hash-based ordering.
 - :class:`~.TransformValue` no longer fails when renaming the id column using :class:`~.RenameValue`.
+
+Fixed
+~~~~~
+
+- groupby no longer outputs nan values when both tables are views on the same original table
+- private join no longer drops Nulls on non-join columns when join_on_nulls=False
+- groupby average and variance no longer drops groups containing null values
 
 0.8.3 - 2023-03-08
 ------------------
