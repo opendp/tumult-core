@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-import tmlt.core.utils.arb as arb
 from tmlt.core.random.inverse_cdf import construct_inverse_sampler
+from tmlt.core.utils import arb
 
 
 def uniform_inverse_cdf(l: float, u: float, p: arb.Arb, prec: int) -> arb.Arb:

@@ -5,8 +5,8 @@
 
 import math
 
-import tmlt.core.utils.arb as arb
 from tmlt.core.random.inverse_cdf import construct_inverse_sampler
+from tmlt.core.utils import arb
 
 
 def laplace_inverse_cdf(u: float, b: float, p: arb.Arb, prec: int) -> arb.Arb:

@@ -499,7 +499,7 @@ def _int_to_fmpz_t(val: int) -> "ctypes._PointerLike":
         val: Integer to convert.
     """
     fmpz_pointer = ctypes.pointer(ctypes.c_long())
-    s = "%x" % int(val)
+    s = "%x" % int(val)  # pylint: disable=consider-using-f-string
     val_c_string = ctypes.c_char_p(s.encode("ascii"))
     flintlib.fmpz_set_str(fmpz_pointer, val_c_string, 16)
     return fmpz_pointer

@@ -163,9 +163,11 @@ class TestChainTM(TestComponent):
         if not stability_function_implemented and not use_hint:
             with self.assertRaisesRegex(
                 ValueError,
-                "A hint is needed to check this privacy relation, because the "
-                "stability_relation of self.transformation raised a "
-                "NotImplementedError: TEST",
+                (
+                    "A hint is needed to check this privacy relation, because the "
+                    "stability_relation of self.transformation raised a "
+                    "NotImplementedError: TEST"
+                ),
             ):
                 measurement.privacy_relation(sp.Integer(1), sp.Integer(1))
         else:

@@ -8,8 +8,8 @@ from fractions import Fraction
 from typing import Union, cast
 
 import numpy as np
-import scipy.stats as stats
 from pyspark.sql.types import DataType, DoubleType, LongType
+from scipy import stats
 from typeguard import typechecked
 
 from tmlt.core.domains.numpy_domains import (
@@ -110,7 +110,9 @@ class AddLaplaceNoise(Measurement):
             return ExactNumber(float("inf"))
         return d_in / self.scale
 
-    def __call__(self, val: Union[np.int32, np.int64, np.float32, np.float64]) -> float:
+    def __call__(
+        self, val: Union[np.int32, np.int64, np.float32, np.float64, float, int]
+    ) -> float:
         r"""Returns the value with laplace noise added.
 
         The added laplace noise has the probability density function
@@ -224,7 +226,7 @@ class AddGeometricNoise(Measurement):
             return ExactNumber(float("inf"))
         return d_in / self.alpha
 
-    def __call__(self, value: Union[np.int32, np.int64]) -> int:
+    def __call__(self, value: Union[np.int32, np.int64, float, int]) -> int:
         r"""Returns the value with double sided geometric noise added.
 
         The added noise has the probability mass function
@@ -368,7 +370,7 @@ class AddDiscreteGaussianNoise(Measurement):
             return ExactNumber(float("inf"))
         return (ExactNumber(d_in) ** 2) / (2 * self._sigma_squared)
 
-    def __call__(self, value: Union[np.int32, np.int64]) -> int:
+    def __call__(self, value: Union[np.int32, np.int64, float, int]) -> int:
         r"""Adds discrete Gaussian noise with specified scale.
 
         The added noise has the probability mass function
@@ -494,7 +496,7 @@ class AddGaussianNoise(Measurement):
         return (ExactNumber(d_in) ** 2) / (2 * self._sigma_squared)
 
     def __call__(
-        self, value: Union[np.int32, np.int64, np.float32, np.float64]
+        self, value: Union[np.int32, np.int64, np.float32, np.float64, float, int]
     ) -> float:
         r"""Adds Gaussian noise with specified scale.
 

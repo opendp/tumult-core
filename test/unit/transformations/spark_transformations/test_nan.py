@@ -139,8 +139,10 @@ class TestDropInfs(PySparkTest):
             ("At least one column must be specified", []),
             (re.escape("`columns` must not contain duplicate names"), ["B", "B"]),
             (
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference.",
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
                 ["B"],
                 IfGroupedBy("A", SumOf(AbsoluteDifference())),
             ),
@@ -249,8 +251,10 @@ class TestDropNaNs(PySparkTest):
             ("At least one column must be specified", []),
             ("`columns` must not contain duplicate names", ["B", "B"]),
             (
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference.",
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
                 ["B"],
                 IfGroupedBy("A", SumOf(AbsoluteDifference())),
             ),
@@ -386,8 +390,10 @@ class TestDropNulls(PySparkTest):
             ("At least one column must be specified", []),
             ("`columns` must not contain duplicate names", ["B", "B"]),
             (
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference.",
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
                 ["B"],
                 IfGroupedBy("A", SumOf(AbsoluteDifference())),
             ),
@@ -545,8 +551,10 @@ class TestReplaceInfs(PySparkTest):
                 {"A": (-23, 45)},
             ),
             (
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference.",
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
                 {"B": (1.0, 23.0)},
                 IfGroupedBy("A", SumOf(AbsoluteDifference())),
             ),
@@ -700,8 +708,10 @@ class TestReplaceNaNs(PySparkTest):
             ("At least one column must be specified", {}),
             (r"Replacement value .* is invalid for column \(B\)", {"B": float("nan")}),
             (
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference.",
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
                 {"B": 1.0},
                 IfGroupedBy("A", SumOf(AbsoluteDifference())),
             ),
@@ -857,8 +867,10 @@ class TestReplaceNulls(PySparkTest):
             (r"Replacement value .* is invalid for column \(B\)", {"B": None}),
             (r"Replacement value .* is invalid for column \(B\)", {"B": "X"}),
             (
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference.",
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
                 {"B": 1.0},
                 IfGroupedBy("A", SumOf(AbsoluteDifference())),
             ),

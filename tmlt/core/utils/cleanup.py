@@ -12,13 +12,13 @@ from pyspark.sql import SparkSession
 from tmlt.core.utils.configuration import Config
 
 
-def _cleanup_temp():
+def _cleanup_temp() -> None:
     """Cleanup the temporary table."""
     spark = SparkSession.builder.getOrCreate()
     spark.sql(f"DROP DATABASE IF EXISTS `{Config.temp_db_name()}` CASCADE")
 
 
-def cleanup():
+def cleanup() -> None:
     """Cleanup Core's temporary table.
 
     If you call `spark.stop()`, you should call this function first.
@@ -26,7 +26,7 @@ def cleanup():
     _cleanup_temp()
 
 
-def remove_all_temp_tables():
+def remove_all_temp_tables() -> None:
     """Remove all temporary tables that Core has created.
 
     This will remove all temporary tables in the current Spark
@@ -39,8 +39,8 @@ def remove_all_temp_tables():
         if pattern.match(db.name):
             dbs_to_remove.append(db.name)
 
-    for db in dbs_to_remove:
-        spark.sql(f"DROP DATABASE `{db}` CASCADE")
+    for db_name in dbs_to_remove:
+        spark.sql(f"DROP DATABASE `{db_name}` CASCADE")
 
 
 atexit.register(_cleanup_temp)

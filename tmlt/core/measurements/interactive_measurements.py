@@ -40,7 +40,6 @@ class Queryable(ABC):
     @abstractmethod
     def __call__(self, query: Any):
         """Returns answer to given query."""
-        ...
 
 
 @dataclass
@@ -1642,8 +1641,10 @@ class PrivacyAccountant:
             )
         if self.state == PrivacyAccountantState.WAITING_FOR_SIBLING:
             warn(
-                "Retiring an unused PrivacyAccountant that is"
-                " PrivacyAccountantState.WAITING_FOR_SIBLING.",
+                (
+                    "Retiring an unused PrivacyAccountant that is"
+                    " PrivacyAccountantState.WAITING_FOR_SIBLING."
+                ),
                 RuntimeWarning,
             )
 

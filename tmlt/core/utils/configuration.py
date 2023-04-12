@@ -34,8 +34,11 @@ def _simple_java_version(long_version: str) -> Optional[int]:
     if m is None:
         # give up
         warnings.warn(
-            f"Unable to determine Java version from version string `{long_version}`."
-            " Tumult Core will assume you are running Java 11 or higher",
+            (
+                "Unable to determine Java version from version string"
+                f" `{long_version}`. Tumult Core will assume you are running Java 11 or"
+                " higher"
+            ),
             RuntimeWarning,
         )
         return None
@@ -68,16 +71,20 @@ def _get_java_version() -> Optional[int]:
         )
     except FileNotFoundError:
         warnings.warn(
-            "Unable to locate Java executable to determine version, Tumult Core will "
-            "assume Java 11 or higher. This may indicate that Java is missing from "
-            "your environment.",
+            (
+                "Unable to locate Java executable to determine version, Tumult Core"
+                " will assume Java 11 or higher. This may indicate that Java is missing"
+                " from your environment."
+            ),
             RuntimeWarning,
         )
         return None
     except subprocess.CalledProcessError:
         warnings.warn(
-            "Error detecting Java version from executable, Tumult Core will "
-            "assume Java 11 or higher",
+            (
+                "Error detecting Java version from executable, Tumult Core will "
+                "assume Java 11 or higher"
+            ),
             RuntimeWarning,
         )
         return None

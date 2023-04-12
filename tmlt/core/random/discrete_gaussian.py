@@ -25,7 +25,6 @@ class SupportsRandRange(Protocol):
 
     def randrange(self, high: int) -> int:
         """Returns an integer sampled uniformly from [0, high)."""
-        ...
 
 
 def _sample_uniform(m: int, rng: SupportsRandRange) -> int:
@@ -179,7 +178,7 @@ def _floorsqrt(x: Union[float, int, Fraction]) -> int:
 
 @typechecked
 def sample_dgauss(
-    sigma_squared: Union[float, Fraction, int], rng: SupportsRandRange = None
+    sigma_squared: Union[float, Fraction, int], rng: Optional[SupportsRandRange] = None
 ) -> int:
     r"""Returns a sample from a discrete Gaussian distribution.
 

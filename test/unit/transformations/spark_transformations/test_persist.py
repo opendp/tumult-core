@@ -90,7 +90,8 @@ class TestSparkAction(PySparkTest):
         # pylint: disable=protected-access
         df = self.spark.createDataFrame([(1,)], schema=["A"]).persist()
         assert df.is_cached
-        assert list(self.spark.sparkContext._jsc.sc().getRDDStorageInfo()) == []
+        # this will assert that the list is empty
+        assert not list(self.spark.sparkContext._jsc.sc().getRDDStorageInfo())
         df = self.transformation(df)
         self.assertEqual(
             len(list(self.spark.sparkContext._jsc.sc().getRDDStorageInfo())), 1

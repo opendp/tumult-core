@@ -112,9 +112,11 @@ class TestGroupBy(PySparkTest):
                 IfGroupedBy("A", RootSumOfSquared(SymmetricDifference())),
                 [(1,), (2,), (3,)],
                 StructType([StructField("A", LongType())]),
-                "Input metric does not have the expected inner metric. Maybe "
-                "IfGroupedBy(column='A', inner_metric=SumOf("
-                "inner_metric=SymmetricDifference()))?",
+                (
+                    "Input metric does not have the expected inner metric. Maybe "
+                    "IfGroupedBy(column='A', inner_metric=SumOf("
+                    "inner_metric=SymmetricDifference()))?"
+                ),
             ),
             (
                 SymmetricDifference(),

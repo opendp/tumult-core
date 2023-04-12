@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from typeguard import typechecked
 
@@ -17,7 +17,7 @@ class Composition(Measurement):
     @typechecked
     def __init__(
         self,
-        measurements: List[Measurement],
+        measurements: Sequence[Measurement],
         hint: Optional[Callable[[Any, Any], Tuple[Any, ...]]] = None,
     ):
         """Constructor.
@@ -73,7 +73,7 @@ class Composition(Measurement):
             output_measure=output_measure,
             is_interactive=False,
         )
-        self._measurements = measurements.copy()
+        self._measurements = list(measurements)
         self._hint = hint
 
     @property
@@ -136,7 +136,7 @@ class Composition(Measurement):
                     "A hint is needed to check this privacy relation, because the "
                     "privacy_relation from one of self.measurements raised a "
                     f"NotImplementedError: {e}"
-                )
+                ) from e
         d_outs = self._hint(d_in, d_out)
         if len(d_outs) != len(self.measurements):
             raise RuntimeError(

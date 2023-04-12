@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
 from pyspark import Row
@@ -49,7 +49,6 @@ class SparkColumnDescriptor(ABC):
     @abstractmethod
     def to_numpy_domain(self) -> NumpyDomain:
         """Returns corresponding NumPy domain."""
-        ...
 
     def validate_column(self, sdf: DataFrame, col_name: str):
         """Raises error if not all values in given DataFrame column match descriptor.
@@ -72,16 +71,14 @@ class SparkColumnDescriptor(ABC):
     @abstractmethod
     def valid_py_value(self, val: Any) -> bool:
         """Returns True if `val` is valid for described Spark column."""
-        ...
 
     @property
     @abstractmethod
     def data_type(self) -> DataType:
         """Returns data type associated with Spark column."""
-        ...
 
 
-SparkColumnsDescriptor = Dict[str, SparkColumnDescriptor]
+SparkColumnsDescriptor = Mapping[str, SparkColumnDescriptor]
 """Mapping from column name to SparkColumnDescriptor."""
 
 
@@ -308,7 +305,7 @@ class SparkRowDomain(Domain):
         Args:
             schema: Mapping from column names to column descriptors.
         """
-        self._schema = schema.copy()
+        self._schema = dict(schema.items())
 
     def __repr__(self) -> str:
         """Return string representation of the object."""
@@ -349,7 +346,7 @@ class SparkDataFrameDomain(Domain):
         Args:
             schema: Mapping from column names to column descriptors.
         """
-        self._schema = schema.copy()
+        self._schema = dict(schema.items())
 
     def __repr__(self) -> str:
         """Return string representation of the object."""
@@ -384,7 +381,7 @@ class SparkDataFrameDomain(Domain):
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
                     f"Found invalid value in column '{column}': {exception}"
-                )
+                ) from exception
 
     def __eq__(self, other: Any) -> bool:
         """Return True if the classes are equivalent."""
@@ -498,7 +495,7 @@ class SparkGroupedDataFrameDomain(Domain):
                 raise ValueError(f"Can not group by a floating point column: {column}")
             schema[column].validate_column(sdf=group_keys, col_name=column)
 
-        self._schema = schema.copy()
+        self._schema = dict(schema.items())
         self._group_keys = group_keys.distinct()
 
     @property
@@ -605,7 +602,7 @@ class SparkGroupedDataFrameDomain(Domain):
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
                     f"Found invalid value in column '{column}': {exception}"
-                )
+                ) from exception
 
     def get_group_domain(self) -> SparkDataFrameDomain:
         """Return the domain for one of the groups."""
@@ -665,7 +662,7 @@ def convert_spark_schema(spark_schema: StructType) -> SparkColumnsDescriptor:
         FloatType(): 32,
         DoubleType(): 64,
     }
-    column_to_descriptor = dict()
+    column_to_descriptor = {}
     for field in spark_schema:
         if field.name in column_to_descriptor:
             raise ValueError(f"Schema contains duplicate column name {field.name}.")

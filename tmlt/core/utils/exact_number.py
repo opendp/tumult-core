@@ -164,17 +164,17 @@ def _verify_expr_is_an_exact_number(expr: sp.Expr) -> None:
             _verify_expr_is_an_exact_number(left_expr)
             _verify_expr_is_an_exact_number(right_expr)
         except ValueError as e:
-            raise ValueError(f"{expr} is invalid: {e}")
+            raise ValueError(f"{expr} is invalid: {e}") from e
         return
     if isinstance(expr, (sp.Pow, sp.exp)):
         try:
             _verify_expr_is_an_exact_number(expr.base)
         except ValueError as e:
-            raise ValueError(f"Base of {expr} is invalid: {e}")
+            raise ValueError(f"Base of {expr} is invalid: {e}") from e
         try:
             _verify_expr_is_an_exact_number(expr.exp)
         except ValueError as e:
-            raise ValueError(f"Exponent of {expr} is invalid: {e}")
+            raise ValueError(f"Exponent of {expr} is invalid: {e}") from e
         return
     if isinstance(expr, sp.log):
         if len(expr.args) != 1:
@@ -182,7 +182,7 @@ def _verify_expr_is_an_exact_number(expr: sp.Expr) -> None:
         try:
             _verify_expr_is_an_exact_number(expr.args[0])
         except ValueError as e:
-            raise ValueError(f"Invalid Logarithm {expr}: {e}")
+            raise ValueError(f"Invalid Logarithm {expr}: {e}") from e
         return
     if isinstance(expr, sp.Float):
         raise ValueError(f"{expr} is represented using floating point precision")
@@ -362,12 +362,12 @@ class ExactNumber:
     def __pow__(self, other: "ExactNumberInput") -> "ExactNumber":
         """Returns power obtained by raising self to other."""
         other = ExactNumber(other)
-        return ExactNumber(self.expr ** other.expr)
+        return ExactNumber(self.expr**other.expr)
 
     def __rpow__(self, other: "ExactNumberInput") -> "ExactNumber":
         """Returns power obtained by raising other to self."""
         other = ExactNumber(other)
-        return ExactNumber(other.expr ** self.expr)
+        return ExactNumber(other.expr**self.expr)
 
     def __eq__(self, other: Any) -> bool:
         """Returns True if other and self represent the same value."""

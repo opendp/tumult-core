@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as sf
@@ -167,7 +167,7 @@ class PartitionByKeys(Partition):
         input_metric: Union[IfGroupedBy, SymmetricDifference],
         use_l2: bool,
         keys: List[str],
-        list_values: List[Tuple],
+        list_values: Sequence[Tuple],
     ):
         """Constructor.
 
@@ -218,7 +218,7 @@ class PartitionByKeys(Partition):
                 else SumOf(SymmetricDifference())
             )
         self._partition_keys = keys.copy()
-        self._list_values = list_values.copy()
+        self._list_values = list(list_values).copy()
         super().__init__(
             input_domain, input_metric, output_metric, num_partitions=len(list_values)
         )

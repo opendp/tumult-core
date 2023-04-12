@@ -64,7 +64,7 @@ class UnwrapIfGroupedBy(Transformation):
         self.input_metric.validate(d_in)
         d_in = ExactNumber(d_in)
         if self._is_l2:
-            return d_in ** 2
+            return d_in**2
         return d_in
 
     def __call__(self, sdf: DataFrame) -> DataFrame:

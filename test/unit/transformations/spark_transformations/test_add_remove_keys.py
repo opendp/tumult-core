@@ -216,7 +216,7 @@ class TestTransformValueSubclasses(PySparkTest):
 
     def test_smoke(self):
         """Tests that the transformation can be constructed and applied to data."""
-        kwargs = self.extra_kwargs.copy()
+        kwargs = self.extra_kwargs.copy()  # type: ignore
         input_data = {
             "key1": self.spark.createDataFrame(
                 pd.DataFrame(
@@ -249,10 +249,10 @@ class TestTransformValueSubclasses(PySparkTest):
         kwargs["input_metric"] = AddRemoveKeys({"key1": "A", "key2": "A"})
         kwargs["key"] = "key1"
         kwargs["new_key"] = "key3"
-        kwargs.update(self.extra_kwargs)
-        for key, value in self.pandas_to_spark_kwargs.items():
+        kwargs.update(self.extra_kwargs)  # type: ignore
+        for key, value in self.pandas_to_spark_kwargs.items():  # type: ignore
             kwargs[key] = self.spark.createDataFrame(value)
-        transformation = self.test_class(**kwargs)
+        transformation = self.test_class(**kwargs)  # type: ignore
         transformation(input_data)
 
 
@@ -309,7 +309,7 @@ class TestTransformValue(PySparkTest):
         )
         self.input_metric = AddRemoveKeys({"key1": "A", "key2": "D"})
         self.filter_transformation = Filter(
-            domain=self.input_domain.key_to_domain["key1"],
+            domain=self.input_domain.key_to_domain["key1"],  # type: ignore
             metric=IfGroupedBy("A", SymmetricDifference()),
             filter_expr="B < 1",
         )
@@ -420,8 +420,10 @@ class TestTransformValue(PySparkTest):
                 {},
             ),
             (
-                "Input domain's value for 'key1' does not match transformation's input"
-                " domain",
+                (
+                    "Input domain's value for 'key1' does not match transformation's"
+                    " input domain"
+                ),
                 ValueError,
                 {},
                 {
@@ -431,38 +433,47 @@ class TestTransformValue(PySparkTest):
                 },
             ),
             (
-                "Output metric AddRemoveKeys(df_to_key_column={'key1': 'A', 'key2':"
-                " 'D', 'key3': 'A'}) and output domain"
-                " DictDomain(key_to_domain={'key1': SparkDataFrameDomain(schema={'A':"
-                " SparkStringColumnDescriptor(allow_null=False), 'B':"
-                " SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True,"
-                " allow_null=True, size=64), 'C':"
-                " SparkStringColumnDescriptor(allow_null=False)}), 'key2':"
-                " SparkDataFrameDomain(schema={'D':"
-                " SparkStringColumnDescriptor(allow_null=False), 'E':"
-                " SparkIntegerColumnDescriptor(allow_null=False, size=64)}), 'key3':"
-                " NumpyIntegerDomain(size=64)}) are not compatible.",
+                (
+                    "Output metric AddRemoveKeys(df_to_key_column={'key1': 'A', 'key2':"
+                    " 'D', 'key3': 'A'}) and output domain"
+                    " DictDomain(key_to_domain={'key1':"
+                    " SparkDataFrameDomain(schema={'A':"
+                    " SparkStringColumnDescriptor(allow_null=False), 'B':"
+                    " SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True,"
+                    " allow_null=True, size=64), 'C':"
+                    " SparkStringColumnDescriptor(allow_null=False)}), 'key2':"
+                    " SparkDataFrameDomain(schema={'D':"
+                    " SparkStringColumnDescriptor(allow_null=False), 'E':"
+                    " SparkIntegerColumnDescriptor(allow_null=False, size=64)}),"
+                    " 'key3': NumpyIntegerDomain(size=64)}) are not compatible."
+                ),
                 ValueError,
                 {},
                 {"output_domain": NumpyIntegerDomain()},
             ),
             (
-                "Transformation's input metric must be IfGroupedBy(column,"
-                " SymmetricDifference())",
+                (
+                    "Transformation's input metric must be IfGroupedBy(column,"
+                    " SymmetricDifference())"
+                ),
                 ValueError,
                 {},
                 {"input_metric": SymmetricDifference()},
             ),
             (
-                "Transformation's output metric must be IfGroupedBy(column,"
-                " SymmetricDifference())",
+                (
+                    "Transformation's output metric must be IfGroupedBy(column,"
+                    " SymmetricDifference())"
+                ),
                 ValueError,
                 {},
                 {"output_metric": SymmetricDifference()},
             ),
             (
-                "Transformation's input metric grouping column, B, does not"
-                " match the dataframe's key column, A.",
+                (
+                    "Transformation's input metric grouping column, B, does not"
+                    " match the dataframe's key column, A."
+                ),
                 ValueError,
                 {},
                 {
@@ -495,7 +506,7 @@ class TestTransformValue(PySparkTest):
         mock_transformation_args.update(updated_mock_transformation_args)
         mock_value_args.update(updated_mock_value_args)
         mock_value_args["transformation"] = create_mock_transformation(
-            **mock_transformation_args
+            **mock_transformation_args  # type: ignore
         )
         with self.assertRaisesRegex(error_type, re.escape(error_msg)):
             MockValue(**mock_value_args)  # type: ignore

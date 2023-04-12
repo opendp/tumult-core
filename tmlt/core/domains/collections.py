@@ -4,7 +4,7 @@
 # Copyright Tumult Labs 2022
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Mapping, Optional
 
 from typeguard import check_type, typechecked
 
@@ -38,20 +38,22 @@ class ListDomain(Domain):
             try:
                 self.element_domain.validate(elem)
             except OutOfDomainError as exception:
-                raise OutOfDomainError(f"Found invalid value in list: {exception}")
+                raise OutOfDomainError(
+                    f"Found invalid value in list: {exception}"
+                ) from exception
 
 
 class DictDomain(Domain):
     """Domain of dictionaries."""
 
     @typechecked
-    def __init__(self, key_to_domain: Dict[Any, Domain]):
+    def __init__(self, key_to_domain: Mapping[Any, Domain]):
         """Constructor.
 
         Args:
             key_to_domain: Mapping from key to domain.
         """
-        self._key_to_domain = key_to_domain.copy()
+        self._key_to_domain: Dict[Any, Domain] = dict(key_to_domain.items())
 
     def __repr__(self) -> str:
         """Return string representation of the object."""
@@ -96,4 +98,6 @@ class DictDomain(Domain):
             try:
                 self.key_to_domain[key].validate(value[key])
             except OutOfDomainError as exception:
-                raise OutOfDomainError(f"Found invalid value at '{key}': {exception}")
+                raise OutOfDomainError(
+                    f"Found invalid value at '{key}': {exception}"
+                ) from exception

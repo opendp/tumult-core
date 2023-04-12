@@ -15,7 +15,7 @@ def assert_never(x: NoReturn) -> NoReturn:
 
     From https://github.com/python/mypy/issues/5818.
     """
-    assert False, "Unhandled type: {}".format(type(x).__name__)
+    assert False, f"Unhandled type: {type(x).__name__}"
 
 
 def get_element_type(l: Sequence[Any], allow_none: bool = True) -> type:

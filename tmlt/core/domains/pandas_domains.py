@@ -45,7 +45,9 @@ class PandasSeriesDomain(Domain):
             try:
                 self.element_domain.validate(value[i])
             except OutOfDomainError as exception:
-                raise OutOfDomainError(f"Found invalid value in Series: {exception}")
+                raise OutOfDomainError(
+                    f"Found invalid value in Series: {exception}"
+                ) from exception
 
     @classmethod
     def from_numpy_type(cls, dtype: np.dtype) -> "PandasSeriesDomain":
@@ -107,7 +109,7 @@ class PandasDataFrameDomain(Domain):
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
                     f"Found invalid value in column '{column}': {exception}"
-                )
+                ) from exception
 
     def __eq__(self, other: Any) -> bool:
         """Return True if the classes are equivalent."""
@@ -118,7 +120,7 @@ class PandasDataFrameDomain(Domain):
     @classmethod
     def from_numpy_types(cls, dtypes: Dict[str, np.dtype]) -> "PandasDataFrameDomain":
         """Returns a Pandas DataFrame domain from a dictionary of NumPy types."""
-        col_to_desc = dict()
+        col_to_desc = {}
         for col in dtypes:
             col_to_desc[col] = PandasSeriesDomain.from_numpy_type(dtypes[col])
         return PandasDataFrameDomain(col_to_desc)

@@ -65,7 +65,7 @@ class TestSparkDataFrameDomain(PySparkTest):
             "B": SparkStringColumnDescriptor(),
         }
         domain = SparkDataFrameDomain(schema=schema)
-        schema["A"] = NumpyFloatDomain()
+        schema["A"] = SparkFloatColumnDescriptor()
         self.assertDictEqual(
             domain.schema,
             {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},
@@ -106,7 +106,7 @@ class TestSparkRowDomain(PySparkTest):
             "B": SparkStringColumnDescriptor(),
         }
         domain = SparkRowDomain(schema=schema)
-        schema["A"] = NumpyFloatDomain()
+        schema["A"] = SparkFloatColumnDescriptor()
         self.assertDictEqual(
             domain.schema,
             {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},
@@ -295,7 +295,7 @@ class TestSparkGroupedDataFrameDomain(PySparkTest):
             "B": SparkStringColumnDescriptor(),
         }
         domain = SparkGroupedDataFrameDomain(schema=schema, group_keys=self.group_keys)
-        schema["A"] = NumpyFloatDomain()
+        schema["A"] = SparkFloatColumnDescriptor()
         self.assertDictEqual(
             domain.schema,
             {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},

@@ -8,7 +8,7 @@
 from abc import ABC, abstractmethod
 from collections import Counter
 from functools import reduce
-from typing import Any, Dict, Iterable, List, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Mapping, Tuple, Union, cast
 
 import numpy as np  # pylint: disable=unused-import
 import pandas as pd
@@ -41,22 +41,18 @@ class Metric(ABC):
         Args:
             value: A distance between two datasets under this metric.
         """
-        ...
 
     @abstractmethod
     def compare(self, value1: Any, value2: Any) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""
-        ...
 
     @abstractmethod
     def supports_domain(self, domain: Domain) -> bool:
         """Return True if the metric is implemented for the passed domain."""
-        ...
 
     @abstractmethod
     def distance(self, value1: Any, value2: Any, domain: Domain) -> Any:
         """Returns the metric distance between two elements of a supported domain."""
-        ...
 
     def _validate_distance_arguments(
         self, value1: Any, value2: Any, domain: Domain
@@ -137,7 +133,6 @@ class ExactNumberMetric(Metric):
             value2: An element of the domain.
             domain: A domain compatible with the metric.
         """
-        ...
 
 
 class AbsoluteDifference(ExactNumberMetric):
@@ -171,7 +166,7 @@ class AbsoluteDifference(ExactNumberMetric):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid value for metric AbsoluteDifference: {e}")
+            raise ValueError(f"Invalid value for metric AbsoluteDifference: {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""
@@ -277,7 +272,9 @@ class SymmetricDifference(ExactNumberMetric):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid value for metric SymmetricDifference: {e}")
+            raise ValueError(
+                f"Invalid value for metric SymmetricDifference: {e}"
+            ) from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""
@@ -401,7 +398,7 @@ class HammingDistance(ExactNumberMetric):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid value for metric HammingDistance: {e}")
+            raise ValueError(f"Invalid value for metric HammingDistance: {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""
@@ -597,7 +594,6 @@ class AggregationMetric(ExactNumberMetric):
         Args:
             distances: The list of distances to aggregate.
         """
-        ...
 
 
 class SumOf(AggregationMetric):
@@ -665,7 +661,7 @@ class SumOf(AggregationMetric):
         try:
             self.inner_metric.validate(value)
         except ValueError as e:
-            raise ValueError(f"Invalid metric value for SumOf metric: {e}")
+            raise ValueError(f"Invalid metric value for SumOf metric: {e}") from e
 
     def _aggregate(self, distances: Iterable[ExactNumber]) -> ExactNumber:
         """Aggregate the component distances.
@@ -738,7 +734,7 @@ class RootSumOfSquared(AggregationMetric):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid value for metric RootSumOfSquared: {e}")
+            raise ValueError(f"Invalid value for metric RootSumOfSquared: {e}") from e
 
     def _aggregate(self, distances: Iterable[ExactNumber]) -> ExactNumber:
         """Aggregate the component distances.
@@ -747,7 +743,7 @@ class RootSumOfSquared(AggregationMetric):
             distances: The list of distances to aggregate.
         """
         return ExactNumber(
-            sp.sqrt(sum((d ** 2 for d in distances), ExactNumber(0)).expr)
+            sp.sqrt(sum((d**2 for d in distances), ExactNumber(0)).expr)
         )
 
 
@@ -814,7 +810,9 @@ class OnColumn(ExactNumberMetric):
         try:
             self.metric.validate(value)
         except ValueError as e:
-            raise ValueError(f"Invalid value for OnColumn metric on {self.column}: {e}")
+            raise ValueError(
+                f"Invalid value for OnColumn metric on {self.column}: {e}"
+            ) from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""
@@ -926,7 +924,7 @@ class OnColumns(Metric):
             try:
                 on_column.validate(column_value)
             except ValueError as e:
-                raise ValueError(f"Invalid value for OnColumns metric: {e}")
+                raise ValueError(f"Invalid value for OnColumns metric: {e}") from e
 
     def compare(
         self, value1: Tuple[ExactNumberInput, ...], value2: Tuple[ExactNumberInput, ...]
@@ -1064,7 +1062,7 @@ class IfGroupedBy(ExactNumberMetric):
         try:
             self.inner_metric.validate(value)
         except ValueError as e:
-            raise ValueError(f"Invalid value for IfGroupedBy metric: {e}")
+            raise ValueError(f"Invalid value for IfGroupedBy metric: {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
         """Returns True if `value1` is less than or equal to `value2`.
@@ -1172,13 +1170,13 @@ class DictMetric(Metric):
     """
 
     @typechecked
-    def __init__(self, key_to_metric: Dict[Any, Metric]):
+    def __init__(self, key_to_metric: Mapping[Any, Metric]):
         """Constructor.
 
         Args:
             key_to_metric: Mapping from dictionary key to metric.
         """
-        self._key_to_metric = key_to_metric.copy()
+        self._key_to_metric: Dict[Any, Metric] = dict(key_to_metric.items()).copy()
 
     @property
     def key_to_metric(self) -> Dict[Any, Metric]:
@@ -1206,7 +1204,7 @@ class DictMetric(Metric):
             try:
                 self._key_to_metric[key].validate(metric_value)
             except ValueError as e:
-                raise ValueError(f"Invalid value for DictMetric: {e}")
+                raise ValueError(f"Invalid value for DictMetric: {e}") from e
 
     def compare(self, value1: Dict[Any, Any], value2: Dict[Any, Any]) -> bool:
         """Returns True if `value1` is less than or equal to `value2`.
@@ -1393,7 +1391,7 @@ class AddRemoveKeys(Metric):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid value for metric AbsoluteDifference: {e}")
+            raise ValueError(f"Invalid value for metric AbsoluteDifference: {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""

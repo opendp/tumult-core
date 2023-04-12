@@ -10,7 +10,18 @@ import shutil
 import sys
 import unittest
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    overload,
+)
 from unittest.mock import Mock, create_autospec
 
 import numpy as np
@@ -356,7 +367,7 @@ class PySparkTest(unittest.TestCase):
         cls,
         first_df: pd.DataFrame,
         second_df: pd.DataFrame,
-        sort_columns: Sequence[str] = None,
+        sort_columns: Optional[Sequence[str]] = None,
         **kwargs: Any,
     ):
         """Asserts that the two data frames are equal.
@@ -771,7 +782,7 @@ def get_noise_scales(
         return {"count": scale}
     if agg == "sum":
         scale = second_if_gauss(
-            dataset.upper / budget, dataset.upper ** 2 / (2 * budget)
+            dataset.upper / budget, dataset.upper**2 / (2 * budget)
         )
         return {"sum": scale}
     if agg == "average":
@@ -779,7 +790,7 @@ def get_noise_scales(
         budget_per_subagg = budget / 2
         sod_scale = second_if_gauss(
             sod_sensitivity / budget_per_subagg,
-            sod_sensitivity ** 2 / (2 * budget_per_subagg),
+            sod_sensitivity**2 / (2 * budget_per_subagg),
         )
         count_scale = second_if_gauss(
             1 / budget_per_subagg, 1 / (2 * budget_per_subagg)
@@ -787,15 +798,15 @@ def get_noise_scales(
         return {"sum": sod_scale, "count": count_scale}
     if agg in ("standard deviation", "variance"):
         sod_sensitivity = (dataset.upper - dataset.lower) / 2
-        sos_sensitivity = (dataset.upper ** 2 - dataset.lower ** 2) / 2
+        sos_sensitivity = (dataset.upper**2 - dataset.lower**2) / 2
         budget_per_subagg = budget / 3
         sod_scale = second_if_gauss(
             sod_sensitivity / budget_per_subagg,
-            sod_sensitivity ** 2 / (2 * budget_per_subagg),
+            sod_sensitivity**2 / (2 * budget_per_subagg),
         )
         sos_scale = second_if_gauss(
             sos_sensitivity / budget_per_subagg,
-            sos_sensitivity ** 2 / (2 * budget_per_subagg),
+            sos_sensitivity**2 / (2 * budget_per_subagg),
         )
         count_scale = second_if_gauss(
             1 / budget_per_subagg, 1 / (2 * budget_per_subagg)

@@ -84,7 +84,6 @@ class Aggregate(Measurement):
     @abstractmethod
     def __call__(self, data: pd.Series) -> Union[float, int]:
         """Perform measurement."""
-        ...
 
 
 class NoisyQuantile(Aggregate):

@@ -122,7 +122,7 @@ class ChainTM(Measurement):
                     "A hint is needed to check this privacy relation, because the "
                     "stability_relation of self.transformation raised a "
                     f"NotImplementedError: {e}"
-                )
+                ) from e
             d_mid = self._hint(d_in, d_out)
         return self.transformation.stability_relation(
             d_in, d_mid

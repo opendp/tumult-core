@@ -12,7 +12,11 @@ from pyspark.sql.types import StringType
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.collections import DictDomain, ListDomain
-from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
+from tmlt.core.domains.numpy_domains import (
+    NumpyDomain,
+    NumpyFloatDomain,
+    NumpyIntegerDomain,
+)
 from tmlt.core.utils.testing import assert_property_immutability, get_all_props
 
 
@@ -46,8 +50,10 @@ class TestListDomain(TestCase):
             ("Not a list", f"Value must be {list}, instead it is {str}."),
             (
                 ["invalid"],
-                f"Found invalid value in list: Value must be {np.int64}, "
-                f"instead it is {str}.",
+                (
+                    f"Found invalid value in list: Value must be {np.int64}, "
+                    f"instead it is {str}."
+                ),
             ),
         ]
     )
@@ -71,7 +77,7 @@ class TestDictDomain(TestCase):
 
     def test_constructor_mutable_arguments(self):
         """Tests that mutable constructor arguments are copied."""
-        domain_map = {"A": NumpyIntegerDomain()}
+        domain_map: Dict[str, NumpyDomain] = {"A": NumpyIntegerDomain()}
         domain = DictDomain(key_to_domain=domain_map)
         domain_map["A"] = NumpyFloatDomain()
         self.assertDictEqual(domain.key_to_domain, {"A": NumpyIntegerDomain()})
@@ -113,7 +119,7 @@ class TestDictDomain(TestCase):
             if set(candidate) != {"A", "B"}:
                 exception = (
                     "Keys are not as expected, value must match domain.\n"
-                    fr"Value keys: \[{str(sorted(set(candidate)))[1:-1]}\]"
+                    rf"Value keys: \[{str(sorted(set(candidate)))[1:-1]}\]"
                     "\n"
                     r"Domain keys: \['A', 'B'\]"
                 )

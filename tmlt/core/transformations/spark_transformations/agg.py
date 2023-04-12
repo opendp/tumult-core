@@ -11,7 +11,6 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 from typeguard import typechecked
 
-import tmlt.core.transformations.spark_transformations.nan as nan
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -28,6 +27,7 @@ from tmlt.core.metrics import (
     SymmetricDifference,
 )
 from tmlt.core.transformations.base import Transformation
+from tmlt.core.transformations.spark_transformations import nan
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 
@@ -725,9 +725,9 @@ class Sum(Transformation):
             raise ValueError(
                 "Lower clipping bound is larger than upper clipping bound."
             )
-        if self._upper > 2 ** 970:
+        if self._upper > 2**970:
             raise ValueError("Upper clipping bound should be at most 2^970.")
-        if self._lower < -(2 ** 970):
+        if self._lower < -(2**970):
             raise ValueError("Lower clipping bound should be at least -2^970.")
 
         self._measure_column = measure_column

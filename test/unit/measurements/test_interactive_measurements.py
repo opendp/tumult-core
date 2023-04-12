@@ -272,8 +272,10 @@ class TestParallelComposition(PySparkTest):
                 RootSumOfSquared(AbsoluteDifference()),
                 ApproxDP(),
                 [create_mock_measurement(is_interactive=True)],
-                f"Input metric {RootSumOfSquared} is incompatible with output measure"
-                f" {ApproxDP}",
+                (
+                    f"Input metric {RootSumOfSquared} is incompatible with output"
+                    f" measure {ApproxDP}"
+                ),
             ),
             (
                 ListDomain(NumpyIntegerDomain(), length=1),
@@ -293,16 +295,20 @@ class TestParallelComposition(PySparkTest):
                         input_metric=SymmetricDifference(),
                     )
                 ],
-                "Input metric for each supplied measurement must match inner metric of"
-                " input metric for ParallelComposition",
+                (
+                    "Input metric for each supplied measurement must match inner metric"
+                    " of input metric for ParallelComposition"
+                ),
             ),
             (
                 ListDomain(NumpyIntegerDomain(), length=1),
                 RootSumOfSquared(AbsoluteDifference()),
                 RhoZCDP(),
                 [create_mock_measurement(is_interactive=True, output_measure=PureDP())],
-                "Output measure for each supplied measurement must match output measure"
-                " for ParallelComposition",
+                (
+                    "Output measure for each supplied measurement must match output"
+                    " measure for ParallelComposition"
+                ),
             ),
         ]
     )
@@ -569,22 +575,28 @@ class TestSequentialQueryable(PySparkTest):
                 NumpyFloatDomain(),
                 AbsoluteDifference(),
                 PureDP(),
-                "Input domain of measurement query does not match the input domain of"
-                " SequentialQueryable.",
+                (
+                    "Input domain of measurement query does not match the input domain"
+                    " of SequentialQueryable."
+                ),
             ),
             (
                 NumpyIntegerDomain(),
                 SymmetricDifference(),
                 PureDP(),
-                "Input metric of measurement query does not match the input metric of"
-                " SequentialQueryable.",
+                (
+                    "Input metric of measurement query does not match the input metric"
+                    " of SequentialQueryable."
+                ),
             ),
             (
                 NumpyIntegerDomain(),
                 AbsoluteDifference(),
                 RhoZCDP(),
-                "Output measure of measurement query does not match the output measure"
-                " of SequentialQueryable.",
+                (
+                    "Output measure of measurement query does not match the output"
+                    " measure of SequentialQueryable."
+                ),
             ),
         ]
     )
@@ -700,7 +712,7 @@ class TestSequentialQueryable(PySparkTest):
         # pylint: disable=protected-access
         queryable = self.construct_queryable()
         transformation = create_mock_transformation(
-            return_value=np.float(100.0),
+            return_value=np.float64(100.0),
             stability_function_implemented=True,
             output_domain=NumpyFloatDomain(),
             output_metric=SymmetricDifference(),
@@ -710,21 +722,25 @@ class TestSequentialQueryable(PySparkTest):
         self.assertEqual(queryable._d_in, 20)
         self.assertEqual(queryable._input_domain, NumpyFloatDomain())
         self.assertEqual(queryable._input_metric, SymmetricDifference())
-        self.assertEqual(queryable._data, np.float(100.0))
+        self.assertEqual(queryable._data, np.float64(100.0))
 
     @parameterized.expand(
         [
             (
                 NumpyIntegerDomain(),
                 SymmetricDifference(),
-                "Input metric of transformation query does not match the input metric"
-                " of SequentialQueryable.",
+                (
+                    "Input metric of transformation query does not match the input"
+                    " metric of SequentialQueryable."
+                ),
             ),
             (
                 NumpyFloatDomain(),
                 AbsoluteDifference(),
-                "Input domain of transformation query does not match the input domain"
-                " of SequentialQueryable.",
+                (
+                    "Input domain of transformation query does not match the input"
+                    " domain of SequentialQueryable."
+                ),
             ),
         ]
     )
@@ -993,14 +1009,18 @@ class TestPrivacyAccountant(PySparkTest):
             (
                 None,
                 None,
-                "PrivacyAccountant cannot be initialized with no parent and no"
-                " queryable",
+                (
+                    "PrivacyAccountant cannot be initialized with no parent and no"
+                    " queryable"
+                ),
             ),
             (
                 Mock(PrivacyAccountant),
                 Mock(SequentialQueryable),
-                "PrivacyAccountant can be initialized with only parent or only"
-                " queryable but not both",
+                (
+                    "PrivacyAccountant can be initialized with only parent or only"
+                    " queryable but not both"
+                ),
             ),
         ]
     )
@@ -1065,8 +1085,10 @@ class TestPrivacyAccountant(PySparkTest):
     @parameterized.expand(
         [
             (
-                "Transformation's input domain does not match PrivacyAccountant's input"
-                " domain",
+                (
+                    "Transformation's input domain does not match PrivacyAccountant's"
+                    " input domain"
+                ),
                 create_mock_transformation(
                     input_domain=SparkDataFrameDomain(
                         {"A": SparkIntegerColumnDescriptor()}
@@ -1076,8 +1098,10 @@ class TestPrivacyAccountant(PySparkTest):
                 ),
             ),
             (
-                "Transformation's input metric does not match PrivacyAccountant's input"
-                " metric",
+                (
+                    "Transformation's input metric does not match PrivacyAccountant's"
+                    " input metric"
+                ),
                 create_mock_transformation(
                     input_domain=SparkDataFrameDomain(
                         {
@@ -1128,7 +1152,9 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.input_metric, AbsoluteDifference())
         self.assertEqual(accountant.d_in, 10)
         # pylint: disable=protected-access
-        self.assertEqual(accountant._queryable._data, np.int64(2))
+        self.assertIsNotNone(accountant._queryable)
+        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore
+        # pylint: enable=protected-access
 
     def test_transform_with_explicit_d_out(self):
         """PrivacyAccountant.transform_in_place works with a d_out provided."""
@@ -1154,13 +1180,16 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.input_metric, AbsoluteDifference())
         self.assertEqual(accountant.d_in, 10)
         # pylint: disable=protected-access
-        self.assertEqual(accountant._queryable._data, np.int64(2))
+        self.assertIsNotNone(accountant._queryable)
+        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore
 
     @parameterized.expand(
         [
             (
-                "Measurement's output measure does not match PrivacyAccountant's output"
-                " measure",
+                (
+                    "Measurement's output measure does not match PrivacyAccountant's"
+                    " output measure"
+                ),
                 create_mock_measurement(
                     input_domain=SparkDataFrameDomain(
                         {
@@ -1259,8 +1288,10 @@ class TestPrivacyAccountant(PySparkTest):
                 1,
             ),
             (
-                "Transformation's input domain does not match PrivacyAccountant's input"
-                " domain",
+                (
+                    "Transformation's input domain does not match PrivacyAccountant's"
+                    " input domain"
+                ),
                 NumpyStringDomain(),
                 AbsoluteDifference(),
                 ListDomain(NumpyIntegerDomain(), length=2),
@@ -1269,8 +1300,10 @@ class TestPrivacyAccountant(PySparkTest):
                 8,
             ),
             (
-                "Transformation's input metric does not match PrivacyAccountant's"
-                " input metric",
+                (
+                    "Transformation's input metric does not match PrivacyAccountant's"
+                    " input metric"
+                ),
                 NumpyIntegerDomain(),
                 SymmetricDifference(),
                 ListDomain(NumpyIntegerDomain(), length=2),
@@ -1297,8 +1330,10 @@ class TestPrivacyAccountant(PySparkTest):
                 8,
             ),
             (
-                "Splitting transformation's output metric must be"
-                f" {SumOf} for output measure PureDP",
+                (
+                    "Splitting transformation's output metric must be"
+                    f" {SumOf} for output measure PureDP"
+                ),
                 NumpyIntegerDomain(),
                 AbsoluteDifference(),
                 ListDomain(NumpyIntegerDomain(), length=2),
@@ -1307,8 +1342,10 @@ class TestPrivacyAccountant(PySparkTest):
                 8,
             ),
             (
-                "Splitting transformation's output metric must be"
-                f" {RootSumOfSquared} for output measure RhoZCDP",
+                (
+                    "Splitting transformation's output metric must be"
+                    f" {RootSumOfSquared} for output measure RhoZCDP"
+                ),
                 NumpyIntegerDomain(),
                 AbsoluteDifference(),
                 ListDomain(NumpyIntegerDomain(), length=2),
@@ -1435,8 +1472,10 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.input_metric, AbsoluteDifference())
         self.assertEqual(accountant.d_in, 10)
         # pylint: disable=protected-access
-        self.assertEqual(accountant._queryable._data, np.int64(2))
+        self.assertIsNotNone(accountant._queryable)
+        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore
         self.assertIsNone(accountant._pending_transformation)
+        # pylint: enable=protected-access
 
     def test_queue_transformation_on_inactive_accountant(self):
         """queue_transformation queues transformations on inactive account"""
@@ -1494,14 +1533,18 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.input_metric, AbsoluteDifference())
         self.assertEqual(accountant.d_in, 10)
         # pylint: disable=protected-access
-        self.assertEqual(accountant._queryable._data, np.int64(2))
+        self.assertIsNotNone(accountant._queryable)
+        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore
         self.assertIsNone(accountant._pending_transformation)
+        # pylint: enable=protected-access
 
     @parameterized.expand(
         [
             (
-                "Transformation's input domain does not match PrivacyAccountant's input"
-                " domain",
+                (
+                    "Transformation's input domain does not match PrivacyAccountant's"
+                    " input domain"
+                ),
                 create_mock_transformation(
                     input_domain=SparkDataFrameDomain(
                         {"A": SparkIntegerColumnDescriptor()}
@@ -1511,8 +1554,10 @@ class TestPrivacyAccountant(PySparkTest):
                 ),
             ),
             (
-                "Transformation's input metric does not match PrivacyAccountant's input"
-                " metric",
+                (
+                    "Transformation's input metric does not match PrivacyAccountant's"
+                    " input metric"
+                ),
                 create_mock_transformation(
                     input_domain=SparkDataFrameDomain(
                         {
@@ -1561,8 +1606,10 @@ class TestPrivacyAccountant(PySparkTest):
     @parameterized.expand(
         [
             (
-                "Transformation's input domain does not match the output domain"
-                " of the last transformation",
+                (
+                    "Transformation's input domain does not match the output domain"
+                    " of the last transformation"
+                ),
                 create_mock_transformation(
                     input_domain=SparkDataFrameDomain(
                         {"A": SparkIntegerColumnDescriptor()}
@@ -1572,8 +1619,10 @@ class TestPrivacyAccountant(PySparkTest):
                 ),
             ),
             (
-                "Transformation's input metric does not match the output metric"
-                " of the last transformation",
+                (
+                    "Transformation's input metric does not match the output metric"
+                    " of the last transformation"
+                ),
                 create_mock_transformation(
                     input_domain=SparkDataFrameDomain(
                         {
@@ -1718,8 +1767,10 @@ class TestPrivacyAccountant(PySparkTest):
         )
         with self.assertWarnsRegex(
             RuntimeWarning,
-            "Retiring an unused PrivacyAccountant that is"
-            " PrivacyAccountantState.WAITING_FOR_SIBLING",
+            (
+                "Retiring an unused PrivacyAccountant that is"
+                " PrivacyAccountantState.WAITING_FOR_SIBLING"
+            ),
         ):
             children[1].retire()
 
@@ -1935,10 +1986,12 @@ class TestCreateAdaptiveComposition(TestCase):
         self.assertEqual(
             adaptive_composition.measurement.input_metric, AbsoluteDifference()
         )
-        self.assertEqual(adaptive_composition.measurement.d_in, 1)
+        self.assertEqual(adaptive_composition.measurement.d_in, 1)  # type: ignore
+        # pylint: disable=line-too-long
         self.assertEqual(
-            adaptive_composition.measurement.privacy_budget, self.privacy_budget
+            adaptive_composition.measurement.privacy_budget, self.privacy_budget  # type: ignore
         )
+        # pylint: enable=line-too-long
         self.assertEqual(
             adaptive_composition.measurement.output_measure, self.output_measure
         )

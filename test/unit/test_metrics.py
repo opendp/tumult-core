@@ -5,7 +5,7 @@
 
 # pylint: disable=no-self-use
 import datetime
-from typing import Any, Union
+from typing import Any, Dict, Union
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -1263,13 +1263,17 @@ class TestOnColumn(TestCase):
         """Tests that the string representation is as expected."""
         self.assertEqual(
             repr(OnColumn(column="A", metric=RootSumOfSquared(SymmetricDifference()))),
-            "OnColumn(column='A', "
-            "metric=RootSumOfSquared(inner_metric=SymmetricDifference()))",
+            (
+                "OnColumn(column='A', "
+                "metric=RootSumOfSquared(inner_metric=SymmetricDifference()))"
+            ),
         )
         self.assertEqual(
             repr(OnColumn(column="A", metric=RootSumOfSquared(AbsoluteDifference()))),
-            "OnColumn(column='A', "
-            "metric=RootSumOfSquared(inner_metric=AbsoluteDifference()))",
+            (
+                "OnColumn(column='A', "
+                "metric=RootSumOfSquared(inner_metric=AbsoluteDifference()))"
+            ),
         )
         self.assertEqual(
             repr(OnColumn(column="A", metric=SumOf(AbsoluteDifference()))),
@@ -1493,9 +1497,12 @@ class TestOnColumns(TestCase):
                     ]
                 )
             ),
-            "OnColumns(on_columns=[OnColumn(column='A', metric=RootSumOfSquared("
-            "inner_metric=SymmetricDifference())), OnColumn(column='B', metric=SumOf("
-            "inner_metric=AbsoluteDifference()))])",
+            (
+                "OnColumns(on_columns=[OnColumn(column='A',"
+                " metric=RootSumOfSquared(inner_metric=SymmetricDifference())),"
+                " OnColumn(column='B',"
+                " metric=SumOf(inner_metric=AbsoluteDifference()))])"
+            ),
         )
 
     @parameterized.expand(
@@ -1699,8 +1706,10 @@ class TestIfGroupedBy(TestCase):
                     column="A", inner_metric=RootSumOfSquared(SymmetricDifference())
                 )
             ),
-            "IfGroupedBy(column='A', "
-            "inner_metric=RootSumOfSquared(inner_metric=SymmetricDifference()))",
+            (
+                "IfGroupedBy(column='A', "
+                "inner_metric=RootSumOfSquared(inner_metric=SymmetricDifference()))"
+            ),
         )
         self.assertEqual(
             repr(
@@ -1708,13 +1717,17 @@ class TestIfGroupedBy(TestCase):
                     column="A", inner_metric=RootSumOfSquared(AbsoluteDifference())
                 )
             ),
-            "IfGroupedBy(column='A', "
-            "inner_metric=RootSumOfSquared(inner_metric=AbsoluteDifference()))",
+            (
+                "IfGroupedBy(column='A', "
+                "inner_metric=RootSumOfSquared(inner_metric=AbsoluteDifference()))"
+            ),
         )
         self.assertEqual(
             repr(IfGroupedBy(column="A", inner_metric=SumOf(AbsoluteDifference()))),
-            "IfGroupedBy(column='A', "
-            "inner_metric=SumOf(inner_metric=AbsoluteDifference()))",
+            (
+                "IfGroupedBy(column='A', "
+                "inner_metric=SumOf(inner_metric=AbsoluteDifference()))"
+            ),
         )
 
     @parameterized.expand(
@@ -1856,7 +1869,7 @@ class TestDictMetric(TestCase):
 
     def test_constructor_mutable_arguments(self):
         """Tests that mutable constructor arguments are copied."""
-        metric_map = {"A": SymmetricDifference()}
+        metric_map: Dict[str, Metric] = {"A": SymmetricDifference()}
         metric = DictMetric(key_to_metric=metric_map)
         metric_map["A"] = HammingDistance()
         self.assertDictEqual(metric.key_to_metric, {"A": SymmetricDifference()})
@@ -1956,8 +1969,10 @@ class TestDictMetric(TestCase):
         """Tests that the string representation is as expected."""
         self.assertEqual(
             repr(DictMetric({"A": SymmetricDifference(), "B": AbsoluteDifference()})),
-            "DictMetric(key_to_metric={'A': SymmetricDifference(), 'B': "
-            "AbsoluteDifference()})",
+            (
+                "DictMetric(key_to_metric={'A': SymmetricDifference(), 'B': "
+                "AbsoluteDifference()})"
+            ),
         )
 
     @parameterized.expand(
