@@ -822,8 +822,10 @@ class TestPrivateJoin(PySparkTest):
                 "df1",
                 "df2",
                 ["A"],
-                "'A' has different data types in left (StringType()) and right "
-                "(LongType()) domains.",
+                (
+                    "'A' has different data types in left (StringType()) and right "
+                    "(LongType()) domains."
+                ),
             ),
             (  # _right column already exists
                 DictDomain(
@@ -903,6 +905,8 @@ class TestPrivateJoin(PySparkTest):
             }
         )
         actual = private_join.output_domain
+        self.assertIsInstance(actual, SparkDataFrameDomain)
+        assert isinstance(actual, SparkDataFrameDomain)
         self.assertEqual(expected_output_domain["A"], actual["A"])
         self.assertEqual(expected_output_domain["B"], actual["B"])
         self.assertEqual(expected_output_domain["C"], actual["C"])

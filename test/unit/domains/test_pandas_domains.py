@@ -157,7 +157,7 @@ class TestPandasDataFrameDomain(TestCase):
         """Tests that mutable constructor arguments are copied."""
         schema = {"A": PandasSeriesDomain(NumpyIntegerDomain())}
         domain = PandasDataFrameDomain(schema=schema)
-        schema["A"] = NumpyFloatDomain()
+        schema["A"] = PandasSeriesDomain(NumpyFloatDomain())
         self.assertDictEqual(
             domain.schema, {"A": PandasSeriesDomain(NumpyIntegerDomain())}
         )
@@ -170,7 +170,7 @@ class TestPandasDataFrameDomain(TestCase):
     def test_bad_init(self):
         """Test that PandasDataFrameDomain raises error when create with wrong type."""
         with self.assertRaises(TypeError):
-            PandasDataFrameDomain(schema="incorrect type")
+            PandasDataFrameDomain(schema="incorrect type")  # type: ignore
 
     @parameterized.expand(
         [
@@ -178,8 +178,10 @@ class TestPandasDataFrameDomain(TestCase):
             # wrong column type
             (
                 pd.DataFrame({"A": [1, 2], "B": [1, 2], "C": ["1", "2"]}),
-                "Found invalid value in column 'B': Found invalid value in Series: "
-                f"Value must be {np.float64}, instead it is {np.int64}.",
+                (
+                    "Found invalid value in column 'B': Found invalid value in Series: "
+                    f"Value must be {np.float64}, instead it is {np.int64}."
+                ),
             ),
             # missing column
             (

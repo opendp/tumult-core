@@ -60,7 +60,7 @@ class PureDPToRhoZCDP(Measurement):
         """
         epsilon = self.pure_dp_measurement.privacy_function(d_in)
         assert isinstance(epsilon, ExactNumber)
-        rho = (epsilon ** 2) / 2
+        rho = (epsilon**2) / 2
         self.output_measure.validate(rho)
         return rho
 

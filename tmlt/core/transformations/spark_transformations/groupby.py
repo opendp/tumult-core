@@ -425,7 +425,7 @@ def compute_full_domain_df(
     domain_spark_types = {
         column: _spark_type(values) for column, values in column_domains.items()
     }
-    if full_domain_size <= 10 ** 6:
+    if full_domain_size <= 10**6:
         # Perform in-memory crossjoin using itertools if fewer than 1m rows
         return spark.createDataFrame(
             spark.sparkContext.parallelize(

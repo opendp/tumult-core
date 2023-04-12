@@ -38,9 +38,11 @@ class TestConfiguration(TestCase):
     @parameterized.expand(
         [
             (
-                'openjdk version "1.8.0_292"\nOpenJDK Runtime Environment'
-                " (AdoptOpenJDK)(build 1.8.0_292-b10)\nOpenJDK 64-Bit Server VM"
-                " (AdoptOpenJDK)(build 25.292-b10, mixed mode)",
+                (
+                    'openjdk version "1.8.0_292"\nOpenJDK Runtime Environment'
+                    " (AdoptOpenJDK)(build 1.8.0_292-b10)\nOpenJDK 64-Bit Server VM"
+                    " (AdoptOpenJDK)(build 25.292-b10, mixed mode)"
+                ),
                 8,
             ),
             ("1.2.345_678", 2),
@@ -141,9 +143,11 @@ class TestConfiguration(TestCase):
     @parameterized.expand(
         [
             (
-                'openjdk version "1.8.0_292"\nOpenJDK Runtime Environment'
-                " (AdoptOpenJDK)(build 1.8.0_292-b10)\nOpenJDK 64-Bit Server VM"
-                " (AdoptOpenJDK)(build 25.292-b10, mixed mode)",
+                (
+                    'openjdk version "1.8.0_292"\nOpenJDK Runtime Environment'
+                    " (AdoptOpenJDK)(build 1.8.0_292-b10)\nOpenJDK 64-Bit Server VM"
+                    " (AdoptOpenJDK)(build 25.292-b10, mixed mode)"
+                ),
                 8,
             ),
             ('Artisanal Handmade Java "1.2.345_678"', 2),

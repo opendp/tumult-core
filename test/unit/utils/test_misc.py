@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-from typing import Any, Callable
+from typing import Any, Callable, Dict
 
 import pandas as pd
 from parameterized import parameterized
@@ -45,7 +45,9 @@ class TestCopyIfMutable(PySparkTest):
 
     def test_no_deepcopy(self):
         """Still works for containers of immutable items that can't be deep-copied."""
-        original = {"key1": self.spark.createDataFrame(pd.DataFrame({"A": [1, 2, 3]}))}
+        original: Dict[str, Any] = {
+            "key1": self.spark.createDataFrame(pd.DataFrame({"A": [1, 2, 3]}))
+        }
         reference_copy = {
             "key1": self.spark.createDataFrame(pd.DataFrame({"A": [1, 2, 3]}))
         }

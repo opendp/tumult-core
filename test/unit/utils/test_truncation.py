@@ -23,14 +23,16 @@ class TestTruncateLargeGroups(PySparkTest):
             (0, [(1, "x"), (1, "y"), (1, "z"), (1, "w")], 0),
         ]
     )
-    def test_correctness(self, threshold: int, rows: List[Tuple], expected_count: int):
+    def test_correctness(
+        self, threshold: int, rows: List[Tuple], expected_count: int
+    ) -> None:
         """Tests that truncate_large_groups works correctly."""
         df = self.spark.createDataFrame(rows, schema=["A", "B"])
         self.assertEqual(
             truncate_large_groups(df, ["A"], threshold).count(), expected_count
         )
 
-    def test_consistency(self):
+    def test_consistency(self) -> None:
         """Tests that truncate_large_groups does not truncate randomly across calls."""
         df = self.spark.createDataFrame([(i,) for i in range(1000)], schema=["A"])
 
@@ -40,7 +42,7 @@ class TestTruncateLargeGroups(PySparkTest):
                 truncate_large_groups(df, ["A"], 5).toPandas(), expected_output
             )
 
-    def test_rows_dropped_consistently(self):
+    def test_rows_dropped_consistently(self) -> None:
         """Tests that truncate_large_groups drops that same rows for unchanged keys."""
         df1 = self.spark.createDataFrame(
             [("A", 1), ("B", 2), ("B", 3)], schema=["W", "X"]
@@ -56,7 +58,7 @@ class TestTruncateLargeGroups(PySparkTest):
             df2_truncated.filter("W='B'").toPandas(),
         )
 
-    def test_hash_truncation_order_agnostic(self):
+    def test_hash_truncation_order_agnostic(self) -> None:
         """Tests that truncate_large_groups doesn't depend on row order."""
         df_rows = [(1, 2, "A"), (3, 4, "A"), (5, 6, "A"), (7, 8, "B")]
 
@@ -67,7 +69,7 @@ class TestTruncateLargeGroups(PySparkTest):
         for df in truncated_dfs[1:]:
             self.assert_frame_equal_with_sort(first_df=truncated_dfs[0], second_df=df)
 
-    def test_hash_truncation_duplicate_rows_not_clumped(self):
+    def test_hash_truncation_duplicate_rows_not_clumped(self) -> None:
         """Tests that truncate_large_groups doesn't clump duplicate rows together."""
         df = self.spark.createDataFrame(
             [
@@ -85,6 +87,7 @@ class TestTruncateLargeGroups(PySparkTest):
             schema=["X", "Y", "Z"],
         )
         actual = truncate_large_groups(df, ["Z"], threshold=5).toPandas()
+        assert isinstance(actual, pd.DataFrame)
         assert len(actual.drop_duplicates()) == 2
 
 
@@ -102,7 +105,7 @@ class TestDropLargeGroups(PySparkTest):
     )
     def test_correctness(
         self, threshold: int, input_rows: List[Tuple], expected: List[Tuple]
-    ):
+    ) -> None:
         """Tests that drop_large_groups works correctly."""
         df = self.spark.createDataFrame(input_rows, schema=["A", "B"])
         actual = drop_large_groups(df, ["A"], threshold).toPandas()

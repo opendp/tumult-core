@@ -29,12 +29,10 @@ class Measure(ABC):
         Args:
             value: A distance between two probability distributions under this measure.
         """
-        ...
 
     @abstractmethod
     def compare(self, value1: Any, value2: Any) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""
-        ...
 
     def __repr__(self) -> str:
         """Returns string representation."""
@@ -60,7 +58,7 @@ class PureDP(Measure):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid PureDP measure value (epsilon) {e}")
+            raise ValueError(f"Invalid PureDP measure value (epsilon) {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""
@@ -100,7 +98,9 @@ class ApproxDP(Measure):
                 maximum_is_inclusive=True,
             )
         except (ValueError, TypeError) as e:
-            raise ValueError(f"Invalid ApproxDP measure value (epsilon,delta): {e}")
+            raise ValueError(
+                f"Invalid ApproxDP measure value (epsilon,delta): {e}"
+            ) from e
 
     def compare(
         self,
@@ -141,7 +141,7 @@ class RhoZCDP(Measure):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid RhoZCDP measure value (rho): {e}")
+            raise ValueError(f"Invalid RhoZCDP measure value (rho): {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""
@@ -194,12 +194,10 @@ class PrivacyBudget(ABC):
     @abstractmethod
     def value(self) -> PrivacyBudgetValue:
         """Return the value of the privacy budget."""
-        ...
 
     @abstractmethod
     def is_finite(self) -> bool:
         """Return true iff the budget is finite."""
-        ...
 
     @abstractmethod
     def can_spend_budget(self, other: PrivacyBudgetInput) -> bool:
@@ -208,7 +206,6 @@ class PrivacyBudget(ABC):
         Args:
             other: The privacy budget we would like to spend.
         """
-        ...
 
     @abstractmethod
     def subtract(self, other: PrivacyBudgetInput) -> "PrivacyBudget":
@@ -222,7 +219,6 @@ class PrivacyBudget(ABC):
         Raises:
             ValueError: If there is not enough privacy budget to subtract other.
         """
-        ...
 
     def __eq__(self, other: Any) -> bool:
         """Check is this instance is equal to `other`.

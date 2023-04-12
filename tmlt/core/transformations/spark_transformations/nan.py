@@ -149,7 +149,7 @@ class DropInfs(Transformation):
 
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_inf=False)
+                column: replace(descriptor, allow_inf=False)  # type: ignore
                 if column in columns
                 else descriptor
                 for column, descriptor in input_domain.schema.items()
@@ -319,7 +319,7 @@ class DropNaNs(Transformation):
                 )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_nan=False)
+                column: replace(descriptor, allow_nan=False)  # type: ignore
                 if column in columns
                 else descriptor
                 for column, descriptor in input_domain.schema.items()
@@ -478,7 +478,7 @@ class DropNulls(Transformation):
             )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_null=False)
+                column: replace(descriptor, allow_null=False)  # type: ignore
                 if column in columns
                 else descriptor
                 for column, descriptor in input_domain.schema.items()
@@ -643,13 +643,15 @@ class ReplaceInfs(Transformation):
                 )
             if not cast(SparkFloatColumnDescriptor, input_domain[column]).allow_inf:
                 warnings.warn(
-                    f"Column ({column}) already disallows infinite values. This"
-                    " transformation will have no effect on this column.",
+                    (
+                        f"Column ({column}) already disallows infinite values. This"
+                        " transformation will have no effect on this column."
+                    ),
                     RuntimeWarning,
                 )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_inf=False)
+                column: replace(descriptor, allow_inf=False)  # type: ignore
                 if column in replace_map
                 else descriptor
                 for column, descriptor in input_domain.schema.items()
@@ -820,13 +822,15 @@ class ReplaceNaNs(Transformation):
                 )
             if not cast(SparkFloatColumnDescriptor, input_domain[column]).allow_nan:
                 warnings.warn(
-                    f"Column ({column}) already disallows NaNs. This transformation"
-                    " will have no effect on this column.",
+                    (
+                        f"Column ({column}) already disallows NaNs. This transformation"
+                        " will have no effect on this column."
+                    ),
                     RuntimeWarning,
                 )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_nan=False)
+                column: replace(descriptor, allow_nan=False)  # type: ignore
                 if column in replace_map
                 else descriptor
                 for column, descriptor in input_domain.schema.items()
@@ -983,7 +987,7 @@ class ReplaceNulls(Transformation):
             )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_null=False)
+                column: replace(descriptor, allow_null=False)  # type: ignore
                 if column in replace_map
                 else descriptor
                 for column, descriptor in input_domain.schema.items()
@@ -996,8 +1000,10 @@ class ReplaceNulls(Transformation):
                 )
             if not input_domain[column].allow_null:
                 warnings.warn(
-                    f"Column ({column}) already disallows nulls. This transformation"
-                    " will have no effect on this column.",
+                    (
+                        f"Column ({column}) already disallows nulls. This"
+                        " transformation will have no effect on this column."
+                    ),
                     RuntimeWarning,
                 )
         if isinstance(metric, IfGroupedBy):

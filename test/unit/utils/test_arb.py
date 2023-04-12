@@ -30,28 +30,28 @@ class TestArb(TestCase):
 
     @parameterized.expand(
         [
-            (-42 * 10 ** 9,),
-            (-42 * 10 ** 7,),
+            (-42 * 10**9,),
+            (-42 * 10**7,),
             (-42,),
             (0,),
             (42,),
-            (42 * 10 ** 7,),
-            (42 * 10 ** 9,),
-            (42 * 10 ** 11,),
+            (42 * 10**7,),
+            (42 * 10**9,),
+            (42 * 10**11,),
         ]
     )
     def test_from_int(self, val: int):
         """Tests `Arb.from_int`."""
         x = Arb.from_int(val)
         man, exp = x.man_exp()
-        self.assertEqual(man * 2 ** exp, val)
+        self.assertEqual(man * 2**exp, val)
 
     @parameterized.expand([(0.0,), (1.1,), (-1.1,), (9.9 * 0.123,), (99.12,)])
     def test_from_float(self, val: float):
         """Tests `Arb.from_float`."""
         x = Arb.from_float(val)
         man, exp = x.man_exp()
-        self.assertEqual(man * 2 ** exp, val)
+        self.assertEqual(man * 2**exp, val)
 
     def test_from_float_inf(self):
         """Tests `Arb.from_float` works with +/- inf."""
@@ -63,12 +63,12 @@ class TestArb(TestCase):
         self.assertEqual(float(posinf), float("inf"))
         self.assertEqual(float(neginf), float("-inf"))
 
-    @parameterized.expand([(2, 30), (4, 300), (5 * 10 ** 2, 7 ** 8)])
+    @parameterized.expand([(2, 30), (4, 300), (5 * 10**2, 7**8)])
     def test_from_man_exp(self, man: int, exp: int):
         """Tests `Arb.from_man_exp`."""
         x = Arb.from_man_exp(man, exp)
         m, e = x.man_exp()
-        self.assertEqual(m * 2 ** e, man * 2 ** exp)
+        self.assertEqual(m * 2**e, man * 2**exp)
 
     @parameterized.expand([(10, 1), (10000, 5), (10, 1), (10, 1)])
     def test_from_midpoint_radius(self, mid: int, rad: int):

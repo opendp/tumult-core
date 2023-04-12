@@ -121,4 +121,3 @@ class Transformation(ABC):
     @abstractmethod
     def __call__(self, data: Any) -> Any:
         """Perform transformation."""
-        ...

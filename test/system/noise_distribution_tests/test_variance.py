@@ -92,7 +92,7 @@ def _get_var_stddev_test_cases(
         true_answers: Dict[str, Union[float, int]] = {
             "count": len(dataset.group_vals),
             "sum": sum(dataset.group_vals),
-            "sum_of_squares": sum(val ** 2 for val in dataset.group_vals),
+            "sum_of_squares": sum(val**2 for val in dataset.group_vals),
         }
         midpoint_sod, _ = get_midpoint(
             dataset.lower,
@@ -100,8 +100,8 @@ def _get_var_stddev_test_cases(
             integer_midpoint=not dataset.float_measure_column,
         )
         midpoint_sos, _ = get_midpoint(
-            0 if dataset.lower <= 0 <= dataset.upper else dataset.lower ** 2,
-            dataset.upper ** 2,
+            0 if dataset.lower <= 0 <= dataset.upper else dataset.lower**2,
+            dataset.upper**2,
             integer_midpoint=not dataset.float_measure_column,
         )
 

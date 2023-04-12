@@ -150,16 +150,17 @@ class TestAugmentDictTransformation(TestCase):
     def test_correctness(self):
         """Tests that AugmentDictTransformation works correctly."""
         inner_transformation = self.get_mock_transformation(
-            return_value={"K": np.int(2)}
+            return_value={"K": np.int64(2)}
         )
         transformation = AugmentDictTransformation(transformation=inner_transformation)
-        input_dict = {"A": np.int(20), "B": np.int(123)}
+        input_dict = {"A": np.int64(20), "B": np.int64(123)}
 
         actual = transformation(input_dict)
         self.assertEqual(
-            inner_transformation.mock_calls, [call({"A": np.int(20), "B": np.int(123)})]
+            inner_transformation.mock_calls,
+            [call({"A": np.int64(20), "B": np.int64(123)})],
         )
-        self.assertEqual(actual, {**input_dict, "K": np.int(2)})
+        self.assertEqual(actual, {**input_dict, "K": np.int64(2)})
 
     @parameterized.expand(
         [
@@ -297,9 +298,11 @@ class TestGetValue(TestCase):
     @parameterized.expand(
         [
             (
-                "Input metric DictMetric(key_to_metric={'B': AbsoluteDifference()}) and"
-                " input domain DictDomain(key_to_domain={'A':"
-                " NumpyIntegerDomain(size=64)}) are not compatible.",
+                (
+                    "Input metric DictMetric(key_to_metric={'B': AbsoluteDifference()})"
+                    " and input domain DictDomain(key_to_domain={'A':"
+                    " NumpyIntegerDomain(size=64)}) are not compatible."
+                ),
                 DictDomain({"A": NumpyIntegerDomain()}),
                 DictMetric({"B": AbsoluteDifference()}),
                 "A",
@@ -507,9 +510,11 @@ class TestSubset(TestCase):
                 [],
             ),
             (
-                "Input metric AddRemoveKeys(df_to_key_column={'A': 'B'}) and input"
-                " domain DictDomain(key_to_domain={'A': NumpyIntegerDomain(size=64)})"
-                " are not compatible.",
+                (
+                    "Input metric AddRemoveKeys(df_to_key_column={'A': 'B'}) and input"
+                    " domain DictDomain(key_to_domain={'A':"
+                    " NumpyIntegerDomain(size=64)}) are not compatible."
+                ),
                 DictDomain({"A": NumpyIntegerDomain()}),
                 AddRemoveKeys({"A": "B"}),
                 ["A"],
@@ -607,8 +612,8 @@ class TestCreateDictFromValue(TestCase):
             input_metric=AbsoluteDifference(),
             key="X",
         )
-        actual = transformation(np.int(20))
-        expected = {"X": np.int(20)}
+        actual = transformation(np.int64(20))
+        expected = {"X": np.int64(20)}
         self.assertEqual(actual, expected)
 
     @parameterized.expand([(False, 3, {"X": 3}), (True, 4, 4)])
@@ -637,8 +642,10 @@ class TestCreateDictFromValue(TestCase):
     @parameterized.expand(
         [
             (
-                "Input metric must be IfGroupedBy with an inner metric of"
-                " SymmetricDifference to use AddRemoveKeys as the output metric",
+                (
+                    "Input metric must be IfGroupedBy with an inner metric of"
+                    " SymmetricDifference to use AddRemoveKeys as the output metric"
+                ),
                 NumpyIntegerDomain(),
                 AbsoluteDifference(),
                 "A",

@@ -125,8 +125,10 @@ class TestNoisyQuantile(TestCase):
             ({"epsilon": -1}, "Invalid PureDP measure value (epsilon) -1"),
             (
                 {"input_domain": PandasSeriesDomain(NumpyStringDomain())},
-                "input_domain.element_domain must be NumpyIntegerDomain or "
-                "NumpyFloatDomain, not NumpyStringDomain",
+                (
+                    "input_domain.element_domain must be NumpyIntegerDomain or "
+                    "NumpyFloatDomain, not NumpyStringDomain"
+                ),
             ),
             (
                 {"input_domain": PandasSeriesDomain(NumpyFloatDomain(allow_nan=True))},

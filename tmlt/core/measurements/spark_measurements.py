@@ -214,9 +214,10 @@ class AddNoiseToColumn(SparkMeasurement):
         self.input_metric.validate(d_in)
         return self.measurement.privacy_function(d_in)
 
-    def call(self, sdf: DataFrame) -> DataFrame:
+    def call(self, val: DataFrame) -> DataFrame:
         """Applies measurement to measure column."""
         # TODO(#2107): Fix typing once pd.Series is a usable type
+        sdf = val
         udf = sf.pandas_udf(  # type: ignore
             self.measurement, self.measurement.output_type, sf.PandasUDFType.SCALAR
         ).asNondeterministic()
@@ -316,8 +317,9 @@ class ApplyInPandas(SparkMeasurement):
         """
         return self.aggregation_function.privacy_function(d_in)
 
-    def call(self, grouped_dataframe: GroupedDataFrame) -> DataFrame:
+    def call(self, val: GroupedDataFrame) -> DataFrame:
         """Returns DataFrame obtained by applying pandas aggregation to each group."""
+        grouped_dataframe = val
         return grouped_dataframe.select(
             grouped_dataframe.groupby_columns
             + list(self.aggregation_function.input_domain.schema)
@@ -461,7 +463,7 @@ class GeometricPartitionSelection(SparkMeasurement):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid alpha: {e}")
+            raise ValueError(f"Invalid alpha: {e}") from e
         if count_column is None:
             count_column = "count"
         if count_column in set(input_domain.schema):
@@ -526,8 +528,9 @@ class GeometricPartitionSelection(SparkMeasurement):
             ),
         )
 
-    def call(self, sdf: DataFrame) -> DataFrame:
+    def call(self, val: DataFrame) -> DataFrame:
         """Return the noisy counts for common rows."""
+        sdf = val
         count_df = sdf.groupBy(sdf.columns).agg(sf.count("*").alias(self.count_column))
         internal_measurement = AddNoiseToColumn(
             input_domain=SparkDataFrameDomain(

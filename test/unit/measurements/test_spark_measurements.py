@@ -326,6 +326,8 @@ class TestGeometricPartitionSelection(PySparkTest):
         )
         actual = measurement(sdf).toPandas()
         expected_without_count = pd.DataFrame({"A": ["a1"], "B": [1]})
+        self.assertIsInstance(actual, pd.DataFrame)
+        assert isinstance(actual, pd.DataFrame)
         self.assert_frame_equal_with_sort(actual[["A", "B"]], expected_without_count)
         # Threshold -1 should give worse guarantee than for threshold of 0 or 1
         measurement_threshold_0 = GeometricPartitionSelection(

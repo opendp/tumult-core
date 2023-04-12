@@ -18,7 +18,6 @@ class Domain(ABC):
     @abstractmethod
     def carrier_type(self) -> type:
         """Returns the type of elements in the domain."""
-        ...
 
     def validate(self, value: Any):
         """Raises an error if value is not in the domain."""

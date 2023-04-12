@@ -68,7 +68,7 @@ class TestAggregateByColumn(unittest.TestCase):
     """
 
     @parameterized.expand(get_all_props(AggregateByColumn))
-    def test_property_immutability(self, prop_name: str):
+    def test_property_immutability(self, prop_name: str) -> None:
         """Tests that given property is immutable."""
         quantile_measurement = NoisyQuantile(
             PandasSeriesDomain(NumpyIntegerDomain()),
@@ -94,7 +94,7 @@ class TestAggregateByColumn(unittest.TestCase):
         )
         assert_property_immutability(measurement, prop_name)
 
-    def test_properties(self):
+    def test_properties(self) -> None:
         """AggregateByColumn's properties have the expected values."""
         quantile_measurement = NoisyQuantile(
             PandasSeriesDomain(NumpyIntegerDomain()),
@@ -124,7 +124,7 @@ class TestAggregateByColumn(unittest.TestCase):
         self.assertEqual(measurement.is_interactive, False)
         self.assertEqual(measurement.column_to_aggregation, column_to_aggregation)
 
-    def test_output_schema(self):
+    def test_output_schema(self) -> None:
         """Test that the output schema is constructed correctly."""
         quantile_measurement = NoisyQuantile(
             PandasSeriesDomain(NumpyIntegerDomain()),
@@ -168,8 +168,10 @@ class TestAggregateByColumn(unittest.TestCase):
                     )
                 },
                 {"A": PandasSeriesDomain(NumpyIntegerDomain())},
-                "The input domain is not compatible with the input domains of the"
-                " aggregation functions.",
+                (
+                    "The input domain is not compatible with the input domains of the"
+                    " aggregation functions."
+                ),
             ),
             (  # mismatching column names
                 {"A": _create_mock_aggregate()},
@@ -179,8 +181,10 @@ class TestAggregateByColumn(unittest.TestCase):
             (  # invalid input metric
                 {"A": _create_mock_aggregate(input_metric=AbsoluteDifference())},
                 {"A": PandasSeriesDomain(NumpyIntegerDomain())},
-                "The input metric of the aggregation function must be either "
-                "SymmetricDifference or HammingDistance.",
+                (
+                    "The input metric of the aggregation function must be either "
+                    "SymmetricDifference or HammingDistance."
+                ),
             ),
             (  # inconsistent input metrics
                 {
@@ -196,8 +200,10 @@ class TestAggregateByColumn(unittest.TestCase):
             (  # invalid output measure
                 {"A": _create_mock_aggregate(output_measure=ApproxDP())},
                 {"A": PandasSeriesDomain(NumpyIntegerDomain())},
-                "The output measure of the aggregation function must be either PureDP "
-                "or RhoZCDP.",
+                (
+                    "The output measure of the aggregation function must be either"
+                    " PureDP or RhoZCDP."
+                ),
             ),
             (  # inconsistent output measures
                 {
@@ -217,7 +223,7 @@ class TestAggregateByColumn(unittest.TestCase):
         column_to_aggregation: Dict[str, Aggregate],
         schema: Dict[str, PandasSeriesDomain],
         expected_error_message: str,
-    ):
+    ) -> None:
         """Init correctly validates aggregation functions."""
         with self.assertRaisesRegex(ValueError, expected_error_message):
             AggregateByColumn(
@@ -225,7 +231,7 @@ class TestAggregateByColumn(unittest.TestCase):
                 column_to_aggregation=column_to_aggregation,
             )
 
-    def test_correctness_quantile(self):
+    def test_correctness_quantile(self) -> None:
         """Test correctness for a quantile aggregation and infinite budget."""
         df = pd.DataFrame([[28, 23], [26, 22], [27, 24], [29, 25]], columns=["F", "M"])
         qs = [0, 1]
@@ -286,7 +292,7 @@ class TestAggregateByColumn(unittest.TestCase):
         privacy_relation_return_value2: bool,
         input_metric: Union[SymmetricDifference, HammingDistance],
         use_hint: bool,
-    ):
+    ) -> None:
         """Tests that the privacy function and relation work correctly."""
         mock_measurement1 = create_mock_measurement(
             input_domain=PandasSeriesDomain(element_domain=NumpyFloatDomain()),
@@ -329,9 +335,11 @@ class TestAggregateByColumn(unittest.TestCase):
         ):
             self.assertRaisesRegex(
                 ValueError,
-                "A hint is needed to check this privacy relation, because the "
-                "privacy_relation from one of self.column_to_aggregation.values() "
-                "raised a NotImplementedError: TEST",
+                (
+                    "A hint is needed to check this privacy relation, because the "
+                    "privacy_relation from one of self.column_to_aggregation.values() "
+                    "raised a NotImplementedError: TEST"
+                ),
             )
         else:
             self.assertEqual(

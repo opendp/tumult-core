@@ -31,7 +31,5 @@ class TestDiscreteGaussian(TestCase):
         class BadRNG:
             """Does not support randrange."""
 
-            ...
-
         with self.assertRaisesRegex(TypeError, 'type of argument "rng" must be'):
-            sample_dgauss(sigma_squared=1, rng=BadRNG())
+            sample_dgauss(sigma_squared=1, rng=BadRNG())  # type: ignore

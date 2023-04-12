@@ -66,11 +66,11 @@ nox = "2022.8.7"
 nox_poetry = "1.0.1"
 
 # Linters, formatters
-black = "21.9b0"
-isort = { version = "4.3.21", extras = ["pyproject"] }
-mypy = "0.940"
-pydocstyle = { version = "6.1.1", extras = ["toml"] }
-pylint = "2.5.3"
+black = "^23"
+isort = { version = "^5.11", extras = ["pyproject"] }
+mypy = "^1.2"
+pydocstyle = { version = "^6.3", extras = ["toml"] }
+pylint = "^2.13"
 
 # Testing
 coverage = "^6.5"
@@ -115,6 +115,7 @@ explicit_package_bases = true
 follow_imports = "silent"
 ignore_missing_imports = true
 namespace_packages = true
+check_untyped_defs = true
 
 [tool.pylint.master]
 # See https://github.com/PyCQA/pylint/issues/1975#issuecomment-387924981

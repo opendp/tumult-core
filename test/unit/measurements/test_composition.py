@@ -178,9 +178,11 @@ class TestComposition(TestComponent):
         ):
             self.assertRaisesRegex(
                 ValueError,
-                "A hint is needed to check this privacy relation, because the "
-                "privacy_relation from one of self.measurements raised a "
-                "NotImplementedError: TEST",
+                (
+                    "A hint is needed to check this privacy relation, because the "
+                    "privacy_relation from one of self.measurements raised a "
+                    "NotImplementedError: TEST"
+                ),
             )
         else:
             self.assertEqual(
@@ -200,10 +202,10 @@ class TestComposition(TestComponent):
             for d_in in [1, 2]
             for params1, params2 in itertools.combinations(
                 [
-                    (True, d_in ** 2 * 1, True),
-                    (True, d_in ** 2 * 2, False),
-                    (False, d_in ** 2 * 1, True),
-                    (False, d_in ** 2 * 2, False),
+                    (True, d_in**2 * 1, True),
+                    (True, d_in**2 * 2, False),
+                    (False, d_in**2 * 1, True),
+                    (False, d_in**2 * 2, False),
                 ],
                 2,
             )
@@ -237,7 +239,7 @@ class TestComposition(TestComponent):
             privacy_relation_return_value=privacy_relation_return_value2,
             output_measure=RhoZCDP(),
         )
-        mock_hint = MagicMock(return_value=(d_in ** 2 * 1, d_in ** 2 * 1))
+        mock_hint = MagicMock(return_value=(d_in**2 * 1, d_in**2 * 1))
 
         measurement = Composition(
             [mock_measurement1, mock_measurement2], hint=mock_hint if use_hint else None
@@ -256,20 +258,22 @@ class TestComposition(TestComponent):
         ):
             self.assertRaisesRegex(
                 ValueError,
-                "A hint is needed to check this privacy relation, because the "
-                "privacy_relation from one of self.measurements raised a "
-                "NotImplementedError: TEST",
+                (
+                    "A hint is needed to check this privacy relation, because the "
+                    "privacy_relation from one of self.measurements raised a "
+                    "NotImplementedError: TEST"
+                ),
             )
         else:
             self.assertEqual(
-                measurement.privacy_relation(d_in, d_in ** 2 * 2),
-                mock_measurement1.privacy_relation(d_in, d_in ** 2 * 1)
-                and mock_measurement2.privacy_relation(d_in, d_in ** 2 * 1),
+                measurement.privacy_relation(d_in, d_in**2 * 2),
+                mock_measurement1.privacy_relation(d_in, d_in**2 * 1)
+                and mock_measurement2.privacy_relation(d_in, d_in**2 * 1),
             )
             if mock_hint.called:
-                mock_hint.assert_called_with(d_in, d_in ** 2 * 2)
+                mock_hint.assert_called_with(d_in, d_in**2 * 2)
             self.assertFalse(
-                measurement.privacy_relation(d_in, d_in ** 2 * sp.Rational("1.99"))
+                measurement.privacy_relation(d_in, d_in**2 * sp.Rational("1.99"))
             )
 
     @parameterized.expand(
@@ -351,9 +355,11 @@ class TestComposition(TestComponent):
         ):
             self.assertRaisesRegex(
                 ValueError,
-                "A hint is needed to check this privacy relation, because the "
-                "privacy_relation from one of self.measurements raised a "
-                "NotImplementedError: TEST",
+                (
+                    "A hint is needed to check this privacy relation, because the "
+                    "privacy_relation from one of self.measurements raised a "
+                    "NotImplementedError: TEST"
+                ),
             )
         else:
             self.assertEqual(

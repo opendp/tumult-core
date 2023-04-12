@@ -5,8 +5,8 @@
 
 from typing import Callable
 
-import tmlt.core.utils.arb as arb
 from tmlt.core.random.rng import prng
+from tmlt.core.utils import arb
 
 
 def construct_inverse_sampler(

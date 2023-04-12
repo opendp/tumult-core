@@ -369,9 +369,9 @@ class RowToRowsTransformation(Transformation):
         assert all(isinstance(r, (Row, dict)) for r in mapped)
         mapped_rows = [r if isinstance(r, Row) else Row(**r) for r in mapped]
         if self._augment:
-            augmented_rows: List[Row] = list()
+            augmented_rows: List[Row] = []
             for r in mapped_rows:
-                # NOTE: .asDict() doesn't work with emtpy row.
+                # NOTE: .asDict() doesn't work with empty row.
                 r_dict = r.asDict() if len(r) > 0 else {}
                 augmented_row_dict = {**row.asDict(), **r_dict}
                 augmented_row_dict.update(row.asDict())

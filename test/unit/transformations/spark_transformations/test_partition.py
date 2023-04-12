@@ -199,7 +199,8 @@ class TestPartitionByKeys(TestComponent):
             self.assertEqual(len(actual_rows), 1)
             assert (
                 actual_rows[0].A == key
-                or math.isnan(actual_rows[0].A)
+                or key is not None
+                and math.isnan(actual_rows[0].A)
                 and math.isnan(key)
             )
             assert actual_rows[0].B == 1

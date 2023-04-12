@@ -235,11 +235,11 @@ def create_count_measurement(
             add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
         elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
             add_noise_to_number = AddDiscreteGaussianNoise(
-                sigma_squared=noise_scale ** 2
+                sigma_squared=noise_scale**2
             )
         elif noise_mechanism == NoiseMechanism.GAUSSIAN:
             add_noise_to_number = AddGaussianNoise(
-                sigma_squared=noise_scale ** 2, input_domain=NumpyIntegerDomain()
+                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
             )
         else:
             raise ValueError(
@@ -278,12 +278,12 @@ def create_count_measurement(
         add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
     elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
         add_noise_to_series = AddNoiseToSeries(
-            AddDiscreteGaussianNoise(sigma_squared=noise_scale ** 2)
+            AddDiscreteGaussianNoise(sigma_squared=noise_scale**2)
         )
     elif noise_mechanism == NoiseMechanism.GAUSSIAN:
         add_noise_to_series = AddNoiseToSeries(
             AddGaussianNoise(
-                sigma_squared=noise_scale ** 2, input_domain=NumpyIntegerDomain()
+                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
             )
         )
 
@@ -434,11 +434,11 @@ def create_count_distinct_measurement(
             add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
         elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
             add_noise_to_number = AddDiscreteGaussianNoise(
-                sigma_squared=noise_scale ** 2
+                sigma_squared=noise_scale**2
             )
         elif noise_mechanism == NoiseMechanism.GAUSSIAN:
             add_noise_to_number = AddGaussianNoise(
-                sigma_squared=noise_scale ** 2, input_domain=NumpyIntegerDomain()
+                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
             )
         else:
             raise ValueError(
@@ -490,12 +490,12 @@ def create_count_distinct_measurement(
         add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
     elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
         add_noise_to_series = AddNoiseToSeries(
-            AddDiscreteGaussianNoise(sigma_squared=noise_scale ** 2)
+            AddDiscreteGaussianNoise(sigma_squared=noise_scale**2)
         )
     elif noise_mechanism == NoiseMechanism.GAUSSIAN:
         add_noise_to_series = AddNoiseToSeries(
             AddGaussianNoise(
-                sigma_squared=noise_scale ** 2, input_domain=NumpyIntegerDomain()
+                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
             )
         )
     else:
@@ -660,11 +660,11 @@ def create_sum_measurement(
 
         elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
             add_noise_to_number = AddDiscreteGaussianNoise(
-                sigma_squared=noise_scale ** 2
+                sigma_squared=noise_scale**2
             )
         elif noise_mechanism == NoiseMechanism.GAUSSIAN:
             add_noise_to_number = AddGaussianNoise(
-                sigma_squared=noise_scale ** 2, input_domain=measure_column_domain
+                sigma_squared=noise_scale**2, input_domain=measure_column_domain
             )
         else:
             raise ValueError(
@@ -706,12 +706,12 @@ def create_sum_measurement(
         add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
     elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
         add_noise_to_series = AddNoiseToSeries(
-            AddDiscreteGaussianNoise(sigma_squared=noise_scale ** 2)
+            AddDiscreteGaussianNoise(sigma_squared=noise_scale**2)
         )
     elif noise_mechanism == NoiseMechanism.GAUSSIAN:
         add_noise_to_series = AddNoiseToSeries(
             AddGaussianNoise(
-                sigma_squared=noise_scale ** 2, input_domain=measure_column_domain
+                sigma_squared=noise_scale**2, input_domain=measure_column_domain
             )
         )
     else:
@@ -929,7 +929,7 @@ def create_average_measurement(
         ]:
             """Computes average from noisy count and sum of deviations."""
             sod, count = answers
-            average = sod / max(1, count) + midpoint_of_measure_column
+            average = sod / max(1, count) + midpoint_of_measure_column  # type: ignore
             if keep_intermediates:
                 return {
                     "average": average,
@@ -1170,9 +1170,9 @@ def create_variance_measurement(
     )
 
     lower_after_squaring: ExactNumber = (
-        ExactNumber(0) if lower <= 0 <= upper else min(lower ** 2, upper ** 2)
+        ExactNumber(0) if lower <= 0 <= upper else min(lower**2, upper**2)
     )
-    upper_after_squaring: ExactNumber = max(lower ** 2, upper ** 2)
+    upper_after_squaring: ExactNumber = max(lower**2, upper**2)
     (
         midpoint_of_squared_measure_column,
         exact_midpoint_of_squared_measure_column,
@@ -1252,7 +1252,7 @@ def create_variance_measurement(
             variance: Any
             if count <= 1:
                 variance = (
-                    midpoint_of_squared_measure_column - midpoint_of_measure_column ** 2
+                    midpoint_of_squared_measure_column - midpoint_of_measure_column**2
                 )
             else:
                 variance = (sos / count + midpoint_of_squared_measure_column) - (
@@ -1811,9 +1811,9 @@ def _create_map_to_compute_deviations(
     )
 
     lower_after_squaring: ExactNumber = (
-        ExactNumber(0) if lower <= 0 <= upper else min(lower ** 2, upper ** 2)
+        ExactNumber(0) if lower <= 0 <= upper else min(lower**2, upper**2)
     )
-    upper_after_squaring: ExactNumber = max(lower ** 2, upper ** 2)
+    upper_after_squaring: ExactNumber = max(lower**2, upper**2)
     (midpoint_of_squared_measure_column, _) = get_midpoint(
         lower_after_squaring,
         upper_after_squaring,

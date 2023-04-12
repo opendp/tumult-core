@@ -65,7 +65,6 @@ class Aggregate(Measurement):
     @abstractmethod
     def __call__(self, df: pd.DataFrame) -> pd.DataFrame:
         """Perform measurement."""
-        ...
 
 
 class AggregateByColumn(Aggregate):
@@ -228,7 +227,7 @@ class AggregateByColumn(Aggregate):
                     "A hint is needed to check this privacy relation, because the "
                     "privacy_relation from one of self.column_to_aggregation.values() "
                     f"raised a NotImplementedError: {e}"
-                )
+                ) from e
         assert self._hint is not None
         d_outs = self._hint(d_in, d_out)
         if set(d_outs) != set(self.column_to_aggregation):

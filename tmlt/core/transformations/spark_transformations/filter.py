@@ -121,8 +121,8 @@ class Filter(Transformation):
                 )
         try:
             test_df.filter(filter_expr)
-        except:
-            raise ValueError(f"Invalid filter_expr: {filter_expr}.")
+        except Exception as e:
+            raise ValueError(f"Invalid filter_expr: {filter_expr}.") from e
         super().__init__(
             input_domain=domain,
             input_metric=metric,

@@ -218,14 +218,14 @@ def domain_after_join(
         right_descriptor = right_domain.schema.get(right_column, None)  # type: ignore
         if left_descriptor is None:
             assert right_descriptor is not None
-            output_descriptors[output_column] = dataclasses.replace(
+            output_descriptors[output_column] = dataclasses.replace(  # type: ignore
                 right_descriptor,  # type: ignore
                 allow_null=right_descriptor.allow_null or how in ["left", "outer"],
             )
             continue
         if right_descriptor is None:
             assert left_descriptor is not None
-            output_descriptors[output_column] = dataclasses.replace(
+            output_descriptors[output_column] = dataclasses.replace(  # type: ignore
                 left_descriptor,  # type: ignore
                 allow_null=left_descriptor.allow_null or how in ["right", "outer"],
             )

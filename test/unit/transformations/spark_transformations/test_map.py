@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
-from typing import Callable, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import pandas as pd
 import sympy as sp
@@ -13,6 +13,7 @@ from pyspark import Row
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.domains.spark_domains import (
+    SparkColumnDescriptor,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
@@ -546,7 +547,10 @@ class TestGroupingFlatMap(TestComponent):
     def test_properties(self):
         """GroupingFlatMap's properties have the expected values."""
         duplicate = lambda row: [{**row.asDict(), "G": 1}, {**row.asDict(), "G": 2}]
-        output_schema = {**self.schema_a, "G": SparkIntegerColumnDescriptor()}
+        output_schema: Dict[str, SparkColumnDescriptor] = {
+            **self.schema_a,
+            "G": SparkIntegerColumnDescriptor(),
+        }
         row_transformer = RowToRowsTransformation(
             input_domain=SparkRowDomain(self.schema_a),
             output_domain=ListDomain(SparkRowDomain(output_schema)),

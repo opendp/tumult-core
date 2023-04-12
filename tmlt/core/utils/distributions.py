@@ -211,7 +211,7 @@ def discrete_gaussian_pmf(k, sigma_squared):
     https://github.com/IBM/discrete-gaussian-differential-privacy.
     """
     return np.exp(
-        -(k ** 2) / (2 * sigma_squared)
+        -(k**2) / (2 * sigma_squared)
     ) / _discrete_gaussian_normalizing_constant(sigma_squared)
 
 
@@ -275,15 +275,15 @@ def discrete_gaussian_inverse_cmf(p, sigma_squared):
     )
 
     def unnormalized_pmf(k):
-        return np.exp(-(k ** 2) / (2 * sigma_squared))
+        return np.exp(-(k**2) / (2 * sigma_squared))
 
     # _discrete_gaussian_normalizing_constant explains calculating the bound this way
-    lower_bound = min(-10000, -int(sigma_squared * 50))
+    lower_bound: float = min(-10000, -int(sigma_squared * 50))
 
     # if k < lower bound, cmf(k) returns pmf(k), so we can binary search for k.
     if unnormalized_pmf(lower_bound) > unnormalized_cmf:
-        hi = lower_bound
-        lo = lower_bound * 2
+        hi: float = lower_bound
+        lo: float = lower_bound * 2
         while unnormalized_pmf(lo) > unnormalized_cmf:
             hi = lo
             lo *= 2

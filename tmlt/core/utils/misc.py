@@ -23,7 +23,7 @@ class RNGWrapper:  # pylint: disable=too-few-public-methods
         """
         self._rng = rng
         self._MAX_INT = int(np.iinfo(np.int64).max)
-        assert self._MAX_INT == 2 ** 63 - 1
+        assert self._MAX_INT == 2**63 - 1
 
     def randrange(self, high: int) -> int:
         """Returns a random integer between 0 (inclusive) and `high` (exclusive).
@@ -45,7 +45,7 @@ class RNGWrapper:  # pylint: disable=too-few-public-methods
                 self._rng.integers(low=0, high=self._MAX_INT, endpoint=True)
             )
         random_integer <<= bits
-        random_integer += int(self._rng.integers(low=0, high=2 ** bits, endpoint=False))
+        random_integer += int(self._rng.integers(low=0, high=2**bits, endpoint=False))
         # random_integer may be >= high, but we can try again.
         # Note that this will work at least half of the time.
         if random_integer >= high:
