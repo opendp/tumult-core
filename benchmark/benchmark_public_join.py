@@ -11,6 +11,7 @@ import pandas as pd
 from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import lit
+from pyspark.sql.types import LongType
 from benchmarking_utils import write_as_html
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -209,7 +210,7 @@ class BenchmarkSparkPublicJoin:
                         [tuple(range(cols))] * rows_in_private, columns=schema.keys()
                     )
                 )
-                private_df = private_df.withColumn("B", lit(randint(0, 1)))
+                private_df = private_df.withColumn("B", lit(randint(0, 1)).cast(LongType()))
                 schema["B"] = SparkIntegerColumnDescriptor()
                 input_domain = SparkDataFrameDomain(schema=schema)
                 metric = IfGroupedBy("B", SumOf(SymmetricDifference()))

@@ -822,10 +822,8 @@ class TestPrivateJoin(PySparkTest):
                 "df1",
                 "df2",
                 ["A"],
-                (
-                    "'A' has different data types in left (StringType()) and right "
-                    "(LongType()) domains."
-                ),
+                "'A' has different data types in left (StringType) and right "
+                "(LongType) domains.",
             ),
             (  # _right column already exists
                 DictDomain(

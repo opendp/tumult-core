@@ -163,10 +163,8 @@ DOMAIN_AFTER_JOIN_ERROR_TEST_CASES = [
                 {"column": SparkIntegerColumnDescriptor()}
             )
         },
-        (
-            "'column' has different data types in left (LongType()) and"
-            " right (StringType()) domains."
-        ),
+        "'column' has different data types in left (LongType) and"
+        " right (StringType) domains.",
     ),
     (
         {
@@ -177,10 +175,8 @@ DOMAIN_AFTER_JOIN_ERROR_TEST_CASES = [
                 {"column": SparkIntegerColumnDescriptor(size=64)}
             ),
         },
-        (
-            "'column' has different data types in left (IntegerType()) and right "
-            "(LongType()) domains."
-        ),
+        "'column' has different data types in left (IntegerType) and right "
+        "(LongType) domains.",
     ),
     (
         {"left_domain": NumpyIntegerDomain()},

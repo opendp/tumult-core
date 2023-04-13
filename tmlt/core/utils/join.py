@@ -235,10 +235,13 @@ def domain_after_join(
         # The only remaining case is when the output column is a join column.
         assert output_column in on
         if left_descriptor.data_type != right_descriptor.data_type:
+            # str(left_descriptor.datatype) changes based on the version of Spark
+            left_dtype = str(left_descriptor.data_type).replace("()", "")
+            right_dtype = str(right_descriptor.data_type).replace("()", "")
             raise ValueError(
                 f"'{output_column}' has different data types in left "
-                f"({left_descriptor.data_type}) and right "
-                f"({right_descriptor.data_type}) domains."
+                f"({left_dtype}) and right "
+                f"({right_dtype}) domains."
             )
         # All column types are nullable
         allow_null = None
