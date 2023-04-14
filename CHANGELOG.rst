@@ -3,7 +3,7 @@
 Changelog
 =========
 
-UNRELEASED
+Unreleased
 ----------
 
 Added
