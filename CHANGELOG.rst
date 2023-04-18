@@ -10,6 +10,7 @@ Added
 ~~~~~
 
 - :mod:`~.utils.join`, which contains utilities for validating join parameters, propogating domains through joins, and joining dataframes.
+- Subclasses of :class:`~.Measure` now have equations defining the distance they represent.
 
 Changed
 ~~~~~~~

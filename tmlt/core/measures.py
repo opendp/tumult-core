@@ -16,7 +16,12 @@ PrivacyBudgetValue = Union[ExactNumber, Tuple[ExactNumber, ExactNumber]]
 
 
 class Measure(ABC):
-    """Base class for output measures."""
+    """Base class for output measures.
+
+    Each measure defines a way of measuring "distance" between two distributions
+    that corresponds to a te guarantees of a variant of differential privacy. Note
+    that these "distances" are not metrics.
+    """
 
     def __eq__(self, other: Any) -> bool:
         """Return True if both measures are equal."""
@@ -40,7 +45,20 @@ class Measure(ABC):
 
 
 class PureDP(Measure):
-    """Pure DP measure."""
+    r"""The distance between distributions in "pure" differential privacy.
+
+    As in Definition 1 of :cite:`DworkMNS06`.
+
+    In particular, under this measure the distance :math:`\epsilon` between two
+    distributions :math:`X` and :math:`Y` with the same range is:
+
+    .. math::
+
+        \epsilon = max_{S \subseteq Range(X)}\left(max\left(
+            ln\left(\frac{Pr[X \in S]}{Pr[Y \in S]}\right),
+            ln\left(\frac{Pr[Y \in S]}{Pr[X \in S]}\right)\right)\right)
+
+    """
 
     def validate(self, value: ExactNumberInput):
         """Raises an error if `value` not a valid distance.
@@ -68,7 +86,21 @@ class PureDP(Measure):
 
 
 class ApproxDP(Measure):
-    """Approximate DP measure."""
+    r"""The distance between distributions in approximate differential privacy.
+
+    As introduced in :cite:`DworkKMMN06`.
+
+    In particular, under this measure valid distances :math:`(\epsilon, \delta)`
+    between two distributions :math:`X` and :math:`Y` with the same range are those
+    :math:`(\epsilon, \delta)` satisfying:
+
+    .. math::
+
+        \epsilon = max_{S \subseteq Range(X)}\left(max\left(
+            ln\left(\frac{Pr[X \in S] - \delta}{Pr[Y \in S]}\right),
+            ln\left(\frac{Pr[Y \in S] - \delta}{Pr[X \in S]}\right)\right)\right)
+
+    """
 
     def validate(self, value: Tuple[ExactNumberInput, ExactNumberInput]):
         """Raises an error if `value` not a valid distance.
@@ -119,10 +151,19 @@ class ApproxDP(Measure):
 
 
 class RhoZCDP(Measure):
-    """ρ-zCDP measure.
+    r"""The distance between distributions in ρ-Zero Concentrated Differential Privacy.
 
-    See the definition of ρ-zCDP in `this <https://arxiv.org/pdf/1605.02065.pdf>`_ paper
-    under Definition 1.1.
+    As in Definition 1.1 of :cite:`BunS16`.
+
+    In particular, under this measure the distance :math:`\rho`
+    between two distributions :math:`X` and :math:`Y` with the same range is:
+
+    .. math::
+        \rho = max_{\alpha \in (1, \infty)}\left(max\left(
+            \frac{D_{\alpha}(X||Y)}{\alpha},
+            \frac{D_{\alpha}(Y||X)}{\alpha}\right)\right)
+
+    where :math:`D_{\alpha}(X||Y)` is the α-Rényi divergence between X and Y.
     """
 
     def validate(self, value: ExactNumberInput):
