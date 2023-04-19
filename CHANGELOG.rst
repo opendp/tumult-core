@@ -3,6 +3,13 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Added
+~~~~~
+- Subclasses of :class:`~.Measure` now have equations defining the distance they represent.
+
 0.9.0 - 2023-04-14
 ------------------
 
@@ -10,7 +17,6 @@ Added
 ~~~~~
 
 - :mod:`~.utils.join`, which contains utilities for validating join parameters, propogating domains through joins, and joining dataframes.
-- Subclasses of :class:`~.Measure` now have equations defining the distance they represent.
 
 Changed
 ~~~~~~~
