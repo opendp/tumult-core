@@ -5,12 +5,19 @@
 
 import itertools
 from typing import List, Tuple
+from unittest.mock import patch
 
 import pandas as pd
 from parameterized import parameterized
+from pyspark.sql.functions import udf
+from pyspark.sql.types import IntegerType
 
 from tmlt.core.utils.testing import PySparkTest
-from tmlt.core.utils.truncation import drop_large_groups, truncate_large_groups
+from tmlt.core.utils.truncation import (
+    drop_large_groups,
+    limit_keys_per_group,
+    truncate_large_groups,
+)
 
 
 class TestTruncateLargeGroups(PySparkTest):
@@ -111,3 +118,24 @@ class TestDropLargeGroups(PySparkTest):
         actual = drop_large_groups(df, ["A"], threshold).toPandas()
         expected = pd.DataFrame.from_records(expected, columns=["A", "B"])
         self.assert_frame_equal_with_sort(actual, expected)
+
+
+class TestLimitKeysPerGroup(PySparkTest):
+    """Tests for :func:`~tmlt.core.utils.truncation.limit_keys_per_group`."""
+
+    def test_hash_collisions(self):
+        """Test :func:`~.limit_keys_per_group` works when there are hash collisions.
+
+        This test fails for a previous, incorrect version of
+        :func:`~.limit_keys_per_group`. See
+        https://gitlab.com/tumult-labs/tumult/-/issues/2455 for more details.
+        """
+
+        df = self.spark.createDataFrame(
+            pd.DataFrame({"A": [1, 1, 1, 1, 2, 2, 2, 2], "B": [1, 1, 2, 2, 1, 2, 3, 4]})
+        )
+        # replace the hash function with one that always returns 1
+        hash_collision_mock = udf(lambda _, __: 1, IntegerType())
+        with patch("pyspark.sql.functions.hash", hash_collision_mock):
+            actual = limit_keys_per_group(df, ["A"], ["B"], 1)
+        self.assertEqual(actual.count(), 3)
