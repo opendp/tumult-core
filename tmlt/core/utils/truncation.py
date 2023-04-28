@@ -227,7 +227,9 @@ def limit_keys_per_group(
     """
     rank_column = get_nonconflicting_string(df.columns)
     hash_column = get_nonconflicting_string(df.columns + [rank_column])
-    shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(hash_column)
+    shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(
+        hash_column, *key_columns
+    )
     return (
         df.withColumn(
             hash_column, sf.hash(*grouping_columns, *key_columns)

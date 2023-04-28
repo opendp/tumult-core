@@ -3,6 +3,13 @@
 Changelog
 =========
 
+Unreleased
+------------------
+
+Changed
+~~~~~~~
+- Fixed bug in :func:`~.limit_keys_per_group`.
+
 0.9.1 - 2023-04-20
 ------------------
 
