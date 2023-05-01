@@ -6,6 +6,7 @@
 import atexit
 import re
 from typing import List
+from warnings import warn
 
 from pyspark.sql import SparkSession
 
@@ -14,7 +15,12 @@ from tmlt.core.utils.configuration import Config
 
 def _cleanup_temp() -> None:
     """Cleanup the temporary table."""
-    spark = SparkSession.builder.getOrCreate()
+    try:
+        spark = SparkSession.builder.getOrCreate()
+    except RuntimeError:
+        warn("Failed to clean up temporary tables, no Spark session available")
+        return
+
     spark.sql(f"DROP DATABASE IF EXISTS `{Config.temp_db_name()}` CASCADE")
 
 

@@ -10,6 +10,11 @@ Changed
 ~~~~~~~
 - Fixed bug in :func:`~.limit_keys_per_group`.
 
+Fixed
+~~~~~
+- :func:`~tmlt.core.utils.cleanup.cleanup` now emits a warning rather than an exception if it fails to get a Spark session.
+  This should prevent unexpected exceptions in the ``atexit`` cleanup handler.
+
 0.9.1 - 2023-04-20
 ------------------
 
