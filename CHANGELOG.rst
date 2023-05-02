@@ -35,6 +35,7 @@ Changed
 
 - :func:`~.truncate_large_groups` does not clump identical records together in hash-based ordering.
 - :class:`~.TransformValue` no longer fails when renaming the id column using :class:`~.RenameValue`.
+- Added the :class:`~.BoundSelection` spark measurement.
 
 Fixed
 ~~~~~

@@ -19,6 +19,7 @@ from tmlt.core.domains.spark_domains import (
 from tmlt.core.measurements.aggregations import (
     NoiseMechanism,
     create_average_measurement,
+    create_bound_selection_measurement,
     create_count_distinct_measurement,
     create_count_measurement,
     create_partition_selection_measurement,
@@ -27,7 +28,15 @@ from tmlt.core.measurements.aggregations import (
     create_sum_measurement,
     create_variance_measurement,
 )
-from tmlt.core.measures import ApproxDP, PrivacyBudgetInput, PureDP, RhoZCDP
+from tmlt.core.measurements.converters import PureDPToApproxDP, PureDPToRhoZCDP
+from tmlt.core.measurements.spark_measurements import BoundSelection
+from tmlt.core.measures import (
+    ApproxDP,
+    PrivacyBudget,
+    PrivacyBudgetInput,
+    PureDP,
+    RhoZCDP,
+)
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -969,6 +978,57 @@ class TestAggregationMeasurement(PySparkTest):
         self.assertEqual(measurement_epsilon, epsilon)
         self.assertEqual(measurement_delta, delta)
 
+    @parameterized.expand(
+        [
+            (PureDP(), 1, "B", 0.7, 1),
+            (RhoZCDP(), 1, "B", 0.7, 1),
+            (ApproxDP(), (1, 0), "B", 0.7, 1),
+        ]
+    )
+    def test_create_bound_selection_measurement(
+        self,
+        output_measure: Union[PureDP, RhoZCDP, ApproxDP],
+        d_out: PrivacyBudgetInput,
+        bound_column: str,
+        threshold: float,
+        d_in: ExactNumberInput = 1,
+    ):
+        """Test create_bound_selection_measurement works correctly."""
+        measurement = create_bound_selection_measurement(
+            input_domain=self.input_domain,
+            output_measure=output_measure,
+            d_out=d_out,
+            bound_column=bound_column,
+            threshold=threshold,
+            d_in=d_in,
+        )
+        d_out = PrivacyBudget.cast(output_measure, d_out).value
+        if isinstance(measurement, PureDPToRhoZCDP):
+            measurement = measurement.pure_dp_measurement
+            epsilon = sp.sqrt(ExactNumber(sp.Integer(2) * d_out).expr)
+        elif isinstance(measurement, PureDPToApproxDP):
+            measurement = measurement.pure_dp_measurement
+            assert isinstance(d_out, tuple)
+            epsilon = d_out[0]
+        else:
+            epsilon = d_out
+        # Appease mypy
+        if not isinstance(measurement, BoundSelection):
+            raise TypeError(
+                f"Expected measurement to be a BoundSelection, got {measurement}"
+            )
+        d_in = ExactNumber(d_in)
+        self.assertEqual(measurement.input_domain, self.input_domain)
+        self.assertEqual(measurement.output_measure, PureDP())
+        self.assertEqual(measurement.privacy_function(d_in), epsilon)
+        if d_out == float("inf"):
+            expected_alpha = ExactNumber(0)
+        else:
+            expected_alpha = (4 / epsilon) * d_in
+        self.assertEqual(measurement.alpha, expected_alpha)
+        self.assertEqual(measurement.bound_column, bound_column)
+        self.assertEqual(measurement.threshold, threshold)
+
 
 INPUT_DOMAIN = SparkDataFrameDomain(
     {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
@@ -1048,16 +1108,37 @@ class TestBadDelta(unittest.TestCase):
         with self.assertRaises(ValueError):
             f(noise_mechanism=noise_mechanism, d_out=d_out)
 
-    def test_quantile(self) -> None:
-        """Test error is raised for nonzero delta for create quantile."""
+    @parameterized.expand(
+        [
+            (d_out, f)
+            for d_out in [
+                (sp.Integer(1), sp.Rational(1, 2)),
+                (sp.Integer(1), sp.Rational(1, 3)),
+            ]
+            for f in [
+                functools.partial(
+                    create_bound_selection_measurement,
+                    input_domain=INPUT_DOMAIN,
+                    bound_column="B",
+                    threshold=0.5,
+                    output_measure=ApproxDP(),
+                ),
+                functools.partial(
+                    create_quantile_measurement,
+                    input_domain=INPUT_DOMAIN,
+                    input_metric=SymmetricDifference(),
+                    measure_column="B",
+                    quantile=0.5,
+                    upper=10,
+                    lower=0,
+                    output_measure=ApproxDP(),
+                ),
+            ]
+        ]
+    )
+    def test_functions_without_noise_mechanism(
+        self, d_out: PrivacyBudgetInput, f: Callable
+    ) -> None:
+        """Test error is raised for invalid deltas."""
         with self.assertRaises(ValueError):
-            create_quantile_measurement(
-                input_domain=INPUT_DOMAIN,
-                input_metric=SymmetricDifference(),
-                measure_column="B",
-                quantile=0.5,
-                upper=10,
-                lower=0,
-                d_out=(sp.Integer(1), sp.Rational(1, 2)),
-                output_measure=ApproxDP(),
-            )
+            f(d_out=d_out)

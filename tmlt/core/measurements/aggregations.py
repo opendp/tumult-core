@@ -41,6 +41,7 @@ from tmlt.core.measurements.postprocess import PostProcess
 from tmlt.core.measurements.spark_measurements import (
     AddNoiseToColumn,
     ApplyInPandas,
+    BoundSelection,
     GeometricPartitionSelection,
 )
 from tmlt.core.measures import (
@@ -50,6 +51,7 @@ from tmlt.core.measures import (
     PrivacyBudgetInput,
     PureDP,
     RhoZCDP,
+    RhoZCDPBudget,
 )
 from tmlt.core.metrics import (
     HammingDistance,
@@ -1922,4 +1924,91 @@ def create_partition_selection_measurement(
         threshold=threshold,
         alpha=alpha,
         count_column=count_column,
+    )
+
+
+@typechecked
+def create_bound_selection_measurement(
+    input_domain: SparkDataFrameDomain,
+    output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+    d_out: PrivacyBudgetInput,
+    bound_column: str,
+    threshold: float,
+    d_in: ExactNumberInput = 1,
+) -> Measurement:
+    """Returns a bound selection measurement.
+
+    A bound selection measurement created by this function will have a
+    privacy guarantee such that
+    ``measurement.privacy_function(d_in) = epsilon``.
+
+    Args:
+        input_domain: Domain of the input Spark DataFrames.
+        output_measure: Desired privacy guarantee.
+        d_out: Desired distance between output distributions w.r.t. `d_in`. This is
+            interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
+            is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
+            :class:`~.ApproxDP`.
+        bound_column: Column name to calculate the bounds for. The column
+            must be an integer or floating point column.
+        threshold: The threshold for the bound selection measurement.
+        d_in: The given d_in such that
+            ``measurement.privacy_function(d_in) = epsilon``.
+    """
+    d_in = ExactNumber(d_in)
+    alpha: ExactNumber
+
+    if isinstance(output_measure, ApproxDP):
+        epsilon, delta = ApproxDPBudget(d_out).value
+        if delta > 0:
+            raise ValueError(
+                "Cannot spend an ApproxDP budget with delta > 0."
+                "Use RhoZCDP, ApproxDP with delta = 0, or PureDP."
+            )
+        return PureDPToApproxDP(
+            create_bound_selection_measurement(
+                input_domain=input_domain,
+                output_measure=PureDP(),
+                d_out=epsilon,
+                bound_column=bound_column,
+                threshold=threshold,
+                d_in=d_in,
+            )
+        )
+
+    if isinstance(output_measure, RhoZCDP):
+        rho = RhoZCDPBudget(d_out).value
+        epsilon = sp.sqrt(ExactNumber(sp.Integer(2) * rho).expr)
+        return PureDPToRhoZCDP(
+            create_bound_selection_measurement(
+                input_domain=input_domain,
+                output_measure=PureDP(),
+                d_out=epsilon,
+                bound_column=bound_column,
+                threshold=threshold,
+                d_in=d_in,
+            )
+        )
+
+    if isinstance(output_measure, PureDP):
+        d_out = PrivacyBudget.cast(output_measure, d_out).value
+    else:
+        assert False
+    if d_in < 1:
+        raise NotImplementedError(
+            "Creating a partition selection measurement with d_in < 1 is not yet"
+            " supported."
+        )
+
+    # Special case for infinite privacy budget
+    if d_out == float("inf"):
+        alpha = ExactNumber(0)
+    # Normal cases
+    else:
+        alpha = (4 / d_out) * d_in
+    return BoundSelection(
+        input_domain=input_domain,
+        threshold=threshold,
+        alpha=alpha,
+        bound_column=bound_column,
     )

@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2022
 
 # pylint: disable=no-self-use
+from fractions import Fraction
 from typing import Dict, List
 
 import numpy as np
@@ -11,7 +12,13 @@ import pandas as pd
 import sympy as sp
 from parameterized import parameterized
 from pyspark.sql import functions as sf
-from pyspark.sql.types import IntegerType, StringType, StructField, StructType
+from pyspark.sql.types import (
+    DoubleType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
+)
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
@@ -32,6 +39,7 @@ from tmlt.core.measurements.pandas_measurements.series import (
 from tmlt.core.measurements.spark_measurements import (
     AddNoiseToColumn,
     ApplyInPandas,
+    BoundSelection,
     GeometricPartitionSelection,
     _get_materialized_df,
 )
@@ -450,3 +458,245 @@ class TestSanitization(PySparkTest):
         df_shuffled = df.repartition(1000)
         partitions2 = df_shuffled.repartition("partitioningColumn").rdd.glom().collect()
         self.assertListEqual(partitions1, partitions2)
+
+
+class TestBoundSelection(PySparkTest):
+    """Tests for BoundSelection.
+
+    Tests
+    :class:`~tmlt.core.measurements.spark_measurements.BoundSelection`.
+    """
+
+    def setUp(self):
+        """Test Setup."""
+        self.input_domain = SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(),
+                "B": SparkIntegerColumnDescriptor(),
+                "C": SparkFloatColumnDescriptor(),
+            }
+        )
+        self.spark_schema = StructType(
+            [
+                StructField("A", StringType(), True),
+                StructField("B", IntegerType(), True),
+                StructField("C", DoubleType(), True),
+            ]
+        )
+        self.output_measure = PureDP()
+        self.bound_column = "B"
+        self.alpha = ExactNumber(0)
+        self.threshold = 0.8
+        self.sdf = self.spark.createDataFrame(
+            pd.DataFrame(
+                {
+                    "A": ["a1", "a2", "a2", "a3", "a3", "a3"],
+                    "B": [1, 2, 2, 3, 3, 8],
+                    "C": [1.0, 2.0, 2.0, 3.0, 3.0, 8.0],
+                }
+            )
+        )
+        self.expected_min, self.expected_max = -4.0, 4.0
+        self.measurement = BoundSelection(
+            input_domain=self.input_domain,
+            bound_column=self.bound_column,
+            alpha=self.alpha,
+            threshold=self.threshold,
+        )
+
+    @parameterized.expand(get_all_props(BoundSelection))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        assert_property_immutability(self.measurement, prop_name)
+
+    def test_properties(self):
+        """BoundSelection has the expected properties."""
+        self.assertEqual(self.measurement.input_domain, self.input_domain)
+        self.assertEqual(self.measurement.input_metric, SymmetricDifference())
+        self.assertIsInstance(self.measurement.output_measure, PureDP)
+        self.assertEqual(self.measurement.bound_column, self.bound_column)
+        self.assertEqual(self.measurement.alpha, self.alpha)
+        self.assertEqual(self.measurement.threshold, self.threshold)
+
+    @parameterized.expand(
+        [("B", SparkIntegerColumnDescriptor()), ("C", SparkFloatColumnDescriptor())]
+    )
+    def test_splits(self, bound_column: str, column_type: SparkColumnDescriptor):
+        """BoundSelection creates the correct splits."""
+        measurement = BoundSelection(
+            input_domain=self.input_domain,
+            bound_column=bound_column,
+            alpha=self.alpha,
+            threshold=self.threshold,
+        )
+        if isinstance(column_type, SparkFloatColumnDescriptor):
+            expected_splits = (
+                [float("-inf")]
+                + [-(2**i) * 2**-100 for i in range(200, -1, -1)]
+                + [0]
+                + [2**i * 2**-100 for i in range(201)]
+                + [float("inf")]
+            )
+        elif isinstance(column_type, SparkIntegerColumnDescriptor):
+            expected_splits = (
+                [-(2 ** (column_type.size - 1)) + 1]
+                + [-(2**i) for i in range(column_type.size - 2, -1, -1)]
+                + [0]
+                + [2**i for i in range(column_type.size)]
+            )
+        self.assertEqual(measurement.splits, expected_splits)
+
+    def test_empty(self):
+        """Tests that empty inputs don't cause any issues."""
+        sdf = self.spark.createDataFrame(
+            pd.DataFrame({"A": [], "B": [], "C": []}), schema=self.spark_schema
+        )
+        expected_min, expected_max = -1.0, 1.0
+        actual_min, actual_max = self.measurement(sdf)
+        self.assertEqual(actual_min, expected_min)
+        self.assertEqual(actual_max, expected_max)
+
+    def test_negative_threshold(self):
+        """Tests that negative thresholds aren't allowed."""
+        with self.assertRaises(ValueError):
+            BoundSelection(
+                input_domain=self.input_domain,
+                bound_column=self.bound_column,
+                alpha=self.alpha,
+                threshold=-0.95,
+            )
+
+    def test_no_noise(self):
+        """Tests that the no noise works correctly."""
+        actual_min, actual_max = self.measurement(self.sdf)
+        self.assertEqual(actual_min, self.expected_min)
+        self.assertEqual(actual_max, self.expected_max)
+
+    @parameterized.expand(
+        [
+            # Tightly clustered
+            # Binning the bounds work on a [x, y) interval,
+            # hence, why the bounds are at 32,
+            # as 16 would be found in the [16, 32) bound
+            ([16] * 10, 0.95, -32, 32),
+            # Loosely clustered
+            ([-50, -30, 0, 10, 30, 30, 30, 50, 60, 70], 0.9, -64, 64),
+            # Tightly clustered, but with a few outliers
+            ([16] * 15 + [500] * 5, 0.95, -512, 512),
+            # Tightly clustered, with little to no outliers
+            ([-777] * 10, 0.95, -1024, 1024),
+            # First bin
+            ([-1] * 2 + [0] * 16 + [1] * 2, 0.8, -1, 1),
+            # Second bin
+            ([-1] * 3 + [0] * 4 + [1] * 3, 0.95, -2, 2),
+            # Empty DataFrame
+            ([], 0.95, -1.0, 1.0),
+        ]
+    )
+    def test_different_clusterings(
+        self,
+        column_values: List[int],
+        threshold: float,
+        expected_min: int,
+        expected_max: int,
+    ):
+        """Test different clustering cases for integer columned BoundSelection."""
+        df = self.spark.createDataFrame(
+            pd.DataFrame(
+                {
+                    "A": ["a" for _ in column_values],
+                    "B": list(column_values),
+                    "C": [1.0 for _ in column_values],
+                }
+            ),
+            schema=self.spark_schema,
+        )
+        measurement = BoundSelection(
+            input_domain=self.input_domain,
+            bound_column="B",
+            alpha=0,
+            threshold=threshold,
+        )
+        actual_min, actual_max = measurement(df)
+        self.assertEqual(actual_min, expected_min)
+        self.assertEqual(actual_max, expected_max)
+
+    @parameterized.expand(
+        [
+            # Tightly clustered
+            # Binning the bounds work on a [x, y) interval,
+            # hence, why the bounds are at 32,
+            # as 16 would be found in the [16, 32) bound
+            ([16.0] * 10, 0.95, -32.0, 32.0),
+            # Loosely clustered
+            (
+                [-50.0, -30.0, 0.0, 10.0, 30.0, 30.0, 30.0, 50.0, 60.0, 70.0],
+                0.9,
+                -64.0,
+                64.0,
+            ),
+            # Tightly clustered, but with a few outliers
+            ([16.0] * 15 + [500.0] * 5, 0.95, -512.0, 512.0),
+            # Tightly clustered, with little to no outliers
+            ([-777.0] * 10, 0.95, -1024.0, 1024.0),
+            # First bin
+            (
+                [-(2**-150)] * 2 + [0.0] * 16 + [2**-150] * 2,
+                0.8,
+                -(2**-100),
+                2**-100,
+            ),
+            # Second bin
+            (
+                [-(2**-99.5)] * 8 + [0.0] * 10 + [2**-99.5] * 8,
+                0.95,
+                -(2**-99),
+                2**-99,
+            ),
+            # Empty DataFrame
+            ([], 0.95, -(2**-100), 2**-100),
+            # Beyond largest split
+            ([2**101] * 10, 0.95, -(2**-100), 2**-100),
+        ]
+    )
+    def test_floats(
+        self,
+        column_values: List[float],
+        threshold: float,
+        expected_min: float,
+        expected_max: float,
+    ):
+        """Test different clustering cases for float columned BoundSelection."""
+        df = self.spark.createDataFrame(
+            pd.DataFrame(
+                {
+                    "A": ["a" for _ in column_values],
+                    "B": [1 for _ in column_values],
+                    "C": [float(v) for v in column_values],
+                }
+            ),
+            schema=self.spark_schema,
+        )
+        measurement = BoundSelection(
+            input_domain=self.input_domain,
+            bound_column="C",
+            alpha=0,
+            threshold=threshold,
+        )
+        actual_min, actual_max = measurement(df)
+        self.assertEqual(actual_min, expected_min)
+        self.assertEqual(actual_max, expected_max)
+
+    def test_privacy_function(self):
+        """Test that BoundSelection's privacy function is correct."""
+        alpha = ExactNumber(3)
+        threshold = 1
+        measurement = BoundSelection(
+            input_domain=self.input_domain,
+            bound_column="B",
+            alpha=alpha,
+            threshold=threshold,
+        )
+        self.assertEqual(measurement.privacy_function(0), 0)
+        self.assertEqual(measurement.privacy_function(1), ExactNumber(Fraction(4, 3)))
+        self.assertEqual(measurement.privacy_function(3), 4)
