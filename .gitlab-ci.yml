@@ -378,8 +378,12 @@ trigger_release:
     - git checkout -B "release/$VERSION"
     - git add -u
     - git diff --staged --stat
-    - git commit -m "[auto] Prepare release $VERSION" --author "$CI_COMMIT_AUTHOR"
+    - git commit -m "[auto] Prepare release $VERSION" --author "$CI_COMMIT_AUTHOR" --allow-empty
     - git tag "$VERSION"
+    - nox -s post_release
+    - git add -u
+    - git diff --staged --stat
+    - git commit -m "[auto] Post-release $VERSION" --author "$CI_COMMIT_AUTHOR" --allow-empty
     - |
       git remote add origin-https \
           "https://$RELEASER_TOKEN_USERNAME:$RELEASER_TOKEN@gitlab.com/$CI_PROJECT_PATH.git"
