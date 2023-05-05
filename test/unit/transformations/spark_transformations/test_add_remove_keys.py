@@ -7,7 +7,7 @@ from typing import Dict, Type
 import pandas as pd
 from parameterized import parameterized, parameterized_class
 
-from tmlt.core.domains.collections import DictDomain, ListDomain
+from tmlt.core.domains.collections import DictDomain, DomainKeyError, ListDomain
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -409,7 +409,7 @@ class TestTransformValue(PySparkTest):
         [
             (
                 "'key4' is not one of the input domain's keys",
-                KeyError,
+                DomainKeyError,
                 {"key": "key4"},
                 {},
             ),

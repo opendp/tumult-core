@@ -11,6 +11,7 @@ from parameterized import parameterized
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
+    DomainColumnError,
     SparkColumnsDescriptor,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -593,7 +594,7 @@ class TestSum(PySparkTest):
         error_message: str,
     ):
         """Sum raises appropriate error when constructor arguments are invalid."""
-        with self.assertRaisesRegex(ValueError, error_message):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_message):
             Sum(
                 input_domain=SparkDataFrameDomain(
                     {
@@ -805,7 +806,7 @@ class TestSumGrouped(PySparkTest):
                 "C": SparkFloatColumnDescriptor(allow_nan=True),
                 "D": SparkIntegerColumnDescriptor(allow_null=True),
             }
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             SumGrouped(
                 input_domain=SparkGroupedDataFrameDomain(
                     schema=schema,

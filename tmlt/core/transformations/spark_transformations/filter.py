@@ -9,7 +9,7 @@ from typing import Union
 from pyspark.sql import DataFrame, SparkSession
 from typeguard import typechecked
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
 from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -116,8 +116,10 @@ class Filter(Transformation):
                     "RootSumOfSquared(SymmetricDifference())"
                 )
             if metric.column not in domain.schema:
-                raise ValueError(
-                    f"Invalid IfGroupedBy metric: {metric.column} not in domain."
+                raise DomainColumnError(
+                    domain,
+                    metric.column,
+                    f"Invalid IfGroupedBy metric: {metric.column} not in domain.",
                 )
         try:
             test_df.filter(filter_expr)

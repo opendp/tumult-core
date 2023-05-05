@@ -11,6 +11,7 @@ from parameterized import parameterized
 from pyspark.sql import Row
 
 from tmlt.core.domains.spark_domains import (
+    DomainColumnError,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
@@ -155,7 +156,7 @@ class TestDropInfs(PySparkTest):
         input_metric: Union[SymmetricDifference, IfGroupedBy] = SymmetricDifference(),
     ) -> None:
         """DropInfs raises an appropriate error on invalid constructor arguments."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             DropInfs(
                 input_domain=self.input_domain, metric=input_metric, columns=columns
             )
@@ -267,7 +268,7 @@ class TestDropNaNs(PySparkTest):
         input_metric: Union[SymmetricDifference, IfGroupedBy] = SymmetricDifference(),
     ):
         """DropNaNs raises appropriate errors on invalid constructor arguments."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             DropNaNs(
                 input_domain=self.input_domain, metric=input_metric, columns=columns
             )
@@ -406,7 +407,7 @@ class TestDropNulls(PySparkTest):
         input_metric: Union[SymmetricDifference, IfGroupedBy] = SymmetricDifference(),
     ):
         """DropNulls raises appropriate errors on invalid constructor arguments."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             DropNulls(
                 input_domain=self.input_domain, metric=input_metric, columns=columns
             )
@@ -574,7 +575,7 @@ class TestReplaceInfs(PySparkTest):
         input_metric: Union[SymmetricDifference, IfGroupedBy] = SymmetricDifference(),
     ) -> None:
         """ReplaceInfs raises appropriate errors on invalid constructor arguments."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             ReplaceInfs(
                 input_domain=self.input_domain,
                 metric=input_metric,
@@ -731,7 +732,7 @@ class TestReplaceNaNs(PySparkTest):
         input_metric: Union[SymmetricDifference, IfGroupedBy] = SymmetricDifference(),
     ):
         """ReplaceNaNs raises appropriate errors on invalid constructor arguments."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             ReplaceNaNs(
                 input_domain=self.input_domain,
                 metric=input_metric,
@@ -888,7 +889,7 @@ class TestReplaceNulls(PySparkTest):
         input_metric: Union[SymmetricDifference, IfGroupedBy] = SymmetricDifference(),
     ):
         """ReplaceNulls raises appropriate errors on invalid constructor arguments."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             ReplaceNulls(
                 input_domain=self.input_domain,
                 metric=input_metric,

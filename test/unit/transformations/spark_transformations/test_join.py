@@ -10,7 +10,7 @@ import pandas as pd
 from parameterized import parameterized
 from pyspark.sql import types as st
 
-from tmlt.core.domains.collections import DictDomain
+from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -822,8 +822,10 @@ class TestPrivateJoin(PySparkTest):
                 "df1",
                 "df2",
                 ["A"],
-                "'A' has different data types in left (StringType) and right "
-                "(LongType) domains.",
+                (
+                    "'A' has different data types in left (StringType) and right "
+                    "(LongType) domains."
+                ),
             ),
             (  # _right column already exists
                 DictDomain(
@@ -859,7 +861,7 @@ class TestPrivateJoin(PySparkTest):
         error_msg: str,
     ):
         """Tests that PrivateJoin cannot be constructed with invalid arguments."""
-        with self.assertRaisesRegex(ValueError, re.escape(error_msg)):
+        with self.assertRaisesRegex((ValueError, DomainKeyError), re.escape(error_msg)):
             PrivateJoin(
                 input_domain=input_domain,
                 left_key=left,

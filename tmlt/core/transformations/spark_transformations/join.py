@@ -11,7 +11,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 from typeguard import typechecked
 
-from tmlt.core.domains.collections import DictDomain
+from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -598,9 +598,17 @@ class PrivateJoin(Transformation):
         if left_key == right_key:
             raise ValueError("Left and right keys must be distinct.")
         if left_key not in input_domain.key_to_domain:
-            raise ValueError(f"Invalid key: Key '{left_key}' not in input domain.")
+            raise DomainKeyError(
+                input_domain,
+                left_key,
+                f"Invalid key: Key '{left_key}' not in input domain.",
+            )
         if right_key not in input_domain.key_to_domain:
-            raise ValueError(f"Invalid key: Key '{right_key}' not in input domain.")
+            raise DomainKeyError(
+                input_domain,
+                right_key,
+                f"Invalid key: Key '{right_key}' not in input domain.",
+            )
 
         left_domain, right_domain = input_domain[left_key], input_domain[right_key]
         if not isinstance(left_domain, SparkDataFrameDomain) or not isinstance(

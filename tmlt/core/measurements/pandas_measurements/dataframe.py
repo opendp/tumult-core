@@ -11,6 +11,7 @@ from pyspark.sql.types import StructField, StructType
 from typeguard import check_type, typechecked
 
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
+from tmlt.core.domains.spark_domains import DomainColumnError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.pandas_measurements.series import (
     Aggregate as AggregateSeries,
@@ -100,7 +101,11 @@ class AggregateByColumn(Aggregate):
         # aggregation.
         for column, aggregation_function in column_to_aggregation.items():
             if column not in input_domain.schema:
-                raise ValueError(f"Column '{column}' is not in the input schema.")
+                raise DomainColumnError(
+                    input_domain,
+                    column,
+                    f"Column '{column}' is not in the input schema.",
+                )
             if input_domain.schema[column] != aggregation_function.input_domain:
                 raise ValueError(
                     "The input domain is not compatible with the input domains of the"

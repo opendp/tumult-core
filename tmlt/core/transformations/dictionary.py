@@ -15,7 +15,7 @@ from typing import Any, Callable, Dict, List, Mapping, Tuple, Union, cast
 from typeguard import typechecked
 
 from tmlt.core.domains.base import Domain
-from tmlt.core.domains.collections import DictDomain
+from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.metrics import (
     AddRemoveKeys,
     DictMetric,
@@ -222,9 +222,14 @@ class Subset(Transformation):
         if not keys:
             raise ValueError("No keys provided.")
         if not set(keys) <= set(input_domain.key_to_domain):
-            raise ValueError(
-                "Can not retrieve subset from dictionary. Invalid keys: "
-                f"{set(keys) - set(input_domain.key_to_domain)}"
+            invalid_keys = set(keys) - set(input_domain.key_to_domain)
+            raise DomainKeyError(
+                input_domain,
+                invalid_keys,
+                (
+                    "Can not retrieve subset from dictionary. Invalid keys: "
+                    f"{invalid_keys}"
+                ),
             )
         output_metric: Union[DictMetric, AddRemoveKeys]
         if isinstance(input_metric, DictMetric):
@@ -289,7 +294,9 @@ class GetValue(Transformation):
             key: Key for retrieval.
         """
         if key not in input_domain.key_to_domain:
-            raise KeyError(f"{repr(key)} is not one of the input domain's keys")
+            raise DomainKeyError(
+                input_domain, key, f"{repr(key)} is not one of the input domain's keys"
+            )
         # Below is the check in base class, but needs to happen before so
         # output_metric = input_metric[key] won't get a KeyError
         if not input_metric.supports_domain(input_domain):
@@ -373,7 +380,7 @@ def create_copy_and_transform_value(
     # 2. Create a one element dictionary from the element
     # 3. Augment around (1 + 2)
     if key not in input_domain.key_to_domain:
-        raise ValueError("key is not in the domain")
+        raise DomainKeyError(input_domain, key, f"key {key} is not in the domain")
     if new_key in input_domain.key_to_domain:
         raise ValueError("new_key is already in the domain")
     copy_and_transform_value = AugmentDictTransformation(
@@ -427,7 +434,7 @@ def create_rename(
     # 1. Copy the element to the new key
     # 2. Use subset to drop the original key
     if key not in input_domain.key_to_domain:
-        raise ValueError("key is not in the domain")
+        raise DomainKeyError(input_domain, key, f"key {key} is not in the domain")
     if new_key in input_domain.key_to_domain:
         raise ValueError("new_key is already in the domain")
     copy_and_transform_value = create_copy_and_transform_value(
@@ -610,7 +617,7 @@ def create_transform_value(
     # 2. Remove the original key
     # 3. Rename from the temporary key to the original key
     if key not in input_domain.key_to_domain:
-        raise ValueError("key is not in the domain")
+        raise DomainKeyError(input_domain, key, f"key {key} is not in the domain")
     temporary_key = get_nonconflicting_string(
         [
             other_key

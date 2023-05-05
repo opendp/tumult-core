@@ -8,7 +8,7 @@ from typing import Dict, Union
 import pandas as pd
 from parameterized import parameterized
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -122,8 +122,12 @@ class TestRename(TestComponent):
 
     @parameterized.expand([({"D": "E"},), ({"A": "B"},)])
     def test_rename_fails_on_bad_columns(self, rename_mapping: Dict[str, str]):
-        """Tests that rename transformation fails when column doesn not exist."""
-        with self.assertRaises(ValueError):
+        """Tests that rename transformation fails when column doesn not exist.
+
+        Also tests that rename transformation fails when the new column name
+        already exists.
+        """
+        with self.assertRaises((DomainColumnError, ValueError)):
             Rename(
                 input_domain=SparkDataFrameDomain(self.schema_a),
                 metric=SymmetricDifference(),

@@ -46,7 +46,7 @@ class PandasSeriesDomain(Domain):
                 self.element_domain.validate(value[i])
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
-                    f"Found invalid value in Series: {exception}"
+                    self, value, f"Found invalid value in Series: {exception}"
                 ) from exception
 
     @classmethod
@@ -93,14 +93,20 @@ class PandasDataFrameDomain(Domain):
             duplicates = set(
                 col for col in value_columns if value_columns.count(col) > 1
             )
-            raise OutOfDomainError(f"Some columns are duplicated, {sorted(duplicates)}")
+            raise OutOfDomainError(
+                self, value, f"Some columns are duplicated, {sorted(duplicates)}"
+            )
 
         schema_columns = list(self.schema.keys())
         if value_columns != schema_columns:
             raise OutOfDomainError(
-                "Columns are not as expected. DataFrame and Domain must contain the "
-                f"same columns in the same order.\nDataFrame columns: {value_columns}\n"
-                f"Domain columns: {schema_columns}"
+                self,
+                value,
+                (
+                    "Columns are not as expected. DataFrame and Domain must contain"
+                    " the same columns in the same order.\nDataFrame columns:"
+                    f" {value_columns}\nDomain columns: {schema_columns}"
+                ),
             )
 
         for column in self.schema:
@@ -108,7 +114,9 @@ class PandasDataFrameDomain(Domain):
                 self.schema[column].validate(value[column])
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
-                    f"Found invalid value in column '{column}': {exception}"
+                    self,
+                    value,
+                    f"Found invalid value in column '{column}': {exception}",
                 ) from exception
 
     def __eq__(self, other: Any) -> bool:

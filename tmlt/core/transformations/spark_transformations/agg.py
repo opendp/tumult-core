@@ -13,6 +13,7 @@ from typeguard import typechecked
 
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
+    DomainColumnError,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
@@ -689,8 +690,10 @@ class Sum(Transformation):
             upper: Upper clipping bound for measure column.
         """
         if measure_column not in input_domain.schema:
-            raise ValueError(
-                f"Invalid measure column: ({measure_column}) does not exist."
+            raise DomainColumnError(
+                input_domain,
+                measure_column,
+                f"Invalid measure column: ({measure_column}) does not exist.",
             )
 
         measure_column_descriptor = input_domain[measure_column]
@@ -917,7 +920,11 @@ class SumGrouped(Transformation):
 
         groupby_columns = input_domain.group_keys.columns
         if measure_column not in set(input_domain.schema) - set(groupby_columns):
-            raise ValueError(f"Invalid measure column: {measure_column}")
+            raise DomainColumnError(
+                input_domain,
+                measure_column,
+                f"Invalid measure column: {measure_column}",
+            )
 
         measure_column_descriptor = input_domain[measure_column]
         if not isinstance(

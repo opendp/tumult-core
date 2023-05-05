@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Collection, Mapping, Optional, Sequence, Union
 
 import numpy as np
 from pyspark import Row
@@ -37,6 +37,23 @@ from tmlt.core.domains.numpy_domains import (
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
 
 
+class DomainColumnError(Exception):
+    """Exception type for when a column is not in the given domain's schema."""
+
+    def __init__(self, domain: Domain, column: Union[str, Collection[str]], msg: str):
+        """Constructor.
+
+        Args:
+            domain: The domain on which this error was raised.
+            column: The column that's not in the domain's schema, or a collection of
+                columns that are not in the domain's schema.
+            msg: The error message.
+        """
+        self.domain = domain
+        self.column = column
+        super().__init__(msg)
+
+
 class SparkColumnDescriptor(ABC):
     """Base class for describing Spark column types.
 
@@ -58,15 +75,15 @@ class SparkColumnDescriptor(ABC):
             col_name: Name of column in sdf to be checked.
         """
         if col_name not in sdf.schema.fieldNames():
-            raise OutOfDomainError(f"'{col_name}' is not in the DataFrame")
+            raise ValueError(f"'{col_name}' is not in the DataFrame")
         if sdf.schema[col_name].dataType.__class__ is not self.data_type.__class__:
-            raise OutOfDomainError(
+            raise ValueError(
                 f"Column must be {self.data_type}, instead it is "
                 f"{sdf.schema[col_name].dataType}."
             )
         if not self.allow_null:
             if sdf.filter(sdf[col_name].isNull()).first():
-                raise OutOfDomainError("Column contains null values.")
+                raise ValueError("Column contains null values.")
 
     @abstractmethod
     def valid_py_value(self, val: Any) -> bool:
@@ -178,13 +195,13 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
         super().validate_column(sdf, col_name)
         if not self.allow_nan:
             if sdf.filter(sdf[col_name].contains(float("nan"))).first():
-                raise OutOfDomainError("Column contains NaN values.")
+                raise ValueError("Column contains NaN values.")
         if not self.allow_inf:
             if sdf.filter(
                 sdf[col_name].contains(float("inf"))
                 | sdf[col_name].contains(-float("inf"))
             ).first():
-                raise OutOfDomainError("Column contains infinite values.")
+                raise ValueError("Column contains infinite values.")
 
     def valid_py_value(self, val: Any):
         """Returns True if value is a valid python value for the descriptor.
@@ -365,22 +382,30 @@ class SparkDataFrameDomain(Domain):
             duplicates = set(
                 col for col in value_columns if value_columns.count(col) > 1
             )
-            raise OutOfDomainError(f"Some columns are duplicated, {sorted(duplicates)}")
+            raise OutOfDomainError(
+                self, value, f"Some columns are duplicated, {sorted(duplicates)}"
+            )
 
         schema_columns = list(self.schema.keys())
         if value_columns != schema_columns:
             raise OutOfDomainError(
-                "Columns are not as expected. DataFrame and Domain must contain the "
-                f"same columns in the same order.\nDataFrame columns: {value_columns}\n"
-                f"Domain columns: {schema_columns}"
+                self,
+                value,
+                (
+                    "Columns are not as expected. DataFrame and Domain must contain"
+                    " the same columns in the same order.\nDataFrame columns:"
+                    f" {value_columns}\nDomain columns: {schema_columns}"
+                ),
             )
 
         for column in self.schema:
             try:
                 self.schema[column].validate_column(value, column)
-            except OutOfDomainError as exception:
+            except ValueError as exception:
                 raise OutOfDomainError(
-                    f"Found invalid value in column '{column}': {exception}"
+                    self,
+                    value,
+                    f"Found invalid value in column '{column}': {exception}",
                 ) from exception
 
     def __eq__(self, other: Any) -> bool:
@@ -554,8 +579,12 @@ class SparkGroupedDataFrameDomain(Domain):
         assert isinstance(value, GroupedDataFrame)
         if value.group_keys.schema != self.group_keys.schema:
             raise OutOfDomainError(
-                "Group keys dataframe does not have expected schema."
-                f"Expected: {self.group_keys.schema}. Got: {value.group_keys.schema}"
+                self,
+                value,
+                (
+                    "Group keys dataframe does not have expected schema.Expected:"
+                    f" {self.group_keys.schema}. Got: {value.group_keys.schema}"
+                ),
             )
 
         if not self.group_keys.columns:
@@ -585,13 +614,15 @@ class SparkGroupedDataFrameDomain(Domain):
             intersection
         )
         if invalid_group_keys.first():
-            raise OutOfDomainError("Groups keys do not match")
+            raise OutOfDomainError(self, value, "Groups keys do not match")
 
         if value._dataframe.columns != list(  # pylint: disable=protected-access
             self.schema.keys()
         ):
             raise OutOfDomainError(
-                "Dataframe does not match domain SparkGroupedDataFrame schema."
+                self,
+                value,
+                "Dataframe does not match domain SparkGroupedDataFrame schema.",
             )
 
         for column in self.schema:
@@ -601,7 +632,9 @@ class SparkGroupedDataFrameDomain(Domain):
                 )
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
-                    f"Found invalid value in column '{column}': {exception}"
+                    self,
+                    value,
+                    f"Found invalid value in column '{column}': {exception}",
                 ) from exception
 
     def get_group_domain(self) -> SparkDataFrameDomain:

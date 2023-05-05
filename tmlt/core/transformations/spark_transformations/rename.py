@@ -11,7 +11,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 from typeguard import typechecked
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -116,8 +116,10 @@ class Rename(Transformation):
         """
         nonexistent_columns = rename_mapping.keys() - set(input_domain.schema)
         if nonexistent_columns:
-            raise ValueError(
-                f"Non existent keys in rename_mapping : {nonexistent_columns}"
+            raise DomainColumnError(
+                input_domain,
+                nonexistent_columns,
+                f"Non existent keys in rename_mapping : {nonexistent_columns}",
             )
         for old, new in rename_mapping.items():
             if new in input_domain.schema and new != old:

@@ -20,6 +20,7 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
+from tmlt.core.domains.spark_domains import DomainColumnError
 from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
 from tmlt.core.measurements.pandas_measurements.series import Aggregate, NoisyQuantile
 from tmlt.core.measures import ApproxDP, Measure, PureDP, RhoZCDP
@@ -225,7 +226,9 @@ class TestAggregateByColumn(unittest.TestCase):
         expected_error_message: str,
     ) -> None:
         """Init correctly validates aggregation functions."""
-        with self.assertRaisesRegex(ValueError, expected_error_message):
+        with self.assertRaisesRegex(
+            (ValueError, DomainColumnError), expected_error_message
+        ):
             AggregateByColumn(
                 input_domain=PandasDataFrameDomain(schema),
                 column_to_aggregation=column_to_aggregation,

@@ -8,7 +8,7 @@ from typing import List, Union
 import pandas as pd
 from parameterized import parameterized
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -100,7 +100,7 @@ class TestSelect(TestComponent):
     @parameterized.expand([(["A", "D"],), (["D"],), (["A", "A", "B"],)])
     def test_select_fails_on_bad_columns(self, columns: List[str]):
         """Tests that rename transformation fails when columns are invalid."""
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, DomainColumnError)):
             Select(
                 input_domain=SparkDataFrameDomain(self.schema_a),
                 metric=SymmetricDifference(),
@@ -127,7 +127,7 @@ class TestSelect(TestComponent):
         error_msg: str,
     ):
         """Tests that Select raises appropriate errors with invalid params."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             Select(
                 input_domain=SparkDataFrameDomain(self.schema_a),
                 metric=IfGroupedBy(groupby_col, inner_metric),

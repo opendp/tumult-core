@@ -60,10 +60,18 @@ class Metric(ABC):
         """Raise an exception if the arguments to a distance method aren't valid."""
         if not self.supports_domain(domain):
             raise ValueError(f"{repr(self)} does not support domain {repr(domain)}.")
-        if value1 not in domain:
-            raise OutOfDomainError(f"The first argument is not in domain {domain}.")
-        if value2 not in domain:
-            raise OutOfDomainError(f"The second argument is not in domain {domain}.")
+        try:
+            domain.validate(value1)
+        except OutOfDomainError as exception:
+            raise OutOfDomainError(
+                domain, value1, "The first argument is not in the domain"
+            ) from exception
+        try:
+            domain.validate(value2)
+        except OutOfDomainError as exception:
+            raise OutOfDomainError(
+                domain, value2, "The second argument is not in the domain"
+            ) from exception
 
     def __eq__(self, other: Any) -> bool:
         """Return True if both metrics are equal."""

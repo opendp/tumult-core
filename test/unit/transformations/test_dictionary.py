@@ -14,7 +14,7 @@ import numpy as np
 from parameterized import parameterized
 
 from tmlt.core.domains.base import Domain
-from tmlt.core.domains.collections import DictDomain
+from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -323,7 +323,9 @@ class TestGetValue(TestCase):
         key: str,
     ):
         """Tests that GetValue raises errors appropriately."""
-        with self.assertRaisesRegex((ValueError, KeyError), re.escape(error_regex)):
+        with self.assertRaisesRegex(
+            (ValueError, DomainKeyError), re.escape(error_regex)
+        ):
             GetValue(input_domain=input_domain, input_metric=input_metric, key=key)
 
     @parameterized.expand(
@@ -529,7 +531,9 @@ class TestSubset(TestCase):
         keys: List[str],
     ):
         """Tests that Subset raises errors appropriately."""
-        with self.assertRaisesRegex(ValueError, re.escape(error_message)):
+        with self.assertRaisesRegex(
+            (ValueError, DomainKeyError), re.escape(error_message)
+        ):
             Subset(input_domain=input_domain, input_metric=input_metric, keys=keys)
 
     @parameterized.expand(
@@ -759,7 +763,7 @@ class TestDerivedTransformations(unittest.TestCase):
 
     def test_create_copy_and_transform_value_invalid_key(self):
         """Raises an error if key is not in the domain."""
-        with self.assertRaisesRegex(ValueError, "key is not in the domain"):
+        with self.assertRaisesRegex(DomainKeyError, "key .* is not in the domain"):
             create_copy_and_transform_value(
                 input_domain=DictDomain(
                     {
@@ -849,7 +853,7 @@ class TestDerivedTransformations(unittest.TestCase):
 
     def test_create_rename_invalid_key(self):
         """Raises an error if key is not in the domain."""
-        with self.assertRaisesRegex(ValueError, "key is not in the domain"):
+        with self.assertRaisesRegex(DomainKeyError, "key .* is not in the domain"):
             create_rename(
                 input_domain=DictDomain(
                     {
@@ -987,7 +991,7 @@ class TestDerivedTransformations(unittest.TestCase):
 
     def test_create_transform_value_invalid_key(self):
         """Raises an error if key is not in the domain."""
-        with self.assertRaisesRegex(ValueError, "key is not in the domain"):
+        with self.assertRaisesRegex(DomainKeyError, "key .* is not in the domain"):
             create_transform_value(
                 input_domain=DictDomain(
                     {
