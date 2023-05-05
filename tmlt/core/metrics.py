@@ -8,7 +8,7 @@
 from abc import ABC, abstractmethod
 from collections import Counter
 from functools import reduce
-from typing import Any, Dict, Iterable, List, Mapping, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union, cast
 
 import numpy as np  # pylint: disable=unused-import
 import pandas as pd
@@ -894,13 +894,13 @@ class OnColumns(Metric):
     """
 
     @typechecked
-    def __init__(self, on_columns: List[OnColumn]):
+    def __init__(self, on_columns: Sequence[OnColumn]):
         """Constructor.
 
         Args:
             on_columns: The OnColumn metrics to apply.
         """
-        self._on_columns = on_columns
+        self._on_columns = list(on_columns)
 
     @property
     def on_columns(self) -> List[OnColumn]:
@@ -1176,7 +1176,7 @@ class DictMetric(Metric):
         Args:
             key_to_metric: Mapping from dictionary key to metric.
         """
-        self._key_to_metric: Dict[Any, Metric] = dict(key_to_metric.items()).copy()
+        self._key_to_metric: Dict[Any, Metric] = dict(key_to_metric.items())
 
     @property
     def key_to_metric(self) -> Dict[Any, Metric]:
@@ -1360,14 +1360,14 @@ class AddRemoveKeys(Metric):
     """
 
     @typechecked
-    def __init__(self, df_to_key_column: Dict[Any, str]):
+    def __init__(self, df_to_key_column: Mapping[Any, str]):
         """Constructor.
 
         Args:
             df_to_key_column: A dictionary mapping dataframe names to the name of the
                 key column in that dataframe.
         """
-        self._df_to_key_column = df_to_key_column.copy()
+        self._df_to_key_column: Dict[Any, str] = dict(df_to_key_column.items())
 
     @property
     def df_to_key_column(self) -> Dict[Any, str]:
