@@ -8,7 +8,7 @@ from typing import Any
 from pyspark.sql import DataFrame
 from typeguard import typechecked
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -32,8 +32,10 @@ class UnwrapIfGroupedBy(Transformation):
             input_metric: IfGroupedBy metric on input DataFrames.
         """
         if not input_metric.column in domain.schema:
-            raise ValueError(
-                f"Invalid IfGroupedBy metric: {input_metric.column} not in domain"
+            raise DomainColumnError(
+                domain,
+                input_metric.column,
+                f"Invalid IfGroupedBy metric: {input_metric.column} not in domain",
             )
         if not isinstance(input_metric.inner_metric, (SumOf, RootSumOfSquared)):
             raise ValueError(

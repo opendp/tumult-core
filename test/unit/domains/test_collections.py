@@ -101,12 +101,12 @@ class TestDictDomain(TestCase):
     def test_validate(self, candidate: Dict[str, Any], in_A: bool, in_B: bool):
         """Tests that validate works correctly."""
         self.domain_a.validate = (
-            Mock(side_effect=OutOfDomainError("Test"))
+            Mock(side_effect=OutOfDomainError(self.domain_a, candidate, "Test"))
             if not in_A
             else Mock(return_value=None)
         )
         self.domain_b.validate = (
-            Mock(side_effect=OutOfDomainError("Test"))
+            Mock(side_effect=OutOfDomainError(self.domain_b, candidate, "Test"))
             if not in_B
             else Mock(return_value=None)
         )

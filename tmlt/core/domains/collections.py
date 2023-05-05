@@ -11,6 +11,23 @@ from typeguard import check_type, typechecked
 from tmlt.core.domains.base import Domain, OutOfDomainError
 
 
+class DomainKeyError(Exception):
+    """Exception type that indicates that a key is not in the given domain."""
+
+    def __init__(self, domain: Domain, key: Any, msg: str):
+        """Constructor.
+
+        Args:
+            domain: The domain on which this error was raised.
+            key: The key that's not in the domain (or a collection of keys that
+                aren't in the domain).
+            msg: The error message.
+        """
+        self.key = key
+        self.domain = domain
+        super().__init__(domain, key, msg)
+
+
 @dataclass(frozen=True, eq=True)
 class ListDomain(Domain):
     """Domain of lists of elements of a particular domain."""
@@ -39,7 +56,7 @@ class ListDomain(Domain):
                 self.element_domain.validate(elem)
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
-                    f"Found invalid value in list: {exception}"
+                    self, exception.value, f"Found invalid value in list: {exception}"
                 ) from exception
 
 
@@ -90,8 +107,12 @@ class DictDomain(Domain):
         value_keys, domain_keys = sorted(set(value)), sorted(set(self.key_to_domain))
         if value_keys != domain_keys:
             raise OutOfDomainError(
-                "Keys are not as expected, value must match domain.\nValue "
-                f"keys: {value_keys}\nDomain keys: {domain_keys}"
+                self,
+                value_keys,
+                (
+                    "Keys are not as expected, value must match domain.\nValue "
+                    f"keys: {value_keys}\nDomain keys: {domain_keys}"
+                ),
             )
 
         for key in value:
@@ -99,5 +120,5 @@ class DictDomain(Domain):
                 self.key_to_domain[key].validate(value[key])
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
-                    f"Found invalid value at '{key}': {exception}"
+                    self, key, f"Found invalid value at '{key}': {exception}"
                 ) from exception

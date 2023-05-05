@@ -15,6 +15,7 @@ from pyspark.sql import functions as sf
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import (
+    DomainColumnError,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
 )
@@ -136,9 +137,13 @@ class DropInfs(Transformation):
                 f" ({duplicates}) appear more than once."
             )
         if not set(columns) <= set(input_domain.schema):
-            raise ValueError(
-                "One or more columns do not exist in the input domain:"
-                f" {set(columns) - set(input_domain.schema)}"
+            raise DomainColumnError(
+                input_domain,
+                set(columns) - set(input_domain.schema),
+                (
+                    "One or more columns do not exist in the input domain:"
+                    f" {set(columns) - set(input_domain.schema)}"
+                ),
             )
         for column in columns:
             if not isinstance(input_domain[column], SparkFloatColumnDescriptor):
@@ -306,9 +311,13 @@ class DropNaNs(Transformation):
             )
 
         if not set(columns) <= set(input_domain.schema):
-            raise ValueError(
-                "One or more columns do not exist in the input domain"
-                f" {set(columns)-set(input_domain.schema)}"
+            raise DomainColumnError(
+                input_domain,
+                set(columns) - set(input_domain.schema),
+                (
+                    "One or more columns do not exist in the input domain"
+                    f" {set(columns)-set(input_domain.schema)}"
+                ),
             )
 
         for column in columns:
@@ -472,9 +481,13 @@ class DropNulls(Transformation):
             )
 
         if not set(columns) <= set(input_domain.schema):
-            raise ValueError(
-                "One or more columns do not exist in the input domain"
-                f" {set(columns)-set(input_domain.schema)}"
+            raise DomainColumnError(
+                input_domain,
+                set(columns) - set(input_domain.schema),
+                (
+                    "One or more columns do not exist in the input domain"
+                    f" {set(columns)-set(input_domain.schema)}"
+                ),
             )
         output_domain = SparkDataFrameDomain(
             {
@@ -631,9 +644,13 @@ class ReplaceInfs(Transformation):
             )
 
         if not set(replace_map) <= set(input_domain.schema):
-            raise ValueError(
-                "One or more columns do not exist in the input domain:"
-                f" {set(replace_map) - set(input_domain.schema)}"
+            raise DomainColumnError(
+                input_domain,
+                set(replace_map) - set(input_domain.schema),
+                (
+                    "One or more columns do not exist in the input domain:"
+                    f" {set(replace_map) - set(input_domain.schema)}"
+                ),
             )
         for column in list(replace_map.keys()):
             if not isinstance(input_domain[column], SparkFloatColumnDescriptor):
@@ -811,9 +828,13 @@ class ReplaceNaNs(Transformation):
             raise ValueError("At least one column must be specified.")
 
         if not set(replace_map) <= set(input_domain.schema):
-            raise ValueError(
-                "One or more columns do not exist in the input domain"
-                f" {set(replace_map)-set(input_domain.schema)}"
+            raise DomainColumnError(
+                input_domain,
+                set(replace_map) - set(input_domain.schema),
+                (
+                    "One or more columns do not exist in the input domain"
+                    f" {set(replace_map)-set(input_domain.schema)}"
+                ),
             )
         for column, value in replace_map.items():
             if not isinstance(input_domain[column], SparkFloatColumnDescriptor):
@@ -981,9 +1002,13 @@ class ReplaceNulls(Transformation):
             raise ValueError("At least one column must be specified.")
 
         if not set(replace_map) <= set(input_domain.schema):
-            raise ValueError(
-                "One or more columns do not exist in the input domain"
-                f" {set(replace_map)-set(input_domain.schema)}"
+            raise DomainColumnError(
+                input_domain,
+                set(replace_map) - set(input_domain.schema),
+                (
+                    "One or more columns do not exist in the input domain"
+                    f" {set(replace_map)-set(input_domain.schema)}"
+                ),
             )
         output_domain = SparkDataFrameDomain(
             {

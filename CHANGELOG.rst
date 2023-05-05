@@ -22,6 +22,11 @@ Added
 ~~~~~
 - Subclasses of :class:`~.Measure` now have equations defining the distance they represent.
 
+Changed
+~~~~~~~
+
+- Replaced many existing exceptions in Core to use new classes that contain meta-data about the inputs causing the exception.
+
 0.9.0 - 2023-04-14
 ------------------
 

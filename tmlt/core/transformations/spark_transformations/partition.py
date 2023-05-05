@@ -12,7 +12,7 @@ from typeguard import typechecked
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
 from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -182,7 +182,11 @@ class PartitionByKeys(Partition):
         """
         for key in keys:
             if key not in input_domain.schema:
-                raise ValueError(f"Partition key does not exist in input domain: {key}")
+                raise DomainColumnError(
+                    input_domain,
+                    key,
+                    f"Partition key does not exist in input domain: {key}",
+                )
 
         if len(set(list_values)) != len(list_values):
             raise ValueError("Partition key values list contains duplicate.")

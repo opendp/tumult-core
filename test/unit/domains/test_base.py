@@ -32,7 +32,9 @@ class TestDomain(TestCase):
         """Tests that __contains__ works correctly."""
         candidate = Mock()
         if not in_domain:
-            domain_validate.side_effect = OutOfDomainError("Test")
+            domain_validate.side_effect = OutOfDomainError(
+                self.domain, candidate, "Test"
+            )
 
         self.assertEqual(candidate in self.domain, in_domain)
         domain_validate.assert_called_with(self.domain, candidate)

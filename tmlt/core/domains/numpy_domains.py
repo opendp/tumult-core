@@ -82,9 +82,9 @@ class NumpyFloatDomain(NumpyDomain):
         """Raises error if value is not a member of the domain."""
         super().validate(value)
         if not self.allow_inf and np.isinf(value):
-            raise OutOfDomainError("Value is infinite.")
+            raise OutOfDomainError(self, value, "Value is infinite.")
         if not self.allow_nan and np.isnan(value):
-            raise OutOfDomainError("Value is NaN.")
+            raise OutOfDomainError(self, value, "Value is NaN.")
 
 
 @dataclass(frozen=True)
@@ -107,10 +107,10 @@ class NumpyStringDomain(NumpyDomain):
         """Raises error if value is not in domain."""
         if not isinstance(value, self.carrier_type) and value.__class__ is not str:
             raise OutOfDomainError(
-                f"Value must be {str}, instead it is {value.__class__}."
+                self, value, f"Value must be {str}, instead it is {value.__class__}."
             )
         if value is None and not self.allow_null:
-            raise OutOfDomainError("Value is null.")
+            raise OutOfDomainError(self, value, "Value is null.")
 
     @property
     def carrier_type(self) -> type:  # pylint: disable=no-self-use

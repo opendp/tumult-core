@@ -383,7 +383,7 @@ class TestSparkGroupedDataFrameDomain(PySparkTest):
                 },
                 pd.DataFrame({"B": [1, 2]}),
                 "Column must be StringType",
-                OutOfDomainError,
+                ValueError,
             ),
         ]
     )
@@ -615,7 +615,7 @@ class TestSparkColumnDescriptors(PySparkTest):
             self.int32_column_descriptor.validate_column(self.test_df, col_name)
         else:
             with self.assertRaisesRegex(
-                OutOfDomainError,
+                ValueError,
                 r"Column must be IntegerType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
@@ -625,7 +625,7 @@ class TestSparkColumnDescriptors(PySparkTest):
             self.int64_column_descriptor.validate_column(self.test_df, col_name)
         else:
             with self.assertRaisesRegex(
-                OutOfDomainError,
+                ValueError,
                 r"Column must be LongType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
@@ -635,20 +635,18 @@ class TestSparkColumnDescriptors(PySparkTest):
             self.float32_column_descriptor.validate_column(self.test_df, col_name)
         else:
             with self.assertRaisesRegex(
-                OutOfDomainError,
+                ValueError,
                 r"Column must be FloatType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
                 self.float32_column_descriptor.validate_column(self.test_df, col_name)
 
         if col_type == "str":
-            with self.assertRaisesRegex(
-                OutOfDomainError, "Column contains null values."
-            ):
+            with self.assertRaisesRegex(ValueError, "Column contains null values."):
                 self.str_column_descriptor.validate_column(self.test_df, col_name)
         else:
             with self.assertRaisesRegex(
-                OutOfDomainError,
+                ValueError,
                 r"Column must be StringType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
@@ -658,7 +656,7 @@ class TestSparkColumnDescriptors(PySparkTest):
             self.date_column_descriptor.validate_column(self.test_df, col_name)
         else:
             with self.assertRaisesRegex(
-                OutOfDomainError,
+                ValueError,
                 r"Column must be DateType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):
@@ -668,7 +666,7 @@ class TestSparkColumnDescriptors(PySparkTest):
             self.timestamp_column_descriptor.validate_column(self.test_df, col_name)
         else:
             with self.assertRaisesRegex(
-                OutOfDomainError,
+                ValueError,
                 r"Column must be TimestampType(\(\))?, instead it is "
                 f"{self.test_df.schema[col_name].dataType}.",
             ):

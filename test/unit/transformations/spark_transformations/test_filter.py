@@ -7,7 +7,7 @@ from typing import Union
 import pandas as pd
 from parameterized import parameterized
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -118,7 +118,7 @@ class TestFilter(TestComponent):
         error_msg: str,
     ):
         """Tests that Filter raises appropriate error with invalid parameters."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             Filter(
                 domain=SparkDataFrameDomain(self.schema_a),
                 metric=IfGroupedBy(groupby_col, SumOf(inner_metric)),

@@ -18,7 +18,6 @@ from pyspark.sql.types import (
     StructType,
 )
 
-from tmlt.core.domains.base import OutOfDomainError
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -106,7 +105,7 @@ class TestGroupBy(PySparkTest):
                 [("1",), ("2",)],
                 StructType([StructField("A", StringType())]),
                 r"Column must be LongType(\(\))?, instead it is StringType(\(\))?.",
-                OutOfDomainError,
+                ValueError,
             ),
             (
                 IfGroupedBy("A", RootSumOfSquared(SymmetricDifference())),

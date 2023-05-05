@@ -9,7 +9,7 @@ from typing import List, Union
 from pyspark.sql import DataFrame
 from typeguard import typechecked
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -115,8 +115,10 @@ class Select(Transformation):
             raise ValueError(f"Column name appears more than once in {columns}")
         nonexistent_columns = set(columns) - set(input_domain.schema)
         if nonexistent_columns:
-            raise ValueError(
-                f"Non existent columns in select columns : {nonexistent_columns}"
+            raise DomainColumnError(
+                input_domain,
+                nonexistent_columns,
+                f"Non existent columns in select columns : {nonexistent_columns}",
             )
         output_columns = {col: input_domain[col] for col in columns}
         if isinstance(metric, IfGroupedBy):
