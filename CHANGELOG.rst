@@ -6,9 +6,10 @@ Changelog
 Unreleased
 ------------------
 
-Changed
-~~~~~~~
+Fixed
+~~~~~
 - Fixed bug in :func:`~.limit_keys_per_group`.
+- Fixed bug in :func:`~.gaussian`.
 
 Fixed
 ~~~~~

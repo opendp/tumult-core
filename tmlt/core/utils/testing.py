@@ -6,6 +6,7 @@
 # TODO(#1218): Move dummy aggregate class back to the test.
 
 import logging
+import math
 import shutil
 import sys
 import unittest
@@ -836,7 +837,9 @@ def _create_discrete_gaussian_pmf(loc: int):
 
 
 def _create_gaussian_cdf(loc: float):
-    return lambda value, noise_scale: norm.cdf(value, loc=loc, scale=noise_scale)
+    return lambda value, noise_scale: norm.cdf(
+        value, loc=loc, scale=math.sqrt(noise_scale)
+    )
 
 
 def get_prob_functions(

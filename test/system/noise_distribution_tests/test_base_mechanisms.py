@@ -5,6 +5,7 @@
 
 # pylint: disable=no-member, no-self-use
 
+import math
 from typing import Callable, Dict
 
 import numpy as np
@@ -61,7 +62,9 @@ def _create_discrete_gaussian_pmf(loc: int):
 
 
 def _create_gaussian_cdf(loc: float):
-    return lambda value, noise_scale: norm.cdf(value, loc=loc, scale=noise_scale)
+    return lambda value, noise_scale: norm.cdf(
+        value, loc=loc, scale=math.sqrt(noise_scale)
+    )
 
 
 # Base Mechanisms Test Instances
