@@ -39,11 +39,11 @@ def gaussian_inverse_cdf(
     arb_erfinv = lambda x: arb.arb_erfinv(x, prec)
 
     # The following code corresponds to:
-    #   return u + sigma_squared * sqrt(2) * erfinv(2 * p - 1)
+    #   return u + sigma * sqrt(2) * erfinv(2 * p - 1)
     return arb_add(
         from_float(u),
         arb_mul(
-            from_float(sigma_squared),
+            arb_sqrt(from_float(sigma_squared)),
             arb_mul(
                 arb_sqrt(from_int(2)),
                 arb_erfinv(arb_sub(arb_mul(from_int(2), p), from_int(1))),

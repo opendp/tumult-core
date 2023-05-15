@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022
 
+import math
 from unittest import TestCase
 
 from parameterized import parameterized
@@ -34,16 +35,19 @@ class TestContinuousGaussianInverseCDF(TestCase):
     @parameterized.expand(
         [
             (0, 1, 0.5),
+            (10, 100, 0.1),
             (10, 100, 0.5),
-            (10, 100, 0.5),
+            (10, 100, 0.9),
             (0, 1, 0.9),
-            (0, 1, 0.1),
-            (-10, 0.5, 0.2),
+            (0, 5, 0.1),
+            (2000, 5, 0.1),
+            (-10, 0.5, 0.5),
+            (-10, 0.5, 0.09),
         ]
     )
-    def test_correctness(self, u: float, b: float, p: float):
+    def test_correctness(self, u: float, sigma_squared: float, p: float):
         """Sanity tests for :func:`gaussian_inverse_cdf`."""
         self.assertAlmostEqual(
-            float(gaussian_inverse_cdf(u, b, Arb.from_float(p), 63)),
-            norm.ppf(p, loc=u, scale=b),
+            float(gaussian_inverse_cdf(u, sigma_squared, Arb.from_float(p), 63)),
+            norm.ppf(p, loc=u, scale=math.sqrt(sigma_squared)),
         )
