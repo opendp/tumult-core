@@ -6,15 +6,25 @@ Changelog
 Unreleased
 ------------------
 
+Added
+~~~~~
+- Added the :class:`~.BoundSelection` spark measurement.
+
+Changed
+~~~~~~~
+- Replaced many existing exceptions in Core with new classes that contain metadata about the inputs causing the exception.
+
 Fixed
 ~~~~~
 - Fixed bug in :func:`~.limit_keys_per_group`.
 - Fixed bug in :func:`~.gaussian`.
-
-Fixed
-~~~~~
 - :func:`~tmlt.core.utils.cleanup.cleanup` now emits a warning rather than an exception if it fails to get a Spark session.
   This should prevent unexpected exceptions in the ``atexit`` cleanup handler.
+
+0.9.2 - 2023-05-16
+------------------
+
+0.9.2 was yanked, as it contained breaking changes. Those changes will be released in 0.10.0.
 
 0.9.1 - 2023-04-20
 ------------------
@@ -22,11 +32,6 @@ Fixed
 Added
 ~~~~~
 - Subclasses of :class:`~.Measure` now have equations defining the distance they represent.
-
-Changed
-~~~~~~~
-
-- Replaced many existing exceptions in Core to use new classes that contain meta-data about the inputs causing the exception.
 
 0.9.0 - 2023-04-14
 ------------------
@@ -41,7 +46,6 @@ Changed
 
 - :func:`~.truncate_large_groups` does not clump identical records together in hash-based ordering.
 - :class:`~.TransformValue` no longer fails when renaming the id column using :class:`~.RenameValue`.
-- Added the :class:`~.BoundSelection` spark measurement.
 
 Fixed
 ~~~~~
