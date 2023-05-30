@@ -10,7 +10,7 @@ from typing import Callable, Dict
 
 import numpy as np
 import pandas as pd
-from nose.plugins.attrib import attr
+import pytest
 from parameterized import parameterized
 from scipy.stats import kstest, laplace, norm
 
@@ -262,21 +262,21 @@ BASE_GAUSSIAN_TEST_INSTANCES = [
 class TestBaseMechanismsNoiseDistributions(PySparkTest):
     """KS Tests for continuous noise mechanisms."""
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_laplace_noise_distributions(self):
         """Performs a KS test."""
         cases = [KSTestCase.from_dict(e) for e in BASE_LAPLACE_TEST_INSTANCES]
         for case in cases:
             run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_geometric_noise_distributions(self):
         """Performs a Chi Squared test."""
         cases = [ChiSquaredTestCase.from_dict(e) for e in BASE_GEOMETRIC_TEST_INSTANCES]
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_discrete_gaussian_noise_distributions(self):
         """Performs a Chi Squared test."""
         cases = [
@@ -286,7 +286,7 @@ class TestBaseMechanismsNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_gaussian_noise_distributions(self):
         """Performs a KS test."""
         cases = [KSTestCase.from_dict(e) for e in BASE_GAUSSIAN_TEST_INSTANCES]

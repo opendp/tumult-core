@@ -27,7 +27,7 @@ from unittest.mock import Mock, create_autospec
 
 import numpy as np
 import pandas as pd
-from nose.tools import nottest
+import pytest
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 from scipy.stats import chisquare, kstest, laplace, norm
@@ -641,7 +641,7 @@ def _run_chi_squared_tests(
     return good_p, less_noise_p, more_noise_p
 
 
-@nottest
+@pytest.mark.skip()
 def run_test_using_ks_test(
     case: KSTestCase, p_threshold: float, noise_scale_fudge_factor: float
 ):
@@ -661,7 +661,7 @@ def run_test_using_ks_test(
         assert more_noise_p < p_threshold, f"{p_threshold}, {more_noise_p}"
 
 
-@nottest
+@pytest.mark.skip()
 def run_test_using_chi_squared_test(
     case: ChiSquaredTestCase, p_threshold: float, noise_scale_fudge_factor: float
 ):

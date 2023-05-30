@@ -57,12 +57,12 @@ from tmlt.core.utils.testing import (
 @parameterized_class(
     [
         {
-            "test_class": FilterValue,
+            "subclass": FilterValue,
             "extra_kwargs": {"filter_expr": "B > 1"},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": PublicJoinValue,
+            "subclass": PublicJoinValue,
             "extra_kwargs": {
                 "public_df_domain": SparkDataFrameDomain(
                     {
@@ -80,7 +80,7 @@ from tmlt.core.utils.testing import (
             },
         },
         {
-            "test_class": FlatMapValue,
+            "subclass": FlatMapValue,
             "extra_kwargs": {
                 "row_transformer": RowToRowsTransformation(
                     input_domain=SparkRowDomain(
@@ -115,7 +115,7 @@ from tmlt.core.utils.testing import (
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": MapValue,
+            "subclass": MapValue,
             "extra_kwargs": {
                 "row_transformer": RowToRowTransformation(
                     input_domain=SparkRowDomain(
@@ -144,68 +144,64 @@ from tmlt.core.utils.testing import (
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": DropInfsValue,
+            "subclass": DropInfsValue,
             "extra_kwargs": {"columns": ["B"]},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": DropNaNsValue,
+            "subclass": DropNaNsValue,
             "extra_kwargs": {"columns": ["B"]},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": DropNullsValue,
+            "subclass": DropNullsValue,
             "extra_kwargs": {"columns": ["B"]},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": ReplaceInfsValue,
+            "subclass": ReplaceInfsValue,
             "extra_kwargs": {"replace_map": {"B": (0.0, 2.0)}},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": ReplaceNaNsValue,
+            "subclass": ReplaceNaNsValue,
             "extra_kwargs": {"replace_map": {"B": 0.0}},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": ReplaceNullsValue,
+            "subclass": ReplaceNullsValue,
             "extra_kwargs": {"replace_map": {"B": 0.0}},
             "pandas_to_spark_kwargs": {},
         },
-        {"test_class": PersistValue, "extra_kwargs": {}, "pandas_to_spark_kwargs": {}},
+        {"subclass": PersistValue, "extra_kwargs": {}, "pandas_to_spark_kwargs": {}},
+        {"subclass": UnpersistValue, "extra_kwargs": {}, "pandas_to_spark_kwargs": {}},
         {
-            "test_class": UnpersistValue,
+            "subclass": SparkActionValue,
             "extra_kwargs": {},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": SparkActionValue,
-            "extra_kwargs": {},
-            "pandas_to_spark_kwargs": {},
-        },
-        {
-            "test_class": RenameValue,
+            "subclass": RenameValue,
             "extra_kwargs": {"rename_mapping": {"B": "E"}},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": SelectValue,
+            "subclass": SelectValue,
             "extra_kwargs": {"columns": ["A", "B"]},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": LimitRowsPerGroupValue,
+            "subclass": LimitRowsPerGroupValue,
             "extra_kwargs": {"threshold": 2},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": LimitRowsPerKeyPerGroupValue,
+            "subclass": LimitRowsPerKeyPerGroupValue,
             "extra_kwargs": {"threshold": 2, "key_column": "B"},
             "pandas_to_spark_kwargs": {},
         },
         {
-            "test_class": LimitKeysPerGroupValue,
+            "subclass": LimitKeysPerGroupValue,
             "extra_kwargs": {"threshold": 2, "key_column": "C"},
             "pandas_to_spark_kwargs": {},
         },
@@ -252,7 +248,7 @@ class TestTransformValueSubclasses(PySparkTest):
         kwargs.update(self.extra_kwargs)  # type: ignore
         for key, value in self.pandas_to_spark_kwargs.items():  # type: ignore
             kwargs[key] = self.spark.createDataFrame(value)
-        transformation = self.test_class(**kwargs)  # type: ignore
+        transformation = self.subclass(**kwargs)  # type: ignore
         transformation(input_data)
 
 

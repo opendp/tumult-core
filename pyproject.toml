@@ -29,13 +29,11 @@ include = [
   { path = "test_requirements.txt", format = "sdist" },
   { path = "LICENSE", format = "sdist" },
   { path = "NOTICE", format = "sdist" },
-  { path = "tmlt/core/ext/lib/*", format = "wheel" },
-]
-exclude = [
-  "tmlt/core/ext/*"
+  { path = "src/tmlt/core/ext/*.py", format = "wheel" },
+  { path = "src/tmlt/core/ext/lib/*", format = "wheel" },
 ]
 packages = [
-  { include = "tmlt" },
+  { include = "tmlt", from = "src" },
 ]
 
 [tool.poetry.build]
@@ -43,8 +41,7 @@ script = "ext/build.py"
 generate-setup-file = false
 
 [tool.poetry.dependencies]
-#TODO(#2116):Bump to <3.11 once dependency on nose is lifted
-python = "^3.7.1, <3.10"
+python = "^3.7.1, <3.11"
 numpy = "^1.21.0,<=1.21.6"
 pandas = "^1.2.0"
 pyarrow = "6.0.1"
@@ -59,6 +56,22 @@ typeguard = "^2.12.1,<2.13.0"
 # can cause some unexpected behaviors, like allowing 3-segment versions that
 # should be excluded.
 typing_extensions = "^3.10.0"
+pytest = "^7.3.1"
+
+[tool.pytest.ini_options]
+markers = [
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "serial",
+]
+
+[tool.coverage.run]
+omit = ["**/core/ext/*"]
+
+[tool.coverage.paths]
+# Treat all nox environments as the same for the purposes of coverage. This
+# makes the paths reported by coverage a lot cleaner, and in future could allow
+# us to combine the coverage data from multiple test jobs into a single report.
+source = ["src/tmlt/core", ".nox/**/site-packages/tmlt/core"]
 
 [tool.poetry.dev-dependencies]
 # Build scripting
@@ -73,9 +86,8 @@ pydocstyle = { version = "^6.3", extras = ["toml"] }
 pylint = "^2.13"
 
 # Testing
-coverage = "^6.5"
-nose = "^1.3.7"
 parameterized = "^0.7.4"
+pytest_cov = "^4.0.0"
 
 # Docs
 pydata-sphinx-theme = "0.9.0"
@@ -165,10 +177,10 @@ add-ignore = [
 ]
 
 [tool.cibuildwheel]
-build = "cp37-* cp38-* cp39-*"
+build = "cp37-* cp38-* cp39-* cp310-*"
 before-all = """
-if [ -d tmlt/core/ext ]; then
-    echo 'Found existing extensions in tmlt/core/ext -- please clean your environment before building'
+if [ -d src/tmlt/core/ext ]; then
+    echo 'Found existing extensions in src/tmlt/core/ext -- please clean your environment before building'
     exit 1
 fi
 """

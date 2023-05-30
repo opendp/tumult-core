@@ -7,7 +7,7 @@
 
 from typing import Dict, List, Union
 
-from nose.plugins.attrib import attr
+import pytest
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 
@@ -145,7 +145,7 @@ def _get_var_stddev_test_cases(
 class TestVarianceNoiseDistributions(PySparkTest):
     """Noise distributions test for `create_variance_measurement`."""
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_variance_with_laplace_noise(self):
         """`create_variance_measurement` adds appropriate Laplace noise."""
         cases = [
@@ -159,7 +159,7 @@ class TestVarianceNoiseDistributions(PySparkTest):
                 noise_scale_fudge_factor=NOISE_SCALE_FUDGE_FACTOR,
             )
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_variance_with_geometric_noise(self):
         """`create_variance_measurement` adds appropriate geometric noise."""
         cases = [
@@ -173,7 +173,7 @@ class TestVarianceNoiseDistributions(PySparkTest):
                 noise_scale_fudge_factor=NOISE_SCALE_FUDGE_FACTOR,
             )
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_variance_with_discrete_gaussian_noise(self):
         """`create_variance_measurement` adds appropriate discrete Gaussian noise."""
         cases = [
@@ -189,7 +189,7 @@ class TestVarianceNoiseDistributions(PySparkTest):
                 noise_scale_fudge_factor=NOISE_SCALE_FUDGE_FACTOR,
             )
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_variance_with_gaussian_noise(self):
         """`create_variance_measurement` adds appropriate Gaussian noise."""
         cases = [
