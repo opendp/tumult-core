@@ -46,7 +46,7 @@ benchmark:
 # those files/directories up.
 
 define clean-files
-tmlt/**/__pycache__/
+src/**/__pycache__/
 test/**/__pycache__/
 junit.xml
 coverage.xml

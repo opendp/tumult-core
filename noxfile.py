@@ -19,7 +19,6 @@ import datetime
 import os
 import re
 import subprocess
-import tempfile
 from functools import wraps
 from pathlib import Path
 from typing import Dict, List
@@ -36,7 +35,7 @@ from nox_poetry import session as poetry_session
 
 PACKAGE_NAME = "tmlt.core"
 """Name of the package."""
-PACKAGE_SOURCE_DIR = "tmlt/core"
+PACKAGE_SOURCE_DIR = "src/tmlt/core"
 """Relative path from the project root to its source code."""
 # TODO(#2177): Once we have a better way to self-test our code, use it here in
 #              place of this import check.
@@ -155,23 +154,6 @@ def show_installed(f):
         return f(session, *args, **kwargs)
     return inner
 
-def with_clean_workdir(f):
-    """If in a sandboxed virtualenv, execute session from an empty tempdir.
-
-    This decorator works around an issue with the tests where they will try to
-    use the code (and thus the shared libraries) from the repository rather than
-    the wheel that should be used. By moving to a temporary directory before
-    running the tests, the repository is not in the Python load path, so the
-    problem is resolved.
-    """
-    @wraps(f)
-    def inner(session, *args, **kwargs):
-        if session.virtualenv.is_sandboxed:
-            with tempfile.TemporaryDirectory() as workdir, session.cd(workdir):
-                return f(session, *args, **kwargs)
-        else:
-            return f(session, *args, **kwargs)
-    return inner
 
 #### Linting ####
 
@@ -193,7 +175,7 @@ def black(session):
 
 @poetry_session(tags=["lint"], python="3.7")
 @install_package
-@install("isort[pyproject]", "nose", "parameterized")
+@install("isort[pyproject]", "pytest", "parameterized")
 @show_installed
 def isort(session):
     """Run isort. If the --check argument is given, only check, don't make changes."""
@@ -206,11 +188,11 @@ def isort(session):
 @show_installed
 def mypy(session):
     """Run mypy."""
-    session.run("mypy", *CODE_DIRS)
+    session.run("mypy", "--package", PACKAGE_NAME, "--package", "test")
 
 @poetry_session(tags=["lint"], python="3.7")
 @install_package
-@install("pylint", "nose", "parameterized")
+@install("pylint", "pytest", "parameterized")
 @show_installed
 def pylint(session):
     """Run pylint."""
@@ -227,9 +209,8 @@ def pydocstyle(session):
 #### Tests ####
 
 @install_package
-@install("nose", "parameterized", "coverage")
+@install("pytest", "parameterized", "pytest-cov")
 @show_installed
-@with_clean_workdir
 def _test(
     session,
     test_dirs: List[str] = None,
@@ -238,21 +219,30 @@ def _test(
 ):
     test_paths = test_dirs or CODE_DIRS
     extra_args = extra_args or []
+    # If the user passes args, pass them on to pytest. The main reason this is
+    # useful is for specifying a particular subset of tests to run, so clear
+    # test_paths to allow that use case.
+    if session.posargs:
+        test_paths = []
+        extra_args.extend(session.posargs)
+
     test_options = [
-        "--verbosity=2", "--nocapture", "--logging-level=INFO",
-        "--with-xunit", f"--xunit-file={CWD}/junit.xml",
-        "--with-coverage", f"--cover-min-percentage={min_coverage}%",
-        f"--cover-package={PACKAGE_NAME}", "--cover-branches",
-        "--cover-xml", f"--cover-xml-file={CWD}/coverage.xml",
-        "--cover-html", f"--cover-html-dir={CWD}/coverage/",
+        "-r fEs", "--verbose", "--disable-warnings", f"--junitxml={CWD}/junit.xml",
+        # Show runtimes of the 10 slowest tests, for later comparison if needed.
+        "--durations=10",
+        # Collect coverage data, enforce minimum, output reports
+        f"--cov={PACKAGE_NAME}", f"--cov-fail-under={min_coverage}",
+        "--cov-report=term", f"--cov-report=html:{CWD}/coverage/",
+        "--cov-report=xml:coverage.xml",
+        # Any extra args
         *extra_args,
+        # The files to be tested
         *[str(p) for p in test_paths],
     ]
-    session.run("nosetests", *test_options)
+    session.run("pytest", *test_options)
 
 @install_package
 @show_installed
-@with_clean_workdir
 def _smoketest(session):
     """Run a no-extra-dependencies smoketest on the package."""
     session.run("python", "-c", SMOKETEST_SCRIPT)
@@ -268,19 +258,19 @@ def test(session):
 @poetry_session(python="3.7")
 def test_fast(session):
     """Run tests without the slow attribute."""
-    _test(session, extra_args=["-a", "!slow"])
+    _test(session, extra_args=["-m", "not slow"])
 
 @poetry_session(python="3.7")
 def test_slow(session):
     """Run tests with the slow attribute."""
-    _test(session, extra_args=["-a", "slow"], min_coverage=0)
+    _test(session, extra_args=["-m", "slow"], min_coverage=0)
 
 @poetry_session(tags=["test"], python="3.7")
 def test_doctest(session):
     """Run doctest on code examples in docstrings."""
     _test(
         session, test_dirs=[Path(PACKAGE_SOURCE_DIR).resolve()],
-        min_coverage=0, extra_args=["--with-doctest"]
+        min_coverage=0, extra_args=["--doctest-modules"]
     )
 
 @poetry_session(tags=["test"])
@@ -330,8 +320,7 @@ def test_examples(session):
 # for all allowable python versions.
 
 @nox_session
-@install("nose", "parameterized", "coverage")
-@with_clean_workdir
+@install("pytest", "parameterized", "pytest-cov")
 @nox.parametrize(
     "python,pyspark,sympy,pandas,numpy,scipy,randomgen",
 [
@@ -345,6 +334,8 @@ def test_examples(session):
     ("3.9", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
     ("3.10", "3.0.0", "1.8", "1.3.5", "1.21.2", "1.7.2", "1.23.1"),
     ("3.10", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
+    ("3.11", "3.0.0", "1.8", "1.3.5", "1.21.2", "1.7.2", "1.23.1"),
+    ("3.11", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
 ],
 ids= [
 "3.7-oldest",
@@ -356,14 +347,16 @@ ids= [
 "3.9-oldest",
 "3.9-newest",
 "3.10-oldest",
-"3.10-newest"],
+"3.10-newest",
+"3.11-oldest",
+"3.11-newest"],
 )
 def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen):
     """Run tests using various dependencies."""
     session.install(
-                f"{PACKAGE_NAME}=={PACKAGE_VERSION}",
-                "--find-links", f"{CWD}/dist/", "--only-binary", PACKAGE_NAME
-            )
+        f"{PACKAGE_NAME}=={PACKAGE_VERSION}",
+        "--find-links", f"{CWD}/dist/", "--only-binary", PACKAGE_NAME
+    )
     session.install(
         f"pyspark[sql]=={pyspark}",
         f"sympy=={sympy}",
@@ -372,17 +365,32 @@ def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen):
         f"scipy=={scipy}",
         f"randomgen=={randomgen}")
     session.run("pip", "freeze")
+
+    test_paths = CODE_DIRS
+    extra_args = []
+    # If the user passes args, pass them on to pytest. The main reason this is
+    # useful is for specifying a particular subset of tests to run, so clear
+    # test_paths to allow that use case.
+    if session.posargs:
+        test_paths = []
+        extra_args.extend(session.posargs)
+
     test_options = [
-        "--verbosity=2", "--nocapture", "--logging-level=INFO",
-        "--with-xunit", f"--xunit-file={CWD}/junit.xml",
-        "--with-coverage", "--cover-min-percentage=75%",
-        f"--cover-package={PACKAGE_NAME}", "--cover-branches",
-        "--cover-xml", f"--cover-xml-file={CWD}/coverage.xml",
-        "--cover-html", f"--cover-html-dir={CWD}/coverage/",
-        "-a", "!slow",
-        *[str(p) for p in CODE_DIRS],
+        "-m", "not slow",
+        "-r fEs", "--verbose", "--disable-warnings", f"--junitxml={CWD}/junit.xml",
+        # Show runtimes of the 10 slowest tests, for later comparison if needed.
+        "--durations=10",
+        # Collect coverage data, enforce minimum, output reports
+        f"--cov={PACKAGE_NAME}",
+        "--cov-report=term", f"--cov-report=html:{CWD}/coverage/",
+        "--cov-report=xml:coverage.xml",
+        # Any extra args
+        *extra_args,
+        # The files to be tested
+        *[str(p) for p in test_paths],
     ]
-    session.run("nosetests", *test_options)
+    session.run("pytest", *test_options)
+
 
 #### Documentation ####
 
@@ -392,7 +400,7 @@ def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen):
     "sphinx-autoapi", "sphinx-autodoc-typehints", "sphinx-copybutton",
     "sphinx-panels", "sphinxcontrib-bibtex", "sphinxcontrib-images",
     # Needed to clear up some warnings when it is imported
-    "nose"
+    "pytest"
 )
 @show_installed
 def _run_sphinx(session, builder: str):
@@ -560,9 +568,8 @@ def build(session):
     ("public_join", 14)
 ])
 @install_package
-@install("nose")
+@install("pytest")
 @show_installed
-@with_clean_workdir
 def benchmark(session, benchmark: str, timeout: int):
     """Run all benchmarks."""
     (CWD / "benchmark_output").mkdir(exist_ok=True)

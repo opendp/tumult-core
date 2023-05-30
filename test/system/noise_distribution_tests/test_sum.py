@@ -7,7 +7,7 @@
 
 from typing import Dict, Union
 
-from nose.plugins.attrib import attr
+import pytest
 
 from tmlt.core.measurements.aggregations import NoiseMechanism, create_sum_measurement
 from tmlt.core.measures import PureDP, RhoZCDP
@@ -99,7 +99,7 @@ def _get_sum_test_cases(noise_mechanism: NoiseMechanism):
 class TestUsingKSTest(PySparkTest):
     """Distribution tests for create_sum_measurement."""
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_sum_with_laplace_noise(self):
         """`create_sum_measurement` has expected geometric distribution."""
         cases = [
@@ -108,7 +108,7 @@ class TestUsingKSTest(PySparkTest):
         for case in cases:
             run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_sum_with_geometric_noise(self):
         """`create_sum_measurement` has expected discrete Gaussian distribution."""
         cases = [
@@ -118,7 +118,7 @@ class TestUsingKSTest(PySparkTest):
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_sum_with_discrete_gaussian_noise(self):
         """`create_sum_measurement` has expected Laplace distribution."""
         cases = [
@@ -128,7 +128,7 @@ class TestUsingKSTest(PySparkTest):
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_sum_with_gaussian_noise(self):
         """`create_sum_measurement` has expected Gaussian distribution."""
         cases = [

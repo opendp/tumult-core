@@ -77,7 +77,7 @@ napoleon_use_rtype = True
 
 # Autoapi settings
 autoapi_root = "reference"
-autoapi_dirs = ["../tmlt/"]
+autoapi_dirs = ["../src/tmlt/"]
 autoapi_keep_files = False
 autoapi_template_dir = "../doc/templates"
 autoapi_add_toctree_entry = False

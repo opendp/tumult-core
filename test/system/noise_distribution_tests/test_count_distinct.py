@@ -7,7 +7,7 @@
 
 from typing import Dict, Union
 
-from nose.plugins.attrib import attr
+import pytest
 
 from tmlt.core.measurements.aggregations import (
     NoiseMechanism,
@@ -85,7 +85,7 @@ def _get_count_distinct_test_cases(noise_mechanism: NoiseMechanism):
 class TestCountDistinctNoiseDistributions(PySparkTest):
     """Noise distributions test for `create_count_distinct_measurement`."""
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_count_distinct_with_laplace_noise(self):
         """`create_count_distinct_measurement` adds appropriate Laplace noise."""
         cases = [
@@ -95,7 +95,7 @@ class TestCountDistinctNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_count_distinct_with_geometric_noise(self):
         """`create_count_distinct_measurement` adds appropriate geometric noise."""
         cases = [
@@ -105,7 +105,7 @@ class TestCountDistinctNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_count_distinct_with_discrete_gaussian_noise(self):
         """`create_count_distinct` adds appropriate discrete Gaussian noise."""
         cases = [
@@ -115,7 +115,7 @@ class TestCountDistinctNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_count_distinct_with_gaussian_noise(self):
         """`create_count_distinct` adds appropriate Gaussian noise."""
         cases = [

@@ -7,7 +7,7 @@
 
 from typing import Dict, List, Union
 
-from nose.plugins.attrib import attr
+import pytest
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 
@@ -145,7 +145,7 @@ def _get_var_stddev_test_cases(
 class TestStandardDeviationNoiseDistributions(PySparkTest):
     """Noise distribution tests for standard deviation measurement."""
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_stddev_with_geometric_noise(self):
         """`create_standard_deviation_measurement` adds appropriate geometric noise."""
         cases = [
@@ -155,7 +155,7 @@ class TestStandardDeviationNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_stddev_with_discrete_gaussian_noise(self):
         """`create_standard_deviation_measurement` adds appropriate Gaussian noise."""
         cases = [
@@ -167,7 +167,7 @@ class TestStandardDeviationNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_stddev_with_laplace_noise(self):
         """`create_standard_deviation_measurement` adds appropriate Laplace noise."""
         cases = [
@@ -177,7 +177,7 @@ class TestStandardDeviationNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_stddev_with_gaussian_noise(self):
         """`create_standard_deviation_measurement` adds appropriate Gaussian noise."""
         cases = [

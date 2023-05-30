@@ -5,7 +5,7 @@ set -euo pipefail
 echo "=== Building C libraries ==="
 # Adapted from https://github.com/fredrik-johansson/python-flint/blob/00699afa47aaa4c56e42cb98a1f8231e9000eddd/bin/build_dependencies_unix.sh
 
-PREFIX=$(pwd)/tmlt/core/ext
+PREFIX=$(pwd)/src/tmlt/core/ext
 echo $PREFIX
 mkdir -p $PREFIX/src
 source ext/dependency_versions.sh
@@ -30,7 +30,7 @@ if [[ ! -f $PREFIX/lib/GMPVER || "$(cat $PREFIX/lib/GMPVER)" != "$GMPVER" ]]; th
     if [[ "$(uname)" = "Darwin" ]]; then
         configure_args="$configure_args --host=x86_64-apple-darwin"
     fi
-    curl -O https://gmplib.org/download/gmp/gmp-$GMPVER.tar.xz
+    curl -OLf https://gmplib.org/download/gmp/gmp-$GMPVER.tar.xz
     tar xf gmp-$GMPVER.tar.xz
     pushd gmp-$GMPVER
     # Show the output of configfsf.guess
@@ -48,7 +48,7 @@ fi
 
 # MPFR
 if [[ ! -f $PREFIX/lib/MPFRVER || "$(cat $PREFIX/lib/MPFRVER)" != "$MPFRVER" ]]; then
-    curl -O https://ftp.gnu.org/gnu/mpfr/mpfr-$MPFRVER.tar.gz
+    curl -OLf https://ftp.gnu.org/gnu/mpfr/mpfr-$MPFRVER.tar.gz
     tar xf mpfr-$MPFRVER.tar.gz
     pushd mpfr-$MPFRVER
     ./configure --prefix=$PREFIX --with-gmp=$PREFIX --enable-shared=yes --enable-static=no
@@ -63,7 +63,7 @@ fi
 
 # FLINT
 if [[ ! -f $PREFIX/lib/FLINTVER || "$(cat $PREFIX/lib/FLINTVER)" != "$FLINTVER" ]]; then
-    curl -O https://www.flintlib.org/flint-$FLINTVER.tar.gz
+    curl -OLf https://www.flintlib.org/flint-$FLINTVER.tar.gz
     tar xf flint-$FLINTVER.tar.gz
     pushd flint-$FLINTVER
     ./configure --prefix=$PREFIX --with-gmp=$PREFIX --with-mpfr=$PREFIX --disable-static
@@ -78,7 +78,7 @@ fi
 
 # Arb
 if [[ ! -f $PREFIX/lib/ARBVER || "$(cat $PREFIX/lib/ARBVER)" != "$ARBVER" ]]; then
-    curl -O -L https://github.com/fredrik-johansson/arb/archive/refs/tags/$ARBVER.tar.gz
+    curl -OLf https://github.com/fredrik-johansson/arb/archive/refs/tags/$ARBVER.tar.gz
     mv $ARBVER.tar.gz arb-$ARBVER.tar.gz
     tar xf arb-$ARBVER.tar.gz
     pushd arb-$ARBVER

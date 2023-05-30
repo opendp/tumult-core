@@ -11,8 +11,8 @@ from typing import List, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
+import pytest
 import sympy as sp
-from nose.plugins.attrib import attr
 from parameterized import parameterized
 from scipy.stats import chisquare
 
@@ -109,7 +109,7 @@ class TestQuantileNoiseDistribution(PySparkTest):
     """Tests that NoisyQuantile has expected output distribution."""
 
     @parameterized.expand([(2, 0.5), ("4.5", 0.9), ("0.5", 0.25)])
-    @attr("slow")
+    @pytest.mark.slow
     def test_quantile_noise(self, epsilon: ExactNumberInput, quantile: float):
         """Tests NoisyQuantile adds correct noise for given epsilon.
 

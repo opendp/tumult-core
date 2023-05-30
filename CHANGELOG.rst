@@ -6,6 +6,14 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+- Added support for Python 3.10.
+
+Changed
+~~~~~~~
+- Restructured the repository to keep code under the `src` directory.
+
 0.10.0 - 2023-05-17
 -------------------
 

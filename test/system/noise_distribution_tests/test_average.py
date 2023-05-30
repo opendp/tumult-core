@@ -7,7 +7,7 @@
 
 from typing import Dict, List, Union
 
-from nose.plugins.attrib import attr
+import pytest
 from pyspark.sql import functions as sf
 
 from tmlt.core.measurements.aggregations import (
@@ -114,7 +114,7 @@ def _get_average_test_cases(noise_mechanism: NoiseMechanism) -> List[Dict]:
 class TestAverageNoiseDistributions(PySparkTest):
     """Distribution tests for create_average_measurement."""
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_average_with_laplace_noise(self):
         """Average adds noise from expected Laplace distribution."""
         cases = [
@@ -124,7 +124,7 @@ class TestAverageNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_average_with_geometric_noise(self):
         """Average adds noise from expected geometric distribution."""
         cases = [
@@ -134,7 +134,7 @@ class TestAverageNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_average_with_discrete_gaussian_noise(self):
         """Average adds noise from expected discrete Gaussian distribution."""
         cases = [
@@ -144,7 +144,7 @@ class TestAverageNoiseDistributions(PySparkTest):
         for case in cases:
             run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
-    @attr("slow")
+    @pytest.mark.slow
     def test_average_with_gaussian_noise(self):
         """Average adds noise from expected Gaussian distribution."""
         cases = [
