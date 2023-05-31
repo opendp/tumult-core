@@ -444,6 +444,18 @@ def arb_max(x: Arb, y: Arb, prec: int) -> Arb:
     return Arb(z)
 
 
+def arb_exp(x: Arb, prec: int) -> Arb:
+    """Returns exp(x).
+
+    If `x` represents an interval [x_l, x_u], this returns an
+    interval containing [exp(x_l), exp(x_u)].
+    """
+    z = ctypes.pointer(_ArbStruct())
+    arblib.arb_init(z)
+    arblib.arb_exp(z, x._ptr, prec)
+    return Arb(z)
+
+
 def arb_min(x: Arb, y: Arb, prec: int) -> Arb:
     """Returns min of `x` and `y`.
 
@@ -473,6 +485,22 @@ def arb_sgn(x: Arb) -> Arb:
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
     arblib.arb_sgn(z, x._ptr)
+    return Arb(z)
+
+
+def arb_erf(x: Arb, prec: int) -> Arb:
+    """Error function."""
+    z = ctypes.pointer(_ArbStruct())
+    arblib.arb_init(z)
+    arblib.arb_hypgeom_erf(z, x._ptr, prec)
+    return Arb(z)
+
+
+def arb_erfc(x: Arb, prec: int) -> Arb:
+    """Complementary error function."""
+    z = ctypes.pointer(_ArbStruct())
+    arblib.arb_init(z)
+    arblib.arb_hypgeom_erfc(z, x._ptr, prec)
     return Arb(z)
 
 

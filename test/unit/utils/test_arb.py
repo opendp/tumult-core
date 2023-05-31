@@ -8,14 +8,17 @@ import math
 from unittest import TestCase
 
 from parameterized import parameterized
-from scipy.special import erf  # pylint: disable=no-name-in-module
+from scipy.special import erf, erfc  # pylint: disable=no-name-in-module
 
 from tmlt.core.utils.arb import (
     Arb,
     arb_abs,
     arb_add,
     arb_div,
+    arb_erf,
+    arb_erfc,
     arb_erfinv,
+    arb_exp,
     arb_log,
     arb_max,
     arb_min,
@@ -189,6 +192,14 @@ class TestArbFunctions(TestCase):
         true_interval = Arb.from_midpoint_radius(5, 5)  # [0,10]
         self.assertTrue(true_interval in actual)
 
+    def test_arb_exp(self):
+        """`arb_exp` works as expected."""
+        midpoint = math.log(9) / 2
+        arb = Arb.from_midpoint_radius(midpoint, midpoint)  # [0, log(9)]
+        actual = arb_exp(arb, prec=100)
+        true_interval = Arb.from_midpoint_radius(5, 4)  # [1,9]
+        self.assertTrue(true_interval in actual)
+
     def test_arb_max(self):
         """`arb_max` works as expected."""
         arb1 = Arb.from_midpoint_radius(1.5, 0.5)  # [1, 2]
@@ -224,11 +235,29 @@ class TestArbFunctions(TestCase):
         self.assertAlmostEqual(float(arb_sgn(arb3).midpoint()), 0)
         self.assertAlmostEqual(float(arb_sgn(arb3).radius()), 1)
 
-    def test_erfinv(self):
-        """`erfinv` works as expected."""
+    def test_arb_erfinv(self):
+        """`arb_erfinv` works as expected."""
         midpoint = (erf(1 / 8) + erf(1 / 16)) / 2
         radius = midpoint - erf(1 / 16)
         arb = Arb.from_midpoint_radius(midpoint, radius)
         actual = arb_erfinv(arb, prec=100)
         true_interval = Arb.from_midpoint_radius(3 / 32, 1 / 32)  # [1/16, 1/8]
+        self.assertTrue(true_interval in actual)
+
+    def test_arb_erf(self):
+        """`arb_erf` works as expected."""
+        arb = Arb.from_midpoint_radius(2, 1)
+        actual = arb_erf(arb, prec=100)
+        true_interval = Arb.from_midpoint_radius(
+            (erf(1) + erf(3)) / 2, (erf(1) + erf(3)) / 2 - erf(1)
+        )
+        self.assertTrue(true_interval in actual)
+
+    def test_arb_erfc(self):
+        """`arb_erfc` works as expected."""
+        arb = Arb.from_midpoint_radius(2, 1)
+        actual = arb_erfc(arb, prec=100)
+        true_interval = Arb.from_midpoint_radius(
+            (erfc(1) + erfc(3)) / 2, (erfc(1) + erfc(3)) / 2 - erfc(3)
+        )
         self.assertTrue(true_interval in actual)
