@@ -9,6 +9,8 @@ Unreleased
 Added
 ~~~~~
 - Added support for Python 3.10.
+- Added the :func:`~.arb_exp`, :func:`~.arb_erf`, and :func:`~.arb_erfc` functions.
+
 
 Changed
 ~~~~~~~
