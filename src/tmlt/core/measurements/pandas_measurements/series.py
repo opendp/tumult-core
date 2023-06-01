@@ -16,6 +16,7 @@ import pandas as pd
 from pyspark.sql.types import DataType, DoubleType
 from typeguard import typechecked
 
+from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasSeriesDomain
 from tmlt.core.measurements.base import Measurement
@@ -129,16 +130,22 @@ class NoisyQuantile(Aggregate):
         if not isinstance(
             input_domain.element_domain, (NumpyIntegerDomain, NumpyFloatDomain)
         ):
-            raise ValueError(
-                "input_domain.element_domain must be NumpyIntegerDomain or "
-                f"NumpyFloatDomain, not {type(input_domain.element_domain).__name__}"
+            raise UnsupportedDomainError(
+                input_domain,
+                (
+                    "input_domain.element_domain must be NumpyIntegerDomain or"
+                    " NumpyFloatDomain, not"
+                    f" {type(input_domain.element_domain).__name__}"
+                ),
             )
 
         if (
             isinstance(input_domain.element_domain, NumpyFloatDomain)
             and input_domain.element_domain.allow_nan
         ):
-            raise ValueError("Input domain must disallow NaNs.")
+            raise UnsupportedDomainError(
+                input_domain, "Input domain must disallow NaNs."
+            )
 
         self._quantile = quantile
         self._epsilon = ExactNumber(epsilon)

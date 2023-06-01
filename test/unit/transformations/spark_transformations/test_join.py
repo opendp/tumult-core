@@ -10,6 +10,7 @@ import pandas as pd
 from parameterized import parameterized
 from pyspark.sql import types as st
 
+from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -861,7 +862,9 @@ class TestPrivateJoin(PySparkTest):
         error_msg: str,
     ):
         """Tests that PrivateJoin cannot be constructed with invalid arguments."""
-        with self.assertRaisesRegex((ValueError, DomainKeyError), re.escape(error_msg)):
+        with self.assertRaisesRegex(
+            (ValueError, DomainKeyError, UnsupportedDomainError), re.escape(error_msg)
+        ):
             PrivateJoin(
                 input_domain=input_domain,
                 left_key=left,

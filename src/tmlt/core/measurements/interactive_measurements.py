@@ -11,7 +11,7 @@ from warnings import warn
 
 from typeguard import check_type, typechecked
 
-from tmlt.core.domains.base import Domain
+from tmlt.core.domains.base import Domain, OutOfDomainError, UnsupportedDomainError
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import (
@@ -608,9 +608,13 @@ class ParallelComposition(Measurement):
                 "Input domain for ParallelComposition must specify number of elements"
             )
         if input_domain.length != len(measurements):
-            raise ValueError(
-                f"Length of input domain ({input_domain.length}) does not match the "
-                f"number of measurements ({len(measurements)})"
+            raise OutOfDomainError(
+                input_domain,
+                measurements,
+                (
+                    f"Length of input domain ({input_domain.length}) does not match the"
+                    f" number of measurements ({len(measurements)})"
+                ),
             )
         super().__init__(
             input_domain=input_domain,
@@ -1509,8 +1513,9 @@ class PrivacyAccountant:
                 " metric."
             )
         if not isinstance(splitting_transformation.output_domain, ListDomain):
-            raise ValueError(
-                "Splitting transformation's output domain must be ListDomain."
+            raise UnsupportedDomainError(
+                splitting_transformation.output_domain,
+                "Splitting transformation's output domain must be ListDomain.",
             )
 
         if not splitting_transformation.output_domain.length:

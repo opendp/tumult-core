@@ -15,6 +15,7 @@ import sympy as sp
 from parameterized import parameterized
 from pyspark.sql.types import DoubleType
 
+from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.numpy_domains import (
     NumpyFloatDomain,
     NumpyIntegerDomain,
@@ -147,7 +148,9 @@ class TestNoisyQuantile(TestCase):
             "epsilon": 1,
         }
         kwargs.update(bad_kwargs)
-        with self.assertRaisesRegex(ValueError, re.escape(message)):
+        with self.assertRaisesRegex(
+            (ValueError, UnsupportedDomainError), re.escape(message)
+        ):
             NoisyQuantile(**kwargs)  # type: ignore
 
     @parameterized.expand(

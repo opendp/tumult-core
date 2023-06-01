@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Mapping, Tuple, Union, cast
 
 from typeguard import typechecked
 
-from tmlt.core.domains.base import Domain
+from tmlt.core.domains.base import Domain, UnsupportedDomainError
 from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.metrics import (
     AddRemoveKeys,
@@ -106,12 +106,14 @@ class AugmentDictTransformation(Transformation):
             transformation: Transformation to be applied to input dictionary.
         """
         if not isinstance(transformation.input_domain, DictDomain):
-            raise ValueError(
-                "Invalid transformation input domain: Must be a DictDomain."
+            raise UnsupportedDomainError(
+                transformation.input_domain,
+                "Invalid transformation input domain: Must be a DictDomain.",
             )
         if not isinstance(transformation.output_domain, DictDomain):
-            raise ValueError(
-                "Invalid transformation output domain: Must be a DictDomain"
+            raise UnsupportedDomainError(
+                transformation.output_domain,
+                "Invalid transformation output domain: Must be a DictDomain",
             )
 
         assert isinstance(transformation.input_metric, DictMetric)
@@ -121,9 +123,12 @@ class AugmentDictTransformation(Transformation):
             transformation.input_domain.key_to_domain
         )
         if overlapping_keys:
-            raise ValueError(
-                "Invalid transformation output domain. Contains overlapping keys:"
-                f" {overlapping_keys}"
+            raise UnsupportedDomainError(
+                transformation.output_domain,
+                (
+                    "Invalid transformation output domain. Contains overlapping keys:"
+                    f" {overlapping_keys}"
+                ),
             )
 
         d: Dict[Union[str, Tuple], Domain] = {

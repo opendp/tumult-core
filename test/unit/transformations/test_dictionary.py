@@ -13,7 +13,7 @@ from unittest.mock import call
 import numpy as np
 from parameterized import parameterized
 
-from tmlt.core.domains.base import Domain
+from tmlt.core.domains.base import Domain, UnsupportedDomainError
 from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
@@ -202,7 +202,7 @@ class TestAugmentDictTransformation(TestCase):
             output_domain=output_domain,
             output_metric=output_metric,
         )
-        with self.assertRaisesRegex(ValueError, error_regex):
+        with self.assertRaisesRegex((ValueError, UnsupportedDomainError), error_regex):
             AugmentDictTransformation(transformation=inner_transformation)
 
 

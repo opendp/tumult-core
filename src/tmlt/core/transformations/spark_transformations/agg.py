@@ -11,6 +11,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 from typeguard import typechecked
 
+from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
     DomainColumnError,
@@ -1084,9 +1085,12 @@ def create_count_aggregation(
         return Count(input_domain=input_domain, input_metric=input_metric)
     else:
         if not isinstance(input_domain, SparkGroupedDataFrameDomain):
-            raise ValueError(
-                "Input domain must be SparkDataFrameDomain or"
-                " SparkGroupedDataFrameDomain."
+            raise UnsupportedDomainError(
+                input_domain,
+                (
+                    "Input domain must be SparkDataFrameDomain or"
+                    " SparkGroupedDataFrameDomain."
+                ),
             )
         return CountGrouped(
             input_domain=input_domain,
@@ -1128,9 +1132,12 @@ def create_count_distinct_aggregation(
         return CountDistinct(input_domain=input_domain, input_metric=input_metric)
     else:
         if not isinstance(input_domain, SparkGroupedDataFrameDomain):
-            raise ValueError(
-                "Input domain must be SparkDataFrameDomain or"
-                " SparkGroupedDataFrameDomain."
+            raise UnsupportedDomainError(
+                input_domain,
+                (
+                    "Input domain must be SparkDataFrameDomain or"
+                    " SparkGroupedDataFrameDomain."
+                ),
             )
         return CountDistinctGrouped(
             input_domain=input_domain,
@@ -1189,9 +1196,12 @@ def create_sum_aggregation(
         )
     else:
         if not isinstance(input_domain, SparkGroupedDataFrameDomain):
-            raise ValueError(
-                "Input Domain must be SparkDataFrameDomain or"
-                " SparkGroupedDataFrameDomain"
+            raise UnsupportedDomainError(
+                input_domain,
+                (
+                    "Input Domain must be SparkDataFrameDomain or"
+                    " SparkGroupedDataFrameDomain"
+                ),
             )
         return SumGrouped(
             input_domain=input_domain,
