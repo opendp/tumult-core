@@ -20,6 +20,7 @@ from typeguard import typechecked
 
 # cleanup is imported just so its cleanup function runs at exit
 import tmlt.core.utils.cleanup  # pylint: disable=unused-import
+from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.spark_domains import (
     SparkColumnDescriptor,
     SparkDataFrameDomain,
@@ -459,7 +460,9 @@ class GeometricPartitionSelection(SparkMeasurement):
             isinstance(column_descriptor, SparkFloatColumnDescriptor)
             for column_descriptor in input_domain.schema.values()
         ):
-            raise ValueError("Input domain cannot contain any float columns.")
+            raise UnsupportedDomainError(
+                input_domain, "Input domain cannot contain any float columns."
+            )
         try:
             validate_exact_number(
                 value=alpha,

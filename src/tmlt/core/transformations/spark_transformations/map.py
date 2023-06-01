@@ -10,6 +10,7 @@ import sympy as sp
 from pyspark.sql import DataFrame, Row, SparkSession
 from typeguard import typechecked
 
+from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain, SparkRowDomain
 from tmlt.core.metrics import (
@@ -138,9 +139,12 @@ class RowToRowTransformation(Transformation):
         """
         if augment:
             if not set(input_domain.schema) <= set(output_domain.schema):
-                raise ValueError(
-                    "input domain must be subset of the output domain for augmenting "
-                    "transformations"
+                raise UnsupportedDomainError(
+                    output_domain,
+                    (
+                        "input domain must be subset of the output domain for"
+                        " augmenting transformations"
+                    ),
                 )
             if not input_domain.schema == {
                 column: column_descriptor
@@ -314,16 +318,22 @@ class RowToRowsTransformation(Transformation):
         """
         element_domain = output_domain.element_domain
         if not isinstance(element_domain, SparkRowDomain):
-            raise ValueError(
-                "Output domain must be a ListDomain with "
-                "a SparkRowDomain as domain for the elements."
+            raise UnsupportedDomainError(
+                output_domain,
+                (
+                    "Output domain must be a ListDomain with "
+                    "a SparkRowDomain as domain for the elements."
+                ),
             )
 
         if augment:
             if not set(input_domain.schema) <= set(element_domain.schema):
-                raise ValueError(
-                    "input domain must be subset of the output domain for augmenting "
-                    "transformations"
+                raise UnsupportedDomainError(
+                    input_domain,
+                    (
+                        "input domain must be subset of the output domain for"
+                        " augmenting transformations"
+                    ),
                 )
             if not input_domain.schema == {
                 column: column_descriptor

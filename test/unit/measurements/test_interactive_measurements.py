@@ -13,7 +13,7 @@ import numpy as np
 import sympy as sp
 from parameterized import parameterized, parameterized_class
 
-from tmlt.core.domains.base import Domain
+from tmlt.core.domains.base import Domain, OutOfDomainError, UnsupportedDomainError
 from tmlt.core.domains.collections import DictDomain, ListDomain
 from tmlt.core.domains.numpy_domains import (
     NumpyFloatDomain,
@@ -321,7 +321,9 @@ class TestParallelComposition(PySparkTest):
         expected_error_message: str,
     ):
         """ParallelComposition constructor raises appropriate error on invalid args."""
-        with self.assertRaisesRegex(ValueError, expected_error_message):
+        with self.assertRaisesRegex(
+            (ValueError, OutOfDomainError), expected_error_message
+        ):
             ParallelComposition(
                 input_domain=input_domain,
                 input_metric=input_metric,
@@ -1398,7 +1400,9 @@ class TestPrivacyAccountant(PySparkTest):
             stability_relation_return_value=False,
             return_value=[np.int64(2), np.int64(3)],
         )
-        with self.assertRaisesRegex(ValueError, error_message):
+        with self.assertRaisesRegex(
+            (ValueError, UnsupportedDomainError), error_message
+        ):
             accountant.split(
                 splitting_transformation=splitting_transformation,
                 d_out=d_out,

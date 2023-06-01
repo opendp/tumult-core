@@ -24,6 +24,20 @@ class OutOfDomainError(Exception):
         super().__init__(msg)
 
 
+class UnsupportedDomainError(TypeError):
+    """Exception type that indicates that a given domain is not supported."""
+
+    def __init__(self, domain: Domain, msg: str):
+        """Constructor.
+
+        Args:
+            domain: The domain that is not supported.
+            msg: The error message.
+        """
+        self.domain = domain
+        super().__init__(msg)
+
+
 class Domain(ABC):
     """Base class for input/output domains."""
 

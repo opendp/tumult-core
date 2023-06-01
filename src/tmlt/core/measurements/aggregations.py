@@ -15,6 +15,7 @@ from pyspark.sql import functions as sf
 from pyspark.sql.types import StructType
 from typeguard import typechecked
 
+from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
@@ -469,9 +470,12 @@ def create_count_distinct_measurement(
     if not isinstance(
         groupby_transformation.output_domain, SparkGroupedDataFrameDomain
     ):
-        raise ValueError(
-            "A groupby_transformation for count_distinct_measurement must have an "
-            "output domain of SparkGroupedDataFrameDomain."
+        raise UnsupportedDomainError(
+            groupby_transformation.output_domain,
+            (
+                "A groupby_transformation for count_distinct_measurement must have an "
+                "output domain of SparkGroupedDataFrameDomain."
+            ),
         )
     count_distinct_aggregation = create_count_distinct_aggregation(
         input_domain=groupby_transformation.output_domain,

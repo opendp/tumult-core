@@ -11,6 +11,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 from typeguard import typechecked
 
+from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -594,7 +595,9 @@ class PrivateJoin(Transformation):
                 both dataframes will be considered to be equal.
         """
         if input_domain.length != 2:
-            raise ValueError("Input domain must be a DictDomain with 2 keys.")
+            raise UnsupportedDomainError(
+                input_domain, "Input domain must be a DictDomain with 2 keys."
+            )
         if left_key == right_key:
             raise ValueError("Left and right keys must be distinct.")
         if left_key not in input_domain.key_to_domain:
@@ -611,10 +614,14 @@ class PrivateJoin(Transformation):
             )
 
         left_domain, right_domain = input_domain[left_key], input_domain[right_key]
-        if not isinstance(left_domain, SparkDataFrameDomain) or not isinstance(
-            right_domain, SparkDataFrameDomain
-        ):
-            raise ValueError("Input domain must be SparkDataFrameDomain for both keys.")
+        if not isinstance(left_domain, SparkDataFrameDomain):
+            raise UnsupportedDomainError(
+                input_domain, "Input domain must be SparkDataFrameDomain for both keys."
+            )
+        if not isinstance(right_domain, SparkDataFrameDomain):
+            raise UnsupportedDomainError(
+                input_domain, "Input domain must be SparkDataFrameDomain for both keys."
+            )
 
         output_domain = domain_after_join(
             left_domain=left_domain,
