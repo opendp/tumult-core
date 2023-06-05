@@ -10,7 +10,7 @@ import sympy as sp
 from pyspark.sql import DataFrame, Row, SparkSession
 from typeguard import typechecked
 
-from tmlt.core.domains.base import UnsupportedDomainError
+from tmlt.core.domains.base import DomainMismatchError, UnsupportedDomainError
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain, SparkRowDomain
 from tmlt.core.metrics import (
@@ -151,7 +151,11 @@ class RowToRowTransformation(Transformation):
                 for column, column_descriptor in output_domain.schema.items()
                 if column in input_domain.schema
             }:
-                raise ValueError("domains for augmented columns must match")
+                raise ValueError(
+                    input_domain,
+                    output_domain,
+                    "domains for augmented columns must match",
+                )
         super().__init__(
             input_domain=input_domain,
             input_metric=NullMetric(),
@@ -340,7 +344,10 @@ class RowToRowsTransformation(Transformation):
                 for column, column_descriptor in element_domain.schema.items()
                 if column in input_domain.schema
             }:
-                raise ValueError("domains for augmented columns must match")
+                raise DomainMismatchError(
+                    (input_domain, output_domain),
+                    "domains for augmented columns must match",
+                )
 
         super().__init__(
             input_domain=input_domain,

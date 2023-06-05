@@ -20,7 +20,7 @@ from typeguard import typechecked
 
 # cleanup is imported just so its cleanup function runs at exit
 import tmlt.core.utils.cleanup  # pylint: disable=unused-import
-from tmlt.core.domains.base import UnsupportedDomainError
+from tmlt.core.domains.base import DomainMismatchError, UnsupportedDomainError
 from tmlt.core.domains.spark_domains import (
     SparkColumnDescriptor,
     SparkDataFrameDomain,
@@ -179,10 +179,13 @@ class AddNoiseToColumn(SparkMeasurement):
         """
         measure_column_domain = input_domain[measure_column].to_numpy_domain()
         if measure_column_domain != measurement.input_domain.element_domain:
-            raise ValueError(
-                f"{measure_column} has domain {measure_column_domain}, which is"
-                " incompatible with measurement's input domain"
-                f" {measurement.input_domain.element_domain}"
+            raise DomainMismatchError(
+                (measure_column_domain, measurement.input_domain.element_domain),
+                (
+                    f"{measure_column} has domain {measure_column_domain}, which is"
+                    " incompatible with measurement's input domain"
+                    f" {measurement.input_domain.element_domain}"
+                ),
             )
         assert isinstance(measurement.input_metric, (SumOf, RootSumOfSquared))
         super().__init__(
@@ -279,14 +282,19 @@ class ApplyInPandas(SparkMeasurement):
                     " numeric nullable column, which is not supported by ApplyInPandas"
                 )
 
-        if SparkDataFrameDomain(
+        aggregation_function_domain = SparkDataFrameDomain(
             convert_pandas_domain(aggregation_function.input_domain)
-        ) != SparkDataFrameDomain(
+        )
+        input_domain_as_spark = SparkDataFrameDomain(
             {column: input_domain[column] for column in needed_columns}
-        ):
-            raise ValueError(
-                "The input domain is not compatible with the input domain of the "
-                "aggregation function."
+        )
+        if aggregation_function_domain != input_domain_as_spark:
+            raise DomainMismatchError(
+                (aggregation_function_domain, input_domain_as_spark),
+                (
+                    "The input domain is not compatible with the input domain of the "
+                    "aggregation function."
+                ),
             )
 
         self._aggregation_function = aggregation_function

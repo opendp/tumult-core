@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Mapping, Tuple, Union, cast
 
 from typeguard import typechecked
 
-from tmlt.core.domains.base import Domain, UnsupportedDomainError
+from tmlt.core.domains.base import Domain, DomainMismatchError, UnsupportedDomainError
 from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.metrics import (
     AddRemoveKeys,
@@ -519,7 +519,13 @@ def create_apply_dict_of_transformations(
         input_domain == transformation.input_domain
         for transformation in transformation_dict.values()
     ):
-        raise ValueError("Transformations do not have matching input domains")
+        mismatched_domains = filter(
+            lambda e: e != input_domain,
+            [t.input_domain for t in transformation_dict.values()],
+        )
+        raise DomainMismatchError(
+            mismatched_domains, "Transformations do not have matching input domains"
+        )
     if not all(
         input_metric == transformation.input_metric
         for transformation in transformation_dict.values()

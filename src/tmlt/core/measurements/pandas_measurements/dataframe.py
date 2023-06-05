@@ -10,6 +10,7 @@ import pandas as pd
 from pyspark.sql.types import StructField, StructType
 from typeguard import check_type, typechecked
 
+from tmlt.core.domains.base import DomainMismatchError
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
 from tmlt.core.domains.spark_domains import DomainColumnError
 from tmlt.core.measurements.base import Measurement
@@ -107,9 +108,12 @@ class AggregateByColumn(Aggregate):
                     f"Column '{column}' is not in the input schema.",
                 )
             if input_domain.schema[column] != aggregation_function.input_domain:
-                raise ValueError(
-                    "The input domain is not compatible with the input domains of the"
-                    " aggregation functions."
+                raise DomainMismatchError(
+                    (input_domain, aggregation_function.input_domain),
+                    (
+                        "The input domain is not compatible with the input domains of"
+                        " the aggregation functions."
+                    ),
                 )
 
         # Check that all aggregation functions have the same input metric, and that

@@ -7,6 +7,7 @@ from typing import Any, Callable, Optional
 
 from typeguard import typechecked
 
+from tmlt.core.domains.base import DomainMismatchError
 from tmlt.core.transformations.base import Transformation
 
 
@@ -33,7 +34,10 @@ class ChainTT(Transformation):
                 :class:`NotImplementedError`.
         """
         if transformation1.output_domain != transformation2.input_domain:
-            raise ValueError("Can not chain transformations: Mismatching domains.")
+            raise DomainMismatchError(
+                (transformation1.output_domain, transformation2.input_domain),
+                "Can not chain transformations: Mismatching domains.",
+            )
         if transformation1.output_metric != transformation2.input_metric:
             raise ValueError("Can not chain transformations: Mismatching metrics.")
         super().__init__(

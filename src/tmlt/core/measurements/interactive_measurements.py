@@ -11,7 +11,12 @@ from warnings import warn
 
 from typeguard import check_type, typechecked
 
-from tmlt.core.domains.base import Domain, OutOfDomainError, UnsupportedDomainError
+from tmlt.core.domains.base import (
+    Domain,
+    DomainMismatchError,
+    OutOfDomainError,
+    UnsupportedDomainError,
+)
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import (
@@ -234,9 +239,12 @@ class SequentialQueryable(Queryable):
                 )
 
             if query.measurement.input_domain != self._input_domain:
-                raise ValueError(
-                    "Input domain of measurement query does not match the input domain"
-                    " of SequentialQueryable."
+                raise DomainMismatchError(
+                    (query.measurement.input_domain, self._input_domain),
+                    (
+                        "Input domain of measurement query does not match the input"
+                        " domain of SequentialQueryable."
+                    ),
                 )
 
             if query.measurement.input_metric != self._input_metric:
@@ -277,9 +285,12 @@ class SequentialQueryable(Queryable):
         else:
             assert isinstance(query, TransformationQuery)
             if query.transformation.input_domain != self._input_domain:
-                raise ValueError(
-                    "Input domain of transformation query does not match the input"
-                    " domain of SequentialQueryable."
+                raise DomainMismatchError(
+                    (query.transformation.input_domain, self._input_domain),
+                    (
+                        "Input domain of transformation query does not match the input"
+                        " domain of SequentialQueryable."
+                    ),
                 )
 
             if query.transformation.input_metric != self._input_metric:
@@ -587,9 +598,19 @@ class ParallelComposition(Measurement):
         if not all(
             meas.input_domain == input_domain.element_domain for meas in measurements
         ):
-            raise ValueError(
-                "Input domain for each measurement must match "
-                "element domain of the input domain for ParallelComposition"
+            mismatched_domains = list(
+                filter(
+                    lambda x: x != input_domain.element_domain,
+                    [meas.input_domain for meas in measurements],
+                )
+            )
+            mismatched_domains.append(input_domain.element_domain)
+            raise DomainMismatchError(
+                mismatched_domains,
+                (
+                    "Input domain for each measurement must match "
+                    "element domain of the input domain for ParallelComposition"
+                ),
             )
         if not all(
             meas.input_metric == input_metric.inner_metric for meas in measurements
@@ -1131,9 +1152,12 @@ class PrivacyAccountant:
 
         assert self._queryable is not None
         if transformation.input_domain != self.input_domain:
-            raise ValueError(
-                "Transformation's input domain does not match PrivacyAccountant's input"
-                " domain."
+            raise DomainMismatchError(
+                (transformation.input_domain, self.input_domain),
+                (
+                    "Transformation's input domain does not match PrivacyAccountant's"
+                    " input domain."
+                ),
             )
 
         if transformation.input_metric != self.input_metric:
@@ -1263,9 +1287,12 @@ class PrivacyAccountant:
             )
 
         if measurement.input_domain != self.input_domain:
-            raise ValueError(
-                "Measurement's input domain does not match PrivacyAccountant's input"
-                " domain."
+            raise DomainMismatchError(
+                (measurement.input_domain, self.input_domain),
+                (
+                    "Measurement's input domain does not match PrivacyAccountant's"
+                    " input domain."
+                ),
             )
 
         if measurement.input_metric != self.input_metric:
@@ -1503,9 +1530,12 @@ class PrivacyAccountant:
             d_out = splitting_transformation.stability_function(self.d_in)
 
         if splitting_transformation.input_domain != self.input_domain:
-            raise ValueError(
-                "Transformation's input domain does not match PrivacyAccountant's input"
-                " domain."
+            raise DomainMismatchError(
+                (splitting_transformation.input_domain, self.input_domain),
+                (
+                    "Transformation's input domain does not match PrivacyAccountant's"
+                    " input domain."
+                ),
             )
         if splitting_transformation.input_metric != self.input_metric:
             raise ValueError(

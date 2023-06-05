@@ -7,6 +7,7 @@ from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from typeguard import typechecked
 
+from tmlt.core.domains.base import DomainMismatchError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import ApproxDP, PureDP, RhoZCDP
 
@@ -50,9 +51,12 @@ class Composition(Measurement):
             )
         for measurement in measurements:
             if measurement.input_domain != input_domain:
-                raise ValueError(
-                    "Can not compose measurements: mismatching input domains "
-                    f"{input_domain} and {measurement.input_domain}."
+                raise DomainMismatchError(
+                    (measurement.input_domain, input_domain),
+                    (
+                        "Can not compose measurements: mismatching input domains "
+                        f"{input_domain} and {measurement.input_domain}."
+                    ),
                 )
             if measurement.input_metric != input_metric:
                 raise ValueError(
