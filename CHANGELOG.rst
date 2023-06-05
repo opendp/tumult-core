@@ -13,6 +13,7 @@ Added
 ~~~~~
 - Added support for Python 3.10.
 - Added the :func:`~.arb_exp`, :func:`~.arb_erf`, and :func:`~.arb_erfc` functions.
+- Added a new error, :class:`~.DomainMismatchError`, which is raised when two or more domains should match but do not.
 
 
 Changed

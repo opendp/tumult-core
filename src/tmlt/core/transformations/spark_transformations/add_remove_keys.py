@@ -113,6 +113,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 from pyspark.sql import DataFrame
 from typeguard import typechecked
 
+from tmlt.core.domains.base import DomainMismatchError
 from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
 from tmlt.core.metrics import AddRemoveKeys, IfGroupedBy, SymmetricDifference
@@ -193,9 +194,12 @@ class TransformValue(Transformation):
         if new_key in input_domain.key_to_domain:
             raise ValueError(f"{repr(new_key)} is already a key in the input domain")
         if transformation.input_domain != input_domain.key_to_domain[key]:
-            raise ValueError(
-                f"Input domain's value for {repr(key)} does not match transformation's "
-                "input domain"
+            raise DomainMismatchError(
+                (transformation.input_domain, input_domain),
+                (
+                    f"Input domain's value for {repr(key)} does not match"
+                    " transformation's input domain"
+                ),
             )
         if not (
             isinstance(transformation.input_metric, IfGroupedBy)

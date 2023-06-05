@@ -7,6 +7,7 @@ from typing import Any, Callable, Optional
 
 from typeguard import typechecked
 
+from tmlt.core.domains.base import DomainMismatchError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.transformations.base import Transformation
 
@@ -34,9 +35,13 @@ class ChainTM(Measurement):
                 NotImplementedError.
         """
         if transformation.output_domain != measurement.input_domain:
-            raise ValueError(
-                "Can not chain transformation and measurement: Mismatching domains.\n"
-                f"{transformation.output_domain} != {measurement.input_domain}"
+            raise DomainMismatchError(
+                (transformation.output_domain, measurement.input_domain),
+                (
+                    "Can not chain transformation and measurement: Mismatching"
+                    f" domains.\n{transformation.output_domain} !="
+                    f" {measurement.input_domain}"
+                ),
             )
 
         if transformation.output_metric != measurement.input_metric:

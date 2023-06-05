@@ -15,7 +15,7 @@ from pyspark.sql import functions as sf
 from pyspark.sql.types import StructType
 from typeguard import typechecked
 
-from tmlt.core.domains.base import UnsupportedDomainError
+from tmlt.core.domains.base import DomainMismatchError, UnsupportedDomainError
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
@@ -1722,9 +1722,12 @@ def create_quantile_measurement(
             f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
         )
     if groupby_transformation.input_domain != input_domain:
-        raise ValueError(
-            "Input domain must match with groupby transformation. Expected:"
-            f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
         )
     quantile_input_domain = PandasSeriesDomain(
         input_domain[measure_column].to_numpy_domain()

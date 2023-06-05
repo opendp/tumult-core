@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Iterable
 
 
 class OutOfDomainError(Exception):
@@ -21,6 +21,20 @@ class OutOfDomainError(Exception):
         """
         self.domain = domain
         self.value = value
+        super().__init__(msg)
+
+
+class DomainMismatchError(ValueError):
+    """Exception type raised when two or more domains should match, but don't."""
+
+    def __init__(self, domains: Iterable[Domain], msg: str):
+        """Constructor.
+
+        Args:
+            domains: The domains that do not match.
+            msg: The error message.
+        """
+        self.domains = domains
         super().__init__(msg)
 
 
