@@ -541,7 +541,7 @@ def release_test(session):
     Note: This session doesn't do anything useful when run with the `--no-venv`
           option, as it requires a clean environment to install things in.
     """
-    _test(session, extra_args=["-a", "!slow"], show_installed=True)
+    _test(session, extra_args=["-m", "not slow"], show_installed=True)
 
 
 #### Project-specific sessions ####

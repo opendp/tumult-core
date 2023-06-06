@@ -158,7 +158,7 @@ test:
 test_nightly:
   extends: test
   script:
-    - nox -s test_slow
+    - nox -s test_slow release_smoketest release_test
   timeout: 23h
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
