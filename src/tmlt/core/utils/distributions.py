@@ -8,7 +8,24 @@ from typing import overload
 
 import numpy as np
 import sympy as sp
+from scipy.stats import norm
 
+from tmlt.core.utils.arb import (
+    Arb,
+    arb_add,
+    arb_const_pi,
+    arb_div,
+    arb_erfc,
+    arb_exp,
+    arb_max,
+    arb_min,
+    arb_mul,
+    arb_product,
+    arb_sqrt,
+    arb_sub,
+    arb_sum,
+    arb_union,
+)
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
@@ -164,19 +181,226 @@ def double_sided_geometric_inverse_cmf(
     )
 
 
-@lru_cache(None)
-def _discrete_gaussian_normalizing_constant(sigma_squared: float):
-    """Returns the normalizing factor for :func:`discrete_gaussian_pmf`."""
-    # This method for calculating the upper/lower bound to consider is used in
-    # https://github.com/IBM/discrete-gaussian-differential-privacy/blob/master/testing-kolmogorov-discretegaussian.py
-    # They say
-    # "Compute the normalizing constant from -bounds to bounds instead of -inf to inf:
-    # negligible error, as bounds is at least 50 standard deviations from 0,
-    # and the tails decay exponentially."
-    bound = max(10000, int(sigma_squared * 50))
-    # +1 is the contribution from y = 0
-    # The factor of 2 is because y/-y contribute the same for y != 0
-    return 1 + 2 * np.sum(np.exp(-np.arange(1, bound) ** 2 / (2 * sigma_squared)))
+def _discrete_gaussian_unnormalized_pmf(k: int, sigma_squared: Arb, prec: int) -> Arb:
+    r"""Returns the unnormalized pmf for a discrete gaussian distribution at k.
+
+    :math:`e^\frac{-k^2}{2\sigma^2}`
+
+    Notice that this is the numerator of the pmf for a discrete gaussian distribution.
+    See :func:`~._discrete_gaussian_normalizing_constant` for more information.
+    """
+    return arb_exp(
+        arb_div(
+            Arb.from_int(-(k**2)), arb_mul(Arb.from_int(2), sigma_squared, prec), prec
+        ),
+        prec,
+    )
+
+
+@lru_cache(maxsize=128)
+def _discrete_gaussian_unnormalized_mass_from_k_to_n(
+    k: int, n: int, sigma_squared: Arb, prec: int
+) -> Arb:
+    """Returns the unnormalized mass for a discrete gaussian distribution from k to n.
+
+    Includes both k and n.
+
+    See :func:`~._discrete_gaussian_normalizing_constant` for more information.
+    """
+    return arb_sum(
+        [
+            _discrete_gaussian_unnormalized_pmf(i, sigma_squared, prec)
+            for i in range(k, n + 1)
+        ],
+        prec,
+    )
+
+
+def _discrete_gaussian_unnormalized_mass_from_k_to_inf(
+    k: int, sigma_squared: Arb, prec: int
+) -> Arb:
+    r"""Returns the unnormalized mass of a discrete gaussian distribution from k to inf.
+
+    Includes k.
+
+    Uses integral approximation.
+
+    The integral of the unnormalized pmf from n to infinity is:
+        :math:`\sqrt{\frac{\pi}{2}}\sigma\text{erfc}(\frac{n}{\sqrt{2}\sigma})`
+
+    The lower bound is the integral from k to infinity.
+    The upper bound is the integral from k-1 to infinity.
+
+    See :func:`~._discrete_gaussian_normalizing_constant` for more information.
+    """
+    sigma = arb_sqrt(sigma_squared, prec)
+
+    def integral(n):
+        return arb_product(
+            [
+                arb_sqrt(arb_div(arb_const_pi(prec), Arb.from_int(2), prec), prec),
+                sigma,
+                arb_erfc(
+                    arb_div(
+                        Arb.from_int(n),
+                        arb_mul(arb_sqrt(Arb.from_int(2), prec), sigma, prec),
+                        prec,
+                    ),
+                    prec,
+                ),
+            ],
+            prec,
+        )
+
+    lower = integral(k)
+    upper = integral(k - 1)
+    return arb_union(lower, upper)
+
+
+def _discrete_gaussian_unnormalized_mass_from_k_to_n_fast(
+    k: int, n: int, sigma_squared: Arb, prec: int
+) -> Arb:
+    """Returns the unnormalized mass for a discrete gaussian distribution from k to n.
+
+    Includes both k and n.
+
+    Uses integral approximation. See
+    :func:`_discrete_gaussian_unnormalized_mass_from_x_to_inf` for more information.
+    """
+    return arb_sub(
+        _discrete_gaussian_unnormalized_mass_from_k_to_inf(k, sigma_squared, prec),
+        _discrete_gaussian_unnormalized_mass_from_k_to_inf(n + 1, sigma_squared, prec),
+        prec,
+    )
+
+
+def _discrete_gaussian_normalizing_constant(
+    sigma_squared: Arb, n_terms: int, prec: int
+) -> Arb:
+    """Returns the normalizing factor for discrete gaussian noise.
+
+    The normalizing factor is the sum of the unnormalized pmf for all integers.
+
+    The terms for integers between -n_terms and n_terms are calculated exactly. The
+    rest are approximated using the integral approximation.
+
+    Notice this is the denominator of the pmf for a discrete gaussian distribution.
+    See :func:`~.discrete_gaussian_pmf` for more information.
+    """
+    mass_at_0 = _discrete_gaussian_unnormalized_pmf(0, sigma_squared, prec)
+    mass_from_1_to_n_terms = _discrete_gaussian_unnormalized_mass_from_k_to_n(
+        1, n_terms, sigma_squared, prec
+    )
+    mass_from_n_terms_plus_1_to_inf = (
+        _discrete_gaussian_unnormalized_mass_from_k_to_inf(
+            n_terms + 1, sigma_squared, prec
+        )
+    )
+    # all mass from -inf to inf
+    return arb_sum(
+        [
+            mass_from_n_terms_plus_1_to_inf,  # -inf to -(n_terms + 1)
+            mass_from_1_to_n_terms,  # -n_terms to -1
+            mass_at_0,  # 0
+            mass_from_1_to_n_terms,  # 1 to n_terms
+            mass_from_n_terms_plus_1_to_inf,  # (n_terms + 1) to inf
+        ],
+        prec,
+    )
+
+
+def _discrete_gaussian_unnormalized_cmf(
+    k: int, sigma_squared: Arb, n_terms: int, prec: int
+) -> Arb:
+    """Returns the unnormalized cmf for a discrete gaussian distribution at k.
+
+    The unnormalized cmf is the sum of the unnormalized pmf for all integers from -inf
+    to k.
+
+    All terms for integers between -n_terms and n_terms are calculated exactly. The rest
+    are approximated using the integral approximation.
+
+    Only works for k >= 0.
+    """
+    if k < 0:
+        raise ValueError("k must be >= 0")
+    assert n_terms >= 0
+    mass_at_0 = _discrete_gaussian_unnormalized_pmf(0, sigma_squared, prec)
+    mass_from_1_to_n_terms = _discrete_gaussian_unnormalized_mass_from_k_to_n(
+        1, n_terms, sigma_squared, prec
+    )
+    mass_from_n_terms_plus_1_to_inf = (
+        _discrete_gaussian_unnormalized_mass_from_k_to_inf(
+            n_terms + 1, sigma_squared, prec
+        )
+    )
+    # multiple cases, handled from k=0 to inf
+    # all cases have terms from -inf to 0
+    result = arb_sum(
+        [
+            mass_from_n_terms_plus_1_to_inf,  # -inf to -(n_terms + 1)
+            mass_from_1_to_n_terms,  # -n_terms to -1
+            mass_at_0,  # 0
+        ],
+        prec,
+    )
+    if k == 0:
+        return result
+    elif k <= n_terms:  # k is in the range [1, n_terms]
+        # add terms from 1 to k, by explicitly calculating them
+        return arb_add(
+            result,  # -inf to 0
+            _discrete_gaussian_unnormalized_mass_from_k_to_n(  # 1 to k
+                1, k, sigma_squared, prec
+            ),
+            prec,
+        )
+    else:
+        assert k > n_terms  # k is in the range [n_terms + 1, inf)
+        return arb_sum(
+            [
+                result,  # -inf to 0
+                mass_from_1_to_n_terms,  # 1 to n_terms
+                _discrete_gaussian_unnormalized_mass_from_k_to_n_fast(
+                    n_terms + 1, k, sigma_squared, prec  # n_terms + 1 to k
+                ),
+            ],
+            prec,
+        )
+
+
+def _discrete_gaussian_pmf(k: int, sigma_squared: Arb, n_terms: int, prec: int) -> Arb:
+    """Returns the pmf for a discrete gaussian distribution at k.
+
+    See :func:`~.discrete_gaussian_pmf` for more information.
+    """
+    return arb_div(
+        _discrete_gaussian_unnormalized_pmf(k, sigma_squared, prec),
+        _discrete_gaussian_normalizing_constant(sigma_squared, n_terms, prec),
+        prec,
+    )
+
+
+def _discrete_gaussian_cmf(k: int, sigma_squared: Arb, n_terms: int, prec: int) -> Arb:
+    """Returns the cmf for a discrete gaussian distribution at k.
+
+    See :func:`~.discrete_gaussian_cmf` for more information.
+    """
+    if k < 0:  # eliminates half of the cases
+        return arb_sub(
+            Arb.from_int(1),
+            _discrete_gaussian_cmf(-k - 1, sigma_squared, n_terms, prec),
+            prec,
+        )
+    result = arb_div(
+        _discrete_gaussian_unnormalized_cmf(k, sigma_squared, n_terms, prec),
+        _discrete_gaussian_normalizing_constant(sigma_squared, n_terms, prec),
+        prec,
+    )
+    # clamp to [0, 1]
+    result = arb_min(result, Arb.from_int(1), prec)
+    result = arb_max(result, Arb.from_int(0), prec)
+    return result
 
 
 @overload
@@ -189,7 +413,9 @@ def discrete_gaussian_pmf(k: np.ndarray, sigma_squared: float) -> np.ndarray:
     ...
 
 
-def discrete_gaussian_pmf(k, sigma_squared):
+def discrete_gaussian_pmf(
+    k, sigma_squared
+):  # pylint: disable=missing-type-doc, missing-return-type-doc
     r"""Returns the pmf for a discrete gaussian distribution at k.
 
     For :math:`k \in \mathbb{Z}`
@@ -205,14 +431,38 @@ def discrete_gaussian_pmf(k, sigma_squared):
         }
 
     See :cite:`Canonne0S20` for more information. The formula above is based on
-    Definition 1.
+    Definition 1 in the paper.
 
-    The implementation also referenced the paper's implementation, which can be found at
-    https://github.com/IBM/discrete-gaussian-differential-privacy.
+    .. note:
+
+        The performance of this function degrades roughly linearly with the square root
+        of `sigma_squared`.
+
+    Args:
+        k: The value to evaluate the pmf at.
+        sigma_squared: The variance of the discrete gaussian distribution.
     """
-    return np.exp(
-        -(k**2) / (2 * sigma_squared)
-    ) / _discrete_gaussian_normalizing_constant(sigma_squared)
+    if sigma_squared <= 0:
+        raise ValueError("sigma_squared must be > 0")
+    if isinstance(k, np.ndarray):
+        results = np.empty_like(k, dtype=float)
+        for i, k_i in enumerate(k):
+            results[i] = discrete_gaussian_pmf(k_i, sigma_squared)
+        return results
+    # this is based on experiments for how many terms are needed. Technically you can
+    # get a way with fewer for larger values of sigma (like 7 standard
+    # deviations instead of 10 for sigma=10^4, but this works for all values of sigma).
+    # see https://gitlab.com/tumult-labs/tumult/-/issues/2358#note_1418996578 for more
+    # information.
+    n_terms = int(np.sqrt(sigma_squared) * 10) + 1
+    sigma_squared = Arb.from_float(sigma_squared)
+    prec = 100
+    while True:
+        try:
+            return _discrete_gaussian_pmf(k, sigma_squared, n_terms, prec).to_float()
+        except ValueError:
+            prec *= 2
+            n_terms *= 2
 
 
 @overload
@@ -225,23 +475,41 @@ def discrete_gaussian_cmf(k: np.ndarray, sigma_squared: float) -> np.ndarray:
     ...
 
 
-def discrete_gaussian_cmf(k, sigma_squared):
+def discrete_gaussian_cmf(
+    k, sigma_squared
+):  # pylint: disable=missing-type-doc, missing-return-type-doc
     """Returns the cmf for a discrete gaussian distribution at k.
 
     See :eq:`discrete_gaussian_pmf` for the probability mass function.
+
+    .. note:
+
+        The performance of this function degrades roughly linearly with the square root
+        of `sigma_squared`.
+
+    Args:
+        k: The value to evaluate the cmf at.
+        sigma_squared: The variance of the discrete gaussian distribution.
     """
-    if isinstance(k, int):
-        return discrete_gaussian_cmf(np.array([k]), sigma_squared)[0]
-    # _discrete_gaussian_normalizing_constant explains calculating the bound this way
-    lower_bound = min(-10000, -int(sigma_squared * 50), np.min(k))
-    unnormalized_cmf = np.cumsum(
-        np.exp(
-            -(np.abs(np.arange(lower_bound, np.max(k) + 1) ** 2)) / (2 * sigma_squared)
-        )
-    )
-    return unnormalized_cmf[k - lower_bound] / _discrete_gaussian_normalizing_constant(
-        sigma_squared
-    )
+    if sigma_squared <= 0:
+        raise ValueError("sigma_squared must be > 0")
+    if isinstance(k, np.ndarray):
+        return np.vectorize(discrete_gaussian_cmf)(k, sigma_squared)
+    # this is based on experiments for how many terms are needed. Technically you can
+    # get a way with fewer for larger values of sigma (like 7 standard
+    # deviations instead of 10 for sigma=10^4, but this works for all values of sigma).
+    # see https://gitlab.com/tumult-labs/tumult/-/issues/2358#note_1418996578 for more
+    # information.
+    n_terms = int(np.sqrt(sigma_squared) * 10) + 1
+    prec = 100
+    while True:
+        try:
+            return _discrete_gaussian_cmf(
+                k, Arb.from_float(sigma_squared), n_terms, prec
+            ).to_float()
+        except ValueError:
+            prec *= 2
+            n_terms *= 2
 
 
 @overload
@@ -254,54 +522,95 @@ def discrete_gaussian_inverse_cmf(p: np.ndarray, sigma_squared: float) -> np.nda
     ...
 
 
-def discrete_gaussian_inverse_cmf(p, sigma_squared):
+@overload
+def discrete_gaussian_inverse_cmf(p: Arb, sigma_squared: Arb) -> int:
+    ...
+
+
+def discrete_gaussian_inverse_cmf(
+    p, sigma_squared
+):  # pylint: disable=missing-type-doc, missing-return-type-doc
     """Returns the inverse cmf for a discrete gaussian distribution at p.
 
     In other words, it returns the smallest k s.t. CMF(k) >= p.
 
-    This is not terribly performant. Don't use it in places where it's
-    going to get called a lot.
+    .. note:
+
+        The performance of this function degrades roughly linearly with the square root
+        of `sigma_squared`.
+
+    Args:
+        p: The value to evaluate the inverse cmf at.
+        sigma_squared: The variance of the discrete gaussian distribution.
     """
     if isinstance(p, np.ndarray):
         return np.vectorize(discrete_gaussian_inverse_cmf)(p, sigma_squared)
 
-    # The discrete gaussian distribution is symmetrical with a mean of 0, so CMF(p) =
-    # -CMF(1.0 - p). We use this to always calculate the inverse CMF on a probability
-    # <= 0.5, which reduces the number of cases we need to cover.
-    adjusted_p = p if p <= 0.5 else 1.0 - p
+    if isinstance(p, float):
+        p = Arb.from_float(p)
+    elif isinstance(p, int):
+        p = Arb.from_int(p)
 
-    unnormalized_cmf = adjusted_p * _discrete_gaussian_normalizing_constant(
-        sigma_squared
-    )
-
-    def unnormalized_pmf(k):
-        return np.exp(-(k**2) / (2 * sigma_squared))
-
-    # _discrete_gaussian_normalizing_constant explains calculating the bound this way
-    lower_bound: float = min(-10000, -int(sigma_squared * 50))
-
-    # if k < lower bound, cmf(k) returns pmf(k), so we can binary search for k.
-    if unnormalized_pmf(lower_bound) > unnormalized_cmf:
-        hi: float = lower_bound
-        lo: float = lower_bound * 2
-        while unnormalized_pmf(lo) > unnormalized_cmf:
-            hi = lo
-            lo *= 2
-        while hi != lo:
-            mid = hi / 2 + lo / 2
-            if unnormalized_pmf(mid) == unnormalized_cmf:
-                return mid if p <= 0.5 else -mid
-            elif unnormalized_pmf(mid) < unnormalized_cmf:
-                lo = mid
-            else:
-                hi = mid
-        return hi if p <= 0.5 else -hi
-
-    k = (
-        np.searchsorted(
-            np.cumsum(unnormalized_pmf(np.arange(lower_bound, 0))), unnormalized_cmf
+    if not p.is_exact():
+        raise ValueError(
+            "p must be exact. If you want to use an approximate value, call this"
+            " on p.lower() and p.upper() instead."
         )
-        + lower_bound
-    )
+    if not Arb.from_int(0) < p < Arb.from_int(1):
+        raise ValueError("p must be strictly between 0 and 1")
 
-    return k if p <= 0.5 else -k
+    if isinstance(sigma_squared, float):
+        sigma_squared = Arb.from_float(sigma_squared)
+    elif isinstance(sigma_squared, int):
+        sigma_squared = Arb.from_int(sigma_squared)
+
+    if not sigma_squared.is_exact():
+        raise ValueError(
+            "sigma_squared must be exact. If you want to use an approximate value, call"
+            " this on sigma_squared.lower() and sigma_squared.upper() instead."
+        )
+    if sigma_squared <= Arb.from_int(0):
+        raise ValueError("sigma_squared must be > 0")
+
+    # Calculating the cmf is expensive, so we start with low precision, and gradually
+    # increase it as needed until we get the correct answer.
+
+    # find initial value for lo, hi
+    # Can get a very good initial guess by using the inverse of the normal distribution
+    guess = int(norm.ppf(p.to_float(), scale=np.sqrt(sigma_squared.to_float())))
+    distance = 0
+    n_terms = 10
+    prec = 30
+    while True:
+        lo = guess - distance - 1
+        hi = guess + distance
+        lo_p_arb = _discrete_gaussian_cmf(lo, sigma_squared, n_terms, prec)
+        hi_p_arb = _discrete_gaussian_cmf(hi, sigma_squared, n_terms, prec)
+        if lo_p_arb < p < hi_p_arb:
+            # [lo + 1, hi] contains k
+            break
+        if lo_p_arb > p or hi_p_arb < p:
+            if distance == 0:
+                distance = 1
+            else:
+                distance *= 2
+        else:
+            # not enough precision to determine if k is in [lo + 1, hi]
+            prec += 20
+            n_terms *= 2
+
+    # now do binary search
+    while hi - lo > 1:
+        mid = (hi + lo) // 2
+        mid_cmf = _discrete_gaussian_cmf(mid, sigma_squared, n_terms, prec)
+        if mid_cmf < p:
+            # answer is in [mid + 1, hi]
+            lo = mid
+        elif mid_cmf > p:
+            # answer is in [lo + 1, mid]
+            hi = mid
+        else:
+            # not enough precision to determine if mid > p or mid < p
+            n_terms *= 2
+            prec += 20
+    return hi

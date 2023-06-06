@@ -4,7 +4,7 @@ import ctypes
 import importlib.resources
 import math
 import platform
-from typing import Any, Tuple, Union
+from typing import Any, List, Tuple, Union
 
 # pylint: disable=protected-access
 
@@ -387,6 +387,10 @@ class Arb:
         arb_str = arblib.arb_get_str(self._ptr, 8, 1)
         return arb_str.decode("UTF-8")
 
+    def __hash__(self) -> int:
+        """Hash."""
+        return hash((self.midpoint().man_exp(), self.radius().man_exp()))
+
     def __del__(self):
         """Cleanup."""
         arblib.arb_clear(self._ptr)
@@ -476,6 +480,14 @@ def arb_abs(x: Arb) -> Arb:
     return Arb(z)
 
 
+def arb_neg(x: Arb) -> Arb:
+    """Returns -x."""
+    z = ctypes.pointer(_ArbStruct())
+    arblib.arb_init(z)
+    arblib.arb_neg(z, x._ptr)
+    return Arb(z)
+
+
 def arb_sgn(x: Arb) -> Arb:
     """Sign function.
 
@@ -518,6 +530,42 @@ def arb_sqrt(x: Arb, prec: int) -> Arb:
     arblib.arb_init(z)
     arblib.arb_sqrt(z, x._ptr, prec)
     return Arb(z)
+
+
+def arb_const_pi(prec: int) -> Arb:
+    """Returns pi."""
+    z = ctypes.pointer(_ArbStruct())
+    arblib.arb_init(z)
+    arblib.arb_const_pi(z, prec)
+    return Arb(z)
+
+
+def arb_union(x: Arb, y: Arb) -> Arb:
+    """Returns union of `x` and `y`.
+
+    If `x` and `y` represent intervals [x_l, x_u] and [y_l, y_u], this returns an
+    interval containing [min(x_l, y_l), max(x_u, y_u)].
+    """
+    z = ctypes.pointer(_ArbStruct())
+    arblib.arb_init(z)
+    arblib.arb_union(z, x._ptr, y._ptr)
+    return Arb(z)
+
+
+def arb_sum(xs: List[Arb], prec: int) -> Arb:
+    """Sum of elements in xs."""
+    total = Arb.from_int(0)
+    for x in xs:
+        total = arb_add(total, x, prec)
+    return total
+
+
+def arb_product(xs: List[Arb], prec: int) -> Arb:
+    """Product of elements in xs."""
+    total = Arb.from_int(1)
+    for x in xs:
+        total = arb_mul(total, x, prec)
+    return total
 
 
 def _int_to_fmpz_t(val: int) -> "ctypes._PointerLike":

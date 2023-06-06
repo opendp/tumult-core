@@ -14,6 +14,7 @@ from tmlt.core.utils.arb import (
     Arb,
     arb_abs,
     arb_add,
+    arb_const_pi,
     arb_div,
     arb_erf,
     arb_erfc,
@@ -23,8 +24,12 @@ from tmlt.core.utils.arb import (
     arb_max,
     arb_min,
     arb_mul,
+    arb_neg,
+    arb_product,
     arb_sgn,
     arb_sub,
+    arb_sum,
+    arb_union,
 )
 
 
@@ -137,6 +142,35 @@ class TestArb(TestCase):
         """`y.__contains__(x)` returns True iff every number in `x` is also in `y`."""
         self.assertEqual(x in y, expected)
 
+    @parameterized.expand(
+        [
+            (Arb.from_int(10), Arb.from_int(10), True),
+            (Arb.from_int(10), Arb.from_int(11), False),
+            (Arb.from_float(10.0), Arb.from_int(10), True),
+            (
+                Arb.from_midpoint_radius(mid=10, rad=2),
+                Arb.from_midpoint_radius(mid=10, rad=2),
+                True,
+            ),
+            (
+                Arb.from_midpoint_radius(mid=10, rad=2),
+                Arb.from_midpoint_radius(mid=10, rad=3),
+                False,
+            ),
+            (arb_const_pi(100), arb_const_pi(100), True),
+            (arb_const_pi(100), arb_const_pi(1000), False),
+        ]
+    )
+    def test_hash(self, x: Arb, y: Arb, expected: bool):
+        """`x` and `y` hash to the same value if they have the same midpoint and radius.
+
+        Args:
+            x: An Arb.
+            y: An Arb.
+            expected: Whether `x` and `y` should hash to the same value.
+        """
+        self.assertEqual(hash(x) == hash(y), expected)
+
 
 class TestArbFunctions(TestCase):
     """Tests for arithmetic functions in :mod:`tmlt.core.utils.arb`.
@@ -223,6 +257,13 @@ class TestArbFunctions(TestCase):
         true_interval = Arb.from_midpoint_radius(1.5, 1.5)
         self.assertTrue(true_interval in actual)
 
+    def test_arb_neg(self):
+        """`arb_neg` works as expected."""
+        arb = Arb.from_midpoint_radius(1, 2)  # [-1,3]
+        actual = arb_neg(arb)
+        true_interval = Arb.from_midpoint_radius(-2, 1)  # [-3,1]
+        self.assertTrue(true_interval in actual)
+
     def test_arb_sgn(self):
         """`arb_sgn` works as expected."""
         arb1 = Arb.from_midpoint_radius(1, 0.5)  # [0.5,1.5]
@@ -260,4 +301,36 @@ class TestArbFunctions(TestCase):
         true_interval = Arb.from_midpoint_radius(
             (erfc(1) + erfc(3)) / 2, (erfc(1) + erfc(3)) / 2 - erfc(3)
         )
+        self.assertTrue(true_interval in actual)
+
+    def test_arb_const_pi(self):
+        """`arb_const_pi` works as expected."""
+        actual = arb_const_pi(100)
+        interval_around_pi = Arb.from_midpoint_radius(math.pi, 1e-10)
+        self.assertTrue(actual in interval_around_pi)
+
+    def test_arb_union(self):
+        """`arb_union` works as expected."""
+        arb1 = Arb.from_midpoint_radius(1, 0.5)  # [0.5,1.5]
+        arb2 = Arb.from_midpoint_radius(3, 0.5)  # [2.5,3.5]
+        actual = arb_union(arb1, arb2)
+        true_interval = Arb.from_midpoint_radius(2, 1.5)  # [0.5, 3.5]
+        self.assertTrue(true_interval in actual)
+
+    def test_arb_sum(self):
+        """`arb_sum` works as expected."""
+        arb1 = Arb.from_midpoint_radius(1, 0.5)  # [0.5,1.5]
+        arb2 = Arb.from_midpoint_radius(2, 0.5)  # [1.5,2.5]
+        arb3 = Arb.from_midpoint_radius(3, 0.5)  # [2.5,3.5]
+        actual = arb_sum([arb1, arb2, arb3], prec=100)
+        true_interval = Arb.from_midpoint_radius(6, 1.5)  # [4.5, 7.5]
+        self.assertTrue(true_interval in actual)
+
+    def test_arb_product(self):
+        """`arb_product` works as expected."""
+        arb1 = Arb.from_midpoint_radius(1, 0.5)  # [0.5,1.5]
+        arb2 = Arb.from_midpoint_radius(2, 1)  # [1,3]
+        arb3 = Arb.from_midpoint_radius(0, 1)  # [-1,1]
+        actual = arb_product([arb1, arb2, arb3], prec=100)
+        true_interval = Arb.from_midpoint_radius(0, 4.5)  # [-4.5, 4.5]
         self.assertTrue(true_interval in actual)

@@ -186,7 +186,6 @@ class TestDiscreteGaussian(unittest.TestCase):
                 cmf_k = np.delete(cmf_k, indices_to_delete)
                 cmf_minus_one = np.delete(cmf_minus_one, indices_to_delete)
             weighted_cmf = cmf_k * 0.98 + cmf_minus_one * 0.02
-
             np.testing.assert_allclose(
                 discrete_gaussian_inverse_cmf(weighted_cmf, sigma_squared), k
             )
