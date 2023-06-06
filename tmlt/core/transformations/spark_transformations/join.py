@@ -335,7 +335,6 @@ class PublicJoin(Transformation):
         )
         self._join_on_nulls = join_on_nulls
         self._public_df = public_df
-        self._public_df = public_df
         self._join_cols = (
             join_cols.copy()
             if join_cols is not None
