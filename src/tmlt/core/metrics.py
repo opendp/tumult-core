@@ -5,6 +5,8 @@
 
 # pylint: disable=no-member
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections import Counter
 from functools import reduce
@@ -29,6 +31,42 @@ from tmlt.core.domains.spark_domains import (
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.validation import validate_exact_number
+
+
+class UnsupportedMetricError(ValueError):
+    """Exception raised when a given metric is not supported.
+
+    Attributes:
+        metric: The metric that is not supported.
+    """
+
+    def __init__(self, metric: Metric, msg: str):
+        """Constructor.
+
+        Args:
+          metric: The metric that is not supported.
+          msg: The error message.
+        """
+        self.metric = metric
+        super().__init__(msg)
+
+
+class MetricMismatchError(ValueError):
+    """Exception raised when two or more metrics should match, but don't.
+
+    Attributes:
+        metrics: The metrics that should match, but do not.
+    """
+
+    def __init__(self, metrics: Iterable[Metric], msg: str):
+        """Constructor.
+
+        Args:
+            metrics: The metrics that do not match.
+            msg: The error message.
+        """
+        self.metrics = metrics
+        super().__init__(msg)
 
 
 class Metric(ABC):

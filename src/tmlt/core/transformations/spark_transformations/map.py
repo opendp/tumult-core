@@ -20,6 +20,7 @@ from tmlt.core.metrics import (
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
+    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -557,11 +558,14 @@ class FlatMap(Transformation):
                 SumOf(SymmetricDifference()),
                 RootSumOfSquared(SymmetricDifference()),
             ):
-                raise ValueError(
-                    "Inner metric for IfGroupedBy metric must be "
-                    "SymmetricDifference(), "
-                    "SumOf(SymmetricDifference()), or "
-                    "RootSumOfSquared(SymmetricDifference())"
+                raise UnsupportedMetricError(
+                    metric,
+                    (
+                        "Inner metric for IfGroupedBy metric must be "
+                        "SymmetricDifference(), "
+                        "SumOf(SymmetricDifference()), or "
+                        "RootSumOfSquared(SymmetricDifference())"
+                    ),
                 )
             if not row_transformer.augment:
                 raise ValueError(
@@ -781,8 +785,9 @@ class GroupingFlatMap(Transformation):
         if len(additional_columns) < 1:
             raise ValueError("No grouping column provided.")
         if not isinstance(output_metric.inner_metric, SymmetricDifference):
-            raise ValueError(
-                "Inner metric for output metric must be SymmetricDifference."
+            raise UnsupportedMetricError(
+                output_metric,
+                "Inner metric for output metric must be SymmetricDifference.",
             )
 
         self._grouping_column = list(additional_columns)[0]

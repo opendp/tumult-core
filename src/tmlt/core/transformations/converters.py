@@ -15,6 +15,7 @@ from tmlt.core.metrics import (
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
+    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -38,10 +39,13 @@ class UnwrapIfGroupedBy(Transformation):
                 f"Invalid IfGroupedBy metric: {input_metric.column} not in domain",
             )
         if not isinstance(input_metric.inner_metric, (SumOf, RootSumOfSquared)):
-            raise ValueError(
-                "Inner metric for IfGroupedBy metric must be "
-                "SumOf(SymmetricDifference()), or "
-                "RootSumOfSquared(SymmetricDifference())"
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    "Inner metric for IfGroupedBy metric must be "
+                    "SumOf(SymmetricDifference()), or "
+                    "RootSumOfSquared(SymmetricDifference())"
+                ),
             )
         self._is_l2 = isinstance(input_metric.inner_metric, RootSumOfSquared)
         super().__init__(

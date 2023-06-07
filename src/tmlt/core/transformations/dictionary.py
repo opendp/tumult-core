@@ -21,7 +21,9 @@ from tmlt.core.metrics import (
     DictMetric,
     IfGroupedBy,
     Metric,
+    MetricMismatchError,
     SymmetricDifference,
+    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
@@ -55,9 +57,12 @@ class CreateDictFromValue(Transformation):
                 isinstance(input_metric, IfGroupedBy)
                 and isinstance(input_metric.inner_metric, SymmetricDifference)
             ):
-                raise ValueError(
-                    "Input metric must be IfGroupedBy with an inner metric of "
-                    "SymmetricDifference to use AddRemoveKeys as the output metric"
+                raise UnsupportedMetricError(
+                    input_metric,
+                    (
+                        "Input metric must be IfGroupedBy with an inner metric of "
+                        "SymmetricDifference to use AddRemoveKeys as the output metric"
+                    ),
                 )
             output_metric = AddRemoveKeys({key: input_metric.column})
         else:
@@ -530,7 +535,13 @@ def create_apply_dict_of_transformations(
         input_metric == transformation.input_metric
         for transformation in transformation_dict.values()
     ):
-        raise ValueError("Transformations do not have matching input metrics")
+        raise MetricMismatchError(
+            [
+                transformation.input_metric
+                for transformation in transformation_dict.values()
+            ],
+            "Transformations do not have matching input metrics",
+        )
     if list(transformation_dict) != list(hint_dict):
         raise ValueError("transformation_dict and hint_dict do not have matching keys")
 

@@ -57,9 +57,11 @@ from tmlt.core.measures import (
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
+    MetricMismatchError,
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
+    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations.agg import (
@@ -216,9 +218,12 @@ def create_count_measurement(
     count_aggregation: Transformation
     if groupby_transformation is None:
         if isinstance(input_metric, IfGroupedBy):
-            raise ValueError(
-                "Cannot use IfGroupedBy input metric if no groupby_transformation is "
-                "provided"
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    "Cannot use IfGroupedBy input metric if no groupby_transformation"
+                    " is provided"
+                ),
             )
         count_aggregation = create_count_aggregation(
             input_domain=input_domain,
@@ -415,9 +420,12 @@ def create_count_distinct_measurement(
     count_distinct_aggregation: Transformation
     if groupby_transformation is None:
         if isinstance(input_metric, IfGroupedBy):
-            raise ValueError(
-                "Cannot use IfGroupedBy input metric if no"
-                "groupby_transformation is provided."
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    "Cannot use IfGroupedBy input metric if no"
+                    "groupby_transformation is provided."
+                ),
             )
         count_distinct_aggregation = create_count_distinct_aggregation(
             input_domain=input_domain,
@@ -640,9 +648,12 @@ def create_sum_measurement(
         raise ValueError(f"Measure column must be numeric, not {measure_column_domain}")
     if groupby_transformation is None:
         if isinstance(input_metric, IfGroupedBy):
-            raise ValueError(
-                "IfGroupedBy must be accompanied by an appropriate groupby "
-                "transformation."
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    "IfGroupedBy must be accompanied by an appropriate groupby "
+                    "transformation."
+                ),
             )
         sum_aggregation = create_sum_aggregation(
             input_domain=input_domain,
@@ -1703,9 +1714,12 @@ def create_quantile_measurement(
     postprocess = lambda df: df.withColumnRenamed(measure_column, quantile_column)
     if groupby_transformation is None:
         if isinstance(input_metric, IfGroupedBy):
-            raise ValueError(
-                "IfGroupedBy must be accompanied by an appropriate groupby "
-                "transformation."
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    "IfGroupedBy must be accompanied by an appropriate groupby "
+                    "transformation."
+                ),
             )
         spark = SparkSession.builder.getOrCreate()
         groupby_transformation = GroupBy(
@@ -1717,9 +1731,12 @@ def create_quantile_measurement(
         # Postprocess to obtain the answer if no groupby transformation
         postprocess = lambda df: df.collect()[0][measure_column]
     if groupby_transformation.input_metric != input_metric:
-        raise ValueError(
-            "Input metric must match with groupby transformation. Expected:"
-            f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
         )
     if groupby_transformation.input_domain != input_domain:
         raise DomainMismatchError(

@@ -27,7 +27,13 @@ from tmlt.core.measures import (
     PureDP,
     RhoZCDP,
 )
-from tmlt.core.metrics import Metric, RootSumOfSquared, SumOf
+from tmlt.core.metrics import (
+    Metric,
+    MetricMismatchError,
+    RootSumOfSquared,
+    SumOf,
+    UnsupportedMetricError,
+)
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
 from tmlt.core.transformations.identity import Identity
@@ -248,9 +254,12 @@ class SequentialQueryable(Queryable):
                 )
 
             if query.measurement.input_metric != self._input_metric:
-                raise ValueError(
-                    "Input metric of measurement query does not match the input metric"
-                    " of SequentialQueryable."
+                raise MetricMismatchError(
+                    (query.measurement.input_metric, self._input_metric),
+                    (
+                        "Input metric of measurement query does not match the input"
+                        " metric of SequentialQueryable."
+                    ),
                 )
 
             if query.measurement.output_measure != self._output_measure:
@@ -294,9 +303,12 @@ class SequentialQueryable(Queryable):
                 )
 
             if query.transformation.input_metric != self._input_metric:
-                raise ValueError(
-                    "Input metric of transformation query does not match the input"
-                    " metric of SequentialQueryable."
+                raise MetricMismatchError(
+                    (query.transformation.input_metric, self._input_metric),
+                    (
+                        "Input metric of transformation query does not match the input"
+                        " metric of SequentialQueryable."
+                    ),
                 )
 
             self._data = query.transformation(self._data)
@@ -615,9 +627,14 @@ class ParallelComposition(Measurement):
         if not all(
             meas.input_metric == input_metric.inner_metric for meas in measurements
         ):
-            raise ValueError(
-                "Input metric for each supplied measurement must match "
-                "inner metric of input metric for ParallelComposition"
+            input_metrics = [meas.input_metric for meas in measurements]
+            input_metrics.append(input_metric.inner_metric)
+            raise MetricMismatchError(
+                input_metrics,
+                (
+                    "Input metric for each supplied measurement must match "
+                    "inner metric of input metric for ParallelComposition"
+                ),
             )
         if not all(meas.output_measure == output_measure for meas in measurements):
             raise ValueError(
@@ -1161,9 +1178,12 @@ class PrivacyAccountant:
             )
 
         if transformation.input_metric != self.input_metric:
-            raise ValueError(
-                "Transformation's input metric does not match PrivacyAccountant's input"
-                " metric."
+            raise MetricMismatchError(
+                (transformation.input_metric, self.input_metric),
+                (
+                    "Transformation's input metric does not match PrivacyAccountant's"
+                    " input metric."
+                ),
             )
 
         if d_out is not None and not transformation.stability_relation(
@@ -1296,9 +1316,12 @@ class PrivacyAccountant:
             )
 
         if measurement.input_metric != self.input_metric:
-            raise ValueError(
-                "Measurement's input metric does not match PrivacyAccountant's input"
-                " metric."
+            raise MetricMismatchError(
+                (measurement.input_metric, self.input_metric),
+                (
+                    "Measurement's input metric does not match PrivacyAccountant's"
+                    " input metric."
+                ),
             )
 
         if measurement.output_measure != self.output_measure:
@@ -1538,9 +1561,12 @@ class PrivacyAccountant:
                 ),
             )
         if splitting_transformation.input_metric != self.input_metric:
-            raise ValueError(
-                "Transformation's input metric does not match PrivacyAccountant's input"
-                " metric."
+            raise MetricMismatchError(
+                (splitting_transformation.input_metric, self.input_metric),
+                (
+                    "Transformation's input metric does not match PrivacyAccountant's"
+                    " input metric."
+                ),
             )
         if not isinstance(splitting_transformation.output_domain, ListDomain):
             raise UnsupportedDomainError(
@@ -1557,9 +1583,12 @@ class PrivacyAccountant:
             SumOf if self.output_measure in (PureDP(), ApproxDP()) else RootSumOfSquared
         )
         if not isinstance(splitting_transformation.output_metric, valid_output_metric):
-            raise ValueError(
-                "Splitting transformation's output metric must be"
-                f" {valid_output_metric} for output measure {self.output_measure}."
+            raise UnsupportedMetricError(
+                splitting_transformation.output_metric,
+                (
+                    "Splitting transformation's output metric must be"
+                    f" {valid_output_metric} for output measure {self.output_measure}."
+                ),
             )
 
         assert isinstance(
@@ -1759,13 +1788,25 @@ class PrivacyAccountant:
                 != self._pending_transformation.output_metric
             ):
                 if no_transformation:
-                    raise ValueError(
-                        "Transformation's input metric does not match"
-                        " PrivacyAccountant's input metric."
+                    raise MetricMismatchError(
+                        (
+                            transformation.input_metric,
+                            self._pending_transformation.output_metric,
+                        ),
+                        (
+                            "Transformation's input metric does not match"
+                            " PrivacyAccountant's input metric."
+                        ),
                     )
-                raise ValueError(
-                    "Transformation's input metric does not match the"
-                    " output metric of the last transformation."
+                raise MetricMismatchError(
+                    (
+                        transformation.input_metric,
+                        self._pending_transformation.output_metric,
+                    ),
+                    (
+                        "Transformation's input metric does not match the"
+                        " output metric of the last transformation."
+                    ),
                 )
 
             new_transformation = ChainTT(

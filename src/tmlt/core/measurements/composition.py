@@ -10,6 +10,7 @@ from typeguard import typechecked
 from tmlt.core.domains.base import DomainMismatchError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import ApproxDP, PureDP, RhoZCDP
+from tmlt.core.metrics import MetricMismatchError
 
 
 class Composition(Measurement):
@@ -59,9 +60,12 @@ class Composition(Measurement):
                     ),
                 )
             if measurement.input_metric != input_metric:
-                raise ValueError(
-                    "Can not compose measurements: mismatching input metrics "
-                    f"{input_metric} and {measurement.input_metric}."
+                raise MetricMismatchError(
+                    (measurement.input_metric, input_metric),
+                    (
+                        "Can not compose measurements: mismatching input metrics "
+                        f"{input_metric} and {measurement.input_metric}."
+                    ),
                 )
             if measurement.output_measure != output_measure:
                 raise ValueError(

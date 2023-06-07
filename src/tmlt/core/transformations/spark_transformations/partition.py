@@ -13,7 +13,13 @@ from typeguard import typechecked
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
-from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
+from tmlt.core.metrics import (
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+    UnsupportedMetricError,
+)
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
@@ -208,7 +214,9 @@ class PartitionByKeys(Partition):
                 or isinstance(input_metric.inner_metric, SumOf)
                 and not use_l2
             ):
-                raise ValueError("IfGroupedBy inner metric must match use_l2")
+                raise UnsupportedMetricError(
+                    input_metric, "IfGroupedBy inner metric must match use_l2"
+                )
             if input_metric.column in keys:
                 output_metric = input_metric.inner_metric
             else:

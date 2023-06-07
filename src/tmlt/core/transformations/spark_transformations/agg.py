@@ -27,6 +27,7 @@ from tmlt.core.metrics import (
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
+    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations import nan
@@ -357,9 +358,12 @@ class CountGrouped(Transformation):
         if count_column is None:
             count_column = "count"
         if input_metric.inner_metric != SymmetricDifference():
-            raise ValueError(
-                "Inner metric for the input metric must be SymmetricDifference,"
-                f" not {input_metric.inner_metric}."
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    "Inner metric for the input metric must be SymmetricDifference,"
+                    f" not {input_metric.inner_metric}."
+                ),
             )
         if count_column in set(input_domain.group_keys.columns):
             raise ValueError(
@@ -529,9 +533,12 @@ class CountDistinctGrouped(Transformation):
         if count_column is None:
             count_column = "count_distinct"
         if input_metric.inner_metric != SymmetricDifference():
-            raise ValueError(
-                "Inner metric for the input metric must be SymmetricDifference,"
-                f" not {input_metric.inner_metric}."
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    "Inner metric for the input metric must be SymmetricDifference,"
+                    f" not {input_metric.inner_metric}."
+                ),
             )
         if count_column in set(input_domain.group_keys.columns):
             raise ValueError(

@@ -18,7 +18,11 @@ from tmlt.core.measurements.pandas_measurements.series import (
     Aggregate as AggregateSeries,
 )
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
-from tmlt.core.metrics import HammingDistance, SymmetricDifference
+from tmlt.core.metrics import (
+    HammingDistance,
+    SymmetricDifference,
+    UnsupportedMetricError,
+)
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
@@ -124,9 +128,12 @@ class AggregateByColumn(Aggregate):
                 aggregation_function.input_metric,
                 (SymmetricDifference, HammingDistance),
             ):
-                raise ValueError(
-                    "The input metric of the aggregation function must be either"
-                    " SymmetricDifference or HammingDistance."
+                raise UnsupportedMetricError(
+                    aggregation_function.input_metric,
+                    (
+                        "The input metric of the aggregation function must be either"
+                        " SymmetricDifference or HammingDistance."
+                    ),
                 )
             if input_metric is None:
                 input_metric = cast(
