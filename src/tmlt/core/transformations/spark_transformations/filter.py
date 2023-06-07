@@ -10,7 +10,13 @@ from pyspark.sql import DataFrame, SparkSession
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
-from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
+from tmlt.core.metrics import (
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+    UnsupportedMetricError,
+)
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
@@ -110,10 +116,13 @@ class Filter(Transformation):
                 SumOf(SymmetricDifference()),
                 RootSumOfSquared(SymmetricDifference()),
             ):
-                raise ValueError(
-                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                    "SumOf(SymmetricDifference()), or "
-                    "RootSumOfSquared(SymmetricDifference())"
+                raise UnsupportedMetricError(
+                    metric,
+                    (
+                        "Inner metric for IfGroupedBy metric must be"
+                        " SymmetricDifference, SumOf(SymmetricDifference()), or"
+                        " RootSumOfSquared(SymmetricDifference())"
+                    ),
                 )
             if metric.column not in domain.schema:
                 raise DomainColumnError(

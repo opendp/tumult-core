@@ -25,6 +25,7 @@ from tmlt.core.metrics import (
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
+    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -124,9 +125,12 @@ class DropInfs(Transformation):
             and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
-            raise ValueError(
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference."
+            raise UnsupportedMetricError(
+                metric,
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
             )
         if not columns:
             raise ValueError("At least one column must be specified.")
@@ -296,9 +300,12 @@ class DropNaNs(Transformation):
             and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
-            raise ValueError(
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference."
+            raise UnsupportedMetricError(
+                metric,
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
             )
         if not columns:
             raise ValueError("At least one column must be specified.")
@@ -466,9 +473,12 @@ class DropNulls(Transformation):
             and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
-            raise ValueError(
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference."
+            raise UnsupportedMetricError(
+                metric,
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
             )
         if not columns:
             raise ValueError("At least one column must be specified.")
@@ -634,9 +644,12 @@ class ReplaceInfs(Transformation):
             and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
-            raise ValueError(
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference."
+            raise UnsupportedMetricError(
+                metric,
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
             )
         if not replace_map:
             raise ValueError(
@@ -820,9 +833,12 @@ class ReplaceNaNs(Transformation):
             and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
-            raise ValueError(
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference."
+            raise UnsupportedMetricError(
+                metric,
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
             )
         if not replace_map:
             raise ValueError("At least one column must be specified.")
@@ -994,9 +1010,12 @@ class ReplaceNulls(Transformation):
             and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
-            raise ValueError(
-                "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
-                "or L1 or L2 over SymmetricDifference."
+            raise UnsupportedMetricError(
+                metric,
+                (
+                    "Inner metric for IfGroupedBy metric must be SymmetricDifference, "
+                    "or L1 or L2 over SymmetricDifference."
+                ),
             )
         if not replace_map:
             raise ValueError("At least one column must be specified.")

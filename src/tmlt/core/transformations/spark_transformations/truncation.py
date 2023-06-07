@@ -8,7 +8,13 @@ from pyspark.sql import DataFrame
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
+from tmlt.core.metrics import (
+    IfGroupedBy,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+    UnsupportedMetricError,
+)
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.truncation import limit_keys_per_group, truncate_large_groups
@@ -128,9 +134,12 @@ class LimitRowsPerGroup(Transformation):
                 output_metric.column != grouping_column
                 or output_metric.inner_metric != SymmetricDifference()
             ):
-                raise ValueError(
-                    "Output metric must be `SymmetricDifference()` or"
-                    f" `IfGroupedBy({grouping_column}, SymmetricDifference())`"
+                raise UnsupportedMetricError(
+                    output_metric,
+                    (
+                        "Output metric must be `SymmetricDifference()` or"
+                        f" `IfGroupedBy({grouping_column}, SymmetricDifference())`"
+                    ),
                 )
         # super init checks that grouping_column is in the domain
         super().__init__(
@@ -302,13 +311,16 @@ class LimitKeysPerGroup(Transformation):
             IfGroupedBy(grouping_column, SymmetricDifference()),
         ]
         if output_metric not in valid_output_metrics:
-            raise ValueError(
-                f"Output metric must be one of `IfGroupedBy({key_column},"
-                f" SumOf(IfGroupedBy({grouping_column}, SymmetricDifference())))` or"
-                f" `IfGroupedBy({key_column},"
-                f" RootSumOfSquared(IfGroupedBy({grouping_column},"
-                f" SymmetricDifference())))` or `IfGroupedBy({grouping_column},"
-                " SymmetricDifference())`."
+            raise UnsupportedMetricError(
+                output_metric,
+                (
+                    f"Output metric must be one of `IfGroupedBy({key_column},"
+                    f" SumOf(IfGroupedBy({grouping_column}, SymmetricDifference())))`"
+                    f" or `IfGroupedBy({key_column},"
+                    f" RootSumOfSquared(IfGroupedBy({grouping_column},"
+                    f" SymmetricDifference())))` or `IfGroupedBy({grouping_column},"
+                    " SymmetricDifference())`."
+                ),
             )
         # super init checks that grouping_column and key_column are in the domain
         super().__init__(
@@ -501,13 +513,16 @@ class LimitRowsPerKeyPerGroup(Transformation):
         elif input_metric == IfGroupedBy(grouping_column, SymmetricDifference()):
             output_metric = input_metric
         else:
-            raise ValueError(
-                f"Input metric must be one of `IfGroupedBy({key_column},"
-                f" SumOf(IfGroupedBy({grouping_column}, SymmetricDifference())))` or"
-                f" `IfGroupedBy({key_column},"
-                f" RootSumOfSquared(IfGroupedBy({grouping_column},"
-                f" SymmetricDifference())))` or `IfGroupedBy({grouping_column},"
-                " SymmetricDifference())`"
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    f"Input metric must be one of `IfGroupedBy({key_column},"
+                    f" SumOf(IfGroupedBy({grouping_column}, SymmetricDifference())))`"
+                    f" or `IfGroupedBy({key_column},"
+                    f" RootSumOfSquared(IfGroupedBy({grouping_column},"
+                    f" SymmetricDifference())))` or `IfGroupedBy({grouping_column},"
+                    " SymmetricDifference())`"
+                ),
             )
 
         # super init checks that grouping_column is in the domain

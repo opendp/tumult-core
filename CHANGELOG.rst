@@ -11,6 +11,8 @@ Added
 - Added support for Python 3.10.
 - Added the :func:`~.arb_exp`, :func:`~.arb_const_pi`, :func:`~.arb_neg`, :func:`~.arb_product`, :func:`~.arb_sum`, :func:`~.arb_union`, :func:`~.arb_erf`, and :func:`~.arb_erfc` functions.
 - Added a new error, :class:`~.DomainMismatchError`, which is raised when two or more domains should match but do not.
+- Added a new error, :class:`~.UnsupportedMetricError`, which is raised when an unsupported metric is used.
+- Added a new error, :class:`~.MetricMismatchError`, which is raised when two or more metrics should match but do not.
 
 Changed
 ~~~~~~~

@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional
 from typeguard import typechecked
 
 from tmlt.core.domains.base import DomainMismatchError
+from tmlt.core.metrics import MetricMismatchError
 from tmlt.core.transformations.base import Transformation
 
 
@@ -39,7 +40,10 @@ class ChainTT(Transformation):
                 "Can not chain transformations: Mismatching domains.",
             )
         if transformation1.output_metric != transformation2.input_metric:
-            raise ValueError("Can not chain transformations: Mismatching metrics.")
+            raise MetricMismatchError(
+                (transformation1.output_metric, transformation2.input_metric),
+                "Can not chain transformations: Mismatching metrics.",
+            )
         super().__init__(
             input_domain=transformation1.input_domain,
             input_metric=transformation1.input_metric,

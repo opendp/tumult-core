@@ -9,6 +9,7 @@ from typeguard import typechecked
 
 from tmlt.core.domains.base import DomainMismatchError
 from tmlt.core.measurements.base import Measurement
+from tmlt.core.metrics import MetricMismatchError
 from tmlt.core.transformations.base import Transformation
 
 
@@ -45,9 +46,13 @@ class ChainTM(Measurement):
             )
 
         if transformation.output_metric != measurement.input_metric:
-            raise ValueError(
-                "Can not chain transformation and measurement: Mismatching metrics.\n"
-                f"{transformation.output_metric} != {measurement.input_metric}"
+            raise MetricMismatchError(
+                (transformation.output_metric, measurement.input_metric),
+                (
+                    "Can not chain transformation and measurement: Mismatching"
+                    f" metrics.\n{transformation.output_metric} !="
+                    f" {measurement.input_metric}"
+                ),
             )
         super().__init__(
             input_domain=transformation.input_domain,

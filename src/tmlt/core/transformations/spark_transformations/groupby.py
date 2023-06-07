@@ -30,6 +30,7 @@ from tmlt.core.metrics import (
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
+    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -149,9 +150,12 @@ class GroupBy(Transformation):
                 )
             expected_input_metric = IfGroupedBy(input_metric.column, output_metric)
             if input_metric != expected_input_metric:
-                raise ValueError(
-                    "Input metric does not have the expected inner metric. "
-                    f"Maybe {expected_input_metric}?"
+                raise UnsupportedMetricError(
+                    input_metric,
+                    (
+                        "Input metric does not have the expected inner metric. "
+                        f"Maybe {expected_input_metric}?"
+                    ),
                 )
         output_domain = SparkGroupedDataFrameDomain(
             schema=input_domain.schema, group_keys=group_keys

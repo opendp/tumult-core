@@ -116,7 +116,12 @@ from typeguard import typechecked
 from tmlt.core.domains.base import DomainMismatchError
 from tmlt.core.domains.collections import DictDomain, DomainKeyError
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import AddRemoveKeys, IfGroupedBy, SymmetricDifference
+from tmlt.core.metrics import (
+    AddRemoveKeys,
+    IfGroupedBy,
+    SymmetricDifference,
+    UnsupportedMetricError,
+)
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations.filter import Filter
 from tmlt.core.transformations.spark_transformations.join import PublicJoin
@@ -207,9 +212,12 @@ class TransformValue(Transformation):
                 transformation.input_metric.inner_metric, SymmetricDifference
             )
         ):
-            raise ValueError(
-                "Transformation's input metric must be "
-                "IfGroupedBy(column, SymmetricDifference())"
+            raise UnsupportedMetricError(
+                transformation.input_metric,
+                (
+                    "Transformation's input metric must be "
+                    "IfGroupedBy(column, SymmetricDifference())"
+                ),
             )
         if not (
             isinstance(transformation.output_metric, IfGroupedBy)
@@ -217,9 +225,12 @@ class TransformValue(Transformation):
                 transformation.output_metric.inner_metric, SymmetricDifference
             )
         ):
-            raise ValueError(
-                "Transformation's output metric must be "
-                "IfGroupedBy(column, SymmetricDifference())"
+            raise UnsupportedMetricError(
+                transformation.output_metric,
+                (
+                    "Transformation's output metric must be "
+                    "IfGroupedBy(column, SymmetricDifference())"
+                ),
             )
         input_column = transformation.input_metric.column
         if input_metric.df_to_key_column[key] != input_column:

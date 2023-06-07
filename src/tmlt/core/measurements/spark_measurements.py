@@ -35,7 +35,13 @@ from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise
 from tmlt.core.measurements.pandas_measurements.dataframe import Aggregate
 from tmlt.core.measurements.pandas_measurements.series import AddNoiseToSeries
 from tmlt.core.measures import ApproxDP, PureDP
-from tmlt.core.metrics import OnColumn, RootSumOfSquared, SumOf, SymmetricDifference
+from tmlt.core.metrics import (
+    OnColumn,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+    UnsupportedMetricError,
+)
 from tmlt.core.utils.configuration import Config
 from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -257,9 +263,12 @@ class ApplyInPandas(SparkMeasurement):
                 non-grouping columns in the `input_domain`.
         """
         if input_metric.inner_metric != SymmetricDifference():
-            raise ValueError(
-                "Input metric must be SumOf(SymmetricDifference()) or"
-                " RootSumOfSquared(SymmetricDifference())"
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    "Input metric must be SumOf(SymmetricDifference()) or"
+                    " RootSumOfSquared(SymmetricDifference())"
+                ),
             )
 
         # Check that the input domain is compatible with the aggregation
