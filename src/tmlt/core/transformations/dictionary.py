@@ -14,16 +14,22 @@ from typing import Any, Callable, Dict, List, Mapping, Tuple, Union, cast
 
 from typeguard import typechecked
 
-from tmlt.core.domains.base import Domain, DomainMismatchError, UnsupportedDomainError
-from tmlt.core.domains.collections import DictDomain, DomainKeyError
+from tmlt.core.domains.base import Domain
+from tmlt.core.domains.collections import DictDomain
+from tmlt.core.exceptions import (
+    DomainKeyError,
+    DomainMismatchError,
+    MetricMismatchError,
+    UnsupportedCombinationError,
+    UnsupportedDomainError,
+    UnsupportedMetricError,
+)
 from tmlt.core.metrics import (
     AddRemoveKeys,
     DictMetric,
     IfGroupedBy,
     Metric,
-    MetricMismatchError,
     SymmetricDifference,
-    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
@@ -244,10 +250,13 @@ class Subset(Transformation):
         output_metric: Union[DictMetric, AddRemoveKeys]
         if isinstance(input_metric, DictMetric):
             if set(input_domain.key_to_domain) != set(input_metric.key_to_metric):
-                raise ValueError(
-                    "Input metric invalid for input domain: Expected keys: "
-                    f"{set(input_domain.key_to_domain)}, not: "
-                    f"{set(input_metric.key_to_metric)}."
+                raise UnsupportedCombinationError(
+                    (input_metric, input_domain),
+                    (
+                        "Input metric invalid for input domain: Expected keys: "
+                        f"{set(input_domain.key_to_domain)}, not: "
+                        f"{set(input_metric.key_to_metric)}."
+                    ),
                 )
             output_metric = DictMetric({k: input_metric[k] for k in keys})
         else:
@@ -310,9 +319,12 @@ class GetValue(Transformation):
         # Below is the check in base class, but needs to happen before so
         # output_metric = input_metric[key] won't get a KeyError
         if not input_metric.supports_domain(input_domain):
-            raise ValueError(
-                f"Input metric {input_metric} and input domain {input_domain} are not"
-                " compatible."
+            raise UnsupportedCombinationError(
+                (input_metric, input_domain),
+                (
+                    f"Input metric {input_metric} and input domain {input_domain} are"
+                    " not compatible."
+                ),
             )
         output_metric: Metric
         if isinstance(input_metric, DictMetric):

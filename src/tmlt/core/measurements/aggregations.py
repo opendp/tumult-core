@@ -15,7 +15,6 @@ from pyspark.sql import functions as sf
 from pyspark.sql.types import StructType
 from typeguard import typechecked
 
-from tmlt.core.domains.base import DomainMismatchError, UnsupportedDomainError
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
@@ -23,6 +22,15 @@ from tmlt.core.domains.spark_domains import (
     SparkGroupedDataFrameDomain,
     SparkIntegerColumnDescriptor,
     SparkRowDomain,
+)
+from tmlt.core.exceptions import (
+    DomainMismatchError,
+    MetricMismatchError,
+    UnsupportedCombinationError,
+    UnsupportedDomainError,
+    UnsupportedMeasureError,
+    UnsupportedMetricError,
+    UnsupportedNoiseMechanismError,
 )
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.composition import Composition
@@ -57,11 +65,9 @@ from tmlt.core.measures import (
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
-    MetricMismatchError,
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
-    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations.agg import (
@@ -96,10 +102,13 @@ class NoiseMechanism(Enum):
             str_output_measures = ", ".join(
                 [repr(measure) for measure in self.supported_output_measure()]
             )
-            raise ValueError(
-                f"Output measure {output_measure}"
-                f" is not supported by noise mechanism {self}."
-                f" Supported output measures are {str_output_measures}."
+            raise UnsupportedMeasureError(
+                output_measure,
+                (
+                    f"Output measure {output_measure}"
+                    f" is not supported by noise mechanism {self}."
+                    f" Supported output measures are {str_output_measures}."
+                ),
             )
 
     def supported_output_measure(self) -> List[Union[PureDP, RhoZCDP]]:
@@ -112,7 +121,7 @@ class NoiseMechanism(Enum):
             return [RhoZCDP()]
         if self == NoiseMechanism.GAUSSIAN:
             return [RhoZCDP()]
-        raise ValueError(f"Unknown noise mechanism {self}")
+        raise UnsupportedNoiseMechanismError(self, f"Unknown noise mechanism {self}")
 
     def __str__(self) -> str:
         """Returns a string representation of the noise mechanism."""
@@ -172,9 +181,12 @@ def create_count_measurement(
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
             if delta > 0:
-                raise ValueError(
-                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                    ),
                 )
             return PureDPToApproxDP(
                 create_count_measurement(
@@ -195,15 +207,21 @@ def create_count_measurement(
             if delta > 0:
                 # Once supported, we will compute the corresponding zCDP budget and set
                 # the ouptut measure to zCDP.
-                raise ValueError(
-                    "Spending an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism} is not yet supported. Use either"
-                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Spending an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism} is not yet supported. Use either"
+                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                    ),
                 )
-            raise ValueError(
-                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                f" {NoiseMechanism.GEOMETRIC}."
+            raise UnsupportedCombinationError(
+                (noise_mechanism, output_measure, d_out),
+                (
+                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                    f" {NoiseMechanism.GEOMETRIC}."
+                ),
             )
         else:
             assert False
@@ -250,10 +268,13 @@ def create_count_measurement(
                 sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
             )
         else:
-            raise ValueError(
-                f"Unrecognized noise mechanism {noise_mechanism}. "
-                "Supported noise mechanisms are LAPLACE, "
-                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+            raise UnsupportedNoiseMechanismError(
+                noise_mechanism,
+                (
+                    f"Unrecognized noise mechanism {noise_mechanism}. "
+                    "Supported noise mechanisms are LAPLACE, "
+                    "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+                ),
             )
         count_measurement: Measurement = count_aggregation | add_noise_to_number
         if (
@@ -296,10 +317,13 @@ def create_count_measurement(
         )
 
     else:
-        raise ValueError(
-            f"Unrecognized noise mechanism {noise_mechanism}. "
-            "Supported noise mechanisms are LAPLACE, "
-            "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+        raise UnsupportedNoiseMechanismError(
+            noise_mechanism,
+            (
+                f"Unrecognized noise mechanism {noise_mechanism}. "
+                "Supported noise mechanisms are LAPLACE, "
+                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+            ),
         )
 
     assert isinstance(groupby_count.output_domain, SparkDataFrameDomain)
@@ -374,9 +398,12 @@ def create_count_distinct_measurement(
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
             if delta > 0:
-                raise ValueError(
-                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                    ),
                 )
             return PureDPToApproxDP(
                 create_count_distinct_measurement(
@@ -397,15 +424,21 @@ def create_count_distinct_measurement(
             if delta > 0:
                 # Once supported, we will compute the corresponding zCDP budget and set
                 # the ouptut measure to zCDP.
-                raise ValueError(
-                    "Spending an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism} is not yet supported. Use either"
-                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Spending an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism} is not yet supported. Use either"
+                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                    ),
                 )
-            raise ValueError(
-                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                f" {NoiseMechanism.GEOMETRIC}."
+            raise UnsupportedCombinationError(
+                (noise_mechanism, output_measure, d_out),
+                (
+                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                    f" {NoiseMechanism.GEOMETRIC}."
+                ),
             )
         else:
             assert False
@@ -452,10 +485,13 @@ def create_count_distinct_measurement(
                 sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
             )
         else:
-            raise ValueError(
-                f"Unrecognized noise mechanism {noise_mechanism}. "
-                "Supported noise mechanisms are LAPLACE, "
-                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+            raise UnsupportedNoiseMechanismError(
+                noise_mechanism,
+                (
+                    f"Unrecognized noise mechanism {noise_mechanism}. "
+                    "Supported noise mechanisms are LAPLACE, "
+                    "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+                ),
             )
 
         count_distinct_measurement: Measurement = (
@@ -471,9 +507,12 @@ def create_count_distinct_measurement(
         assert count_distinct_measurement.privacy_function(d_in) == d_out
         return count_distinct_measurement
     if not isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared)):
-        raise ValueError(
-            "A groupby_transformation for count_distinct_measurement must have an "
-            "output metric of either SumOf or RootSumOfSquared."
+        raise UnsupportedMetricError(
+            groupby_transformation.output_metric,
+            (
+                "A groupby_transformation for count_distinct_measurement must have an "
+                "output metric of either SumOf or RootSumOfSquared."
+            ),
         )
     if not isinstance(
         groupby_transformation.output_domain, SparkGroupedDataFrameDomain
@@ -513,10 +552,13 @@ def create_count_distinct_measurement(
             )
         )
     else:
-        raise ValueError(
-            f"Unrecognized noise mechanism {noise_mechanism}. "
-            "Supported noise mechanisms are LAPLACE, "
-            "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+        raise UnsupportedNoiseMechanismError(
+            noise_mechanism,
+            (
+                f"Unrecognized noise mechanism {noise_mechanism}. "
+                "Supported noise mechanisms are LAPLACE, "
+                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+            ),
         )
     assert isinstance(groupby_count_distinct.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -594,9 +636,12 @@ def create_sum_measurement(
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
             if delta > 0:
-                raise ValueError(
-                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                    ),
                 )
             return PureDPToApproxDP(
                 create_sum_measurement(
@@ -620,15 +665,21 @@ def create_sum_measurement(
             if delta > 0:
                 # Once supported, we will compute the corresponding zCDP budget and set
                 # the ouptut measure to zCDP.
-                raise ValueError(
-                    "Spending an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism} is not yet supported. Use either"
-                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Spending an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism} is not yet supported. Use either"
+                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                    ),
                 )
-            raise ValueError(
-                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                f" {NoiseMechanism.GEOMETRIC}."
+            raise UnsupportedCombinationError(
+                (noise_mechanism, output_measure, d_out),
+                (
+                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                    f" {NoiseMechanism.GEOMETRIC}."
+                ),
             )
         else:
             assert False
@@ -684,10 +735,13 @@ def create_sum_measurement(
                 sigma_squared=noise_scale**2, input_domain=measure_column_domain
             )
         else:
-            raise ValueError(
-                f"Unrecognized noise mechanism d P {noise_mechanism}. "
-                "Supported noise mechanisms are LAPLACE, "
-                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+            raise UnsupportedNoiseMechanismError(
+                noise_mechanism,
+                (
+                    f"Unrecognized noise mechanism {noise_mechanism}. "
+                    "Supported noise mechanisms are LAPLACE, "
+                    "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+                ),
             )
         sum_measurement: Measurement = sum_aggregation | add_noise_to_number
         if (
@@ -732,10 +786,13 @@ def create_sum_measurement(
             )
         )
     else:
-        raise ValueError(
-            f"Unrecognized noise mechanism {noise_mechanism}. "
-            "Supported noise mechanisms are LAPLACE, "
-            "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+        raise UnsupportedNoiseMechanismError(
+            noise_mechanism,
+            (
+                f"Unrecognized noise mechanism {noise_mechanism}. "
+                "Supported noise mechanisms are LAPLACE, "
+                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+            ),
         )
     assert isinstance(sum_aggregation.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -826,9 +883,12 @@ def create_average_measurement(
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
             if delta > 0:
-                raise ValueError(
-                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                    ),
                 )
             return PureDPToApproxDP(
                 create_average_measurement(
@@ -855,15 +915,21 @@ def create_average_measurement(
             if delta > 0:
                 # Once supported, we will compute the corresponding zCDP budget and set
                 # the ouptut measure to zCDP.
-                raise ValueError(
-                    "Spending an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism} is not yet supported. Use either"
-                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Spending an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism} is not yet supported. Use either"
+                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                    ),
                 )
-            raise ValueError(
-                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                f" {NoiseMechanism.GEOMETRIC}."
+            raise UnsupportedCombinationError(
+                (noise_mechanism, output_measure, d_out),
+                (
+                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                    f" {NoiseMechanism.GEOMETRIC}."
+                ),
             )
         else:
             assert False
@@ -1117,9 +1183,12 @@ def create_variance_measurement(
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
             if delta > 0:
-                raise ValueError(
-                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                    ),
                 )
             return PureDPToApproxDP(
                 create_variance_measurement(
@@ -1147,15 +1216,21 @@ def create_variance_measurement(
             if delta > 0:
                 # Once supported, we will compute the corresponding zCDP budget and set
                 # the ouptut measure to zCDP.
-                raise ValueError(
-                    "Spending an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism} is not yet supported. Use either"
-                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Spending an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism} is not yet supported. Use either"
+                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                    ),
                 )
-            raise ValueError(
-                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                f" {NoiseMechanism.GEOMETRIC}."
+            raise UnsupportedCombinationError(
+                (noise_mechanism, output_measure, d_out),
+                (
+                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                    f" {NoiseMechanism.GEOMETRIC}."
+                ),
             )
         else:
             assert False
@@ -1527,9 +1602,12 @@ def create_standard_deviation_measurement(
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
             if delta > 0:
-                raise ValueError(
-                    "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Cannot spend an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism}. Use ApproxDP with delta = 0 or PureDP."
+                    ),
                 )
             return PureDPToApproxDP(
                 create_standard_deviation_measurement(
@@ -1557,15 +1635,21 @@ def create_standard_deviation_measurement(
             if delta > 0:
                 # Once supported, we will compute the corresponding zCDP budget and set
                 # the ouptut measure to zCDP.
-                raise ValueError(
-                    "Spending an ApproxDP budget with delta > 0 using mechanism"
-                    f" {noise_mechanism} is not yet supported. Use either"
-                    f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                raise UnsupportedCombinationError(
+                    (noise_mechanism, output_measure, d_out),
+                    (
+                        "Spending an ApproxDP budget with delta > 0 using mechanism"
+                        f" {noise_mechanism} is not yet supported. Use either"
+                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
+                    ),
                 )
-            raise ValueError(
-                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                f" {NoiseMechanism.GEOMETRIC}."
+            raise UnsupportedCombinationError(
+                (noise_mechanism, output_measure, d_out),
+                (
+                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                    f" {NoiseMechanism.GEOMETRIC}."
+                ),
             )
         else:
             assert False

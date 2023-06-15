@@ -11,13 +11,17 @@ from warnings import warn
 
 from typeguard import check_type, typechecked
 
-from tmlt.core.domains.base import (
-    Domain,
-    DomainMismatchError,
-    OutOfDomainError,
-    UnsupportedDomainError,
-)
+from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
+from tmlt.core.exceptions import (
+    DomainMismatchError,
+    MeasureMismatchError,
+    MetricMismatchError,
+    OutOfDomainError,
+    UnsupportedCombinationError,
+    UnsupportedDomainError,
+    UnsupportedMetricError,
+)
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import (
     ApproxDP,
@@ -27,13 +31,7 @@ from tmlt.core.measures import (
     PureDP,
     RhoZCDP,
 )
-from tmlt.core.metrics import (
-    Metric,
-    MetricMismatchError,
-    RootSumOfSquared,
-    SumOf,
-    UnsupportedMetricError,
-)
+from tmlt.core.metrics import Metric, RootSumOfSquared, SumOf
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
 from tmlt.core.transformations.identity import Identity
@@ -263,9 +261,12 @@ class SequentialQueryable(Queryable):
                 )
 
             if query.measurement.output_measure != self._output_measure:
-                raise ValueError(
-                    "Output measure of measurement query does not match the output"
-                    " measure of SequentialQueryable."
+                raise MeasureMismatchError(
+                    (query.measurement.output_measure, self._output_measure),
+                    (
+                        "Output measure of measurement query does not match the output"
+                        " measure of SequentialQueryable."
+                    ),
                 )
 
             if query.d_out:
@@ -603,9 +604,12 @@ class ParallelComposition(Measurement):
             input_metric.__class__,
             output_measure.__class__,
         ) not in valid_metric_measure_combinations:
-            raise ValueError(
-                f"Input metric {input_metric.__class__} is incompatible with "
-                f"output measure {output_measure.__class__}"
+            raise UnsupportedCombinationError(
+                (input_metric, output_measure),
+                (
+                    f"Input metric {input_metric.__class__} is incompatible with "
+                    f"output measure {output_measure.__class__}"
+                ),
             )
         if not all(
             meas.input_domain == input_domain.element_domain for meas in measurements
@@ -637,9 +641,19 @@ class ParallelComposition(Measurement):
                 ),
             )
         if not all(meas.output_measure == output_measure for meas in measurements):
-            raise ValueError(
-                "Output measure for each supplied measurement must match "
-                "output measure for ParallelComposition"
+            mismatched_measures = list(
+                filter(
+                    lambda e: e != output_measure,
+                    [meas.output_measure for meas in measurements],
+                )
+            )
+            mismatched_measures.append(output_measure)
+            raise MeasureMismatchError(
+                mismatched_measures,
+                (
+                    "Output measure for each supplied measurement must match "
+                    "output measure for ParallelComposition"
+                ),
             )
         if not input_domain.length:
             raise ValueError(
@@ -1325,9 +1339,12 @@ class PrivacyAccountant:
             )
 
         if measurement.output_measure != self.output_measure:
-            raise ValueError(
-                "Measurement's output measure does not match PrivacyAccountant's output"
-                " measure."
+            raise MeasureMismatchError(
+                (measurement.output_measure, self.output_measure),
+                (
+                    "Measurement's output measure does not match PrivacyAccountant's"
+                    " output measure."
+                ),
             )
 
         if d_out:

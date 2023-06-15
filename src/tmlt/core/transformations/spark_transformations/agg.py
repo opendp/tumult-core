@@ -11,14 +11,17 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
 from typeguard import typechecked
 
-from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
-    DomainColumnError,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
     SparkIntegerColumnDescriptor,
+)
+from tmlt.core.exceptions import (
+    DomainColumnError,
+    UnsupportedDomainError,
+    UnsupportedMetricError,
 )
 from tmlt.core.metrics import (
     AbsoluteDifference,
@@ -27,7 +30,6 @@ from tmlt.core.metrics import (
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
-    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations import nan

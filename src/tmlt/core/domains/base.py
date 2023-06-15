@@ -5,51 +5,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable
+from typing import Any
 
-
-class OutOfDomainError(Exception):
-    """Exception type that indicates a validation error in a Domain."""
-
-    def __init__(self, domain: Domain, value: Any, msg: str):
-        """Constructor.
-
-        Args:
-            domain: The domain on which the exception was raised.
-            value: The value that is not in the domain.
-            msg: The error message.
-        """
-        self.domain = domain
-        self.value = value
-        super().__init__(msg)
-
-
-class DomainMismatchError(ValueError):
-    """Exception type raised when two or more domains should match, but don't."""
-
-    def __init__(self, domains: Iterable[Domain], msg: str):
-        """Constructor.
-
-        Args:
-            domains: The domains that do not match.
-            msg: The error message.
-        """
-        self.domains = domains
-        super().__init__(msg)
-
-
-class UnsupportedDomainError(TypeError):
-    """Exception type that indicates that a given domain is not supported."""
-
-    def __init__(self, domain: Domain, msg: str):
-        """Constructor.
-
-        Args:
-            domain: The domain that is not supported.
-            msg: The error message.
-        """
-        self.domain = domain
-        super().__init__(msg)
+from tmlt.core.exceptions import OutOfDomainError
 
 
 class Domain(ABC):

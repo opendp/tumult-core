@@ -113,15 +113,14 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 from pyspark.sql import DataFrame
 from typeguard import typechecked
 
-from tmlt.core.domains.base import DomainMismatchError
-from tmlt.core.domains.collections import DictDomain, DomainKeyError
+from tmlt.core.domains.collections import DictDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import (
-    AddRemoveKeys,
-    IfGroupedBy,
-    SymmetricDifference,
+from tmlt.core.exceptions import (
+    DomainKeyError,
+    DomainMismatchError,
     UnsupportedMetricError,
 )
+from tmlt.core.metrics import AddRemoveKeys, IfGroupedBy, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations.filter import Filter
 from tmlt.core.transformations.spark_transformations.join import PublicJoin

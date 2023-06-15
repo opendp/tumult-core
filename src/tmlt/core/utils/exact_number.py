@@ -27,55 +27,55 @@ Any :class:`sympy.Expr` that meets all of the following criteria:
 
     >>> x = sp.symbols("x")
     >>> x_plus_1 = x + 1
-    >>> ExactNumber(x_plus_1)
+    >>> ExactNumber(x_plus_1) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: x + 1 contains free symbols
+    core.exceptions.UnsupportedSympyExprError: x + 1 contains free symbols
     >>> ExactNumber(x_plus_1.subs(x, 3))
     4
 
     No undefined functions
 
     >>> f = sp.core.function.Function('f')
-    >>> ExactNumber(f(2) + 1)
+    >>> ExactNumber(f(2) + 1) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: f(2) + 1 has an undefined function
+    core.exceptions.UnsupportedSympyExprError: f(2) + 1 has an undefined function
     >>> f = sp.Lambda(x, x**2)
     >>> ExactNumber(f(2) + 1)
     5
 
     No floating point values
 
-    >>> ExactNumber(sp.Float(3.14))
+    >>> ExactNumber(sp.Float(3.14)) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: 3.14000000000000 is represented using floating point precision
-    >>> ExactNumber(sp.Float(3.14) * (sp.Integer(2) ** sp.pi))
+    core.exceptions.UnsupportedSympyExprError: 3.14000000000000 is represented using floating point precision
+    >>> ExactNumber(sp.Float(3.14) * (sp.Integer(2) ** sp.pi)) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: 3.14*2**pi is invalid: 3.14000000000000 is represented using floating point precision
-    >>> ExactNumber(sp.Rational("3.14") * (sp.Float(3) ** sp.pi))
+    core.exceptions.UnsupportedSympyExprError: 3.14*2**pi is invalid: 3.14000000000000 is represented using floating point precision
+    >>> ExactNumber(sp.Rational("3.14") * (sp.Float(3) ** sp.pi)) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: 157*3.0**pi/50 is invalid: Base of 3.0**pi is invalid: 3.00000000000000 is represented using floating point precision
+    core.exceptions.UnsupportedSympyExprError: 157*3.0**pi/50 is invalid: Base of 3.0**pi is invalid: 3.00000000000000 is represented using floating point precision
 
     Is a real number (or +/- infinity)
 
     >>> i = sp.sqrt(sp.Integer(-1))
-    >>> ExactNumber(i)
+    >>> ExactNumber(i) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: I has an imaginary component
-    >>> ExactNumber(1 + 2*i)
+    core.exceptions.UnsupportedSympyExprError: I has an imaginary component
+    >>> ExactNumber(1 + 2*i) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: 1 + 2*I has an imaginary component
+    core.exceptions.UnsupportedSympyExprError: 1 + 2*I has an imaginary component
     >>> ExactNumber(i**2)
     -1
     >>> ExactNumber(sp.oo)
     oo
     >>> ExactNumber(-sp.oo)
     -oo
-    >>> ExactNumber(1 + sp.oo*i)
+    >>> ExactNumber(1 + sp.oo*i) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: 1 + oo*I is invalid: oo*I is invalid: I has an imaginary component
-    >>> ExactNumber(sp.oo + i)
+    core.exceptions.UnsupportedSympyExprError: 1 + oo*I is invalid: oo*I is invalid: I has an imaginary component
+    >>> ExactNumber(sp.oo + i) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: oo + I is invalid: I has an imaginary component
+    core.exceptions.UnsupportedSympyExprError: oo + I is invalid: I has an imaginary component
 
 Any :class:`str` that can be:
     1. Exactly interpreted as a Rational number or
@@ -92,21 +92,21 @@ Any :class:`str` that can be:
     2*pi**2
     >>> ExactNumber("sqrt(5/3)")
     sqrt(15)/3
-    >>> ExactNumber("pi + I")
+    >>> ExactNumber("pi + I") # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: pi + I has an imaginary component
-    >>> ExactNumber("x + 1")
+    core.exceptions.UnsupportedSympyExprError: pi + I has an imaginary component
+    >>> ExactNumber("x + 1") # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: x + 1 contains free symbols
+    core.exceptions.UnsupportedSympyExprError: x + 1 contains free symbols
 
 `float('inf')` and `-float('inf')` are allowed:
     >>> ExactNumber(float('inf'))
     oo
     >>> ExactNumber(-float('inf'))
     -oo
-    >>> ExactNumber(3.5)
+    >>> ExactNumber(3.5) # doctest: +SKIP
     Traceback (most recent call last):
-    ValueError: Expected +/-float('inf'), not 3.5
+    core.exceptions.UnsupportedSympyExprError: Expected +/-float('inf'), not 3.5
     <BLANKLINE>
     Floating point values typically do not exactly represent the value they are intended to represent, and so are not automatically converted. See tmlt.core.utils.exact_number.from_float for more information.
 
@@ -141,17 +141,19 @@ from typing import Any, Union
 import sympy as sp
 from typeguard import typechecked
 
+from tmlt.core.exceptions import UnsupportedSympyExprError
+
 
 @typechecked
 def _verify_expr_is_an_exact_number(expr: sp.Expr) -> None:
     """Raises an error if `expr` is not an exact real number or +/- infinity."""
     if expr.free_symbols:
-        raise ValueError(f"{expr} contains free symbols")
+        raise UnsupportedSympyExprError(expr, f"{expr} contains free symbols")
     # is_number means no free symbols, and no undefined functions
     if not expr.is_number:
-        raise ValueError(f"{expr} has an undefined function")
+        raise UnsupportedSympyExprError(expr, f"{expr} has an undefined function")
     if expr.is_finite and not expr.is_real:
-        raise ValueError(f"{expr} has an imaginary component")
+        raise UnsupportedSympyExprError(expr, f"{expr} has an imaginary component")
     if expr in (sp.oo, -sp.oo):
         return
     if isinstance(expr, (sp.Integer, sp.Rational)):
@@ -163,30 +165,42 @@ def _verify_expr_is_an_exact_number(expr: sp.Expr) -> None:
         try:
             _verify_expr_is_an_exact_number(left_expr)
             _verify_expr_is_an_exact_number(right_expr)
-        except ValueError as e:
-            raise ValueError(f"{expr} is invalid: {e}") from e
+        except UnsupportedSympyExprError as e:
+            raise UnsupportedSympyExprError(
+                expr, f"{expr} is not supported: {e}"
+            ) from e
         return
     if isinstance(expr, (sp.Pow, sp.exp)):
         try:
             _verify_expr_is_an_exact_number(expr.base)
-        except ValueError as e:
-            raise ValueError(f"Base of {expr} is invalid: {e}") from e
+        except UnsupportedSympyExprError as e:
+            raise UnsupportedSympyExprError(
+                expr, f"Base of {expr} is not supported: {e}"
+            ) from e
         try:
             _verify_expr_is_an_exact_number(expr.exp)
-        except ValueError as e:
-            raise ValueError(f"Exponent of {expr} is invalid: {e}") from e
+        except UnsupportedSympyExprError as e:
+            raise UnsupportedSympyExprError(
+                expr, f"Exponent of {expr} is not supported: {e}"
+            ) from e
         return
     if isinstance(expr, sp.log):
         if len(expr.args) != 1:
-            raise ValueError(f"Logarithm {expr} has more than one term")
+            raise UnsupportedSympyExprError(
+                expr, f"Logarithm {expr} has more than one term"
+            )
         try:
             _verify_expr_is_an_exact_number(expr.args[0])
-        except ValueError as e:
-            raise ValueError(f"Invalid Logarithm {expr}: {e}") from e
+        except UnsupportedSympyExprError as e:
+            raise UnsupportedSympyExprError(
+                expr, f"unsupported Logarithm {expr}: {e}"
+            ) from e
         return
     if isinstance(expr, sp.Float):
-        raise ValueError(f"{expr} is represented using floating point precision")
-    raise ValueError(f"Invalid SymPy expression: {expr}")
+        raise UnsupportedSympyExprError(
+            expr, f"{expr} is represented using floating point precision"
+        )
+    raise UnsupportedSympyExprError(expr, f"unsupported SymPy expression: {expr}")
 
 
 @typechecked

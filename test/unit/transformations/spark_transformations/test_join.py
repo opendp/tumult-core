@@ -10,14 +10,14 @@ import pandas as pd
 from parameterized import parameterized
 from pyspark.sql import types as st
 
-from tmlt.core.domains.base import UnsupportedDomainError
-from tmlt.core.domains.collections import DictDomain, DomainKeyError
+from tmlt.core.domains.collections import DictDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.exceptions import DomainKeyError, UnsupportedDomainError
 from tmlt.core.metrics import (
     AddRemoveKeys,
     DictMetric,

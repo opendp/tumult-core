@@ -10,7 +10,7 @@ from typeguard import check_type, typechecked
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.measurements.base import Measurement
-from tmlt.core.metrics import Metric
+from tmlt.core.metrics import Metric, UnsupportedCombinationError
 
 
 class Transformation(ABC):
@@ -26,14 +26,20 @@ class Transformation(ABC):
     ):
         """Base constructor for transformations."""
         if not input_metric.supports_domain(input_domain):
-            raise ValueError(
-                f"Input metric {input_metric} and input domain {input_domain} are not"
-                " compatible."
+            raise UnsupportedCombinationError(
+                (input_metric, input_domain),
+                (
+                    f"Input metric {input_metric} and input domain {input_domain} are"
+                    " not compatible."
+                ),
             )
         if not output_metric.supports_domain(output_domain):
-            raise ValueError(
-                f"Output metric {output_metric} and output domain {output_domain} are"
-                " not compatible."
+            raise UnsupportedCombinationError(
+                (output_metric, output_domain),
+                (
+                    f"Output metric {output_metric} and output domain"
+                    f" {output_domain} are not compatible."
+                ),
             )
         self._input_domain = input_domain
         self._input_metric = input_metric

@@ -7,7 +7,7 @@ from typing import Dict, Type
 import pandas as pd
 from parameterized import parameterized, parameterized_class
 
-from tmlt.core.domains.collections import DictDomain, DomainKeyError, ListDomain
+from tmlt.core.domains.collections import DictDomain, ListDomain
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -16,6 +16,7 @@ from tmlt.core.domains.spark_domains import (
     SparkRowDomain,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.exceptions import DomainKeyError
 from tmlt.core.metrics import AddRemoveKeys, IfGroupedBy, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations.add_remove_keys import (

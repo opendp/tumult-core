@@ -7,10 +7,14 @@ from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from typeguard import typechecked
 
-from tmlt.core.domains.base import DomainMismatchError
+from tmlt.core.exceptions import (
+    DomainMismatchError,
+    MeasureMismatchError,
+    MetricMismatchError,
+    UnsupportedMeasureError,
+)
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import ApproxDP, PureDP, RhoZCDP
-from tmlt.core.metrics import MetricMismatchError
 
 
 class Composition(Measurement):
@@ -46,31 +50,40 @@ class Composition(Measurement):
             measurements[0].output_measure,
         )
         if not isinstance(output_measure, (PureDP, ApproxDP, RhoZCDP)):
-            raise ValueError(
-                f"Unsupported output measure ({output_measure}):"
-                " composition only supports PureDP, ApproxDP, and RhoZCDP."
+            raise UnsupportedMeasureError(
+                output_measure,
+                (
+                    f"Unsupported output measure ({output_measure}):"
+                    " composition only supports PureDP, ApproxDP, and RhoZCDP."
+                ),
             )
         for measurement in measurements:
             if measurement.input_domain != input_domain:
+                mismatched_domains = [meas.input_domain for meas in measurements]
                 raise DomainMismatchError(
-                    (measurement.input_domain, input_domain),
+                    mismatched_domains,
                     (
                         "Can not compose measurements: mismatching input domains "
                         f"{input_domain} and {measurement.input_domain}."
                     ),
                 )
             if measurement.input_metric != input_metric:
+                mismatched_metrics = [meas.input_metric for meas in measurements]
                 raise MetricMismatchError(
-                    (measurement.input_metric, input_metric),
+                    mismatched_metrics,
                     (
                         "Can not compose measurements: mismatching input metrics "
                         f"{input_metric} and {measurement.input_metric}."
                     ),
                 )
             if measurement.output_measure != output_measure:
-                raise ValueError(
-                    "Can not compose measurements: mismatching output measures "
-                    f"{output_measure} and {measurement.output_measure}."
+                mismatched_measures = [meas.output_measure for meas in measurements]
+                raise MeasureMismatchError(
+                    mismatched_measures,
+                    (
+                        "Can not compose measurements: mismatching output measures "
+                        f"{output_measure} and {measurement.output_measure}."
+                    ),
                 )
             if measurement.is_interactive:
                 raise ValueError("Cannot compose interactive measurements.")

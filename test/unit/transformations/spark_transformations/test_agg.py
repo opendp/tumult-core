@@ -11,7 +11,6 @@ from parameterized import parameterized
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
-    DomainColumnError,
     SparkColumnsDescriptor,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -19,6 +18,7 @@ from tmlt.core.domains.spark_domains import (
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.exceptions import DomainColumnError
 from tmlt.core.metrics import (
     AbsoluteDifference,
     HammingDistance,

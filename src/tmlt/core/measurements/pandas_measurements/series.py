@@ -16,9 +16,9 @@ import pandas as pd
 from pyspark.sql.types import DataType, DoubleType
 from typeguard import typechecked
 
-from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasSeriesDomain
+from tmlt.core.exceptions import UnsupportedDomainError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,

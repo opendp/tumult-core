@@ -7,9 +7,8 @@ from typing import Any, Callable, Optional
 
 from typeguard import typechecked
 
-from tmlt.core.domains.base import DomainMismatchError
+from tmlt.core.exceptions import DomainMismatchError, MetricMismatchError
 from tmlt.core.measurements.base import Measurement
-from tmlt.core.metrics import MetricMismatchError
 from tmlt.core.transformations.base import Transformation
 
 

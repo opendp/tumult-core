@@ -13,7 +13,7 @@ import numpy as np
 import sympy as sp
 from parameterized import parameterized, parameterized_class
 
-from tmlt.core.domains.base import Domain, OutOfDomainError, UnsupportedDomainError
+from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import DictDomain, ListDomain
 from tmlt.core.domains.numpy_domains import (
     NumpyFloatDomain,
@@ -25,6 +25,7 @@ from tmlt.core.domains.spark_domains import (
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.exceptions import OutOfDomainError, UnsupportedDomainError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.interactive_measurements import (
     DecoratedQueryable,

@@ -9,7 +9,7 @@ from typeguard import typechecked
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.measures import Measure
-from tmlt.core.metrics import Metric
+from tmlt.core.metrics import Metric, UnsupportedCombinationError
 
 
 class Measurement(ABC):
@@ -32,9 +32,12 @@ class Measurement(ABC):
             is_interactive: Whether the measurement is interactive.
         """
         if not input_metric.supports_domain(input_domain):
-            raise ValueError(
-                f"Input metric {input_metric} and input domain {input_domain} are not"
-                " compatible."
+            raise UnsupportedCombinationError(
+                (input_metric, input_domain),
+                (
+                    f"Input metric {input_metric} and input domain {input_domain} are"
+                    " not compatible."
+                ),
             )
         self._input_domain = input_domain
         self._input_metric = input_metric

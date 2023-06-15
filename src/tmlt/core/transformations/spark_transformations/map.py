@@ -10,9 +10,13 @@ import sympy as sp
 from pyspark.sql import DataFrame, Row, SparkSession
 from typeguard import typechecked
 
-from tmlt.core.domains.base import DomainMismatchError, UnsupportedDomainError
 from tmlt.core.domains.collections import ListDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain, SparkRowDomain
+from tmlt.core.exceptions import (
+    DomainMismatchError,
+    UnsupportedDomainError,
+    UnsupportedMetricError,
+)
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -20,7 +24,6 @@ from tmlt.core.metrics import (
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
-    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
