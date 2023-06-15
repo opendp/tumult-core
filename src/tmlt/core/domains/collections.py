@@ -8,24 +8,8 @@ from typing import Any, Dict, Mapping, Optional
 
 from typeguard import check_type, typechecked
 
-from tmlt.core.domains.base import Domain, OutOfDomainError
-
-
-class DomainKeyError(Exception):
-    """Exception type that indicates that a key is not in the given domain."""
-
-    def __init__(self, domain: Domain, key: Any, msg: str):
-        """Constructor.
-
-        Args:
-            domain: The domain on which this error was raised.
-            key: The key that's not in the domain (or a collection of keys that
-                aren't in the domain).
-            msg: The error message.
-        """
-        self.key = key
-        self.domain = domain
-        super().__init__(domain, key, msg)
+from tmlt.core.domains.base import Domain
+from tmlt.core.exceptions import OutOfDomainError
 
 
 @dataclass(frozen=True, eq=True)

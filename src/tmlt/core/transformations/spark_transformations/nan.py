@@ -15,17 +15,16 @@ from pyspark.sql import functions as sf
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import (
-    DomainColumnError,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
 )
+from tmlt.core.exceptions import DomainColumnError, UnsupportedMetricError
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
-    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput

@@ -8,13 +8,8 @@ from pyspark.sql import DataFrame
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.metrics import (
-    IfGroupedBy,
-    RootSumOfSquared,
-    SumOf,
-    SymmetricDifference,
-    UnsupportedMetricError,
-)
+from tmlt.core.exceptions import UnsupportedMetricError
+from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.truncation import limit_keys_per_group, truncate_large_groups

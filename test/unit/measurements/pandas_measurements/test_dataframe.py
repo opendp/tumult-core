@@ -20,7 +20,7 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
-from tmlt.core.domains.spark_domains import DomainColumnError
+from tmlt.core.exceptions import DomainColumnError
 from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
 from tmlt.core.measurements.pandas_measurements.series import Aggregate, NoisyQuantile
 from tmlt.core.measures import ApproxDP, Measure, PureDP, RhoZCDP

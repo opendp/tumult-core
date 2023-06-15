@@ -13,8 +13,8 @@ from unittest.mock import call
 import numpy as np
 from parameterized import parameterized
 
-from tmlt.core.domains.base import Domain, UnsupportedDomainError
-from tmlt.core.domains.collections import DictDomain, DomainKeyError
+from tmlt.core.domains.base import Domain
+from tmlt.core.domains.collections import DictDomain
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -22,6 +22,7 @@ from tmlt.core.domains.spark_domains import (
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.exceptions import DomainKeyError, UnsupportedDomainError
 from tmlt.core.metrics import (
     AbsoluteDifference,
     AddRemoveKeys,

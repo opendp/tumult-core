@@ -7,7 +7,8 @@ from typing import Union
 import pandas as pd
 from parameterized import parameterized
 
-from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.exceptions import DomainColumnError
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,

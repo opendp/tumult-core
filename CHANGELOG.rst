@@ -16,6 +16,11 @@ Added
 - Added a new error, :class:`~.DomainMismatchError`, which is raised when two or more domains should match but do not.
 - Added a new error, :class:`~.UnsupportedMetricError`, which is raised when an unsupported metric is used.
 - Added a new error, :class:`~.MetricMismatchError`, which is raised when two or more metrics should match but do not.
+- Added a new error, :class:`~.UnsupportedMeasureError`, which is raised when an unsupported measure is used.
+- Added a new error, :class:`~.MeasureMismatchError`, which is raised when two or more measures should match but do not.
+- Added a new error, :class:`~.UnsupportedCombinationError`, which is raised when some combination of domain, metric, and measure is not supported (but each one is individually valid).
+- Added a new error, :class:`~.UnsupportedNoiseMechanismError`, which is raised when a user tries to create a measurement with a noise mechanism that is not supported.
+- Added a new error, :class:`~.UnsupportedSympyExprError`, which is raised when a user tries to create an :class:`~.ExactNumber` with an invalid SymPy expression.
 
 Changed
 ~~~~~~~

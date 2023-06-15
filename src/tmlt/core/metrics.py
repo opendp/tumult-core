@@ -19,7 +19,7 @@ from pyspark.sql import functions as sf
 from pyspark.sql.session import SparkSession
 from typeguard import typechecked
 
-from tmlt.core.domains.base import Domain, OutOfDomainError
+from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import DictDomain, ListDomain
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
@@ -28,45 +28,10 @@ from tmlt.core.domains.spark_domains import (
     SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
 )
+from tmlt.core.exceptions import OutOfDomainError, UnsupportedCombinationError
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.validation import validate_exact_number
-
-
-class UnsupportedMetricError(ValueError):
-    """Exception raised when a given metric is not supported.
-
-    Attributes:
-        metric: The metric that is not supported.
-    """
-
-    def __init__(self, metric: Metric, msg: str):
-        """Constructor.
-
-        Args:
-          metric: The metric that is not supported.
-          msg: The error message.
-        """
-        self.metric = metric
-        super().__init__(msg)
-
-
-class MetricMismatchError(ValueError):
-    """Exception raised when two or more metrics should match, but don't.
-
-    Attributes:
-        metrics: The metrics that should match, but do not.
-    """
-
-    def __init__(self, metrics: Iterable[Metric], msg: str):
-        """Constructor.
-
-        Args:
-            metrics: The metrics that do not match.
-            msg: The error message.
-        """
-        self.metrics = metrics
-        super().__init__(msg)
 
 
 class Metric(ABC):
@@ -97,7 +62,9 @@ class Metric(ABC):
     ) -> None:
         """Raise an exception if the arguments to a distance method aren't valid."""
         if not self.supports_domain(domain):
-            raise ValueError(f"{repr(self)} does not support domain {repr(domain)}.")
+            raise UnsupportedCombinationError(
+                (self, domain), f"{repr(self)} does not support domain {repr(domain)}."
+            )
         try:
             domain.validate(value1)
         except OutOfDomainError as exception:

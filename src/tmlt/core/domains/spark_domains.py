@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Collection, Mapping, Optional, Sequence, Union
+from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
 from pyspark import Row
@@ -35,23 +35,6 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
-
-
-class DomainColumnError(Exception):
-    """Exception type for when a column is not in the given domain's schema."""
-
-    def __init__(self, domain: Domain, column: Union[str, Collection[str]], msg: str):
-        """Constructor.
-
-        Args:
-            domain: The domain on which this error was raised.
-            column: The column that's not in the domain's schema, or a collection of
-                columns that are not in the domain's schema.
-            msg: The error message.
-        """
-        self.domain = domain
-        self.column = column
-        super().__init__(msg)
 
 
 class SparkColumnDescriptor(ABC):

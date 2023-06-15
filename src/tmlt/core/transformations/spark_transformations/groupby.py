@@ -24,13 +24,13 @@ from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkGroupedDataFrameDomain,
 )
+from tmlt.core.exceptions import UnsupportedMetricError
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
-    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput

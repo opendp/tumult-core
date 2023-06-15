@@ -10,19 +10,21 @@ import pandas as pd
 from pyspark.sql.types import StructField, StructType
 from typeguard import check_type, typechecked
 
-from tmlt.core.domains.base import DomainMismatchError
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
-from tmlt.core.domains.spark_domains import DomainColumnError
+from tmlt.core.exceptions import (
+    DomainColumnError,
+    DomainMismatchError,
+    MeasureMismatchError,
+    MetricMismatchError,
+    UnsupportedMeasureError,
+    UnsupportedMetricError,
+)
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.pandas_measurements.series import (
     Aggregate as AggregateSeries,
 )
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
-from tmlt.core.metrics import (
-    HammingDistance,
-    SymmetricDifference,
-    UnsupportedMetricError,
-)
+from tmlt.core.metrics import HammingDistance, SymmetricDifference
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
@@ -141,8 +143,9 @@ class AggregateByColumn(Aggregate):
                     aggregation_function.input_metric,
                 )
             elif aggregation_function.input_metric != input_metric:
-                raise ValueError(
-                    "All of the aggregation functions must have the same input metric."
+                raise MetricMismatchError(
+                    (aggregation_function.input_metric, input_metric),
+                    "All of the aggregation functions must have the same input metric.",
                 )
         assert input_metric is not None
 
@@ -151,18 +154,24 @@ class AggregateByColumn(Aggregate):
         output_measure: Optional[Union[PureDP, RhoZCDP]] = None
         for aggregation_function in column_to_aggregation.values():
             if not isinstance(aggregation_function.output_measure, (PureDP, RhoZCDP)):
-                raise ValueError(
-                    "The output measure of the aggregation function must be either"
-                    " PureDP or RhoZCDP."
+                raise UnsupportedMeasureError(
+                    aggregation_function.output_measure,
+                    (
+                        "The output measure of the aggregation function must be either"
+                        " PureDP or RhoZCDP."
+                    ),
                 )
             if output_measure is None:
                 output_measure = cast(
                     Union[PureDP, RhoZCDP], aggregation_function.output_measure
                 )
             elif aggregation_function.output_measure != output_measure:
-                raise ValueError(
-                    "All of the aggregation functions must have the same output "
-                    "measure."
+                raise MeasureMismatchError(
+                    (aggregation_function.output_measure, output_measure),
+                    (
+                        "All of the aggregation functions must have the same output "
+                        "measure."
+                    ),
                 )
         assert output_measure is not None
 

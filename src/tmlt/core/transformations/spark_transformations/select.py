@@ -9,14 +9,14 @@ from typing import List, Union
 from pyspark.sql import DataFrame
 from typeguard import typechecked
 
-from tmlt.core.domains.spark_domains import DomainColumnError, SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.exceptions import DomainColumnError, UnsupportedMetricError
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
-    UnsupportedMetricError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput

@@ -11,12 +11,12 @@ from parameterized import parameterized
 from pyspark.sql import Row
 
 from tmlt.core.domains.spark_domains import (
-    DomainColumnError,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.exceptions import DomainColumnError
 from tmlt.core.metrics import (
     AbsoluteDifference,
     HammingDistance,

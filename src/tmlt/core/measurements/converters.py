@@ -8,6 +8,7 @@ from typing import Any, Tuple
 import sympy as sp
 from typeguard import typechecked
 
+from tmlt.core.exceptions import UnsupportedMeasureError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import ApproxDP, PureDP, RhoZCDP
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -24,7 +25,9 @@ class PureDPToRhoZCDP(Measurement):
             pure_dp_measurement: The pure DP measurement to convert.
         """
         if pure_dp_measurement.output_measure != PureDP():
-            raise ValueError("Input measure must be pure dp.")
+            raise UnsupportedMeasureError(
+                pure_dp_measurement.output_measure, "Input measure must be pure dp."
+            )
         if pure_dp_measurement.is_interactive:
             raise ValueError("Can only convert non-interactive measurements.")
 
@@ -99,7 +102,9 @@ class PureDPToApproxDP(Measurement):
             pure_dp_measurement: The pure DP measurement to convert.
         """
         if pure_dp_measurement.output_measure != PureDP():
-            raise ValueError("Input measure must be pure DP.")
+            raise UnsupportedMeasureError(
+                pure_dp_measurement.output_measure, "Input measure must be pure DP."
+            )
         if pure_dp_measurement.is_interactive:
             raise ValueError("Can only convert non-interactive measurements.")
 
@@ -167,7 +172,9 @@ class RhoZCDPToApproxDP(Measurement):
             zcdp_measurement: The zCDP measurement to convert.
         """
         if zcdp_measurement.output_measure != RhoZCDP():
-            raise ValueError("Input measure must be rho zCDP.")
+            raise UnsupportedMeasureError(
+                zcdp_measurement.output_measure, "Input measure must be rho zCDP."
+            )
         if zcdp_measurement.is_interactive:
             raise ValueError("Can only convert non-interactive measurements.")
 

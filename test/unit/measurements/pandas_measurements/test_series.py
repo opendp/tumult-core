@@ -15,13 +15,13 @@ import sympy as sp
 from parameterized import parameterized
 from pyspark.sql.types import DoubleType
 
-from tmlt.core.domains.base import UnsupportedDomainError
 from tmlt.core.domains.numpy_domains import (
     NumpyFloatDomain,
     NumpyIntegerDomain,
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasSeriesDomain
+from tmlt.core.exceptions import UnsupportedDomainError
 from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,
     AddGeometricNoise,
