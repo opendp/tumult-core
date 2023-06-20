@@ -133,7 +133,7 @@ Examples:
 """  # pylint: disable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2022
+# Copyright Tumult Labs 2023
 
 from fractions import Fraction
 from typing import Any, Union

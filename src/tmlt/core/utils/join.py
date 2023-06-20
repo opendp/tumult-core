@@ -1,7 +1,7 @@
 """Utilities related to joining dataframes."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2022
+# Copyright Tumult Labs 2023
 
 import dataclasses
 from typing import Dict, List, Optional, Tuple, Union

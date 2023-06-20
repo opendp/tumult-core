@@ -1,7 +1,7 @@
 """Tests for :mod:`~tmlt.core.util.grouped_dataframe`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2022
+# Copyright Tumult Labs 2023
 
 import pandas as pd
 from parameterized import parameterized

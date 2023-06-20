@@ -8,7 +8,7 @@ derived transformations (such as :func:`create_copy_and_transform_value`) suppor
 """
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2022
+# Copyright Tumult Labs 2023
 
 from typing import Any, Callable, Dict, List, Mapping, Tuple, Union, cast
 
