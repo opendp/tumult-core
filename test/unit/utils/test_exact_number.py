@@ -9,7 +9,7 @@ from parameterized import parameterized
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2022
+# Copyright Tumult Labs 2023
 
 
 class TestExactNumber(TestCase):
