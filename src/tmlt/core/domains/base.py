@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from tmlt.core.exceptions import OutOfDomainError
+from tmlt.core.utils.misc import get_fullname
 
 
 class Domain(ABC):
@@ -24,7 +25,8 @@ class Domain(ABC):
             raise OutOfDomainError(
                 self,
                 value,
-                f"Value must be {self.carrier_type}, instead it is {value.__class__}.",
+                f"Value must be {get_fullname(self.carrier_type)}, instead it is "
+                f"{get_fullname(value.__class__)}.",
             )
 
     def __contains__(self, value: Any) -> bool:

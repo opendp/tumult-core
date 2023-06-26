@@ -1,245 +1,699 @@
 """Unit tests for :mod:`~tmlt.core.domains.numpy`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
-from typing import Any, Optional
-from unittest.case import TestCase
+# Copyright Tumult Labs 2022
+
+from contextlib import nullcontext as does_not_raise
+from itertools import combinations_with_replacement
+from test.unit.domains.abstract import DomainTests
+from typing import Any, Callable, ContextManager, Dict, Optional, Type
 
 import numpy as np
-from parameterized import parameterized
+import pytest
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
+from tmlt.core.domains.collections import ListDomain
 from tmlt.core.domains.numpy_domains import (
     NumpyFloatDomain,
     NumpyIntegerDomain,
     NumpyStringDomain,
 )
+from tmlt.core.utils.misc import get_fullname
+
+_float_domains = {
+    "base_float_domain": NumpyFloatDomain(),
+    "size_float_domain": NumpyFloatDomain(size=32),
+    "nan_float_domain": NumpyFloatDomain(allow_nan=True),
+    "inf_float_domain": NumpyFloatDomain(allow_inf=True),
+    "nan_inf_float_domain": NumpyFloatDomain(allow_nan=True, allow_inf=True),
+}
 
 
-class TestNumpyFloatDomain(TestCase):
-    """Tests for :class:`~tmlt.core.domains.numpy.NumpyFloatDomain`."""
+class TestNumpyIntegerDomain(DomainTests):
+    """Tests for :class:`~tmlt.core.domains.numpy_domains.NumpyIntegerDomain`."""
 
-    def setUp(self):
-        """Setup."""
-        self.float_domain = NumpyFloatDomain()
-        self.float32_domain = NumpyFloatDomain(size=32)
-        self.nullable_float_domain = NumpyFloatDomain(allow_nan=True)
-        self.float_inf_domain = NumpyFloatDomain(allow_inf=True)
-        self.nullable_float_inf_domain = NumpyFloatDomain(
-            allow_nan=True, allow_inf=True
+    @pytest.fixture
+    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+        """Returns the type of the domain to be tested."""
+        return NumpyIntegerDomain
+
+    @pytest.mark.parametrize(
+        "domain_args, expectation, exception_properties",
+        [
+            ({}, does_not_raise(), None),
+            ({"size": 32}, does_not_raise(), None),
+            ({"size": 64}, does_not_raise(), None),
+            (
+                {"size": 43},
+                pytest.raises(ValueError, match=f"size must be {32} or {64}, not {43}"),
+                None,
+            ),
+            (
+                {"size": 32.0},
+                pytest.raises(
+                    TypeError,
+                    match=f"type of size must be {get_fullname(int)}; got "
+                    f"{get_fullname(float)} instead",
+                ),
+                None,
+            ),
+            (
+                {"size": "32"},
+                pytest.raises(
+                    TypeError,
+                    match=f"type of size must be {get_fullname(int)}; got "
+                    f"{get_fullname(str)} instead",
+                ),
+                None,
+            ),
+        ],
+    )
+    def test_construct_component(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Initialization behaves correctly.
+
+        The domain is constructed correctly and raises exceptions when initialized with
+        invalid inputs.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_construct_component(
+            domain_type, domain_args, expectation, exception_properties
         )
 
-    @parameterized.expand([(True, None), ("False", True), (True, 0.1)])
-    def test_invalid_inputs(self, allow_inf: bool, allow_nan: bool):
-        """Test FloatDomain with invalid inputs."""
-        with self.assertRaises(TypeError):
-            NumpyFloatDomain(allow_inf, allow_nan)
-
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "domain, other_domain, expected",
         [
-            (NumpyFloatDomain(), True, False, False, False, False),
-            (NumpyFloatDomain(size=32), False, True, False, False, False),
-            (NumpyFloatDomain(allow_nan=True), False, False, True, False, False),
-            (NumpyFloatDomain(allow_inf=True), False, False, False, True, False),
-            (
-                NumpyFloatDomain(allow_nan=True, allow_inf=True),
-                False,
-                False,
-                False,
-                False,
-                True,
-            ),
-        ]
+            (NumpyIntegerDomain(), NumpyFloatDomain(), False),
+            (NumpyIntegerDomain(size=32), NumpyFloatDomain(), False),
+            (NumpyIntegerDomain(), NumpyIntegerDomain(), True),
+            (NumpyIntegerDomain(size=32), NumpyIntegerDomain(), False),
+        ],
     )
-    def test_eq(
-        self,
-        domain: NumpyFloatDomain,
-        float_only: bool,
-        float32_only: bool,
-        nullable_float: bool,
-        float_with_inf: bool,
-        nullable_float_inf: bool,
-    ):
-        """Tests that __eq__  works correctly."""
-        self.assertEqual(self.float_domain == domain, float_only)
-        self.assertEqual(self.float32_domain == domain, float32_only)
-        self.assertEqual(self.nullable_float_domain == domain, nullable_float)
-        self.assertEqual(self.float_inf_domain == domain, float_with_inf)
-        self.assertEqual(self.nullable_float_inf_domain == domain, nullable_float_inf)
+    def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
+        """__eq__ works correctly.
 
-    @parameterized.expand(
+        Args:
+            domain: The domain to test.
+            other_domain: The domain to compare to.
+            expected: The expected result of the comparison.
+        """
+        super().test_eq(domain, other_domain, expected)
+
+    @pytest.mark.skip("No arguments to mutate")
+    @pytest.mark.parametrize("domain_args, key, mutator", [])
+    def test_mutable_inputs(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        key: str,
+        mutator: Callable[[Any], Any],
+    ):
+        """The mutable inputs to the domain are copied.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            key: The parameter name to be changed.
+            mutator: A lambda function that mutates the parameter.
+        """
+        super().test_mutable_inputs(domain_type, domain_args, key, mutator)
+
+    @pytest.mark.parametrize(
+        "domain, expected_properties",
         [
+            (NumpyIntegerDomain(), {"size": 64, "carrier_type": np.int64}),
+            (NumpyIntegerDomain(size=32), {"size": 32, "carrier_type": np.int32}),
+            (NumpyIntegerDomain(size=64), {"size": 64, "carrier_type": np.int64}),
+        ],
+    )
+    def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
+        """All properties have the expected values.
+
+        Args:
+            domain: The constructed domain to be tested.
+            expected_properties: A dictionary containing all the property:value pairs
+                domain is expected to have.
+        """
+        super().test_properties(domain, expected_properties)
+
+    @pytest.mark.parametrize(
+        "domain", [NumpyIntegerDomain(), NumpyIntegerDomain(size=32)]
+    )
+    def test_property_immutability(self, domain: Domain):
+        """The properties return copies for mutable values.
+
+        Args:
+            domain: The domain to be tested.
+        """
+        super().test_property_immutability(domain)
+
+    @pytest.mark.parametrize(
+        "domain, candidate, expectation, exception_properties",
+        [
+            (NumpyIntegerDomain(), np.int64(1), does_not_raise(), None),
             (
-                np.float64(1.0),
-                True,
-                False,
-                True,
-                True,
-                True,
-                f"Value must be {np.float32}, instead it is {np.float64}.",
+                NumpyIntegerDomain(),
+                np.int32(1),
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(np.int64)}, instead it is "
+                    f"{get_fullname(np.int32)}",
+                ),
+                {"domain": NumpyIntegerDomain(), "value": np.int32(1)},
             ),
             (
-                np.float32(1.0),
-                False,
-                True,
-                False,
-                False,
-                False,
-                f"Value must be {np.float64}, instead it is {np.float32}.",
+                NumpyIntegerDomain(),
+                np.float64(1),
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(np.int64)}, instead it is "
+                    f"{get_fullname(np.float64)}",
+                ),
+                {"domain": NumpyIntegerDomain(), "value": np.float64(1)},
             ),
             (
-                np.float64(float("inf")),
-                False,
-                False,
-                False,
-                True,
-                True,
-                "Value is infinite.",
+                NumpyIntegerDomain(size=32),
+                np.int64(1),
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(np.int32)}, instead it is "
+                    f"{get_fullname(np.int64)}",
+                ),
+                {"domain": NumpyIntegerDomain(size=32), "value": np.int64(1)},
             ),
             (
-                np.float64(-float("inf")),
-                False,
-                False,
-                False,
-                True,
-                True,
-                "Value is infinite.",
-            ),
-            (
-                np.float64(float("nan")),
-                False,
-                False,
-                True,
-                False,
-                True,
-                "Value is NaN.",
-            ),
-            (
+                NumpyIntegerDomain(size=32),
                 1,
-                False,
-                False,
-                False,
-                False,
-                False,
-                f"Value must be {np.float64}, instead it is {int}.",
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(np.int32)}, instead it is "
+                    f"{get_fullname(int)}",
+                ),
+                {"domain": NumpyIntegerDomain(size=32), "value": 1},
             ),
-        ]
+            (NumpyIntegerDomain(size=32), np.int32(1), does_not_raise(), None),
+            (
+                NumpyIntegerDomain(size=32),
+                np.float64(1),
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(np.int32)}, instead it is "
+                    f"{get_fullname(np.float64)}",
+                ),
+                {"domain": NumpyIntegerDomain(size=32), "value": np.float64(1)},
+            ),
+        ],
     )
     def test_validate(
         self,
+        domain: Domain,
         candidate: Any,
-        float_only: bool,
-        float32_only: bool,
-        float_or_nan: bool,
-        float_or_inf: bool,
-        float_or_nan_or_inf: bool,
-        exception: str,
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
     ):
-        """Tests that validate works correctly."""
-        if float_only:
-            self.assertEqual(self.float_domain.validate(candidate), None)
-        else:
-            with self.assertRaisesRegex(OutOfDomainError, exception):
-                self.float_domain.validate(candidate)
+        """Validate works correctly.
 
-        if float_or_nan:
-            self.assertEqual(self.nullable_float_domain.validate(candidate), None)
-        else:
-            with self.assertRaisesRegex(OutOfDomainError, exception):
-                self.nullable_float_domain.validate(candidate)
+        Args:
+            domain: The domain to test.
+            candidate: The value to validate using domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_validate(domain, candidate, expectation, exception_properties)
 
-        if float_or_inf:
-            self.assertEqual(self.float_inf_domain.validate(candidate), None)
-        else:
-            with self.assertRaisesRegex(OutOfDomainError, exception):
-                self.float_inf_domain.validate(candidate)
-
-        if float_or_nan_or_inf:
-            self.assertEqual(self.nullable_float_inf_domain.validate(candidate), None)
-        else:
-            with self.assertRaisesRegex(OutOfDomainError, exception):
-                self.nullable_float_inf_domain.validate(candidate)
-
-        if float32_only:
-            self.assertEqual(self.float32_domain.validate(candidate), None)
-        else:
-            if isinstance(candidate, int):
-                exception = f"Value must be {np.float32}, instead it is {int}."
-            else:
-                exception = f"Value must be {np.float32}, instead it is {np.float64}."
-
-            with self.assertRaisesRegex(OutOfDomainError, exception):
-                self.float32_domain.validate(candidate)
-
-
-class TestNumpyIntegerDomain(TestCase):
-    """Tests for :class:`~tmlt.core.domains.numpy.NumpyIntegerDomain`."""
-
-    def setUp(self):
-        """Setup."""
-        self.int64_domain = NumpyIntegerDomain()
-        self.int32_domain = NumpyIntegerDomain(size=32)
-
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "dtype, expected, expectation",
         [
-            (NumpyFloatDomain(), False, False),
-            (NumpyIntegerDomain(), True, False),
-            (NumpyIntegerDomain(size=32), False, True),
-        ]
+            (np.dtype(np.int64), NumpyIntegerDomain(), does_not_raise()),
+            (np.dtype(np.int32), NumpyIntegerDomain(size=32), does_not_raise()),
+            (
+                np.dtype([("f1", np.int64)]),
+                None,
+                pytest.raises(KeyError, match=f"{np.dtype([('f1', np.int64)])}"),
+            ),
+        ],
     )
-    def test_eq(self, domain: Domain, int64_domain: bool, int32_domain: bool):
-        """Tests that __eq__  works correctly."""
-        self.assertEqual(self.int64_domain == domain, int64_domain)
-        self.assertEqual(self.int32_domain == domain, int32_domain)
+    def test_from_np_type(  # pylint: disable=no-self-use
+        self,
+        domain_type: Type[NumpyIntegerDomain],
+        dtype: np.dtype,
+        expected: NumpyIntegerDomain,
+        expectation: ContextManager[None],
+    ):
+        """from_np_type works correctly.
 
-    @parameterized.expand(
+        Args:
+            domain_type: The type of domain to be constructed.
+            dtype: The dtype to test.
+            expected: The expected domain to be constructed.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+        """
+        with expectation:
+            assert domain_type.from_np_type(dtype) == expected
+
+
+class TestNumpyFloatDomain(DomainTests):
+    """Tests for :class:`~tmlt.core.domains.numpy_domains.NumpyFloatDomain`."""
+
+    @pytest.fixture
+    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+        """Returns the type of the domain to be tested."""
+        return NumpyFloatDomain
+
+    @pytest.mark.parametrize(
+        "domain_args, expectation, exception_properties",
         [
-            (np.int64(1), True, False),
-            (np.float64(1.1), False, False),
-            (np.int32(3), False, True),
-        ]
+            ({}, does_not_raise(), None),
+            ({"size": 32}, does_not_raise(), None),
+            ({"size": 64}, does_not_raise(), None),
+            (
+                {"size": 128},
+                pytest.raises(
+                    ValueError, match=f"size must be {32} or {64}, not {128}"
+                ),
+                None,
+            ),
+            ({"allow_inf": True, "allow_nan": True}, does_not_raise(), None),
+            (
+                {"allow_inf": True, "allow_nan": None},
+                pytest.raises(
+                    TypeError,
+                    match=f"type of allow_nan must be {get_fullname(bool)}; got "
+                    f"{get_fullname(None)} instead",
+                ),
+                None,
+            ),
+            (
+                {"allow_inf": "False", "allow_nan": True},
+                pytest.raises(
+                    TypeError,
+                    match=f"type of allow_inf must be {get_fullname(bool)}; got "
+                    f"{get_fullname(str)} instead",
+                ),
+                None,
+            ),
+            (
+                {"allow_inf": True, "allow_nan": 0.1},
+                pytest.raises(
+                    TypeError,
+                    match=f"type of allow_nan must be {get_fullname(bool)}; got "
+                    f"{get_fullname(float)} instead",
+                ),
+                None,
+            ),
+            (
+                {"allow_inf": True, "allow_nan": True, "size": "tom"},
+                pytest.raises(
+                    TypeError,
+                    match=f"type of size must be {get_fullname(int)}; got "
+                    f"{get_fullname(str)} instead",
+                ),
+                None,
+            ),
+            (
+                {"allow_inf": True, "allow_nan": True, "size": np.int64(32)},
+                pytest.raises(
+                    TypeError,
+                    match=f"type of size must be {get_fullname(int)}; got "
+                    f"{get_fullname(np.int64)} instead",
+                ),
+                None,
+            ),
+            (
+                {"allow_inf": True, "allow_nan": True, "size": 128},
+                pytest.raises(
+                    ValueError, match=f"size must be {32} or {64}, not {128}"
+                ),
+                None,
+            ),
+        ],
     )
-    def test_validate(self, candidate: Any, is_int64: bool, is_int32: bool):
-        """Tests that validate works correctly."""
-        if is_int64:
-            self.assertEqual(self.int64_domain.validate(candidate), None)
-        else:
-            with self.assertRaisesRegex(
-                OutOfDomainError,
-                f"Value must be {np.int64}, instead it is {candidate.__class__}",
-            ):
-                self.int64_domain.validate(candidate)
+    def test_construct_component(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Initialization behaves correctly.
 
-        if is_int32:
-            self.assertEqual(self.int32_domain.validate(candidate), None)
-        else:
-            with self.assertRaisesRegex(
-                OutOfDomainError,
-                f"Value must be {np.int32}, instead it is {candidate.__class__}",
-            ):
-                self.int32_domain.validate(candidate)
+        The domain is constructed correctly and raises exceptions when initialized with
+        invalid inputs.
 
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_construct_component(
+            domain_type, domain_args, expectation, exception_properties
+        )
 
-class TestNumpyStringDomain(TestCase):
-    """Tests for :class:`~tmlt.core.domains.numpy.NumpyStringDomain`."""
-
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "domain, other_domain, expected",
         [
-            (None, NumpyStringDomain(allow_null=True), None),
-            (None, NumpyStringDomain(allow_null=False), "Value is null."),
-            ("ABC", NumpyStringDomain(allow_null=False), None),
-            ("ABC", NumpyStringDomain(allow_null=True), None),
-        ]
+            (_float_domains[base_key], _float_domains[other_key], base_key == other_key)
+            for (base_key, other_key) in combinations_with_replacement(
+                _float_domains.keys(), 2
+            )
+        ],
     )
-    def test_validate(self, candidate: Any, domain: Domain, exception: Optional[str]):
-        """Tests that validate works correctly."""
-        if exception is not None:
-            with self.assertRaisesRegex(OutOfDomainError, exception):
-                domain.validate(candidate)
-        else:
-            self.assertEqual(domain.validate(candidate), exception)
+    def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
+        """__eq__ works correctly.
 
-    @parameterized.expand(
+        Args:
+            domain: The domain to test.
+            other_domain: The domain to compare to.
+            expected: The expected result of the comparison.
+        """
+        super().test_eq(domain, other_domain, expected)
+
+    @pytest.mark.skip("No arguments to mutate")
+    @pytest.mark.parametrize("domain_args, key, mutator", [])
+    def test_mutable_inputs(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        key: str,
+        mutator: Callable[[Any], Any],
+    ):
+        """The mutable inputs to the domain are copied.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            key: The parameter name to be changed.
+            mutator: A lambda function that mutates the parameter.
+        """
+        super().test_mutable_inputs(domain_type, domain_args, key, mutator)
+
+    @pytest.mark.parametrize(
+        "domain, expected_properties",
+        [
+            (
+                NumpyFloatDomain(),
+                {
+                    "size": 64,
+                    "allow_nan": False,
+                    "allow_inf": False,
+                    "carrier_type": np.float64,
+                },
+            ),
+            (
+                NumpyFloatDomain(size=32),
+                {
+                    "size": 32,
+                    "allow_nan": False,
+                    "allow_inf": False,
+                    "carrier_type": np.float32,
+                },
+            ),
+            (
+                NumpyFloatDomain(allow_nan=True),
+                {
+                    "size": 64,
+                    "allow_nan": True,
+                    "allow_inf": False,
+                    "carrier_type": np.float64,
+                },
+            ),
+            (
+                NumpyFloatDomain(allow_inf=True),
+                {
+                    "size": 64,
+                    "allow_nan": False,
+                    "allow_inf": True,
+                    "carrier_type": np.float64,
+                },
+            ),
+        ],
+    )
+    def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
+        """All properties have the expected values.
+
+        Args:
+            domain: The constructed domain to be tested.
+            expected_properties: A dictionary containing all the property:value pairs
+                domain is expected to have.
+        """
+        super().test_properties(domain, expected_properties)
+
+    @pytest.mark.parametrize(
+        "domain",
+        [
+            NumpyFloatDomain(),
+            NumpyFloatDomain(size=32),
+            NumpyFloatDomain(allow_nan=True),
+            NumpyFloatDomain(allow_inf=True),
+            NumpyFloatDomain(allow_nan=True, allow_inf=True),
+        ],
+    )
+    def test_property_immutability(self, domain: Domain):
+        """The properties return copies for mutable values.
+
+        Args:
+            domain: The domain to be tested.
+        """
+        super().test_property_immutability(domain)
+
+    @pytest.mark.parametrize(
+        "domain, candidate, expectation, exception_properties",
+        [
+            # 32 bit float cases
+            (
+                NumpyFloatDomain(size=32),
+                to_validate,
+                pytest.raises(OutOfDomainError, match=match),
+                {"domain": NumpyFloatDomain(size=32), "value": to_validate},
+            )
+            for to_validate, match in [
+                (
+                    np.float64(1.0),
+                    f"Value must be {get_fullname(np.float32)}, instead it is "
+                    f"{get_fullname(np.float64)}.",
+                ),
+                (np.float32(float("inf")), "Value is infinite."),
+                (np.float32(-float("inf")), "Value is infinite."),
+                # nan != nan, so we ignore the value
+                # (np.float32(float("nan")), "Value is NaN."),
+                (
+                    1,
+                    f"Value must be {get_fullname(np.float32)}, instead it is "
+                    f"{get_fullname(int)}.",
+                ),
+            ]
+        ]
+        + [
+            # 64 should not accept 32
+            (
+                domain,
+                np.float32(1.0),
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(np.float64)}, instead it is "
+                    f"{get_fullname(np.float32)}.",
+                ),
+                {"domain": domain, "value": np.float32(1.0)},
+            )
+            for domain in [
+                NumpyFloatDomain(),
+                NumpyFloatDomain(allow_nan=True),
+                NumpyFloatDomain(allow_inf=True),
+                NumpyFloatDomain(allow_nan=True, allow_inf=True),
+            ]
+        ]
+        + [
+            # Only allow inf if allow_inf is True
+            (
+                domain,
+                np.float64(float("inf")),
+                pytest.raises(OutOfDomainError, match="Value is infinite."),
+                {"domain": domain, "value": np.float64(float("inf"))},
+            )
+            for domain in [NumpyFloatDomain(), NumpyFloatDomain(allow_nan=True)]
+        ]
+        + [
+            # Same thing should happen for negative infinities
+            (
+                domain,
+                np.float64(-float("inf")),
+                pytest.raises(OutOfDomainError, match="Value is infinite."),
+                {"domain": domain, "value": np.float64(-float("inf"))},
+            )
+            for domain in [NumpyFloatDomain(), NumpyFloatDomain(allow_nan=True)]
+        ]
+        + [
+            # Only allow nan if allow_nan is True
+            (
+                domain,
+                np.float64(float("nan")),
+                pytest.raises(OutOfDomainError, match="Value is NaN."),
+                # nan != nan, so we ignore the value
+                {"domain": domain},  # , "value": np.float64(float("nan"))},
+            )
+            for domain in [NumpyFloatDomain(), NumpyFloatDomain(allow_inf=True)]
+        ]
+        + [
+            # Should reject non float values
+            (
+                domain,
+                1,
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(np.float64)}, instead it is "
+                    f"{get_fullname(int)}.",
+                ),
+                {"domain": domain, "value": 1},
+            )
+            for domain in [
+                NumpyFloatDomain(),
+                NumpyFloatDomain(allow_nan=True),
+                NumpyFloatDomain(allow_inf=True),
+                NumpyFloatDomain(allow_nan=True, allow_inf=True),
+            ]
+        ]
+        + [
+            # Should reject regular python floats
+            (
+                domain,
+                1.0,
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(np.float64)}, instead it is "
+                    f"{get_fullname(float)}.",
+                ),
+                {"domain": domain, "value": 1.0},
+            )
+            for domain in [
+                NumpyFloatDomain(),
+                NumpyFloatDomain(allow_nan=True),
+                NumpyFloatDomain(allow_inf=True),
+                NumpyFloatDomain(allow_nan=True, allow_inf=True),
+            ]
+        ],
+    )
+    def test_validate(
+        self,
+        domain: Domain,
+        candidate: Any,
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Validate works correctly.
+
+        Args:
+            domain: The domain to test.
+            candidate: The value to validate using domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_validate(domain, candidate, expectation, exception_properties)
+
+    @pytest.mark.parametrize(
+        "dtype, expected, expectation",
+        [
+            (np.dtype(np.float64), NumpyFloatDomain(), does_not_raise()),
+            (np.dtype(np.float32), NumpyFloatDomain(size=32), does_not_raise()),
+            (
+                np.dtype([("f1", np.int64)]),
+                None,
+                pytest.raises(KeyError, match=f"{np.dtype([('f1', np.int64)])}"),
+            ),
+        ],
+    )
+    def test_from_np_type(  # pylint: disable=no-self-use
+        self,
+        domain_type: Type[NumpyFloatDomain],
+        dtype: np.dtype,
+        expected: NumpyFloatDomain,
+        expectation: ContextManager[None],
+    ):
+        """from_np_type works correctly.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            dtype: The dtype to test.
+            expected: The expected domain to be constructed.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+        """
+        with expectation:
+            assert domain_type.from_np_type(dtype) == expected
+
+
+class TestNumpyStringDomain(DomainTests):
+    """Tests for :class:`~tmlt.core.domains.numpy_domains.NumpyStringDomain`."""
+
+    @pytest.fixture
+    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+        """Returns the type of the domain to be tested."""
+        return NumpyStringDomain
+
+    @pytest.mark.parametrize(
+        "domain_args, expectation, exception_properties",
+        [
+            (
+                {"allow_null": 23},
+                pytest.raises(
+                    TypeError,
+                    match=f"type of allow_null must be {get_fullname(bool)}; got "
+                    f"{get_fullname(int)} instead",
+                ),
+                None,
+            )
+        ],
+    )
+    def test_construct_component(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Initialization behaves correctly.
+
+        The domain is constructed correctly and raises exceptions when initialized with
+        invalid inputs.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_construct_component(
+            domain_type, domain_args, expectation, exception_properties
+        )
+
+    @pytest.mark.parametrize(
+        "domain, other_domain, expected",
         [
             (
                 NumpyStringDomain(allow_null=True),
@@ -256,8 +710,135 @@ class TestNumpyStringDomain(TestCase):
                 NumpyStringDomain(allow_null=False),
                 True,
             ),
-        ]
+            (
+                NumpyStringDomain(allow_null=False),
+                ListDomain(NumpyIntegerDomain()),
+                False,
+            ),
+        ],
     )
-    def test_eq(self, domain1: Domain, domain2: Domain, expected: bool):
-        """Tests that __eq__ works correctly."""
-        self.assertEqual(domain1 == domain2, expected)
+    def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
+        """__eq__ works correctly.
+
+        Args:
+            domain: The domain to test.
+            other_domain: The domain to compare to.
+            expected: The expected result of the comparison.
+        """
+        super().test_eq(domain, other_domain, expected)
+
+    @pytest.mark.skip("No arguments to mutate")
+    @pytest.mark.parametrize("domain_args, key, mutator", [])
+    def test_mutable_inputs(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        key: str,
+        mutator: Callable[[Any], Any],
+    ):
+        """The mutable inputs to the domain are copied.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            key: The parameter name to be changed.
+            mutator: A lambda function that mutates the parameter.
+        """
+        super().test_mutable_inputs(domain_type, domain_args, key, mutator)
+
+    @pytest.mark.parametrize(
+        "domain, expected_properties",
+        [
+            (NumpyStringDomain(), {"allow_null": False, "carrier_type": object}),
+            (
+                NumpyStringDomain(allow_null=True),
+                {"allow_null": True, "carrier_type": object},
+            ),
+        ],
+    )
+    def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
+        """All properties have the expected values.
+
+        Args:
+            domain: The constructed domain to be tested.
+            expected_properties: A dictionary containing all the property:value pairs
+                domain is expected to have.
+        """
+        super().test_properties(domain, expected_properties)
+
+    @pytest.mark.parametrize(
+        "domain", [NumpyStringDomain(), NumpyStringDomain(allow_null=True)]
+    )
+    def test_property_immutability(self, domain: Domain):
+        """The properties return copies for mutable values.
+
+        Args:
+            domain: The domain to be tested.
+        """
+        super().test_property_immutability(domain)
+
+    @pytest.mark.parametrize(
+        "domain, candidate, expectation, exception_properties",
+        [
+            (NumpyStringDomain(allow_null=True), None, does_not_raise(), None),
+            (
+                NumpyStringDomain(allow_null=False),
+                None,
+                pytest.raises(OutOfDomainError, match="Value is null."),
+                {"domain": NumpyStringDomain(allow_null=False), "value": None},
+            ),
+            (NumpyStringDomain(allow_null=False), "ABC", does_not_raise(), None),
+            (NumpyStringDomain(allow_null=True), "ABC", does_not_raise(), None),
+            (NumpyStringDomain(allow_null=False), 123, does_not_raise(), None),
+            (NumpyStringDomain(allow_null=False), np.int64(4), does_not_raise(), None),
+        ],
+    )
+    def test_validate(
+        self,
+        domain: Domain,
+        candidate: Any,
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Validate works correctly.
+
+        Args:
+            domain: The domain to test.
+            candidate: The value to validate using domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_validate(domain, candidate, expectation, exception_properties)
+
+    @pytest.mark.parametrize(
+        "dtype, expected, expectation",
+        [
+            (np.dtype(np.object0), NumpyStringDomain(), does_not_raise()),
+            (
+                np.dtype([("f1", np.int64)]),
+                None,
+                pytest.raises(KeyError, match=f"{np.dtype([('f1', np.int64)])}"),
+            ),
+        ],
+    )
+    def test_from_np_type(  # pylint: disable=no-self-use
+        self,
+        domain_type: Type[NumpyStringDomain],
+        dtype: np.dtype,
+        expected: NumpyStringDomain,
+        expectation: ContextManager[None],
+    ):
+        """from_np_type works correctly.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            dtype: The dtype to test.
+            expected: The expected domain to be constructed.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+        """
+        with expectation:
+            assert domain_type.from_np_type(dtype) == expected

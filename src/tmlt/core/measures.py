@@ -200,6 +200,14 @@ class PrivacyBudget(ABC):
     the budget is infinite) without needing to know the type of the budget.
     """
 
+    @abstractmethod
+    def __init__(self, value: PrivacyBudgetInput) -> None:
+        """Initializes the privacy budget.
+
+        Args:
+            value: The value of the privacy budget.
+        """
+
     @classmethod
     @overload
     def cast(cls, measure: RhoZCDP, value: PrivacyBudgetInput) -> "RhoZCDPBudget":

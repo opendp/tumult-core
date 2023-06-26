@@ -4,7 +4,7 @@
 # Copyright Tumult Labs 2023
 
 import copy
-from typing import List, TypeVar
+from typing import Any, List, TypeVar
 
 import numpy as np
 from pyspark.sql import DataFrame
@@ -88,3 +88,19 @@ def copy_if_mutable(value: T) -> T:
     if isinstance(value, tuple):
         return tuple(copy_if_mutable(item) for item in value)  # type: ignore
     return copy.deepcopy(value)
+
+
+def get_fullname(obj: Any) -> str:
+    """Returns the fully qualified name of the given object.
+
+    Args:
+        obj: Object to get the name of.
+    """
+    if not isinstance(obj, type):
+        obj = obj.__class__
+    module = obj.__module__
+    klass = obj.__name__
+    # If the module is None or built-in, we simply return the class name
+    if module is None or module == str.__class__.__module__:
+        return klass
+    return module + "." + klass

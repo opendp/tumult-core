@@ -10,7 +10,7 @@ import math
 import shutil
 import sys
 import unittest
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from typing import (
     Any,
     Callable,
@@ -63,13 +63,21 @@ from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.type_utils import get_immutable_types
 
 
+# TODO (#2762): We can refactor List[Tuple[str]] to List[str] after removing
+# parameterized
 def get_all_props(Component: type) -> List[Tuple[str]]:
-    """Returns all properties of a component."""
-    return [
+    """Returns all properties and fields of a component."""
+    component_properties = [
         (prop,)
         for prop in dir(Component)
         if isinstance(getattr(Component, prop), property)
     ]
+    component_fields = (
+        [(field.name,) for field in fields(Component)]
+        if is_dataclass(Component)
+        else []
+    )
+    return component_properties + component_fields
 
 
 def assert_property_immutability(component: Any, prop_name: str):

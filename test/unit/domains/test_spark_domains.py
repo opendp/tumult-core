@@ -3,13 +3,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2023
 
+import copy
 import datetime
-from typing import Any, Optional
+from collections.abc import Mapping
+from contextlib import nullcontext as does_not_raise
+from itertools import combinations_with_replacement, product
+from test.conftest import assert_frame_equal_with_sort
+from test.unit.domains.abstract import DomainTests
+from typing import Any, Callable, ContextManager, Dict, Optional, Type
 
 import pandas as pd
-from parameterized import parameterized
+import pytest
+from pyspark import Row
+from pyspark.sql.dataframe import DataFrame
+from pyspark.sql.session import SparkSession
 from pyspark.sql.types import (
+    DataType,
     DateType,
+    DoubleType,
     FloatType,
     IntegerType,
     LongType,
@@ -20,12 +31,14 @@ from pyspark.sql.types import (
 )
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
-from tmlt.core.domains.collections import ListDomain
+from tmlt.core.domains.collections import DictDomain, ListDomain
 from tmlt.core.domains.numpy_domains import (
+    NumpyDomain,
     NumpyFloatDomain,
     NumpyIntegerDomain,
     NumpyStringDomain,
 )
+from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
     SparkColumnDescriptor,
     SparkColumnsDescriptor,
@@ -37,461 +50,898 @@ from tmlt.core.domains.spark_domains import (
     SparkRowDomain,
     SparkStringColumnDescriptor,
     SparkTimestampColumnDescriptor,
+    convert_numpy_domain,
+    convert_pandas_domain,
+    convert_spark_schema,
 )
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
-from tmlt.core.utils.testing import (
-    PySparkTest,
-    assert_property_immutability,
-    get_all_props,
-)
+from tmlt.core.utils.misc import get_fullname
+from tmlt.core.utils.testing import get_all_props
 
 
-class TestSparkDataFrameDomain(PySparkTest):
-    """Tests for :class:`SparkDataFrameDomain`."""
+@pytest.mark.usefixtures("class_spark")
+class TestSparkDataFrameDomain(DomainTests):
+    """Tests for :class:`~tmlt.core.domains.spark_domains.SparkDataFrameDomain`."""
 
-    def setUp(self):
-        """Setup."""
-        self.domain = SparkDataFrameDomain(
+    spark: SparkSession
+
+    @pytest.fixture
+    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+        """Returns the type of the domain to be tested."""
+        return SparkDataFrameDomain
+
+    @pytest.fixture(scope="class")
+    def domain(self) -> SparkDataFrameDomain:  # pylint: disable=no-self-use
+        """Get a base SparkDataFrameDomain."""
+        return SparkDataFrameDomain(
             schema={
-                "A": SparkIntegerColumnDescriptor(),
+                "A": SparkStringColumnDescriptor(),
                 "B": SparkStringColumnDescriptor(),
+                "C": SparkFloatColumnDescriptor(),
             }
         )
 
-    def test_constructor_mutable_arguments(self):
-        """Tests that mutable constructor arguments are copied."""
-        schema = {
-            "A": SparkIntegerColumnDescriptor(),
-            "B": SparkStringColumnDescriptor(),
-        }
-        domain = SparkDataFrameDomain(schema=schema)
-        schema["A"] = SparkFloatColumnDescriptor()
-        self.assertDictEqual(
-            domain.schema,
-            {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},
-        )
-
-    @parameterized.expand(get_all_props(SparkDataFrameDomain))
-    def test_property_immutability(self, prop_name: str):
-        """Tests that given property is immutable."""
-        assert_property_immutability(self.domain, prop_name)
-
-    def test_repr(self):
-        """Tests that __repr__ works correctly."""
-        expected = (
-            "SparkDataFrameDomain(schema={'A':"
-            " SparkIntegerColumnDescriptor(allow_null=False, size=64), 'B':"
-            " SparkStringColumnDescriptor(allow_null=False)})"
-        )
-        print(repr(self.domain))
-        self.assertEqual(repr(self.domain), expected)
-
-
-class TestSparkRowDomain(PySparkTest):
-    """Tests for :class:`SparkRowDomain`."""
-
-    def setUp(self):
-        """Setup."""
-        self.domain = SparkRowDomain(
-            schema={
-                "A": SparkIntegerColumnDescriptor(),
-                "B": SparkStringColumnDescriptor(),
-            }
-        )
-
-    def test_constructor_mutable_arguments(self):
-        """Tests that mutable constructor arguments are copied."""
-        schema = {
-            "A": SparkIntegerColumnDescriptor(),
-            "B": SparkStringColumnDescriptor(),
-        }
-        domain = SparkRowDomain(schema=schema)
-        schema["A"] = SparkFloatColumnDescriptor()
-        self.assertDictEqual(
-            domain.schema,
-            {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},
-        )
-
-    @parameterized.expand(get_all_props(SparkRowDomain))
-    def test_property_immutability(self, prop_name: str):
-        """Tests that given property is immutable."""
-
-        assert_property_immutability(self.domain, prop_name)
-
-    def test_repr(self):
-        """Tests that __repr__ works correctly."""
-        expected = (
-            "SparkRowDomain(schema={'A': SparkIntegerColumnDescriptor(allow_null=False,"
-            " size=64), 'B': SparkStringColumnDescriptor(allow_null=False)})"
-        )
-        self.assertEqual(repr(self.domain), expected)
-
-
-class TestSparkBasedDomains(PySparkTest):
-    """Tests for Spark-based Domains.
-
-    In particular, the following domains are tested:
-        1. SparkDataFrameDomain
-        2. SparkRowDomain
-        3. ListDomain[SparkRowDomain]
-    """
-
-    def setUp(self):
-        """Setup Schema."""
-
-        self.schema = {
-            "A": SparkStringColumnDescriptor(),
-            "B": SparkStringColumnDescriptor(),
-            "C": SparkFloatColumnDescriptor(),
-        }
-
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "domain_args, expectation, exception_properties",
         [
-            (SparkDataFrameDomain, StringType),
-            (SparkRowDomain, int),
-            (SparkRowDomain, StringType),
-        ]
-    )
-    def test_invalid_spark_domain_inputs(self, SparkDomain: type, invalid_input: type):
-        """Test Spark-based domains with invalid inputs."""
-        with self.assertRaises(TypeError):
-            SparkDomain(invalid_input)
-
-    @parameterized.expand(
-        [
-            (  # LongType() instead of DoubleType()
-                SparkDataFrameDomain,
-                pd.DataFrame(
-                    [["A", "B", 10], ["V", "E", 12], ["A", "V", 13]],
-                    columns=["A", "B", "C"],
+            (
+                {"schema": invalid_schema},
+                pytest.raises(
+                    TypeError,
+                    match=f'type of argument "schema" must be {get_fullname(Mapping)}; '
+                    f"got {get_fullname(invalid_schema)} instead",
                 ),
-                "Found invalid value in column 'C': Column must be"
-                r" DoubleType(\(\))?, instead it is LongType(\(\))?.",
-            ),
-            (  # Missing Columns
-                SparkDataFrameDomain,
-                pd.DataFrame([["A", "B"], ["V", "E"], ["A", "V"]], columns=["A", "B"]),
-                "Columns are not as expected. DataFrame and Domain must contain the "
-                "same columns in the same order.\n"
-                r"DataFrame columns: \['A', 'B'\]"
-                "\n"
-                r"Domain columns: \['A', 'B', 'C'\]",
+                None,
+            )
+            for invalid_schema in [StringType, ListDomain(NumpyIntegerDomain())]
+        ]
+        + [
+            (
+                {"schema": {"A": SparkStringColumnDescriptor(), "B": DictDomain({})}},
+                pytest.raises(
+                    TypeError,
+                    match=f"Expected domain for key 'B' to be a "
+                    f"{get_fullname(SparkColumnDescriptor)}; got "
+                    f"{get_fullname(DictDomain)} instead",
+                ),
+                None,
             ),
             (
-                SparkDataFrameDomain,
-                pd.DataFrame(
-                    [["A", "B", 1.1], ["V", "E", 1.2], ["A", "V", 1.3]],
-                    columns=["A", "B", "C"],
+                {"schema": {"A": "B"}},
+                pytest.raises(
+                    TypeError,
+                    match=f"Expected domain for key 'A' to be a "
+                    f"{get_fullname(SparkColumnDescriptor)}; got "
+                    f"{get_fullname(str)} instead",
                 ),
                 None,
             ),
         ]
-    )
-    def test_validate(
-        self, SparkDomain: type, candidate: Any, exception: Optional[str]
-    ):
-        """Tests that validate works as expected.
-
-        Args:
-            SparkDomain: Domain type to be checked.
-            candidate: Object to be checked for membership.
-            exception: Expected exception if validation fails.
-        """
-        domain = (
-            SparkDomain(self.schema)
-            if SparkDomain != ListDomain
-            else SparkDomain(SparkRowDomain(self.schema))
-        )
-        if isinstance(candidate, pd.DataFrame):
-            candidate = self.spark.createDataFrame(candidate)
-
-        if exception is not None:
-            with self.assertRaisesRegex(OutOfDomainError, exception):
-                domain.validate(candidate)
-        else:
-            self.assertEqual(domain.validate(candidate), exception)
-
-    @parameterized.expand(
-        [
-            (  # matching
+        + [
+            ({"schema": valid_schema}, does_not_raise(), None)
+            for valid_schema in [
                 {
                     "A": SparkStringColumnDescriptor(),
                     "B": SparkStringColumnDescriptor(),
-                    "C": SparkFloatColumnDescriptor(),
                 },
+                {},
+                {"A": SparkStringColumnDescriptor()},
+            ]
+        ],
+    )
+    def test_construct_component(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Initialization behaves correctly.
+
+        The domain is constructed correctly and raises exceptions when initialized with
+        invalid inputs.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_construct_component(
+            domain_type, domain_args, expectation, exception_properties
+        )
+
+    @pytest.mark.parametrize(
+        "other_domain, expected",
+        [
+            (  # matching
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(),
+                    }
+                ),
                 True,
             ),
             (  # shuffled
-                {
-                    "B": SparkStringColumnDescriptor(),
-                    "C": SparkFloatColumnDescriptor(),
-                    "A": SparkStringColumnDescriptor(),
-                },
+                SparkDataFrameDomain(
+                    {
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(),
+                        "A": SparkStringColumnDescriptor(),
+                    }
+                ),
                 False,
             ),
             (  # Mismatching Types
-                {
-                    "A": SparkStringColumnDescriptor(),
-                    "B": SparkStringColumnDescriptor(),
-                    "C": SparkFloatColumnDescriptor(size=32),
-                },
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(size=32),
+                    }
+                ),
                 False,
             ),
             (  # Extra attribute
-                {
-                    "A": SparkStringColumnDescriptor(),
-                    "B": SparkStringColumnDescriptor(),
-                    "C": SparkFloatColumnDescriptor(),
-                    "D": SparkFloatColumnDescriptor(),
-                },
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(),
+                        "D": SparkFloatColumnDescriptor(),
+                    }
+                ),
                 False,
             ),
             (  # Missing attribute
-                {
-                    "A": SparkStringColumnDescriptor(),
-                    "B": SparkStringColumnDescriptor(),
-                },
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                ),
                 False,
             ),
-        ]
+        ],
     )
-    def test_eq(self, other_schema: SparkColumnsDescriptor, is_equal: bool):
-        """Tests that __eq__ works as expected for SparkDataFrameDomain."""
-        self.assertEqual(
-            SparkDataFrameDomain(other_schema) == SparkDataFrameDomain(self.schema),
-            is_equal,
-        )
-        self.assertEqual(
-            SparkRowDomain(other_schema) == SparkRowDomain(self.schema), is_equal
-        )
-        self.assertEqual(
-            ListDomain(SparkRowDomain(other_schema))
-            == ListDomain(SparkRowDomain(self.schema)),
-            is_equal,
-        )
+    def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
+        """__eq__ works correctly.
 
+        Args:
+            domain: The domain to test.
+            other_domain: The domain to compare to.
+            expected: The expected result of the comparison.
+        """
+        super().test_eq(domain, other_domain, expected)
 
-class TestSparkGroupedDataFrameDomain(PySparkTest):
-    """Tests for SparkGroupedDataFrameDomain."""
-
-    def setUp(self):
-        """Setup test."""
-        self.group_keys = self.spark.createDataFrame(
-            [(1, "W"), (2, "X"), (3, "Y")], schema=["A", "B"]
-        )
-        self.schema = {
-            "A": SparkIntegerColumnDescriptor(allow_null=True),
-            "B": SparkStringColumnDescriptor(allow_null=True),
-            "C": SparkIntegerColumnDescriptor(allow_null=True),
-        }
-        self.domain = SparkGroupedDataFrameDomain(
-            schema=self.schema, group_keys=self.group_keys
-        )
-
-    def test_constructor_mutable_arguments(self):
-        """Tests that mutable constructor arguments are copied."""
-        schema = {
-            "A": SparkIntegerColumnDescriptor(),
-            "B": SparkStringColumnDescriptor(),
-        }
-        domain = SparkGroupedDataFrameDomain(schema=schema, group_keys=self.group_keys)
-        schema["A"] = SparkFloatColumnDescriptor()
-        self.assertDictEqual(
-            domain.schema,
-            {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},
-        )
-
-    @parameterized.expand(get_all_props(SparkGroupedDataFrameDomain))
-    def test_property_immutability(self, prop_name: str):
-        """Tests that given property is immutable."""
-        assert_property_immutability(self.domain, prop_name)
-
-    def test_carrier_type(self):
-        """Tests that SparkGroupedDataFrameDomain has expected carrier type."""
-        self.assertEqual(self.domain.carrier_type, GroupedDataFrame)
-
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "domain_args, key, mutator",
         [
             (
-                pd.DataFrame({"A": [1, 2], "B": ["W", "W"], "C": [4, 5]}),
-                pd.DataFrame({"A": [1, 2, 3], "B": ["W", "X", "Y"]}),
+                {
+                    "schema": {
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(),
+                    }
+                },
+                "schema",
+                mutator,
+            )
+            for mutator in [
+                lambda x: x.update({"A": SparkFloatColumnDescriptor()}),
+                lambda x: x.pop("A"),
+                lambda x: x.clear(),
+            ]
+        ],
+    )
+    def test_mutable_inputs(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        key: str,
+        mutator: Callable[[Any], Any],
+    ):
+        """The mutable inputs to the domain are copied.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            key: The parameter name to be changed.
+            mutator: A lambda function that mutates the parameter.
+        """
+        super().test_mutable_inputs(domain_type, domain_args, key, mutator)
+
+    @pytest.mark.parametrize(
+        "domain, expected_properties",
+        [
+            (
+                SparkDataFrameDomain(
+                    schema={
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(),
+                    }
+                ),
+                {
+                    "schema": {
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(),
+                    },
+                    "carrier_type": DataFrame,
+                    "spark_schema": StructType(
+                        [
+                            StructField("A", LongType(), False),
+                            StructField("B", StringType(), False),
+                            StructField("C", DoubleType(), False),
+                        ]
+                    ),
+                },
+            ),
+            (
+                SparkDataFrameDomain(
+                    schema={
+                        "A": SparkIntegerColumnDescriptor(allow_null=True),
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                        "C": SparkFloatColumnDescriptor(
+                            allow_inf=True, allow_nan=True, allow_null=True
+                        ),
+                    }
+                ),
+                {
+                    "schema": {
+                        "A": SparkIntegerColumnDescriptor(allow_null=True),
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                        "C": SparkFloatColumnDescriptor(
+                            allow_inf=True, allow_nan=True, allow_null=True
+                        ),
+                    },
+                    "carrier_type": DataFrame,
+                    "spark_schema": StructType(
+                        [
+                            StructField("A", LongType(), True),
+                            StructField("B", StringType(), True),
+                            StructField("C", DoubleType(), True),
+                        ]
+                    ),
+                },
+            ),
+        ],
+    )
+    def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
+        """All properties have the expected values.
+
+        Args:
+            domain: The constructed domain to be tested.
+            expected_properties: A dictionary containing all the property:value pairs
+                domain is expected to have.
+        """
+        super().test_properties(domain, expected_properties)
+
+    @pytest.mark.parametrize(
+        "domain",
+        [
+            SparkDataFrameDomain(
+                schema={
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                    "C": SparkFloatColumnDescriptor(),
+                }
+            )
+        ],
+    )
+    def test_property_immutability(self, domain: Domain):
+        """The properties return copies for mutable values.
+
+        Args:
+            domain: The domain to be tested.
+        """
+        super().test_property_immutability(domain)
+
+    @pytest.mark.parametrize(
+        "candidate, expectation, exception_properties",
+        [
+            (  # LongType() instead of DoubleType()
+                pd.DataFrame(
+                    [["A", "B", 10], ["V", "E", 12], ["A", "V", 13]],
+                    columns=["A", "B", "C"],
+                ),
+                pytest.raises(
+                    OutOfDomainError,
+                    match="Found invalid value in column 'C': Column must be "
+                    f"{get_fullname(DoubleType)}; got {get_fullname(LongType)} "
+                    "instead",
+                ),
+                {
+                    "domain": SparkDataFrameDomain(
+                        schema={
+                            "A": SparkStringColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                            "C": SparkFloatColumnDescriptor(),
+                        }
+                    ),
+                    "value": pd.DataFrame(
+                        [["A", "B", 10], ["V", "E", 12], ["A", "V", 13]],
+                        columns=["A", "B", "C"],
+                    ),
+                },
+            ),
+            (  # Missing Columns
+                pd.DataFrame([["A", "B"], ["V", "E"], ["A", "V"]], columns=["A", "B"]),
+                pytest.raises(
+                    OutOfDomainError,
+                    match="Columns are not as expected. DataFrame and Domain "
+                    "must contain the same columns in the same order.\n"
+                    r"DataFrame columns: \['A', 'B'\]"
+                    "\n"
+                    r"Domain columns: \['A', 'B', 'C'\]",
+                ),
+                {
+                    "domain": SparkDataFrameDomain(
+                        schema={
+                            "A": SparkStringColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                            "C": SparkFloatColumnDescriptor(),
+                        }
+                    ),
+                    "value": pd.DataFrame(
+                        [["A", "B"], ["V", "E"], ["A", "V"]], columns=["A", "B"]
+                    ),
+                },
+            ),
+            (
+                pd.DataFrame(
+                    [["A", "B", 1.1], ["V", "E", 1.2], ["A", "V", None]],
+                    columns=["A", "B", "C"],
+                ),
+                pytest.raises(
+                    OutOfDomainError,
+                    match="Found invalid value in column 'C': Column contains null "
+                    "values.",
+                ),
+                {
+                    "domain": SparkDataFrameDomain(
+                        schema={
+                            "A": SparkStringColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                            "C": SparkFloatColumnDescriptor(),
+                        }
+                    ),
+                    "value": pd.DataFrame(
+                        [["A", "B", 1.1], ["V", "E", 1.2], ["A", "V", None]],
+                        columns=["A", "B", "C"],
+                    ),
+                },
+            ),
+            (
+                pd.DataFrame(
+                    [["A", "B", 1.1], ["V", "E", 1.2], ["A", "V", 1.3]],
+                    columns=["A", "B", "C"],
+                ),
+                does_not_raise(),
+                None,
+            ),
+        ],
+    )
+    def test_validate(
+        self,
+        domain: Domain,
+        candidate: Any,
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Validate works correctly.
+
+        Args:
+            domain: The domain to test.
+            candidate: The value to validate using domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        if isinstance(candidate, pd.DataFrame):
+            candidate = self.spark.createDataFrame(candidate)
+        with expectation as exception:
+            domain.validate(candidate)
+        if exception_properties is None or len(exception_properties) == 0:
+            return
+        # Help out mypy
+        assert isinstance(exception, pytest.ExceptionInfo)
+        for prop, expected_value in exception_properties.items():
+            assert hasattr(exception.value, prop), f"Expected prop was missing: {prop}"
+            actual_value = getattr(exception.value, prop)
+            if isinstance(actual_value, DataFrame):
+                assert_frame_equal_with_sort(actual_value, expected_value)
+                continue
+            assert (
+                actual_value == expected_value
+            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+
+    @pytest.mark.parametrize(
+        "spark_schema, expected, expectation",
+        [
+            (StructType([]), SparkDataFrameDomain(schema={}), does_not_raise()),
+            (
+                StructType(
+                    [
+                        StructField("A", LongType(), False),
+                        StructField("B", StringType(), False),
+                        StructField("C", DoubleType(), False),
+                    ]
+                ),
+                SparkDataFrameDomain(
+                    schema={
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(allow_inf=True, allow_nan=True),
+                    }
+                ),
+                does_not_raise(),
+            ),
+        ],
+    )
+    def test_from_spark_schema(  # pylint: disable=no-self-use
+        self,
+        spark_schema: StructType,
+        expected: SparkDataFrameDomain,
+        expectation: ContextManager[None],
+    ):
+        """from_spark_schema constructs the correct domain.
+
+        Args:
+            spark_schema: The spark schema to construct the domain from.
+            expected: The expected domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+        """
+        with expectation:
+            assert SparkDataFrameDomain.from_spark_schema(spark_schema) == expected
+
+
+_base_schema: Dict[str, SparkColumnDescriptor] = {
+    "A": SparkIntegerColumnDescriptor(allow_null=True),
+    "B": SparkStringColumnDescriptor(allow_null=True),
+    "C": SparkIntegerColumnDescriptor(allow_null=True),
+}
+_schema_without_nulls: Dict[str, SparkColumnDescriptor] = {
+    "A": SparkIntegerColumnDescriptor(allow_null=False),
+    "B": SparkStringColumnDescriptor(allow_null=False),
+    "C": SparkIntegerColumnDescriptor(allow_null=False),
+}
+
+_base_group_key_args: Dict[str, Any] = {
+    "data": [(1, "W"), (2, "X"), (3, "Y")],
+    "schema": ["A", "B"],
+}
+_group_key_with_nulls_args: Dict[str, Any] = {
+    "data": [(1, "W"), (2, "X"), (3, None)],
+    "schema": ["A", "B"],
+}
+_empty_group_key_args: Dict[str, Any] = {"data": [], "schema": StructType([])}
+
+
+# Helper functions to help mypy out by widening the type of a context manager.
+def _WidenContextManager(cm: Any) -> ContextManager:
+    """Widen the type of a context manager."""
+    return cm
+
+
+@pytest.mark.usefixtures("class_spark")
+class TestSparkGroupedDataFrameDomain(DomainTests):
+    """Testing :class:`~tmlt.core.domains.spark_domains.SparkGroupedDataFrameDomain`."""
+
+    spark: SparkSession
+
+    @pytest.fixture
+    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+        """Returns the type of the domain to be tested."""
+        return SparkGroupedDataFrameDomain
+
+    def construct_domain(
+        self, domain_args: Dict[str, Any]
+    ) -> SparkGroupedDataFrameDomain:
+        """Construct a SparkGroupedDataFrameDomain with the given arguments."""
+        domain_args["group_keys"] = self.spark.createDataFrame(
+            **domain_args["group_keys"]
+        )
+        return SparkGroupedDataFrameDomain(**domain_args)
+
+    @pytest.fixture
+    def domain(self, request) -> SparkGroupedDataFrameDomain:
+        """Get a base SparkGroupedDataFrameDomain."""
+        return self.construct_domain(request.param)
+
+    @pytest.fixture
+    def other_domain(self, request) -> SparkGroupedDataFrameDomain:
+        """Get a base SparkGroupedDataFrameDomain."""
+        return self.construct_domain(request.param)
+
+    @pytest.mark.parametrize(
+        "domain_args, expectation, exception_properties",
+        [
+            (
+                {"schema": _base_schema, "group_keys": _base_group_key_args},
+                does_not_raise(),
+                None,
+            ),
+            # _base_schema does not have column "D"
+            (
+                {
+                    "schema": _base_schema,
+                    "group_keys": {"data": pd.DataFrame({"D": [1, 2]})},
+                },
+                pytest.raises(ValueError, match="Invalid groupby column: {'D'}"),
+                None,
+            ),
+            # Column "B" is a SparkStringColumnDescriptor,
+            # not SparkIntegerColumnDescriptor
+            (
+                {
+                    "schema": _base_schema,
+                    "group_keys": {"data": pd.DataFrame({"B": [1, 2]})},
+                },
+                pytest.raises(
+                    ValueError,
+                    match=f"Column must be {get_fullname(StringType)}; got "
+                    f"{get_fullname(LongType)} instead",
+                ),
+                None,
+            ),
+            # Invalid schema
+            (
+                {
+                    "schema": "not a schema",
+                    "group_keys": {"data": pd.DataFrame({"C": [1, 2]})},
+                },
+                pytest.raises(
+                    TypeError,
+                    match=f'type of argument "schema" must be {get_fullname(Mapping)}; '
+                    f"got {get_fullname(str)} instead",
+                ),
+                None,
+            ),
+            # Invalid Column "C"
+            (
+                {
+                    "schema": {
+                        "A": SparkIntegerColumnDescriptor(allow_null=True),
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                        "C": ListDomain(NumpyIntegerDomain()),
+                    },
+                    "group_keys": {"data": pd.DataFrame({"A": [1, 2]})},
+                },
+                pytest.raises(
+                    TypeError,
+                    match=f"Expected domain for key 'C' to be a "
+                    f"{get_fullname(SparkColumnDescriptor)}; got "
+                    f"{get_fullname(ListDomain)} instead",
+                ),
+                None,
+            ),
+        ],
+    )
+    def test_construct_component(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Initialization behaves correctly.
+
+        The domain is constructed correctly and raises exceptions when initialized with
+        invalid inputs.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        domain_args["group_keys"] = self.spark.createDataFrame(
+            **domain_args["group_keys"]
+        )
+        super().test_construct_component(
+            domain_type, domain_args, expectation, exception_properties
+        )
+
+    @pytest.mark.parametrize(
+        "domain, other_domain, expected",
+        [
+            (
+                # eq with nulls
+                {"schema": _base_schema, "group_keys": _group_key_with_nulls_args},
+                {"schema": _base_schema, "group_keys": _group_key_with_nulls_args},
                 True,
             ),
-            (  # Mismatching DataFrame domain (extra column D)
-                pd.DataFrame({"A": [1, 2], "B": ["W", "W"], "C": [4, 5], "D": [4, 5]}),
-                pd.DataFrame({"A": [1, 2, 3], "B": ["W", "X", "Y"]}),
+            (
+                # eq with no group keys
+                {"schema": _base_schema, "group_keys": _empty_group_key_args},
+                {"schema": _base_schema, "group_keys": _empty_group_key_args},
+                True,
+            ),
+            (
+                # not eq with different schemas
+                {"schema": _base_schema, "group_keys": _base_group_key_args},
+                {"schema": _schema_without_nulls, "group_keys": _base_group_key_args},
                 False,
             ),
-            (  # Mismatching group keys
-                pd.DataFrame({"A": [1, 2], "B": ["W", "W"], "C": [4, 5]}),
-                pd.DataFrame({"A": [2, 3, 1], "B": ["W", "X", "Y"]}),
+            (
+                # not eq with different group keys
+                {"schema": _base_schema, "group_keys": _base_group_key_args},
+                {"schema": _base_schema, "group_keys": _group_key_with_nulls_args},
                 False,
             ),
-        ]
+            (
+                # eq with same schema and group keys
+                {"schema": _base_schema, "group_keys": _base_group_key_args},
+                {"schema": _base_schema, "group_keys": _base_group_key_args},
+                True,
+            ),
+        ],
+        indirect=["domain", "other_domain"],
     )
-    def test_contains(
-        self, dataframe: pd.DataFrame, group_keys: pd.DataFrame, expected: bool
-    ):
-        """Tests that __contains__ works correctly."""
-        grouped_data = GroupedDataFrame(
-            dataframe=self.spark.createDataFrame(dataframe),
-            group_keys=self.spark.createDataFrame(group_keys),
-        )
-        self.assertEqual(grouped_data in self.domain, expected)
+    def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
+        """__eq__ works correctly.
 
-    def test_eq_positive(self):
-        """Tests that __eq__ returns True correctly."""
-        other_domain = SparkGroupedDataFrameDomain(
-            schema=self.schema, group_keys=self.group_keys
-        )
-        self.assertTrue(self.domain == other_domain)
+        Args:
+            domain: The domain to test.
+            other_domain: The domain to compare to.
+            expected: The expected result of the comparison.
+        """
+        super().test_eq(domain, other_domain, expected)
 
-    def test_eq_negative(self):
-        """Tests that __eq__ returns False correctly."""
-        mismatching_schema_domain = SparkGroupedDataFrameDomain(
-            schema={
-                "A": SparkIntegerColumnDescriptor(),
-                "B": SparkStringColumnDescriptor(),
-                "C": SparkIntegerColumnDescriptor(),
-                "D": SparkIntegerColumnDescriptor(),
-            },
-            group_keys=self.group_keys,
-        )
-        mismatching_group_keys_domain = SparkGroupedDataFrameDomain(
-            schema=self.schema,
-            group_keys=self.spark.createDataFrame(
-                [(1, "W"), (2, "X"), (3, "Y"), (4, "Z")], schema=["A", "B"]
-            ),
-        )
-        self.assertFalse(self.domain == mismatching_schema_domain)
-        self.assertFalse(self.domain == mismatching_group_keys_domain)
-
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "domain_args, key, mutator",
         [
             (
                 {
-                    "A": SparkIntegerColumnDescriptor(),
-                    "B": SparkStringColumnDescriptor(),
+                    "schema": copy.deepcopy(_base_schema),
+                    "group_keys": _base_group_key_args,
                 },
-                pd.DataFrame({"C": [1, 2]}),
-                "Invalid groupby column: {'C'}",
+                "schema",
+                lambda x: x.update({"A": SparkFloatColumnDescriptor()}),
+            )
+        ],
+    )
+    def test_mutable_inputs(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        key: str,
+        mutator: Callable[[Any], Any],
+    ):
+        """The mutable inputs to the domain are copied.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            key: The parameter name to be changed.
+            mutator: A lambda function that mutates the parameter.
+        """
+        domain_args["group_keys"] = self.spark.createDataFrame(
+            **domain_args["group_keys"]
+        )
+        super().test_mutable_inputs(domain_type, domain_args, key, mutator)
+
+    @pytest.mark.parametrize(
+        "domain, expected_properties",
+        [
+            (
+                {"schema": _base_schema, "group_keys": _base_group_key_args},
+                {
+                    "schema": _base_schema,
+                    "carrier_type": GroupedDataFrame,
+                    "spark_schema": StructType(
+                        [
+                            StructField("A", LongType(), True),
+                            StructField("B", StringType(), True),
+                            StructField("C", LongType(), True),
+                        ]
+                    ),
+                    "group_keys": _base_group_key_args,
+                },
+            )
+        ],
+        indirect=["domain"],
+    )
+    def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
+        """All properties have the expected values.
+
+        Args:
+            domain: The constructed domain to be tested.
+            expected_properties: A dictionary containing all the property:value pairs
+                domain is expected to have.
+        """
+        actual_props = [prop[0] for prop in get_all_props(type(domain))]
+        assert set(expected_properties.keys()) == set(actual_props)
+        expected_properties["group_keys"] = self.spark.createDataFrame(
+            **expected_properties["group_keys"]
+        )
+        for prop, expected_val in expected_properties.items():
+            assert hasattr(domain, prop)
+            if isinstance(expected_val, DataFrame):
+                assert_frame_equal_with_sort(getattr(domain, prop), expected_val)
+                continue
+            assert getattr(domain, prop) == expected_val
+
+    @pytest.mark.parametrize(
+        "domain",
+        [{"schema": _base_schema, "group_keys": _base_group_key_args}],
+        indirect=["domain"],
+    )
+    def test_property_immutability(self, domain: Domain):
+        """The properties return copies for mutable values.
+
+        Args:
+            domain: The domain to be tested.
+        """
+        super().test_property_immutability(domain)
+
+    @pytest.mark.parametrize(
+        "domain, candidate, expectation, exception_properties",
+        [
+            # This list comprehension is to generate all combinations of the following:
+            # SparkGroupedDataFrame: With or without nulls
+            # SparkDataFrame: With or without nulls
+            # GroupedDataFrame: With or without nulls
+            #
+            # If the SparkGroupedDataFrame group keys have a different domain than the
+            # GroupedDataFrame group keys, then we expect an OutOfDomainError.
+            (
+                {"schema": _base_schema, "group_keys": domain_group_key},
+                {"dataframe": df, "group_keys": gdf_group_key},
+                # WidenContextManger is necessary to appease mypy since the current
+                # list comprehension is
+                # ContextManager[Optional[OutOfDomainError]] and the next one is
+                # Contextmanager[Optional[ValueError]], so we widen it to just
+                # ContextManager instead.
+                _WidenContextManager(
+                    does_not_raise()
+                    if domain_group_key == gdf_group_key
+                    else pytest.raises(
+                        OutOfDomainError, match="Groups keys do not match"
+                    )
+                ),
+                None
+                if domain_group_key == gdf_group_key
+                else {
+                    "domain": {"schema": _base_schema, "group_keys": domain_group_key},
+                    "value": {"dataframe": df, "group_keys": gdf_group_key},
+                },
+            )
+            for (domain_group_key, gdf_group_key, df) in product(
+                [_base_group_key_args, _group_key_with_nulls_args],
+                [_base_group_key_args, _group_key_with_nulls_args],
+                [
+                    # Dataframe with Nulls
+                    {
+                        "data": [(1, "W", 0), (None, "X", 1), (None, "X", 2)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    # Dataframe without Nulls
+                    {
+                        "data": [(1, "W", 0), (2, "X", 1), (3, "Y", 2)],
+                        "schema": ["A", "B", "C"],
+                    },
+                ],
+            )
+        ]
+        + [
+            (
+                # Dataframe with Nulls should raise when schema does not allow nulls
+                {"schema": _schema_without_nulls, "group_keys": _base_group_key_args},
+                {
+                    "dataframe": {
+                        "data": [(1, "W", 0), (None, "X", 1), (None, "X", 2)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    "group_keys": _base_group_key_args,
+                },
+                pytest.raises(ValueError, match="Column contains null values."),
+                None,
             ),
             (
+                # Schema without nulls and dataframe without nulls should not raise
+                {"schema": _schema_without_nulls, "group_keys": _base_group_key_args},
                 {
-                    "A": SparkIntegerColumnDescriptor(),
-                    "B": SparkStringColumnDescriptor(),
+                    "dataframe": {
+                        "data": [(1, "W", 0), (2, "X", 1), (3, "Y", 2)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    "group_keys": _base_group_key_args,
                 },
-                pd.DataFrame({"B": [1, 2]}),
-                "Column must be StringType",
-                ValueError,
+                does_not_raise(),
+                None,
             ),
-        ]
+        ],
+        indirect=["domain"],
     )
-    def test_post_init(
+    def test_validate(
         self,
-        schema: SparkColumnsDescriptor,
-        group_keys: pd.DataFrame,
-        error_msg: str,
-        error_type: type = ValueError,
+        domain: Domain,
+        candidate: Any,
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
     ):
-        """Tests that __post_init__ correctly rejects invalid inputs."""
-        with self.assertRaisesRegex(error_type, error_msg):
-            SparkGroupedDataFrameDomain(
-                schema=schema, group_keys=self.spark.createDataFrame(group_keys)
-            )
+        """Validate works correctly.
 
-    def test_post_init_removes_duplicate_keys(self):
-        """Tests that __post_init__ removes duplicate group keys."""
-        domain = SparkGroupedDataFrameDomain(
-            schema=self.schema,
-            group_keys=self.spark.createDataFrame(
-                [(1, "W"), (1, "W")], schema=["A", "B"]
-            ),
-        )
-        expected = pd.DataFrame({"A": [1], "B": ["W"]})
-        actual = domain.group_keys.toPandas()
-        self.assert_frame_equal_with_sort(expected, actual)
-
-    def test_eq_no_group_keys(self):
-        """Tests that __eq__ works for empty group_keys."""
-        domain1 = SparkGroupedDataFrameDomain(
-            schema=self.schema,
-            group_keys=self.spark.createDataFrame([], schema=StructType([])),
-        )
-        domain2 = SparkGroupedDataFrameDomain(
-            schema=self.schema,
-            group_keys=self.spark.createDataFrame([], schema=StructType([])),
-        )
-        self.assertTrue(domain1 == domain2)
-
-    def test_validate_with_nulls(self):
-        """Test that validate works correctly with nulls."""
-        group_keys_with_nulls = self.spark.createDataFrame(
-            [(1, "W"), (2, "X"), (3, None)], schema=["A", "B"]
-        )
-        group_keys_without_nulls = self.spark.createDataFrame(
-            [(1, "W"), (1, "X")], schema=["A", "B"]
-        )
-        dataframe_with_nulls = self.spark.createDataFrame(
-            [(1, "W", 0), (None, "X", 1), (None, "X", 2)], schema=["A", "B", "C"]
-        )
-        domain_with_nulls = SparkGroupedDataFrameDomain(
-            schema=self.schema, group_keys=group_keys_with_nulls
-        )
-        # everything matches, no exception should be raised
-        domain_with_nulls.validate(
-            GroupedDataFrame(
-                dataframe=dataframe_with_nulls, group_keys=group_keys_with_nulls
+        Args:
+            domain: The domain to test.
+            candidate: The value to validate using domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        candidate["dataframe"] = self.spark.createDataFrame(**candidate["dataframe"])
+        candidate["group_keys"] = self.spark.createDataFrame(**candidate["group_keys"])
+        candidate = GroupedDataFrame(**candidate)
+        if exception_properties is not None:
+            exception_properties["domain"] = self.construct_domain(
+                exception_properties["domain"]
             )
-        )
-        # group keys don't match, should raise exception
-        with self.assertRaises(OutOfDomainError):
-            domain_with_nulls.validate(
-                GroupedDataFrame(
-                    dataframe=dataframe_with_nulls, group_keys=group_keys_without_nulls
-                )
+            exception_properties["value"]["dataframe"] = self.spark.createDataFrame(
+                **exception_properties["value"]["dataframe"]
             )
-        domain_without_nulls = SparkGroupedDataFrameDomain(
-            schema=self.schema, group_keys=group_keys_without_nulls
-        )
-        # group keys match, nulls should be fine
-        domain_without_nulls.validate(
-            GroupedDataFrame(
-                dataframe=dataframe_with_nulls, group_keys=group_keys_without_nulls
+            exception_properties["value"]["group_keys"] = self.spark.createDataFrame(
+                **exception_properties["value"]["group_keys"]
             )
-        )
-        # group keys don't match, should raise exception
-        with self.assertRaises(OutOfDomainError):
-            domain_without_nulls.validate(
-                GroupedDataFrame(
-                    dataframe=dataframe_with_nulls, group_keys=group_keys_with_nulls
-                )
+            exception_properties["value"] = GroupedDataFrame(
+                **exception_properties["value"]
             )
+        with expectation as exception:
+            domain.validate(candidate)
+        if exception_properties is None or len(exception_properties) == 0:
+            return
+        # Help out mypy
+        assert isinstance(exception, pytest.ExceptionInfo)
+        core_exception = exception.value
+        assert hasattr(core_exception, "domain"), "Exception has no domain attribute"
+        assert exception_properties["domain"] == core_exception.domain
+        assert hasattr(core_exception, "value"), "Exception has no value attribute"
+        # Separate asserts for the frames are required since GroupedDataFrame does not
+        # implement __eq__.
+        assert_frame_equal_with_sort(
+            exception_properties[  # pylint: disable=protected-access
+                "value"
+            ]._dataframe,
+            core_exception.value._dataframe,  # pylint: disable=protected-access
+        )
+        assert_frame_equal_with_sort(
+            exception_properties["value"].group_keys, core_exception.value.group_keys
+        )
 
-    def test_eq_with_nulls(self):
-        """Tests that eq works correctly with null values."""
-        domain_with_nulls1 = SparkGroupedDataFrameDomain(
-            schema=self.schema,
-            group_keys=self.spark.createDataFrame(
-                [(1, "W"), (1, "X"), (None, "X")], schema=["A", "B"]
-            ),
-        )
-        domain_with_nulls2 = SparkGroupedDataFrameDomain(
-            schema=self.schema,
-            group_keys=self.spark.createDataFrame(
-                [(1, "W"), (1, "X"), (None, "X")], schema=["A", "B"]
-            ),
-        )
-        self.assertEqual(domain_with_nulls1, domain_with_nulls2)
-        domain_without_nulls = SparkGroupedDataFrameDomain(
-            schema=self.schema,
-            group_keys=self.spark.createDataFrame(
-                [(1, "W"), (1, "X")], schema=["A", "B"]
-            ),
-        )
-        self.assertNotEqual(domain_with_nulls1, domain_without_nulls)
-
-    def test_repr(self):
+    @pytest.mark.parametrize(
+        "domain",
+        [
+            {
+                "schema": {
+                    "A": SparkIntegerColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=True),
+                    "C": SparkIntegerColumnDescriptor(allow_null=True),
+                },
+                "group_keys": {
+                    "data": [(1, "W"), (2, "X"), (3, "Y")],
+                    "schema": ["A", "B"],
+                },
+            }
+        ],
+        indirect=["domain"],
+    )
+    def test_repr(self, domain: Domain):  # pylint: disable=no-self-use
         """Tests that __repr__ works correctly."""
         expected = (
             "SparkGroupedDataFrameDomain(schema={'A': SparkIntegerColumnDescriptor("
@@ -499,24 +949,321 @@ class TestSparkGroupedDataFrameDomain(PySparkTest):
             "True), 'C': SparkIntegerColumnDescriptor(allow_null=True, size=64)},"
             " group_keys=DataFrame[A: bigint, B: string])"
         )
-        self.assertEqual(repr(self.domain), expected)
+        assert repr(domain) == expected
+
+    def test_post_init_removes_duplicate_keys(self):
+        """Tests that __post_init__ removes duplicate group keys."""
+        domain_args = {
+            "schema": _base_schema,
+            "group_keys": {"data": [(1, "W"), (1, "W")], "schema": ["A", "B"]},
+        }
+        domain = self.construct_domain(domain_args)
+        expected = pd.DataFrame({"A": [1], "B": ["W"]})
+        assert_frame_equal_with_sort(expected, domain.group_keys)
+
+    @pytest.mark.parametrize(
+        "domain, expected, expectation, exception_properties",
+        [
+            (
+                {
+                    "schema": _base_schema,
+                    "group_keys": {
+                        "data": [(1, "W"), (2, "X"), (3, "Y")],
+                        "schema": ["A", "B"],
+                    },
+                },
+                SparkDataFrameDomain(
+                    schema={"C": SparkIntegerColumnDescriptor(allow_null=True)}
+                ),
+                does_not_raise(),
+                None,
+            )
+        ],
+        indirect=["domain"],
+    )
+    def test_get_group_domain(  # pylint: disable=no-self-use
+        self,
+        domain: SparkGroupedDataFrameDomain,
+        expected: SparkDataFrameDomain,
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """get_group_domain returns the correct group domain."""
+        with expectation as exception:
+            assert domain.get_group_domain() == expected
+        if exception_properties is None:
+            return
+        for key, value in exception_properties.items():
+            assert hasattr(exception, key)
+            assert getattr(exception, key) == value
 
 
-class TestSparkColumnDescriptors(PySparkTest):
+class TestSparkRowDomain(DomainTests):
+    """Tests for :class:`~tmlt.core.domains.spark_domains.SparkRowDomain`."""
+
+    @pytest.fixture
+    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+        """Returns the type of the domain to be tested."""
+        return SparkRowDomain
+
+    @pytest.fixture
+    def domain(self) -> SparkRowDomain:  # pylint: disable=no-self-use
+        """Get a base SparkRowDomain."""
+        return SparkRowDomain(
+            schema={
+                "A": SparkIntegerColumnDescriptor(),
+                "B": SparkStringColumnDescriptor(),
+            }
+        )
+
+    @pytest.mark.parametrize(
+        "domain_args, expectation, exception_properties",
+        [
+            (
+                {
+                    "schema": {
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                },
+                does_not_raise(),
+                None,
+            ),
+            (
+                {"schema": int},
+                pytest.raises(
+                    TypeError,
+                    match=f'type of argument "schema" must be {get_fullname(Mapping)}; '
+                    f"got {get_fullname(int)} instead",
+                ),
+                None,
+            ),
+            (
+                {"schema": StringType},
+                pytest.raises(
+                    TypeError,
+                    match=f'type of argument "schema" must be {get_fullname(Mapping)}; '
+                    f"got {get_fullname(StringType)} instead",
+                ),
+                None,
+            ),
+        ],
+    )
+    def test_construct_component(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Initialization behaves correctly.
+
+        The domain is constructed correctly and raises exceptions when initialized with
+        invalid inputs.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_construct_component(
+            domain_type, domain_args, expectation, exception_properties
+        )
+
+    @pytest.mark.parametrize(
+        "domain, other_domain, expected",
+        [
+            (
+                SparkRowDomain(
+                    schema={
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                ),
+                SparkRowDomain(
+                    schema={
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                ),
+                True,
+            ),
+            (
+                # testing that order does matter
+                SparkRowDomain(
+                    schema={
+                        "B": SparkStringColumnDescriptor(),
+                        "A": SparkIntegerColumnDescriptor(),
+                    }
+                ),
+                SparkRowDomain(
+                    schema={
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                ),
+                False,
+            ),
+            (
+                SparkRowDomain(schema={"A": SparkIntegerColumnDescriptor()}),
+                SparkRowDomain(schema={"B": SparkStringColumnDescriptor()}),
+                False,
+            ),
+        ],
+    )
+    def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
+        """__eq__ works correctly.
+
+        Args:
+            domain: The domain to test.
+            other_domain: The domain to compare to.
+            expected: The expected result of the comparison.
+        """
+        super().test_eq(domain, other_domain, expected)
+
+    @pytest.mark.parametrize(
+        "domain_args, key, mutator",
+        [
+            (
+                {
+                    "schema": {
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                },
+                "schema",
+                lambda x: x.update({"A": SparkFloatColumnDescriptor()}),
+            )
+        ],
+    )
+    def test_mutable_inputs(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        key: str,
+        mutator: Callable[[Any], Any],
+    ):
+        """The mutable inputs to the domain are copied.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            key: The parameter name to be changed.
+            mutator: A lambda function that mutates the parameter.
+        """
+        super().test_mutable_inputs(domain_type, domain_args, key, mutator)
+
+    @pytest.mark.parametrize(
+        "domain, expected_properties",
+        [
+            (
+                SparkRowDomain(
+                    schema={
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    }
+                ),
+                {
+                    "schema": {
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                    },
+                    "carrier_type": Row,
+                },
+            )
+        ],
+    )
+    def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
+        """All properties have the expected values.
+
+        Args:
+            domain: The constructed domain to be tested.
+            expected_properties: A dictionary containing all the property:value pairs
+                domain is expected to have.
+        """
+        super().test_properties(domain, expected_properties)
+
+    def test_property_immutability(self, domain: Domain):
+        """The properties return copies for mutable values.
+
+        Args:
+            domain: The domain to be tested.
+        """
+
+    @pytest.mark.skip(reason="SparkRowDomain does not implement validate.")
+    @pytest.mark.parametrize("domain, candidate, expectation, exception_properties", [])
+    def test_validate(
+        self,
+        domain: Domain,
+        candidate: Any,
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Validate works correctly.
+
+        Args:
+            domain: The domain to test.
+            candidate: The value to validate using domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_validate(domain, candidate, expectation, exception_properties)
+
+    def test_repr(self, domain: Domain):  # pylint: disable=no-self-use
+        """Tests that __repr__ works correctly."""
+        expected = (
+            "SparkRowDomain(schema={'A': SparkIntegerColumnDescriptor(allow_null=False,"
+            " size=64), 'B': SparkStringColumnDescriptor(allow_null=False)})"
+        )
+        assert repr(domain) == expected
+
+
+_column_descriptors = {
+    "int32": SparkIntegerColumnDescriptor(size=32),
+    "int64": SparkIntegerColumnDescriptor(size=64),
+    "float32": SparkFloatColumnDescriptor(size=32),
+    "str": SparkStringColumnDescriptor(allow_null=True),
+    "date": SparkDateColumnDescriptor(),
+    "timestamp": SparkTimestampColumnDescriptor(),
+}
+_col_name_to_type: Dict[str, str] = {
+    "A": "int32",
+    "B": "int64",
+    "C": "float32",
+    "D": "str",
+    "E": "date",
+    "F": "timestamp",
+}
+_type_to_spark_type: Dict[str, DataType] = {
+    "int32": IntegerType(),
+    "int64": LongType(),
+    "float32": FloatType(),
+    "str": StringType(),
+    "date": DateType(),
+    "timestamp": TimestampType(),
+}
+
+
+@pytest.mark.usefixtures("class_spark")
+class TestSparkColumnDescriptors:
     r"""Tests for subclasses of class SparkColumnDescriptor.
 
     See subclasses of
     :class:`~tmlt.core.domains.spark_domains.SparkColumnDescriptor`\ s."""
 
-    def setUp(self):
-        """Setup"""
-        self.int32_column_descriptor = SparkIntegerColumnDescriptor(size=32)
-        self.int64_column_descriptor = SparkIntegerColumnDescriptor(size=64)
-        self.float32_column_descriptor = SparkFloatColumnDescriptor(size=32)
-        self.str_column_descriptor = SparkStringColumnDescriptor(allow_null=False)
-        self.date_column_descriptor = SparkDateColumnDescriptor()
-        self.timestamp_column_descriptor = SparkTimestampColumnDescriptor()
-        self.test_df = self.spark.createDataFrame(
+    spark: SparkSession
+
+    @pytest.fixture
+    def test_df(self) -> DataFrame:
+        """Get a base DataFrame"""
+        return self.spark.createDataFrame(
             [
                 (
                     1,
@@ -547,7 +1294,8 @@ class TestSparkColumnDescriptors(PySparkTest):
             ),
         )
 
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "descriptor, expected_domain",
         [
             (SparkIntegerColumnDescriptor(size=32), NumpyIntegerDomain(size=32)),
             (SparkIntegerColumnDescriptor(size=64), NumpyIntegerDomain(size=64)),
@@ -568,136 +1316,246 @@ class TestSparkColumnDescriptors(PySparkTest):
                 SparkStringColumnDescriptor(allow_null=False),
                 NumpyStringDomain(allow_null=False),
             ),
-        ]
+        ],
     )
-    def test_to_numpy_domain(
+    def test_to_numpy_domain(  # pylint: disable=no-self-use
         self, descriptor: SparkColumnDescriptor, expected_domain: Domain
     ):
         """Tests that to_numpy_domain works correctly."""
-        self.assertEqual(descriptor.to_numpy_domain(), expected_domain)
+        assert descriptor.to_numpy_domain() == expected_domain
 
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "descriptor, expectation",
         [
             (
                 SparkIntegerColumnDescriptor(allow_null=True),
-                "Nullable column does not have corresponding NumPy domain.",
+                pytest.raises(
+                    RuntimeError,
+                    match="Nullable column does not have corresponding NumPy domain.",
+                ),
             ),
             (
                 SparkDateColumnDescriptor(),
-                "NumPy does not have support for date types.",
+                pytest.raises(
+                    RuntimeError, match="NumPy does not have support for date types."
+                ),
             ),
             (
                 SparkTimestampColumnDescriptor(),
-                "NumPy does not have support for timestamp types.",
+                pytest.raises(
+                    RuntimeError,
+                    match="NumPy does not have support for timestamp types.",
+                ),
             ),
-        ]
+        ],
     )
-    def test_to_numpy_domain_invalid(
-        self, descriptor: SparkColumnDescriptor, expected_error: str
+    def test_to_numpy_domain_invalid(  # pylint: disable=no-self-use
+        self, descriptor: SparkColumnDescriptor, expectation: ContextManager[None]
     ):
         """Tests that to_numpy_domain raises appropriate exceptions."""
-        with self.assertRaisesRegex(RuntimeError, expected_error):
+        with expectation:
             descriptor.to_numpy_domain()
 
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "descriptor, col_name, expectation",
         [
-            ("A", "int32"),
-            ("B", "int64"),
-            ("C", "float32"),
-            ("D", "str"),
-            ("E", "date"),
-            ("F", "timestamp"),
-        ]
+            (
+                _column_descriptors[col_type],
+                col_name,
+                does_not_raise()
+                if col_type == _col_name_to_type[col_name]
+                else pytest.raises(
+                    ValueError,
+                    match="Column must be "
+                    f"{get_fullname(_type_to_spark_type[col_type])}; got "
+                    f"{get_fullname(_type_to_spark_type[_col_name_to_type[col_name]])} "
+                    "instead",
+                ),
+            )
+            for col_name, col_type in product(
+                _col_name_to_type.keys(), _col_name_to_type.values()
+            )
+        ],
     )
-    def test_validate_column(self, col_name: str, col_type: str):
+    def test_validate_column(  # pylint: disable=no-self-use
+        self,
+        test_df: DataFrame,
+        descriptor: SparkColumnDescriptor,
+        col_name: str,
+        expectation: ContextManager[None],
+    ):
         """Tests that validate_column works correctly."""
-        if col_type == "int32":
-            self.int32_column_descriptor.validate_column(self.test_df, col_name)
-        else:
-            with self.assertRaisesRegex(
-                ValueError,
-                r"Column must be IntegerType(\(\))?, instead it is "
-                f"{self.test_df.schema[col_name].dataType}.",
-            ):
-                self.int32_column_descriptor.validate_column(self.test_df, col_name)
+        with expectation:
+            descriptor.validate_column(test_df, col_name)
 
-        if col_type == "int64":
-            self.int64_column_descriptor.validate_column(self.test_df, col_name)
-        else:
-            with self.assertRaisesRegex(
-                ValueError,
-                r"Column must be LongType(\(\))?, instead it is "
-                f"{self.test_df.schema[col_name].dataType}.",
-            ):
-                self.int64_column_descriptor.validate_column(self.test_df, col_name)
-
-        if col_type == "float32":
-            self.float32_column_descriptor.validate_column(self.test_df, col_name)
-        else:
-            with self.assertRaisesRegex(
-                ValueError,
-                r"Column must be FloatType(\(\))?, instead it is "
-                f"{self.test_df.schema[col_name].dataType}.",
-            ):
-                self.float32_column_descriptor.validate_column(self.test_df, col_name)
-
-        if col_type == "str":
-            with self.assertRaisesRegex(ValueError, "Column contains null values."):
-                self.str_column_descriptor.validate_column(self.test_df, col_name)
-        else:
-            with self.assertRaisesRegex(
-                ValueError,
-                r"Column must be StringType(\(\))?, instead it is "
-                f"{self.test_df.schema[col_name].dataType}.",
-            ):
-                self.str_column_descriptor.validate_column(self.test_df, col_name)
-
-        if col_type == "date":
-            self.date_column_descriptor.validate_column(self.test_df, col_name)
-        else:
-            with self.assertRaisesRegex(
-                ValueError,
-                r"Column must be DateType(\(\))?, instead it is "
-                f"{self.test_df.schema[col_name].dataType}.",
-            ):
-                self.date_column_descriptor.validate_column(self.test_df, col_name)
-
-        if col_type == "timestamp":
-            self.timestamp_column_descriptor.validate_column(self.test_df, col_name)
-        else:
-            with self.assertRaisesRegex(
-                ValueError,
-                r"Column must be TimestampType(\(\))?, instead it is "
-                f"{self.test_df.schema[col_name].dataType}.",
-            ):
-                self.timestamp_column_descriptor.validate_column(self.test_df, col_name)
-
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "domain, other_domain, expected",
         [
-            (SparkIntegerColumnDescriptor(size=32), "int32"),
-            (SparkIntegerColumnDescriptor(allow_null=True, size=32), "int32_null"),
-            (SparkIntegerColumnDescriptor(), "int64"),
-            (SparkIntegerColumnDescriptor(allow_null=True), "int64_null"),
-            (SparkFloatColumnDescriptor(), "float64"),
-            (SparkFloatColumnDescriptor(size=32), "float32"),
-            (SparkFloatColumnDescriptor(size=32, allow_nan=True), "float32_nan"),
-            (SparkStringColumnDescriptor(), "str"),
-            (SparkStringColumnDescriptor(allow_null=True), "str_null"),
-            (SparkDateColumnDescriptor(), "date"),
-            (SparkDateColumnDescriptor(allow_null=True), "date_null"),
-            (SparkTimestampColumnDescriptor(), "timestamp"),
-            (SparkTimestampColumnDescriptor(allow_null=True), "timestamp_null"),
+            (
+                _column_descriptors[base_key],
+                _column_descriptors[other_key],
+                base_key == other_key,
+            )
+            for base_key, other_key in combinations_with_replacement(
+                _col_name_to_type.values(), 2
+            )
         ]
+        + [
+            (
+                SparkIntegerColumnDescriptor(size=32),
+                SparkIntegerColumnDescriptor(size=32, allow_null=True),
+                False,
+            )
+        ],
     )
-    def test_eq(self, candidate: Any, col_type: str):
+    def test_eq(  # pylint: disable=no-self-use
+        self,
+        domain: SparkColumnDescriptor,
+        other_domain: SparkColumnDescriptor,
+        expected: bool,
+    ):
         """Tests that __eq__ works correctly."""
-        self.assertEqual(self.int32_column_descriptor == candidate, col_type == "int32")
-        self.assertEqual(self.int64_column_descriptor == candidate, col_type == "int64")
-        self.assertEqual(
-            self.float32_column_descriptor == candidate, col_type == "float32"
-        )
-        self.assertEqual(self.str_column_descriptor == candidate, col_type == "str")
-        self.assertEqual(self.date_column_descriptor == candidate, col_type == "date")
-        self.assertEqual(
-            self.timestamp_column_descriptor == candidate, col_type == "timestamp"
-        )
+        assert (domain == other_domain) == expected
+
+
+class TestSparkUtilityFunctions:
+    """Tests for utility functions for creating Spark domains."""
+
+    @pytest.mark.parametrize(
+        "spark_schema, expected, expectation",
+        [
+            (StructType(), {}, does_not_raise()),
+            (
+                StructType([StructField("A", IntegerType(), False)]),
+                {"A": SparkIntegerColumnDescriptor(size=32)},
+                does_not_raise(),
+            ),
+            (
+                StructType(
+                    [
+                        StructField("A", IntegerType(), False),
+                        StructField("B", LongType(), False),
+                        StructField("C", FloatType(), False),
+                        StructField("D", StringType(), True),
+                        StructField("E", DateType(), True),
+                        StructField("F", TimestampType(), True),
+                    ]
+                ),
+                {
+                    "A": SparkIntegerColumnDescriptor(size=32),
+                    "B": SparkIntegerColumnDescriptor(size=64),
+                    "C": SparkFloatColumnDescriptor(
+                        allow_nan=True, allow_inf=True, size=32
+                    ),
+                    "D": SparkStringColumnDescriptor(allow_null=True),
+                    "E": SparkDateColumnDescriptor(allow_null=True),
+                    "F": SparkTimestampColumnDescriptor(allow_null=True),
+                },
+                does_not_raise(),
+            ),
+        ],
+    )
+    def test_convert_spark_schema(  # pylint: disable=no-self-use
+        self,
+        spark_schema: StructType,
+        expected: SparkColumnsDescriptor,
+        expectation: ContextManager[None],
+    ):
+        """Tests that convert_spark_schema works correctly.
+
+        Args:
+            spark_schema: The Spark schema to convert.
+            expected: The expected result of the conversion.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+        """
+        with expectation:
+            assert convert_spark_schema(spark_schema) == expected
+
+    @pytest.mark.parametrize(
+        "pandas_domain, expected, expectation",
+        [
+            (PandasDataFrameDomain({}), {}, does_not_raise()),
+            (
+                PandasDataFrameDomain(
+                    {
+                        "A": PandasSeriesDomain(NumpyIntegerDomain(size=32)),
+                        "B": PandasSeriesDomain(NumpyIntegerDomain(size=64)),
+                        "C": PandasSeriesDomain(
+                            NumpyFloatDomain(allow_nan=True, allow_inf=True, size=32)
+                        ),
+                        "D": PandasSeriesDomain(NumpyStringDomain()),
+                    }
+                ),
+                {
+                    "A": SparkIntegerColumnDescriptor(size=32),
+                    "B": SparkIntegerColumnDescriptor(size=64),
+                    "C": SparkFloatColumnDescriptor(
+                        allow_nan=True, allow_inf=True, size=32
+                    ),
+                    "D": SparkStringColumnDescriptor(),
+                },
+                does_not_raise(),
+            ),
+        ],
+    )
+    def test_convert_pandas_domain(  # pylint: disable=no-self-use
+        self,
+        pandas_domain: PandasDataFrameDomain,
+        expected: SparkColumnsDescriptor,
+        expectation: ContextManager[None],
+    ):
+        """Tests that convert_pandas_domain works correctly.
+
+        Args:
+            pandas_domain: The Pandas domain to convert.
+            expected: The expected result of the conversion.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+        """
+        with expectation:
+            assert convert_pandas_domain(pandas_domain) == expected
+
+    @pytest.mark.parametrize(
+        "numpy_domain, expected, expectation",
+        [
+            (
+                NumpyIntegerDomain(size=32),
+                SparkIntegerColumnDescriptor(size=32),
+                does_not_raise(),
+            ),
+            (
+                NumpyFloatDomain(),
+                SparkFloatColumnDescriptor(allow_nan=False, allow_inf=False, size=64),
+                does_not_raise(),
+            ),
+            (
+                NumpyFloatDomain(allow_nan=True, allow_inf=True, size=32),
+                SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, size=32),
+                does_not_raise(),
+            ),
+            (NumpyStringDomain(), SparkStringColumnDescriptor(), does_not_raise()),
+            (
+                NumpyStringDomain(allow_null=True),
+                SparkStringColumnDescriptor(allow_null=True),
+                does_not_raise(),
+            ),
+            ("Not a numpy domain", None, pytest.raises(NotImplementedError)),
+        ],
+    )
+    def test_convert_numpy_domain(  # pylint: disable=no-self-use
+        self,
+        numpy_domain: NumpyDomain,
+        expected: SparkColumnDescriptor,
+        expectation: ContextManager[None],
+    ):
+        """Tests that convert_numpy_domain works correctly.
+
+        Args:
+            numpy_domain: The Numpy domain to convert.
+            expected: The expected result of the conversion.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+        """
+        with expectation:
+            assert convert_numpy_domain(numpy_domain) == expected

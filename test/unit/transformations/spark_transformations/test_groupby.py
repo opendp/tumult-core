@@ -40,6 +40,7 @@ from tmlt.core.transformations.spark_transformations.groupby import (
     create_groupby_from_list_of_keys,
 )
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+from tmlt.core.utils.misc import get_fullname
 from tmlt.core.utils.testing import (
     PySparkTest,
     assert_property_immutability,
@@ -104,7 +105,8 @@ class TestGroupBy(PySparkTest):
                 IfGroupedBy("A", SumOf(SymmetricDifference())),
                 [("1",), ("2",)],
                 StructType([StructField("A", StringType())]),
-                r"Column must be LongType(\(\))?, instead it is StringType(\(\))?.",
+                f"Column must be {get_fullname(LongType)}; got "
+                f"{get_fullname(StringType)} instead",
                 ValueError,
             ),
             (
