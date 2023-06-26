@@ -1,137 +1,393 @@
 """Unit tests for :mod:`~tmlt.core.domains.collections`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
-from typing import Any, Dict, Optional
-from unittest.case import TestCase
-from unittest.mock import Mock, create_autospec
+# Copyright Tumult Labs 2022
+
+import re
+from collections.abc import Mapping
+from contextlib import nullcontext as does_not_raise
+from itertools import combinations_with_replacement
+from test.unit.domains.abstract import DomainTests
+from typing import Any, Callable, ContextManager, Dict, Optional, Type
 
 import numpy as np
-from parameterized import parameterized
+import pytest
 from pyspark.sql.types import StringType
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.collections import DictDomain, ListDomain
-from tmlt.core.domains.numpy_domains import (
-    NumpyDomain,
-    NumpyFloatDomain,
-    NumpyIntegerDomain,
-)
-from tmlt.core.utils.testing import assert_property_immutability, get_all_props
+from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
+from tmlt.core.utils.misc import get_fullname
 
 
-class TestListDomain(TestCase):
+class TestListDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.collections.ListDomain`."""
 
-    def setUp(self):
-        """Setup."""
-        self.list_domain = ListDomain(NumpyIntegerDomain())
+    @pytest.fixture
+    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+        """Returns the type of the domain to be tested."""
+        return ListDomain
 
-    @parameterized.expand(
+    @pytest.fixture(scope="class")
+    def domain(self) -> ListDomain:  # pylint: disable=no-self-use
+        """Get a base ListDomain."""
+        return ListDomain(NumpyIntegerDomain())
+
+    @pytest.mark.parametrize(
+        "domain_args, expectation, exception_properties",
         [
-            (NumpyFloatDomain(), False),
-            (ListDomain(NumpyFloatDomain()), False),
-            (ListDomain(NumpyIntegerDomain()), True),
-        ]
-    )
-    def test_eq(self, domain: Domain, equal_domain: bool):
-        """Tests that __eq__  works correctly."""
-        self.assertEqual(self.list_domain == domain, equal_domain)
-
-    @parameterized.expand([(None,), (StringType,)])
-    def test_invalid_inputs(self, element_domain: Domain):
-        """Test ListDomain with invalid input."""
-        with self.assertRaises(TypeError):
-            ListDomain(element_domain)
-
-    @parameterized.expand(
-        [
-            ([np.int64(1)], None),
-            ("Not a list", f"Value must be {list}, instead it is {str}."),
             (
-                ["invalid"],
-                (
-                    f"Found invalid value in list: Value must be {np.int64}, "
-                    f"instead it is {str}."
+                {"element_domain": invalid_type},
+                pytest.raises(
+                    TypeError,
+                    match=f"type of element_domain must be {get_fullname(Domain)}; "
+                    f"got {get_fullname(invalid_type)} instead",
                 ),
-            ),
+                None,
+            )
+            for invalid_type in [None, "not a domain", StringType, np.int64(1)]
         ]
+        + [
+            (
+                {"element_domain": NumpyIntegerDomain(), "length": -1},
+                pytest.raises(ValueError, match="length must be non-negative"),
+                None,
+            ),
+            (
+                {"element_domain": NumpyFloatDomain(), "length": 1.5},
+                pytest.raises(
+                    TypeError,
+                    match=re.escape(
+                        f"type of length must be one of ({get_fullname(int)}, "
+                        f"{get_fullname(None)}); got {get_fullname(float)} instead"
+                    ),
+                ),
+                None,
+            ),
+            (
+                {"element_domain": NumpyIntegerDomain(), "length": 1},
+                does_not_raise(),
+                None,
+            ),
+            (
+                {"element_domain": NumpyIntegerDomain(), "length": np.int64(5)},
+                pytest.raises(
+                    TypeError,
+                    match=re.escape(
+                        f"type of length must be one of ({get_fullname(int)}, "
+                        f"{get_fullname(None)}); got {get_fullname(np.int64)} instead"
+                    ),
+                ),
+                None,
+            ),
+            ({"element_domain": NumpyIntegerDomain()}, does_not_raise(), None),
+            (
+                {"element_domain": ListDomain(NumpyIntegerDomain())},
+                does_not_raise(),
+                None,
+            ),
+        ],
     )
-    def test_validate(self, candidate: Any, exception: Optional[str]):
-        """Tests that validate works correctly."""
-        if exception is not None:
-            with self.assertRaisesRegex(OutOfDomainError, exception):
-                self.list_domain.validate(candidate)
-        else:
-            self.assertEqual(self.list_domain.validate(candidate), exception)
+    def test_construct_component(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Initialization behaves correctly.
+
+        The domain is constructed correctly and raises exceptions when initialized with
+        invalid inputs.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_construct_component(
+            domain_type, domain_args, expectation, exception_properties
+        )
+
+    @pytest.mark.parametrize(
+        "domain, other_domain, expected",
+        [
+            (ListDomain(NumpyIntegerDomain()), NumpyFloatDomain(), False),
+            (ListDomain(NumpyIntegerDomain()), ListDomain(NumpyFloatDomain()), False),
+            (ListDomain(NumpyIntegerDomain()), ListDomain(NumpyIntegerDomain()), True),
+        ]
+        + [
+            # Lengths should be equal as well
+            (
+                ListDomain(NumpyIntegerDomain(), length=len1),
+                ListDomain(NumpyIntegerDomain(), length=len2),
+                len1 == len2,
+            )
+            for len1, len2 in combinations_with_replacement([1, 2, 3], 2)
+        ],
+    )
+    def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
+        """__eq__ works correctly.
+
+        Args:
+            domain: The domain to test.
+            other_domain: The domain to compare to.
+            expected: The expected result of the comparison.
+        """
+        super().test_eq(domain, other_domain, expected)
+
+    @pytest.mark.skip("No arguments to mutate")
+    @pytest.mark.parametrize("domain_args, key, mutator", [])
+    def test_mutable_inputs(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        key: str,
+        mutator: Callable[[Any], Any],
+    ):
+        """The mutable inputs to the domain are copied.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            key: The parameter name to be changed.
+            mutator: A lambda function that mutates the parameter.
+        """
+        super().test_mutable_inputs(domain_type, domain_args, key, mutator)
+
+    @pytest.mark.parametrize(
+        "domain, expected_properties",
+        [
+            (
+                ListDomain(NumpyIntegerDomain()),
+                {
+                    "element_domain": NumpyIntegerDomain(),
+                    "carrier_type": list,
+                    "length": None,
+                },
+            ),
+            (
+                ListDomain(NumpyFloatDomain()),
+                {
+                    "element_domain": NumpyFloatDomain(),
+                    "carrier_type": list,
+                    "length": None,
+                },
+            ),
+            (
+                ListDomain(NumpyIntegerDomain(), length=5),
+                {
+                    "element_domain": NumpyIntegerDomain(),
+                    "carrier_type": list,
+                    "length": 5,
+                },
+            ),
+        ],
+    )
+    def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
+        """All properties have the expected values.
+
+        Args:
+            domain: The constructed domain to be tested.
+            expected_properties: A dictionary containing all the property:value pairs
+                domain is expected to have.
+        """
+        super().test_properties(domain, expected_properties)
+
+    @pytest.mark.parametrize(
+        "domain", [ListDomain(NumpyIntegerDomain()), ListDomain(NumpyFloatDomain())]
+    )
+    def test_property_immutability(self, domain: Domain):
+        """The properties return copies for mutable values.
+
+        Args:
+            domain: The domain to be tested.
+        """
+        super().test_property_immutability(domain)
+
+    @pytest.mark.parametrize(
+        "domain, candidate, expectation, exception_properties",
+        [
+            (ListDomain(NumpyIntegerDomain()), [np.int64(1)], does_not_raise(), None),
+            (
+                ListDomain(NumpyIntegerDomain()),
+                [np.float64(1.0)],
+                pytest.raises(
+                    OutOfDomainError,
+                    match="Found invalid value in list: Value must be "
+                    f"{get_fullname(np.int64)}, "
+                    f"instead it is {get_fullname(np.float64)}",
+                ),
+                {
+                    "domain": ListDomain(NumpyIntegerDomain()),
+                    "value": [np.float64(1.0)],
+                },
+            ),
+            (
+                ListDomain(NumpyIntegerDomain()),
+                "not a list",
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(list)}, instead it is "
+                    f"{get_fullname(str)}.",
+                ),
+                {"domain": ListDomain(NumpyIntegerDomain()), "value": "not a list"},
+            ),
+            (
+                ListDomain(NumpyIntegerDomain(), length=3),
+                [np.int64(i) for i in range(10)],
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Expected list of length {3}, found list of length {10}",
+                ),
+                {
+                    "domain": ListDomain(NumpyIntegerDomain(), length=3),
+                    "value": [np.int64(i) for i in range(10)],
+                },
+            ),
+            (
+                ListDomain(NumpyIntegerDomain(), length=10),
+                [np.int64(i) for i in range(10)],
+                does_not_raise(),
+                None,
+            ),
+        ],
+    )
+    def test_validate(
+        self,
+        domain: Domain,
+        candidate: Any,
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Validate works correctly.
+
+        Args:
+            domain: The domain to test.
+            candidate: The value to validate using domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_validate(domain, candidate, expectation, exception_properties)
 
 
-class TestDictDomain(TestCase):
+class TestDictDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.collections.DictDomain`."""
 
-    def setUp(self):
-        """Setup."""
-        self.domain_a = create_autospec(spec=Domain, instance=True)
-        self.domain_b = create_autospec(spec=Domain, instance=True)
-        self.dict_domain = DictDomain({"A": self.domain_a, "B": self.domain_b})
+    @pytest.fixture
+    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+        """Returns the type of the domain to be tested."""
+        return DictDomain
 
-    def test_constructor_mutable_arguments(self):
-        """Tests that mutable constructor arguments are copied."""
-        domain_map: Dict[str, NumpyDomain] = {"A": NumpyIntegerDomain()}
-        domain = DictDomain(key_to_domain=domain_map)
-        domain_map["A"] = NumpyFloatDomain()
-        self.assertDictEqual(domain.key_to_domain, {"A": NumpyIntegerDomain()})
+    @pytest.fixture(scope="class")
+    def domain(self) -> DictDomain:  # pylint: disable=no-self-use
+        """Get a base DictDomain."""
+        return DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()})
 
-    @parameterized.expand(get_all_props(DictDomain))
-    def test_property_immutability(self, prop_name: str):
-        """Tests that given property is immutable."""
-        assert_property_immutability(self.dict_domain, prop_name)
-
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "domain_args, expectation, exception_properties",
         [
-            ({"A": Mock(), "B": Mock()}, True, True),
-            ({"A": Mock(), "B": Mock()}, True, False),
-            ({"A": Mock(), "B": Mock()}, False, True),
-            ({"A": Mock(), "B": Mock()}, False, False),
-            ({"C": Mock(), "B": Mock()}, True, True),
-            ({"A": Mock(), "B": Mock(), "C": Mock()}, True, True),
-            ({"A": Mock()}, True, True),
+            (
+                {"key_to_domain": []},
+                pytest.raises(
+                    TypeError,
+                    match='type of argument "key_to_domain" must be '
+                    f"{get_fullname(Mapping)}; got {get_fullname(list)} instead",
+                ),
+                None,
+            ),
+            (
+                {"key_to_domain": (1, 2, 3)},
+                pytest.raises(
+                    TypeError,
+                    match='type of argument "key_to_domain" must be '
+                    f"{get_fullname(Mapping)}; got {get_fullname(tuple)} instead",
+                ),
+                None,
+            ),
+            (
+                {"key_to_domain": "not a domain"},
+                pytest.raises(
+                    TypeError,
+                    match='type of argument "key_to_domain" must be '
+                    f"{get_fullname(Mapping)}; got {get_fullname(str)} instead",
+                ),
+                None,
+            ),
+            (
+                {"key_to_domain": {"A": np.int64(1)}},
+                pytest.raises(
+                    TypeError,
+                    match=f"Expected domain for key 'A' to be a {get_fullname(Domain)};"
+                    f" got {get_fullname(np.int64)} instead",
+                ),
+                None,
+            ),
+            (
+                {"key_to_domain": {"A": 1}},
+                pytest.raises(
+                    TypeError,
+                    match=f"Expected domain for key 'A' to be a {get_fullname(Domain)};"
+                    f" got {get_fullname(int)} instead",
+                ),
+                None,
+            ),
+            ({"key_to_domain": {1: NumpyIntegerDomain()}}, does_not_raise(), None),
+            (
+                {"key_to_domain": {"A": ListDomain(NumpyIntegerDomain())}},
+                does_not_raise(),
+                None,
+            ),
+            (
+                {
+                    "key_to_domain": {
+                        "A": DictDomain({"B": DictDomain({"C": NumpyIntegerDomain()})})
+                    }
+                },
+                does_not_raise(),
+                None,
+            ),
         ]
+        + [
+            # Testing complex keys
+            ({"key_to_domain": {key: NumpyIntegerDomain()}}, does_not_raise(), None)
+            for key in [("A",), "3", 1.0, np.int64(-3)]
+        ],
     )
-    def test_validate(self, candidate: Dict[str, Any], in_A: bool, in_B: bool):
-        """Tests that validate works correctly."""
-        self.domain_a.validate = (
-            Mock(side_effect=OutOfDomainError(self.domain_a, candidate, "Test"))
-            if not in_A
-            else Mock(return_value=None)
+    def test_construct_component(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Initialization behaves correctly.
+
+        The domain is constructed correctly and raises exceptions when initialized with
+        invalid inputs.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_construct_component(
+            domain_type, domain_args, expectation, exception_properties
         )
-        self.domain_b.validate = (
-            Mock(side_effect=OutOfDomainError(self.domain_b, candidate, "Test"))
-            if not in_B
-            else Mock(return_value=None)
-        )
 
-        if (in_A and in_B) and set(candidate) == {"A", "B"}:
-            self.dict_domain.validate(candidate)
-        else:
-            issue_object = "'B'" if in_A else "'A'"
-            exception = f"Found invalid value at {issue_object}: Test"
-            if set(candidate) != {"A", "B"}:
-                exception = (
-                    "Keys are not as expected, value must match domain.\n"
-                    rf"Value keys: \[{str(sorted(set(candidate)))[1:-1]}\]"
-                    "\n"
-                    r"Domain keys: \['A', 'B'\]"
-                )
-            with self.assertRaisesRegex(OutOfDomainError, exception):
-                self.dict_domain.validate(candidate)
-
-        if set(candidate) == {"A", "B"}:
-            self.domain_a.validate.assert_called_once_with(candidate["A"])
-            if in_A:
-                self.domain_b.validate.assert_called_once_with(candidate["B"])
-
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "other_domain, expected",
         [
             (DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}), True),
             (DictDomain({"B": NumpyFloatDomain(), "A": NumpyIntegerDomain()}), True),
@@ -154,19 +410,189 @@ class TestDictDomain(TestCase):
             ),
             (DictDomain({"A": NumpyIntegerDomain()}), False),
             (NumpyIntegerDomain(), False),
-        ]
+        ],
     )
-    def test_eq(self, candidate: Domain, expected: bool):
-        """Tests that __eq__ works correctly."""
-        domain = DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()})
-        self.assertEqual(domain == candidate, expected)
+    def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
+        """__eq__ works correctly.
 
-    def test_repr(self):
-        """Tests that __repr__ works correctly"""
-        domain = DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()})
+        Args:
+            domain: The domain to test.
+            other_domain: The domain to compare to.
+            expected: The expected result of the comparison.
+        """
+        super().test_eq(domain, other_domain, expected)
 
-        expected = (
-            "DictDomain(key_to_domain={'A': NumpyIntegerDomain(size=64), "
-            "'B': NumpyFloatDomain(allow_nan=False, allow_inf=False, size=64)})"
-        )
-        self.assertEqual(repr(domain), expected)
+    @pytest.mark.parametrize(
+        "domain_args, key, mutator",
+        [
+            (
+                {"key_to_domain": {"A": NumpyIntegerDomain()}},
+                "key_to_domain",
+                lambda x: x.update({"A": NumpyFloatDomain()}),
+            )
+        ],
+    )
+    def test_mutable_inputs(
+        self,
+        domain_type: Type[Domain],
+        domain_args: Dict[str, Any],
+        key: str,
+        mutator: Callable[[Any], Any],
+    ):
+        """The mutable inputs to the domain are copied.
+
+        Args:
+            domain_type: The type of domain to be constructed.
+            domain_args: The arguments to the domain.
+            key: The parameter name to be changed.
+            mutator: A lambda function that mutates the parameter.
+        """
+        super().test_mutable_inputs(domain_type, domain_args, key, mutator)
+
+    @pytest.mark.parametrize(
+        "domain, expected_properties",
+        [
+            (DictDomain({}), {"key_to_domain": {}, "length": 0, "carrier_type": dict}),
+            (
+                DictDomain({"A": NumpyIntegerDomain()}),
+                {
+                    "key_to_domain": {"A": NumpyIntegerDomain()},
+                    "length": 1,
+                    "carrier_type": dict,
+                },
+            ),
+            (
+                DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}),
+                {
+                    "key_to_domain": {
+                        "A": NumpyIntegerDomain(),
+                        "B": NumpyFloatDomain(),
+                    },
+                    "length": 2,
+                    "carrier_type": dict,
+                },
+            ),
+        ],
+    )
+    def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
+        """All properties have the expected values.
+
+        Args:
+            domain: The constructed domain to be tested.
+            expected_properties: A dictionary containing all the property:value pairs
+                domain is expected to have.
+        """
+        super().test_properties(domain, expected_properties)
+
+    @pytest.mark.parametrize(
+        "domain", [(DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}))]
+    )
+    def test_property_immutability(self, domain: Domain):
+        """The properties return copies for mutable values.
+
+        Args:
+            domain: The domain to be tested.
+        """
+        super().test_property_immutability(domain)
+
+    @pytest.mark.parametrize(
+        "domain, candidate, expectation, exception_properties",
+        [
+            (
+                DictDomain({"A": NumpyIntegerDomain()}),
+                NumpyIntegerDomain(),
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Value must be {get_fullname(dict)}, instead it is "
+                    f"{get_fullname(NumpyIntegerDomain)}.",
+                ),
+                {"domain": DictDomain({"A": NumpyIntegerDomain()})},
+            ),
+            (
+                DictDomain({"A": NumpyIntegerDomain()}),
+                {"A": np.int64(1)},
+                does_not_raise(),
+                None,
+            ),
+            (
+                DictDomain({"A": NumpyIntegerDomain()}),
+                {"A": np.int64(1), "B": np.int64(2)},
+                pytest.raises(
+                    OutOfDomainError,
+                    match=re.escape(
+                        "Keys are not as expected, value must match domain.\n"
+                        "Value keys: ['A', 'B']\nDomain keys: ['A']"
+                    ),
+                ),
+                {
+                    "domain": DictDomain({"A": NumpyIntegerDomain()}),
+                    "value": ["A", "B"],
+                },
+            ),
+            (
+                DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}),
+                {"A": np.int64(1)},
+                pytest.raises(
+                    OutOfDomainError,
+                    match=re.escape(
+                        "Keys are not as expected, value must match domain.\n"
+                        "Value keys: ['A']\nDomain keys: ['A', 'B']"
+                    ),
+                ),
+                {
+                    "domain": DictDomain(
+                        {"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}
+                    ),
+                    "value": ["A"],
+                },
+            ),
+            (
+                DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}),
+                {"A": np.float64(1.0), "B": np.float64(2.0)},
+                pytest.raises(
+                    OutOfDomainError,
+                    match=f"Found invalid value at 'A': Value must be "
+                    f"{get_fullname(np.int64)}, instead it is "
+                    f"{get_fullname(np.float64)}.",
+                ),
+                {
+                    "domain": DictDomain(
+                        {"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}
+                    ),
+                    "value": {"A": np.float64(1.0), "B": np.float64(2.0)},
+                },
+            ),
+            (DictDomain({}), {}, does_not_raise(), None),
+            (
+                DictDomain({}),
+                {"A": np.int64(1), "B": np.float64(2.0)},
+                pytest.raises(
+                    OutOfDomainError,
+                    match=re.escape(
+                        "Keys are not as expected, value must match domain.\n"
+                        "Value keys: ['A', 'B']\nDomain keys: []"
+                    ),
+                ),
+                {"domain": DictDomain({}), "value": ["A", "B"]},
+            ),
+        ],
+    )
+    def test_validate(
+        self,
+        domain: Domain,
+        candidate: Any,
+        expectation: ContextManager[None],
+        exception_properties: Optional[Dict[str, Any]],
+    ):
+        """Validate works correctly.
+
+        Args:
+            domain: The domain to test.
+            candidate: The value to validate using domain.
+            expectation: A context manager that captures the correct expected type of
+                error that is raised.
+            exception_properties: A dictionary containing all the property:value pairs
+                the exception is expected to have. Mostly used for testing the custom
+                exceptions.
+        """
+        super().test_validate(domain, candidate, expectation, exception_properties)

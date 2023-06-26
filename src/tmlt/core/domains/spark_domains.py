@@ -35,6 +35,7 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
+from tmlt.core.utils.misc import get_fullname
 
 
 class SparkColumnDescriptor(ABC):
@@ -61,8 +62,8 @@ class SparkColumnDescriptor(ABC):
             raise ValueError(f"'{col_name}' is not in the DataFrame")
         if sdf.schema[col_name].dataType.__class__ is not self.data_type.__class__:
             raise ValueError(
-                f"Column must be {self.data_type}, instead it is "
-                f"{sdf.schema[col_name].dataType}."
+                f"Column must be {get_fullname(self.data_type)}; got "
+                f"{get_fullname(sdf.schema[col_name].dataType)} instead"
             )
         if not self.allow_null:
             if sdf.filter(sdf[col_name].isNull()).first():
@@ -347,6 +348,14 @@ class SparkDataFrameDomain(Domain):
             schema: Mapping from column names to column descriptors.
         """
         self._schema = dict(schema.items())
+        # TODO(#2727): Remove this check once we update typeguard to ^3.0.0
+        for key, domain in self._schema.items():
+            if not isinstance(domain, SparkColumnDescriptor):
+                raise TypeError(
+                    f"Expected domain for key '{key}' to be a "
+                    f"{get_fullname(SparkColumnDescriptor)}; got "
+                    f"{get_fullname(domain)} instead"
+                )
 
     def __repr__(self) -> str:
         """Return string representation of the object."""
@@ -504,6 +513,14 @@ class SparkGroupedDataFrameDomain(Domain):
             schema[column].validate_column(sdf=group_keys, col_name=column)
 
         self._schema = dict(schema.items())
+        # TODO(#2727): Remove this check once we update typeguard to ^3.0.0
+        for key, domain in self._schema.items():
+            if not isinstance(domain, SparkColumnDescriptor):
+                raise TypeError(
+                    f"Expected domain for key '{key}' to be a "
+                    f"{get_fullname(SparkColumnDescriptor)}; got "
+                    f"{get_fullname(domain)} instead"
+                )
         self._group_keys = group_keys.distinct()
 
     @property
@@ -711,6 +728,6 @@ def convert_numpy_domain(numpy_domain: NumpyDomain) -> SparkColumnDescriptor:
             allow_null=False,
         )
     elif isinstance(numpy_domain, NumpyStringDomain):
-        return SparkStringColumnDescriptor(allow_null=False)
+        return SparkStringColumnDescriptor(allow_null=numpy_domain.allow_null)
     else:
         raise NotImplementedError()
