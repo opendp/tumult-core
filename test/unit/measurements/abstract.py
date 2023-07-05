@@ -73,13 +73,16 @@ class MeasurementTests(ABC):
                 property:value pairs measurement is expected to have.
         """
         actual_props = [prop[0] for prop in get_all_props(type(measurement))]
-        assert set(expected_properties.keys()) == set(actual_props)
+        assert set(expected_properties.keys()) == set(actual_props), (
+            "Keys of expected properties don't match actual properties. Expected "
+            f"{set(expected_properties.keys())}; got {set(actual_props)}"
+        )
         for prop, expected_val in expected_properties.items():
             assert hasattr(measurement, prop), f"{prop} not in {measurement}"
             actual_value = getattr(measurement, prop)
             assert (
                 getattr(measurement, prop) == expected_val
-            ), f"Expected {prop} to be {expected_val}, got {actual_value}"
+            ), f"Expected {prop} to be {expected_val}; got {actual_value}"
 
     @abstractmethod
     def test_construct_component(
@@ -138,7 +141,8 @@ class MeasurementTests(ABC):
                 exceptions.
         """
         with expectation as exception:
-            assert measurement.privacy_function(d_in) == expected_d_out
+            d_out = measurement.privacy_function(d_in)
+            assert d_out == expected_d_out, f"Expected {expected_d_out}, got {d_out}"
         if exception_properties is None or len(exception_properties) == 0:
             return
         for prop, expected_value in exception_properties.items():

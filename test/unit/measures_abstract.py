@@ -110,7 +110,7 @@ class MeasureTests(ABC):
             actual_value = getattr(measure, prop)
             assert (
                 getattr(measure, prop) == expected_val
-            ), f"Expected {prop} to be {expected_val}, got {actual_value}"
+            ), f"Expected {prop} to be {expected_val}; got {actual_value}"
 
     @abstractmethod
     def test_compare(
@@ -144,7 +144,7 @@ class MeasureTests(ABC):
             actual_value = getattr(exception, prop)
             assert (
                 getattr(exception, prop) == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            ), f"Expected {prop} to be {expected_value}; got {actual_value}"
 
     @abstractmethod
     def test_repr(self, measure: Measure, representation: str):

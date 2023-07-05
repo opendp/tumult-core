@@ -78,7 +78,7 @@ class PureDP(Measure):
                 minimum_is_inclusive=True,
             )
         except ValueError as e:
-            raise ValueError(f"Invalid PureDP measure value (epsilon) {e}") from e
+            raise ValueError(f"Invalid PureDP measure value (epsilon): {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
         """Returns True if `value1` is less than or equal to `value2`."""

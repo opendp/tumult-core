@@ -123,7 +123,7 @@ class TestNoisyQuantile(TestCase):
                 {"upper": 0, "lower": 1},
                 "Lower bound (1) can not be greater than the upper bound (0).",
             ),
-            ({"epsilon": -1}, "Invalid PureDP measure value (epsilon) -1"),
+            ({"epsilon": -1}, "Invalid PureDP measure value (epsilon): -1"),
             (
                 {"input_domain": PandasSeriesDomain(NumpyStringDomain())},
                 (
