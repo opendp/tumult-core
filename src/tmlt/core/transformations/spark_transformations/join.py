@@ -38,6 +38,9 @@ from tmlt.core.utils.truncation import drop_large_groups, truncate_large_groups
 class PublicJoin(Transformation):
     """Join a Spark DataFrame with a public Pandas DataFrame.
 
+    Performs an inner join. By default, this mimics the behavior of a PySpark join, but
+    it can also be set to consider null values equal to each other (unlike PySpark).
+
     Examples:
         ..
             >>> import pandas as pd
@@ -416,6 +419,9 @@ class TruncationStrategy(Enum):
 
 class PrivateJoin(Transformation):
     r"""Join two private SparkDataFrames.
+
+    Performs an inner join. By default, this mimics the behavior of a PySpark join, but
+    it can also be set to consider null values equal to each other (unlike PySpark).
 
     Example:
         ..
