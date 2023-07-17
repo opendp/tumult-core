@@ -1,0 +1,32 @@
+version: 2.1
+
+jobs:
+  build-core:
+    macos:
+      xcode: 12.5.1
+      resource_class: macos.x86.medium.gen2
+    steps:
+      - checkout
+      - restore_cache:
+          key: ext-{{ checksum "ext/dependency_versions.sh"}}
+      - run: |
+          curl -sSL https://install.python-poetry.org | python3 - --version 1.4.2
+          export PATH="/Users/distiller/.local/bin:/Users/distiller/Library/Python/3.9/bin:$PATH"
+          poetry --version
+          python3 -m pip install --user nox nox-poetry cibuildwheel --constraint=<(poetry export --dev -f constraints.txt --without-hashes)
+          nox --no-venv -s build
+          rm -f dist/*.tar.gz
+      - save_cache:
+          key: ext-{{ checksum "ext/dependency_versions.sh"}}
+          paths:
+            - src/tmlt/core/ext
+      - store_artifacts:
+          path: dist
+
+workflows:
+  build-core-mac-x86-wheels-workflow:
+    jobs:
+      - build-core:
+          filters:
+            tags:
+              only: /.*/

@@ -546,6 +546,85 @@ def release_test(session):
 
 #### Project-specific sessions ####
 
+
+@poetry_session()
+def get_wheels_from_circleci(session):
+    """Get Core wheels for macOS x86 from CircleCI.
+
+    This session is used to grab macOS wheels from CircleCI. It finds the CircleCI
+    pipeline associated with the commit's sha and downloads the wheels into the `dist`
+    directory.
+    """
+    import requests
+    import polling2
+    commit_hash = (
+        subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True)
+        .stdout.decode("ascii")
+        .strip()
+    )
+    session.log(f"Grabbing wheels for commit {commit_hash}...")
+    CIRCLECI_TOKEN = os.environ.get("CIRCLECI_API_TOKEN")
+    if not CIRCLECI_TOKEN:
+        session.error("CIRCLECI_API_TOKEN not set, unable to get wheels from CircleCI")
+    headers = {
+        "Accept": "application/json",
+        "Circle-Token": CIRCLECI_TOKEN,
+        "Content-Type": "application/json",
+    }
+    PROJECT_SLUG = "circleci/GmqTygdwMo6PcdZd3KHo6P/Dw3pczSBYDhEDb4rML7i7i"
+    circle_org_slug = requests.get(
+        f"https://circleci.com/api/v2/project/{PROJECT_SLUG}",
+        headers=headers,
+    ).json()["organization_slug"]
+    pipelines = requests.get(
+        "https://circleci.com/api/v2/pipeline",
+        params={"org-slug": circle_org_slug},
+        headers=headers,
+    ).json()
+    commit_pipeline = [
+        p
+        for p in pipelines["items"]
+        if p["trigger_parameters"]["gitlab"]["commit_sha"] == commit_hash
+    ]
+    if len(commit_pipeline) == 0:
+        session.error(
+            f"Unable to find CircleCI pipeline for commit {commit_hash}, "
+            "unable to get wheels from CircleCI"
+        )
+    pipeline_id = commit_pipeline[0]["id"]
+    workflows = requests.get(
+        f"https://circleci.com/api/v2/pipeline/{pipeline_id}/workflow",
+        headers=headers,
+    ).json()
+    if "items" not in workflows or len(workflows["items"]) == 0:
+        session.error("Unable to find CircleCI workflow for commit {commit_hash}")
+    workflow_id = workflows["items"][0]["id"]
+    polling2.poll(
+        lambda: requests.get(
+            f"https://circleci.com/api/v2/workflow/{workflow_id}",
+            headers=headers,
+        ),
+        step=10,
+        timeout=20 * 60,
+        check_success=lambda response: response.json()["status"] == "success",
+    )
+    jobs = requests.get(
+        f"https://circleci.com/api/v2/workflow/{workflow_id}/job",
+        headers=headers,
+    ).json()
+    if "items" not in jobs or len(jobs["items"]) == 0:
+        session.error("Unable to find CircleCI job for commit {commit_hash}")
+    job_number = jobs["items"][0]["job_number"]
+    artifacts = requests.get(
+        f"https://circleci.com/api/v2/project/{PROJECT_SLUG}/{job_number}/artifacts",
+        headers=headers,
+    ).json()
+    Path("dist").mkdir(exist_ok=True)
+    for artifact in artifacts["items"]:
+        with open(artifact["path"], "wb") as f:
+            f.write(requests.get(artifact["url"], headers=headers).content)
+
+
 @poetry_session()
 @install("cibuildwheel")
 def build(session):

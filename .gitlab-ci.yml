@@ -87,29 +87,28 @@ package_linux:
   interruptible: true
   tags: [saas-linux-large-amd64]
 
-package_mac:
+get_circleci_wheels:
+  extends: .base
   stage: setup
   needs: []
-  before_script:
-    - source ~/ci-venv/bin/activate
-    - poetry self show
-    - pip install nox nox-poetry cibuildwheel --constraint=<(poetry export --dev -f constraints.txt --without-hashes)
-  script:
-    - nox --no-venv -s build
-    # The sdist is generated on every platform, but only one copy is needed, so
-    # delete it.
-    - rm -f dist/*.tar.gz
   artifacts:
     paths: ["dist/"]
     expire_in: 1 week
-  timeout: 45m
+  script:
+    - nox -s get_wheels_from_circleci
   rules:
+    # Start this job with a short delay to allow the CircleCI pipeline
+    # to be created
     - if: "$CI_COMMIT_TAG"
-    - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "trigger"'
+      when: delayed
+      start_in: 30 seconds
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: delayed
+      start_in: 30 seconds
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
     - when: manual
-      allow_failure: true
-  interruptible: true
-  tags: [macos-amd64]
+
 
 lint:
   extends: .base
@@ -295,7 +294,7 @@ test_dep_matrix:
 
 publish:
   stage: release
-  dependencies: [package_mac, package_linux]
+  dependencies: [get_circleci_wheels, package_linux]
   image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest
   script:
     - poetry publish -u __token__ -p "${RELEASE_PYPI_TOKEN}"
@@ -428,5 +427,5 @@ release_handler:
     - release_handler
   timeout: 2m
   rules:
-    - if: '$CI_COMMIT_TAG'
+    - if: "$CI_COMMIT_TAG"
   interruptible: false
