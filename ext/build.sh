@@ -24,6 +24,18 @@ then
     exit 1
 fi
 
+# On Linux, cibuildwheel compiles the dependencies and builds platform-specific wheels on a Docker
+# container. Since the dependencies built when running `poetry install` are not compatible with the
+# Docker container, we need to rebuild them here. We use AUDITWHEEL_PLAT to determine whether the
+# dependencies need to be rebuilt.
+AUDITWHEEL_PLAT=${AUDITWHEEL_PLAT-}
+if [[ "$(uname)" = "Linux" ]]; then
+    if [[ ! -f $PREFIX/lib/AUDITWHEEL_PLAT || "$(cat $PREFIX/lib/AUDITWHEEL_PLAT)" != "$AUDITWHEEL_PLAT" ]]; then
+        echo "Rebuilding dependencies because $PREFIX/lib/AUDITWHEEL_PLAT does not match $AUDITWHEEL_PLAT."
+        rm -f $PREFIX/lib/GMPVER $PREFIX/lib/MPFRVER $PREFIX/lib/FLINTVER $PREFIX/lib/ARBVER
+    fi
+fi
+
 # GMP
 if [[ ! -f $PREFIX/lib/GMPVER || "$(cat $PREFIX/lib/GMPVER)" != "$GMPVER" ]]; then
     configure_args="--prefix=$PREFIX --enable-fat --enable-shared=yes --enable-static=no"
@@ -90,6 +102,8 @@ if [[ ! -f $PREFIX/lib/ARBVER || "$(cat $PREFIX/lib/ARBVER)" != "$ARBVER" ]]; th
 else
     echo "Using existing Arb..."
 fi
+
+echo "$AUDITWHEEL_PLAT" > $PREFIX/lib/AUDITWHEEL_PLAT
 
 # The source archives for some of these libraries include Python files, which
 # can be spuriously picked up by our linters when run locally. There's no reason

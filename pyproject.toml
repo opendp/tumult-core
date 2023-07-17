@@ -55,7 +55,7 @@ typeguard = "^2.12.1,<2.13.0"
 # 3-segment version numbers as the minimum version -- using a 4-segment version
 # can cause some unexpected behaviors, like allowing 3-segment versions that
 # should be excluded.
-typing_extensions = "^3.10.0"
+typing_extensions = "^4.1.0"
 pytest = "^7.3.1"
 
 [tool.pytest.ini_options]
@@ -77,6 +77,8 @@ source = ["src/tmlt/core", ".nox/**/site-packages/tmlt/core"]
 # Build scripting
 nox = "2022.8.7"
 nox_poetry = "1.0.1"
+polling2 = "0.5.0"
+requests = "*"
 
 # Linters, formatters
 black = "^23"
@@ -178,12 +180,6 @@ add-ignore = [
 
 [tool.cibuildwheel]
 build = "cp37-* cp38-* cp39-* cp310-*"
-before-all = """
-if [ -d src/tmlt/core/ext ]; then
-    echo 'Found existing extensions in src/tmlt/core/ext -- please clean your environment before building'
-    exit 1
-fi
-"""
 skip = "*-musllinux*"
 
 [tool.cibuildwheel.linux]
