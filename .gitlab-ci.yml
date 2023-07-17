@@ -95,7 +95,8 @@ get_circleci_wheels:
     paths: ["dist/"]
     expire_in: 1 week
   script:
-    - nox -s get_wheels_from_circleci
+    - pip install polling2 requests --constraint=<(poetry export --dev -f constraints.txt --without-hashes)
+    - nox --no-venv -s get_wheels_from_circleci
   rules:
     # Start this job with a short delay to allow the CircleCI pipeline
     # to be created
