@@ -276,10 +276,19 @@ class ExactNumber:
         evaluated_val = float(self.expr.evalf())
         nudge = 1e-15 if round_up else -1e-15
 
-        def compare(x: float, y: sp.Expr) -> bool:
+        def compare(x: Union[float, sp.Expr], y: sp.Expr) -> bool:
             return x < y if round_up else x > y
 
-        while bool(compare(evaluated_val, self.expr)):
+        def float_to_rational(x: float) -> Union[float, sp.Expr]:
+            # Sympy seems to have an easier time determining whether an expression is
+            # larger or smaller than a rational number than a float, so we convert to a
+            # rational number before comparing.
+            # See https://gitlab.com/tumult-labs/tumult/-/issues/1697#note_1428848301
+            if float("-inf") < x < float("inf"):
+                return sp.Rational(x)
+            return x
+
+        while bool(compare(float_to_rational(evaluated_val), self.expr)):
             evaluated_val += nudge
             nudge *= 10
         return evaluated_val
