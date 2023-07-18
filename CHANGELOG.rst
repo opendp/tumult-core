@@ -11,6 +11,9 @@ Changed
 - Build wheels for macOS 11 instead of macOS 13.
 - Updated dependency version for `typing_extenstions` to 4.1.0
 
+Unreleased
+----------
+
 0.10.1 - 2023-06-08
 -------------------
 
