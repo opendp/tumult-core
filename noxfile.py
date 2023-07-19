@@ -482,6 +482,13 @@ def prepare_release(session):
 @nox_session(python=None)
 def post_release(session):
     """Update files after a release."""
+    version = os.environ.get("VERSION")
+    if not version:
+        session.error("VERSION not set, unable to update files post release")
+    is_pre_release = "-" in version
+    if is_pre_release:
+        session.log("Prerelease, skipping CHANGELOG.rst update...")
+        return
     version_and_date_regex = (
         r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc)\.(0|[1-9]\d*))?"
         r" - \d{4}-\d{2}-\d{2}$"
@@ -491,26 +498,20 @@ def post_release(session):
         changelog_content = fp.readlines()
         for i in range(len(changelog_content)):
             if re.match(version_and_date_regex, changelog_content[i]):
-                version = changelog_content[i].split(" - ")[0]
-                is_pre_release = "-" in version
-                if not is_pre_release:
-                    # BEFORE
-                    # 1.2.3 - 2020-01-01
-                    # ------------------
+                # BEFORE
+                # 1.2.3 - 2020-01-01
+                # ------------------
 
-                    # AFTER
-                    # Unreleased
-                    # ----------
-                    #
-                    # 1.2.3 - 2020-01-01
-                    # ------------------
-                    new_lines = ["Unreleased\n", "----------\n", "\n"]
-                    for new_line in reversed(new_lines):
-                        changelog_content.insert(i, new_line)
-                    break
-                else:
-                    session.log("Prerelease, skipping CHANGELOG.rst update...")
-                    return
+                # AFTER
+                # Unreleased
+                # ----------
+                #
+                # 1.2.3 - 2020-01-01
+                # ------------------
+                new_lines = ["Unreleased\n", "----------\n", "\n"]
+                for new_line in reversed(new_lines):
+                    changelog_content.insert(i, new_line)
+                break
         else:
             session.error("Unable to find latest release in CHANGELOG.rst")
         with Path("CHANGELOG.rst").open("w") as fp:
