@@ -6,6 +6,9 @@ Changelog
 Unreleased
 ----------
 
+0.10.2 - 2023-07-18
+-------------------
+
 Changed
 ~~~~~~~
 - Build wheels for macOS 11 instead of macOS 13.
