@@ -73,12 +73,15 @@ CODE_DIRS = [
     str(p) for p in [Path(PACKAGE_SOURCE_DIR).resolve(), Path("test").resolve()]
 ]
 IN_CI = bool(os.environ.get("CI"))
-PACKAGE_VERSION = subprocess.run(
-    ["poetry", "version", "-s"], capture_output=True
-).stdout.decode("utf-8").strip()
+PACKAGE_VERSION = (
+    subprocess.run(["poetry", "version", "-s"], capture_output=True)
+    .stdout.decode("utf-8")
+    .strip()
+)
 """The current full package version, according to Poetry."""
 
 #### Utility functions ####
+
 
 def _install_overrides(session):
     """Handles overriding dependency versions, per DEPENDENCY_OVERRIDES."""
@@ -87,6 +90,7 @@ def _install_overrides(session):
             package_params = DEPENDENCY_OVERRIDES[dep]["package_params"]
             package = DEPENDENCY_OVERRIDES[dep]["package"].format(**package_params)
             session.install(package, *DEPENDENCY_OVERRIDES[dep]["pip_extra_args"])
+
 
 def install(*decorator_args, **decorator_kwargs):
     """Install packages into the test virtual environment.
@@ -103,6 +107,7 @@ def install(*decorator_args, **decorator_kwargs):
     either in sandboxed environments in the CI or directly in developers'
     working environments.
     """
+
     def decorator(f):
         @wraps(f)
         def inner(session, *args, **kwargs):
@@ -111,8 +116,11 @@ def install(*decorator_args, **decorator_kwargs):
             else:
                 session.log("Skipping package installation, non-sandboxed environment")
             return f(session, *args, **kwargs)
+
         return inner
+
     return decorator
+
 
 def install_package(f):
     """Install the main package a dev wheel into the test virtual environment.
@@ -125,18 +133,24 @@ def install_package(f):
     Similar to the @install() decorator, this decorator automatically skips
     installation in non-sandboxed environments.
     """
+
     @wraps(f)
     def inner(session, *args, **kwargs):
         if session.virtualenv.is_sandboxed:
             session.install(
                 f"{PACKAGE_NAME}=={PACKAGE_VERSION}",
-                "--find-links", f"{CWD}/dist/", "--only-binary", PACKAGE_NAME
+                "--find-links",
+                f"{CWD}/dist/",
+                "--only-binary",
+                PACKAGE_NAME,
             )
             _install_overrides(session)
         else:
             session.log("Skipping package installation, non-sandboxed environment")
         return f(session, *args, **kwargs)
+
     return inner
+
 
 def show_installed(f):
     """Show a list of installed packages in the active environment for debugging.
@@ -146,12 +160,14 @@ def show_installed(f):
     can be passed to any function with this decorator to force showing or not
     showing it.
     """
+
     @wraps(f)
     def inner(session, *args, show_installed: bool = None, **kwargs):
         show_installed = show_installed if show_installed is not None else IN_CI
         if show_installed:
             session.run("pip", "freeze")
         return f(session, *args, **kwargs)
+
     return inner
 
 
@@ -161,6 +177,7 @@ def show_installed(f):
 # are imported in the tests, and so are required for some of the linters to work
 # correctly.
 
+
 @poetry_session(tags=["lint"], python="3.7")
 @install_package
 @install("black")
@@ -168,10 +185,8 @@ def show_installed(f):
 def black(session):
     """Run black. If the --check argument is given, only check, don't make changes."""
     check_flags = ["--check", "--diff"] if "--check" in session.posargs else []
-    session.run(
-        "black", "--skip-magic-trailing-comma",
-        *check_flags, *CODE_DIRS
-    )
+    session.run("black", "--skip-magic-trailing-comma", *check_flags, *CODE_DIRS)
+
 
 @poetry_session(tags=["lint"], python="3.7")
 @install_package
@@ -182,6 +197,7 @@ def isort(session):
     check_flags = ["--check-only", "--diff"] if "--check" in session.posargs else []
     session.run("isort", *check_flags, *CODE_DIRS)
 
+
 @poetry_session(tags=["lint"], python="3.7")
 @install_package
 @install("mypy")
@@ -189,6 +205,7 @@ def isort(session):
 def mypy(session):
     """Run mypy."""
     session.run("mypy", "--package", PACKAGE_NAME, "--package", "test")
+
 
 @poetry_session(tags=["lint"], python="3.7")
 @install_package
@@ -198,6 +215,7 @@ def pylint(session):
     """Run pylint."""
     session.run("pylint", "--score=no", *CODE_DIRS)
 
+
 @poetry_session(tags=["lint"], python="3.7")
 @install_package
 @install("pydocstyle[toml]")
@@ -206,7 +224,9 @@ def pydocstyle(session):
     """Run pydocstyle."""
     session.run("pydocstyle", *CODE_DIRS)
 
+
 #### Tests ####
+
 
 @install_package
 @install("pytest", "parameterized", "pytest-cov")
@@ -227,12 +247,17 @@ def _test(
         extra_args.extend(session.posargs)
 
     test_options = [
-        "-r fEs", "--verbose", "--disable-warnings", f"--junitxml={CWD}/junit.xml",
+        "-r fEs",
+        "--verbose",
+        "--disable-warnings",
+        f"--junitxml={CWD}/junit.xml",
         # Show runtimes of the 10 slowest tests, for later comparison if needed.
         "--durations=10",
         # Collect coverage data, enforce minimum, output reports
-        f"--cov={PACKAGE_NAME}", f"--cov-fail-under={min_coverage}",
-        "--cov-report=term", f"--cov-report=html:{CWD}/coverage/",
+        f"--cov={PACKAGE_NAME}",
+        f"--cov-fail-under={min_coverage}",
+        "--cov-report=term",
+        f"--cov-report=html:{CWD}/coverage/",
         "--cov-report=xml:coverage.xml",
         # Any extra args
         *extra_args,
@@ -241,11 +266,13 @@ def _test(
     ]
     session.run("pytest", *test_options)
 
+
 @install_package
 @show_installed
 def _smoketest(session):
     """Run a no-extra-dependencies smoketest on the package."""
     session.run("python", "-c", SMOKETEST_SCRIPT)
+
 
 # Only this session, test_doctest, and test_examples one get the 'test' tag,
 # because the others are just subsets of this session so there's no need to run
@@ -255,28 +282,35 @@ def test(session):
     """Run all tests."""
     _test(session)
 
+
 @poetry_session(python="3.7")
 def test_fast(session):
     """Run tests without the slow attribute."""
     _test(session, extra_args=["-m", "not slow"])
+
 
 @poetry_session(python="3.7")
 def test_slow(session):
     """Run tests with the slow attribute."""
     _test(session, extra_args=["-m", "slow"], min_coverage=0)
 
+
 @poetry_session(tags=["test"], python="3.7")
 def test_doctest(session):
     """Run doctest on code examples in docstrings."""
     _test(
-        session, test_dirs=[Path(PACKAGE_SOURCE_DIR).resolve()],
-        min_coverage=0, extra_args=["--doctest-modules"]
+        session,
+        test_dirs=[Path(PACKAGE_SOURCE_DIR).resolve()],
+        min_coverage=0,
+        extra_args=["--doctest-modules"],
     )
+
 
 @poetry_session(tags=["test"])
 def test_smoketest(session):
     """Smoke test a wheel as it would be installed on a user's machine."""
     _smoketest(session)
+
 
 @poetry_session(tags=["test"], python="3.7")
 @install_package
@@ -306,56 +340,60 @@ def test_examples(session):
     for nb in examples_ipynb:
         session.run("jupyter", "nbconvert", "--to=notebook", "--execute", str(nb))
     if ignored:
-        session.log(
-            f"Ignored: {', '.join(str(f) for f in ignored)}"
-        )
+        session.log(f"Ignored: {', '.join(str(f) for f in ignored)}")
     if unknown:
         session.warn(
             f"Found unknown files in examples: {', '.join(str(f) for f in unknown)}"
         )
+
 
 ### Test various dependency configurations ###
 # Test each with oldest and newest allowable deps. Typeguard and typing-extensions
 # excluded because all of the allowed versions in pyproject.toml claim support
 # for all allowable python versions.
 
+
 @nox_session
 @install("pytest", "parameterized", "pytest-cov")
 @nox.parametrize(
     "python,pyspark,sympy,pandas,numpy,scipy,randomgen",
-[
-    ("3.7", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.4.1", "1.19.0"),
-    ("3.7", "3.1.1", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1"),
-    ("3.7", "3.2.0", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1"),
-    ("3.7", "3.3.1", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1"),
-    ("3.8", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.5.0", "1.19.3"),
-    ("3.8", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
-    ("3.9", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.6.0", "1.20.0"),
-    ("3.9", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
-    ("3.10", "3.0.0", "1.8", "1.3.5", "1.21.2", "1.7.2", "1.23.1"),
-    ("3.10", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
-    ("3.11", "3.0.0", "1.8", "1.3.5", "1.21.2", "1.7.2", "1.23.1"),
-    ("3.11", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
-],
-ids= [
-"3.7-oldest",
-"3.7-pyspark3.1",
-"3.7-pyspark3.2",
-"3.7-newest",
-"3.8-oldest",
-"3.8-newest",
-"3.9-oldest",
-"3.9-newest",
-"3.10-oldest",
-"3.10-newest",
-"3.11-oldest",
-"3.11-newest"],
+    [
+        ("3.7", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.4.1", "1.19.0"),
+        ("3.7", "3.1.1", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1"),
+        ("3.7", "3.2.0", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1"),
+        ("3.7", "3.3.1", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1"),
+        ("3.8", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.5.0", "1.19.3"),
+        ("3.8", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
+        ("3.9", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.6.0", "1.20.0"),
+        ("3.9", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
+        ("3.10", "3.0.0", "1.8", "1.3.5", "1.21.2", "1.7.2", "1.23.1"),
+        ("3.10", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
+        ("3.11", "3.0.0", "1.8", "1.3.5", "1.21.2", "1.7.2", "1.23.1"),
+        ("3.11", "3.3.1", "1.9", "1.5.1", "1.21.6", "1.7.3", "1.23.1"),
+    ],
+    ids=[
+        "3.7-oldest",
+        "3.7-pyspark3.1",
+        "3.7-pyspark3.2",
+        "3.7-newest",
+        "3.8-oldest",
+        "3.8-newest",
+        "3.9-oldest",
+        "3.9-newest",
+        "3.10-oldest",
+        "3.10-newest",
+        "3.11-oldest",
+        "3.11-newest",
+    ],
 )
 def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen):
     """Run tests using various dependencies."""
     session.install(
         f"{PACKAGE_NAME}=={PACKAGE_VERSION}",
-        "--find-links", f"{CWD}/dist/", "--only-binary", PACKAGE_NAME
+        "--find-links",
+        f"{CWD}/dist/",
+        "--only-binary",
+        PACKAGE_NAME,
     )
     session.install(
         f"pyspark[sql]=={pyspark}",
@@ -363,7 +401,8 @@ def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen):
         f"pandas=={pandas}",
         f"numpy=={numpy}",
         f"scipy=={scipy}",
-        f"randomgen=={randomgen}")
+        f"randomgen=={randomgen}",
+    )
     session.run("pip", "freeze")
 
     test_paths = CODE_DIRS
@@ -376,13 +415,18 @@ def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen):
         extra_args.extend(session.posargs)
 
     test_options = [
-        "-m", "not slow",
-        "-r fEs", "--verbose", "--disable-warnings", f"--junitxml={CWD}/junit.xml",
+        "-m",
+        "not slow",
+        "-r fEs",
+        "--verbose",
+        "--disable-warnings",
+        f"--junitxml={CWD}/junit.xml",
         # Show runtimes of the 10 slowest tests, for later comparison if needed.
         "--durations=10",
         # Collect coverage data, enforce minimum, output reports
         f"--cov={PACKAGE_NAME}",
-        "--cov-report=term", f"--cov-report=html:{CWD}/coverage/",
+        "--cov-report=term",
+        f"--cov-report=html:{CWD}/coverage/",
         "--cov-report=xml:coverage.xml",
         # Any extra args
         *extra_args,
@@ -394,23 +438,33 @@ def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen):
 
 #### Documentation ####
 
+
 @install_package
 @install(
-    "pandoc", "pydata-sphinx-theme", "scanpydoc", "sphinx",
-    "sphinx-autoapi", "sphinx-autodoc-typehints", "sphinx-copybutton",
-    "sphinx-panels", "sphinxcontrib-bibtex", "sphinxcontrib-images",
+    "pandoc",
+    "pydata-sphinx-theme",
+    "scanpydoc",
+    "sphinx",
+    "sphinx-autoapi",
+    "sphinx-autodoc-typehints",
+    "sphinx-copybutton",
+    "sphinx-panels",
+    "sphinxcontrib-bibtex",
+    "sphinxcontrib-images",
     # Needed to clear up some warnings when it is imported
-    "pytest"
+    "pytest",
 )
 @show_installed
 def _run_sphinx(session, builder: str):
     sphinx_options = ["-n", "-W", "--keep-going"]
     session.run("sphinx-build", "doc/", "public/", f"-b={builder}", *sphinx_options)
 
+
 @poetry_session(tags=["docs"], python="3.7")
 def docs_linkcheck(session):
     """Run linkcheck on docs."""
     _run_sphinx(session, "linkcheck")
+
 
 @poetry_session(tags=["docs"], python="3.7")
 @install("matplotlib", "seaborn")
@@ -418,12 +472,15 @@ def docs_doctest(session):
     """Run doctest on code examples in documentation."""
     _run_sphinx(session, "doctest")
 
+
 @poetry_session(tags=["docs"], python="3.7")
 def docs(session):
     """Generation HTML documentation."""
     _run_sphinx(session, "html")
 
+
 #### Release management ####
+
 
 @nox_session(python=None)
 def prepare_release(session):
@@ -456,7 +513,7 @@ def prepare_release(session):
         with Path("CHANGELOG.rst").open("r") as fp:
             changelog_content = fp.readlines()
         for i in range(len(changelog_content)):
-            if re.match('^Unreleased$', changelog_content[i]):
+            if re.match("^Unreleased$", changelog_content[i]):
                 # BEFORE
                 # Unreleased
                 # ----------
@@ -464,7 +521,7 @@ def prepare_release(session):
                 # AFTER
                 # 1.2.3 - 2020-01-01
                 # ------------------
-                version_header = f'{version} - {datetime.date.today()}'
+                version_header = f"{version} - {datetime.date.today()}"
                 changelog_content[i] = version_header + "\n"
                 changelog_content[i + 1] = "-" * len(version_header) + "\n"
                 break
@@ -518,7 +575,6 @@ def post_release(session):
             fp.writelines(changelog_content)
 
 
-
 @nox_session()
 def release_smoketest(session):
     """Smoke test a wheel as it would be installed on a user's machine.
@@ -530,6 +586,7 @@ def release_smoketest(session):
           option, as it requires a clean environment to install things in.
     """
     _smoketest(session)
+
 
 @nox_session()
 def release_test(session):
@@ -558,6 +615,7 @@ def get_wheels_from_circleci(session):
     """
     import requests
     import polling2
+
     commit_hash = (
         subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True)
         .stdout.decode("ascii")
@@ -577,22 +635,29 @@ def get_wheels_from_circleci(session):
         f"https://circleci.com/api/v2/project/{PROJECT_SLUG}",
         headers=headers,
     ).json()["organization_slug"]
-    pipelines = requests.get(
-        "https://circleci.com/api/v2/pipeline",
-        params={"org-slug": circle_org_slug},
-        headers=headers,
-    ).json()
-    commit_pipeline = [
-        p
-        for p in pipelines["items"]
-        if p["trigger_parameters"]["gitlab"]["commit_sha"] == commit_hash
-    ]
-    if len(commit_pipeline) == 0:
-        session.error(
-            f"Unable to find CircleCI pipeline for commit {commit_hash}, "
-            "unable to get wheels from CircleCI"
-        )
-    pipeline_id = commit_pipeline[0]["id"]
+    next_page_token = None
+    while True:
+        pipelines = requests.get(
+            "https://circleci.com/api/v2/pipeline",
+            params={"org-slug": circle_org_slug, "page-token": next_page_token},
+            headers=headers,
+        ).json()
+        commit_pipelines = [
+            p
+            for p in pipelines["items"]
+            if p["trigger_parameters"]["gitlab"]["commit_sha"] == commit_hash
+        ]
+        if len(commit_pipelines) > 0:
+            break
+        next_page_token = pipelines["next_page_token"]
+        if next_page_token is None:
+            session.error(
+                f"Unable to find CircleCI pipeline for commit {commit_hash}, "
+                "unable to get wheels from CircleCI"
+            )
+            break
+
+    pipeline_id = commit_pipelines[0]["id"]
     workflows = requests.get(
         f"https://circleci.com/api/v2/pipeline/{pipeline_id}/workflow",
         headers=headers,
@@ -637,16 +702,20 @@ def build(session):
     session.run("poetry", "build", "--format", "sdist", external=True)
     session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
 
+
 @poetry_session(tags=["benchmark"], python="3.7")
-@nox.parametrize(["benchmark", "timeout"], [
-    ("private_join", 17),
-    ("count_sum", 25),
-    ("quantile", 84),
-    ("noise_mechanism", 7),
-    ("sparkmap", 25),
-    ("sparkflatmap", 10),
-    ("public_join", 14)
-])
+@nox.parametrize(
+    ["benchmark", "timeout"],
+    [
+        ("private_join", 17),
+        ("count_sum", 25),
+        ("quantile", 84),
+        ("noise_mechanism", 7),
+        ("sparkmap", 25),
+        ("sparkflatmap", 10),
+        ("public_join", 14),
+    ],
+)
 @install_package
 @install("pytest")
 @show_installed
@@ -657,7 +726,9 @@ def benchmark(session, benchmark: str, timeout: int):
     # If we want to run benchmarks on non-Linux platforms this will probably
     # have to be reworked, but it's fine for now.
     session.run(
-        "timeout", f"{timeout}m",
-        "python", f"{CWD}/benchmark/benchmark_{benchmark}.py",
-        external=True
+        "timeout",
+        f"{timeout}m",
+        "python",
+        f"{CWD}/benchmark/benchmark_{benchmark}.py",
+        external=True,
     )
