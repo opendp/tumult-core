@@ -364,7 +364,7 @@ class TestSymmetricDifference(PySparkTest):
         group_keys = self.spark.createDataFrame(pd.DataFrame({"B": [1, 2, 3, 4]}))
         domain = SparkGroupedDataFrameDomain(
             {"A": SparkIntegerColumnDescriptor(), "B": SparkIntegerColumnDescriptor()},
-            group_keys,
+            ["B"],
         )
         value1 = GroupedDataFrame(
             self.spark.createDataFrame(df1, schema=domain.spark_schema), group_keys
@@ -375,6 +375,24 @@ class TestSymmetricDifference(PySparkTest):
         self.assertEqual(
             SymmetricDifference().distance(value1, value2, domain), distance
         )
+
+    def test_distance_different_group_keys(self):
+        """Distance should be infinite if the group keys are different."""
+        df1 = pd.DataFrame({"A": [1, 1, 1, 3], "B": [2, 2, 2, 4]})
+        df2 = pd.DataFrame({"A": [1, 2], "B": [2, 4]})
+        group_keys1 = self.spark.createDataFrame(pd.DataFrame({"B": [1, 2, 3, 4]}))
+        group_keys2 = self.spark.createDataFrame(pd.DataFrame({"B": [1, 2]}))
+        domain = SparkGroupedDataFrameDomain(
+            {"A": SparkIntegerColumnDescriptor(), "B": SparkIntegerColumnDescriptor()},
+            ["B"],
+        )
+        value1 = GroupedDataFrame(
+            self.spark.createDataFrame(df1, schema=domain.spark_schema), group_keys1
+        )
+        value2 = GroupedDataFrame(
+            self.spark.createDataFrame(df2, schema=domain.spark_schema), group_keys2
+        )
+        self.assertEqual(SymmetricDifference().distance(value1, value2, domain), sp.oo)
 
 
 class TestHammingDistance(PySparkTest):
@@ -666,9 +684,7 @@ class TestSumOf(PySparkTest):
                         "B": SparkIntegerColumnDescriptor(),
                         "C": SparkIntegerColumnDescriptor(),
                     },
-                    SparkSession.builder.getOrCreate().createDataFrame(
-                        pd.DataFrame({"C": [1, 2, 3]})
-                    ),
+                    ["C"],
                 ),
                 True,
             ),
@@ -712,9 +728,7 @@ class TestSumOf(PySparkTest):
                         "B": SparkIntegerColumnDescriptor(),
                         "C": SparkIntegerColumnDescriptor(),
                     },
-                    SparkSession.builder.getOrCreate().createDataFrame(
-                        pd.DataFrame({"C": [1, 2, 3]})
-                    ),
+                    ["C"],
                 ),
                 True,
             ),
@@ -726,9 +740,7 @@ class TestSumOf(PySparkTest):
                         "B": SparkIntegerColumnDescriptor(),
                         "C": SparkIntegerColumnDescriptor(),
                     },
-                    SparkSession.builder.getOrCreate().createDataFrame(
-                        pd.DataFrame({"C": [1, 2, 3]})
-                    ),
+                    ["C"],
                 ),
                 False,
             ),
@@ -740,9 +752,7 @@ class TestSumOf(PySparkTest):
                         "B": SparkIntegerColumnDescriptor(),
                         "C": SparkIntegerColumnDescriptor(),
                     },
-                    SparkSession.builder.getOrCreate().createDataFrame(
-                        pd.DataFrame({"A": [1, 2, 3]})
-                    ),
+                    ["A"],
                 ),
                 False,
             ),
@@ -838,7 +848,7 @@ class TestSumOf(PySparkTest):
                 "B": SparkIntegerColumnDescriptor(),
                 "C": SparkIntegerColumnDescriptor(),
             },
-            group_keys_df,
+            ["C"],
         )
         value1 = GroupedDataFrame(
             spark.createDataFrame(df1, schema=domain.spark_schema), group_keys_df
@@ -847,6 +857,35 @@ class TestSumOf(PySparkTest):
             spark.createDataFrame(df2, schema=domain.spark_schema), group_keys_df
         )
         self.assertEqual(metric.distance(value1, value2, domain), distance)
+
+    def test_different_group_keys(self):
+        """Different group keys results in infinite distance."""
+        spark = SparkSession.builder.getOrCreate()
+        group_keys_df1 = spark.createDataFrame(pd.DataFrame({"C": [1, 2, 3]}))
+        group_keys_df2 = spark.createDataFrame(pd.DataFrame({"C": [1, 2, 4]}))
+        domain = SparkGroupedDataFrameDomain(
+            {
+                "A": SparkIntegerColumnDescriptor(),
+                "B": SparkIntegerColumnDescriptor(),
+                "C": SparkIntegerColumnDescriptor(),
+            },
+            groupby_columns=["C"],
+        )
+        value1 = GroupedDataFrame(
+            spark.createDataFrame(
+                pd.DataFrame({"A": [1, 1, 3, 1], "B": [2, 1, 4, 2], "C": [1, 1, 2, 4]})
+            ),
+            group_keys_df1,
+        )
+        value2 = GroupedDataFrame(
+            spark.createDataFrame(
+                pd.DataFrame({"A": [2, 1, 3], "B": [1, 1, 2], "C": [1, 1, 5]})
+            ),
+            group_keys_df2,
+        )
+        self.assertEqual(
+            SumOf(SymmetricDifference()).distance(value1, value2, domain), sp.oo
+        )
 
 
 class TestRootSumOfSquared(TestCase):
@@ -993,9 +1032,7 @@ class TestRootSumOfSquared(TestCase):
                         "B": SparkIntegerColumnDescriptor(),
                         "C": SparkIntegerColumnDescriptor(),
                     },
-                    SparkSession.builder.getOrCreate().createDataFrame(
-                        pd.DataFrame({"C": [1, 2, 3]})
-                    ),
+                    groupby_columns=["C"],
                 ),
                 True,
             ),
@@ -1051,9 +1088,7 @@ class TestRootSumOfSquared(TestCase):
                         "B": SparkIntegerColumnDescriptor(),
                         "C": SparkIntegerColumnDescriptor(),
                     },
-                    SparkSession.builder.getOrCreate().createDataFrame(
-                        pd.DataFrame({"C": [1, 2, 3]})
-                    ),
+                    groupby_columns=["C"],
                 ),
                 True,
             ),
@@ -1067,9 +1102,7 @@ class TestRootSumOfSquared(TestCase):
                         "B": SparkIntegerColumnDescriptor(),
                         "C": SparkIntegerColumnDescriptor(),
                     },
-                    SparkSession.builder.getOrCreate().createDataFrame(
-                        pd.DataFrame({"C": [1, 2, 3]})
-                    ),
+                    ["C"],
                 ),
                 False,
             ),
@@ -1081,9 +1114,7 @@ class TestRootSumOfSquared(TestCase):
                         "B": SparkIntegerColumnDescriptor(),
                         "C": SparkIntegerColumnDescriptor(),
                     },
-                    SparkSession.builder.getOrCreate().createDataFrame(
-                        pd.DataFrame({"A": [1, 2, 3]})
-                    ),
+                    ["A"],
                 ),
                 False,
             ),
@@ -1185,7 +1216,7 @@ class TestRootSumOfSquared(TestCase):
                 "B": SparkIntegerColumnDescriptor(),
                 "C": SparkIntegerColumnDescriptor(),
             },
-            group_keys_df,
+            groupby_columns=["C"],
         )
         value1 = GroupedDataFrame(
             spark.createDataFrame(df1, schema=domain.spark_schema), group_keys_df
@@ -1194,6 +1225,36 @@ class TestRootSumOfSquared(TestCase):
             spark.createDataFrame(df2, schema=domain.spark_schema), group_keys_df
         )
         self.assertEqual(metric.distance(value1, value2, domain), distance)
+
+    def test_different_group_keys(self):
+        """Different group keys results in infinite distance."""
+        spark = SparkSession.builder.getOrCreate()
+        group_keys_df1 = spark.createDataFrame(pd.DataFrame({"C": [1, 2, 3]}))
+        group_keys_df2 = spark.createDataFrame(pd.DataFrame({"C": [1, 2, 4]}))
+        domain = SparkGroupedDataFrameDomain(
+            {
+                "A": SparkIntegerColumnDescriptor(),
+                "B": SparkIntegerColumnDescriptor(),
+                "C": SparkIntegerColumnDescriptor(),
+            },
+            groupby_columns=["C"],
+        )
+        value1 = GroupedDataFrame(
+            spark.createDataFrame(
+                pd.DataFrame({"A": [1, 1, 3, 1], "B": [2, 1, 4, 2], "C": [1, 1, 2, 4]})
+            ),
+            group_keys_df1,
+        )
+        value2 = GroupedDataFrame(
+            spark.createDataFrame(
+                pd.DataFrame({"A": [2, 1, 3], "B": [1, 1, 2], "C": [1, 1, 5]})
+            ),
+            group_keys_df2,
+        )
+        self.assertEqual(
+            RootSumOfSquared(SymmetricDifference()).distance(value1, value2, domain),
+            sp.oo,
+        )
 
 
 class TestOnColumn(TestCase):

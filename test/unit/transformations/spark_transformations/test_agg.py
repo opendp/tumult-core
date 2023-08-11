@@ -204,7 +204,7 @@ class TestCountGrouped(PySparkTest):
                 "A": SparkIntegerColumnDescriptor(),
                 "B": SparkStringColumnDescriptor(),
             },
-            group_keys=self.spark.createDataFrame([(1,), (2,), (3,)], schema=["A"]),
+            groupby_columns=["A"],
         )
 
     @parameterized.expand(get_all_props(CountGrouped))
@@ -260,7 +260,7 @@ class TestCountGrouped(PySparkTest):
                     "A": SparkIntegerColumnDescriptor(),
                     "B": SparkStringColumnDescriptor(),
                 },
-                group_keys=group_keys,
+                groupby_columns=["A"],
             ),
             input_metric=SumOf(SymmetricDifference()),
             count_column="C",
@@ -321,7 +321,7 @@ class TestCountDistinctGrouped(PySparkTest):
                 "A": SparkIntegerColumnDescriptor(),
                 "B": SparkStringColumnDescriptor(),
             },
-            group_keys=self.spark.createDataFrame([(1,), (2,), (3,)], schema=["A"]),
+            groupby_columns=["A"],
         )
 
     @parameterized.expand(get_all_props(CountDistinctGrouped))
@@ -411,7 +411,7 @@ class TestCountDistinctGrouped(PySparkTest):
                         allow_nan=True, allow_null=True, allow_inf=True
                     ),
                 },
-                group_keys=group_keys,
+                groupby_columns=["X"],
             ),
             input_metric=SumOf(SymmetricDifference()),
             count_column="C",
@@ -622,9 +622,7 @@ class TestSumGrouped(PySparkTest):
                 "A": SparkStringColumnDescriptor(allow_null=True),
                 "B": SparkIntegerColumnDescriptor(),
             },
-            group_keys=self.spark.createDataFrame(
-                [(None,), ("x1",), ("x2",), ("x3",)], schema=["A"]
-            ),
+            groupby_columns=["A"],
         )
 
         self.groupby_A_sum_B = SumGrouped(
@@ -693,7 +691,9 @@ class TestSumGrouped(PySparkTest):
         """Tests that sum transformation returns expected DataFrame."""
         grouped_dataframe = GroupedDataFrame(
             dataframe=self.spark.createDataFrame(input_df),
-            group_keys=self.domain.group_keys,
+            group_keys=self.spark.createDataFrame(
+                [(None,), ("x1",), ("x2",), ("x3",)], schema=["A"]
+            ),
         )
         self.assert_frame_equal_with_sort(
             self.groupby_A_sum_B(grouped_dataframe).toPandas(), expected_df
@@ -809,10 +809,7 @@ class TestSumGrouped(PySparkTest):
         with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             SumGrouped(
                 input_domain=SparkGroupedDataFrameDomain(
-                    schema=schema,
-                    group_keys=self.spark.createDataFrame(
-                        pd.DataFrame({"A": ["x1", "x2"]})
-                    ),
+                    schema=schema, groupby_columns=["A"]
                 ),
                 input_metric=input_metric,
                 measure_column=measure_column,
@@ -838,7 +835,7 @@ class TestDerivedTransformations(PySparkTest):
                 "A": SparkStringColumnDescriptor(),
                 "B": SparkIntegerColumnDescriptor(),
             },
-            group_keys=self.spark.createDataFrame([("x1",), ("x2",)], schema=["A"]),
+            groupby_columns=["A"],
         )
 
     @parameterized.expand(

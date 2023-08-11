@@ -271,9 +271,7 @@ class ApplyInPandas(SparkMeasurement):
 
         # Check that the input domain is compatible with the aggregation
         # function's input domain.
-        available_columns = set(input_domain.schema) - set(
-            input_domain.group_keys.columns
-        )
+        available_columns = set(input_domain.schema) - set(input_domain.groupby_columns)
         needed_columns = set(aggregation_function.input_domain.schema)
         if not needed_columns <= available_columns:
             raise ValueError(

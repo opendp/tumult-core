@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, List, Mapping, Optional, Sequence
 
 import numpy as np
 from pyspark import Row
@@ -493,26 +493,25 @@ class SparkGroupedDataFrameDomain(Domain):
     """Domain of grouped DataFrames."""
 
     @typechecked
-    def __init__(self, schema: SparkColumnsDescriptor, group_keys: DataFrame):
+    def __init__(self, schema: SparkColumnsDescriptor, groupby_columns: Sequence[str]):
         """Constructor.
 
         Args:
             schema: Mapping from column name to column descriptors for all columns.
-            group_keys: DataFrame containing group keys as rows.
+            groupby_columns: List of columns used for grouping.
         """
-        groupby_columns = group_keys.columns
         if len(groupby_columns) != len(set(groupby_columns)):
-            raise ValueError("group_keys contains duplicate column names.")
-        invalid_groupby_column = set(groupby_columns) - set(schema)
-        if invalid_groupby_column:
-            raise ValueError(f"Invalid groupby column: {invalid_groupby_column}")
+            raise ValueError("groupby_columns contains duplicate column names.")
+        invalid_groupby_columns = set(groupby_columns) - set(schema)
+        if invalid_groupby_columns:
+            raise ValueError(f"Invalid groupby columns: {invalid_groupby_columns}")
 
-        for column in group_keys.columns:
+        for column in groupby_columns:
             if isinstance(schema[column], SparkFloatColumnDescriptor):
                 raise ValueError(f"Can not group by a floating point column: {column}")
-            schema[column].validate_column(sdf=group_keys, col_name=column)
 
         self._schema = dict(schema.items())
+        self._groupby_columns = list(groupby_columns)
         # TODO(#2727): Remove this check once we update typeguard to ^3.0.0
         for key, domain in self._schema.items():
             if not isinstance(domain, SparkColumnDescriptor):
@@ -521,23 +520,22 @@ class SparkGroupedDataFrameDomain(Domain):
                     f"{get_fullname(SparkColumnDescriptor)}; got "
                     f"{get_fullname(domain)} instead"
                 )
-        self._group_keys = group_keys.distinct()
-
-    @property
-    def group_keys(self) -> DataFrame:
-        """Returns DataFrame containing group keys as rows."""
-        return self._group_keys
 
     @property
     def schema(self) -> SparkColumnsDescriptor:
         """Returns mapping from column names to column descriptors."""
         return self._schema.copy()
 
+    @property
+    def groupby_columns(self) -> List[str]:
+        """Returns list of columns used for grouping."""
+        return self._groupby_columns.copy()
+
     def __repr__(self) -> str:
         """Return string representation of the object."""
         return (
             f"{self.__class__.__name__}(schema={self.schema},"
-            f" group_keys={self.group_keys})"
+            f" groupby_columns={self.groupby_columns})"
         )
 
     @property
@@ -577,73 +575,32 @@ class SparkGroupedDataFrameDomain(Domain):
 
         super().validate(value)
         assert isinstance(value, GroupedDataFrame)
-        if value.group_keys.schema != self.group_keys.schema:
-            raise OutOfDomainError(
-                self,
-                value,
-                (
-                    "Group keys dataframe does not have expected schema.Expected:"
-                    f" {self.group_keys.schema}. Got: {value.group_keys.schema}"
-                ),
+        inner_df_domain = SparkDataFrameDomain(self.schema)
+        try:
+            inner_df_domain.validate(
+                value._dataframe  # pylint: disable=protected-access
             )
-
-        if not self.group_keys.columns:
-            # Other checks are not necessary if there are no columns.
-            return
-
-        # Note that we are using an inner join instead of intersect
-        # This is b/c intersect sometimes drops rows for unknown reasons
-        #
-        # A previous implementation of this comparison would fail during the
-        # join in some environments (notably on Databricks) with
-        # "AnalysisException: Column ... are ambiguous"; this failure also happens
-        # in the CI when testing environments with pyspark>=3.1.0
-        value_group_keys = value.group_keys.alias("value")
-        intersection = self.group_keys.join(
-            value_group_keys,
-            on=[
-                self.group_keys[column].eqNullSafe(value_group_keys[column])
-                for column in self.group_keys.columns
-            ],
-            how="inner",
-        )
-        # this join duplicates columns, drop the duplicates
-        for column in value_group_keys.columns:
-            intersection = intersection.drop(value_group_keys[column])
-        invalid_group_keys = self.group_keys.union(value_group_keys).subtract(
-            intersection
-        )
-        if invalid_group_keys.first():
-            raise OutOfDomainError(self, value, "Groups keys do not match")
-
-        if value._dataframe.columns != list(  # pylint: disable=protected-access
-            self.schema.keys()
-        ):
+        except OutOfDomainError as exception:
             raise OutOfDomainError(
-                self,
-                value,
-                "Dataframe does not match domain SparkGroupedDataFrame schema.",
-            )
+                self, value, f"Invalid inner DataFrame: {exception}"
+            ) from exception
 
-        for column in self.schema:
-            try:
-                self.schema[column].validate_column(
-                    value._dataframe, column  # pylint: disable=protected-access
-                )
-            except OutOfDomainError as exception:
-                raise OutOfDomainError(
-                    self,
-                    value,
-                    f"Found invalid value in column '{column}': {exception}",
-                ) from exception
+        group_key_domain = SparkDataFrameDomain(
+            {column: self.schema[column] for column in self.groupby_columns}
+        )
+        try:
+            group_key_domain.validate(value.group_keys)
+        except OutOfDomainError as exception:
+            raise OutOfDomainError(
+                self, value, f"Invalid group keys: {exception}"
+            ) from exception
 
     def get_group_domain(self) -> SparkDataFrameDomain:
         """Return the domain for one of the groups."""
-        groupby_columns = self.group_keys.columns
         group_schema = {
             column: v
             for column, v in self.schema.items()
-            if column not in groupby_columns
+            if column not in self.groupby_columns
         }
         return SparkDataFrameDomain(group_schema)
 
@@ -651,36 +608,11 @@ class SparkGroupedDataFrameDomain(Domain):
         """Return True if the schemas and group keys are identical."""
         if self.__class__ != other.__class__:
             return False
-        if OrderedDict(self.schema) != OrderedDict(other.schema) or (
-            self.group_keys.schema != other.group_keys.schema
-        ):
+        if OrderedDict(self.schema) != OrderedDict(other.schema):
             return False
-        if not self.group_keys.columns:
-            return True
-        group_keys_count = self.group_keys.count()
-        if group_keys_count != other.group_keys.count():
+        if self.groupby_columns != other.groupby_columns:
             return False
-        # Note that we are using an inner join instead of intersect here; that
-        # is b/c intersect sometimes drops rows for unknown reasons, see
-        # https://issues.apache.org/jira/browse/SPARK-40181
-        #
-        # A previous implementation of this comparison would fail during the
-        # join in some environments (notably on Databricks) with
-        # "AnalysisException: Column ... are ambiguous"; this failure also happens
-        # in the CI when testing environments with pyspark>=3.1.0
-        other_group_keys = other.group_keys.alias("other")
-        intersection = self.group_keys.join(
-            other_group_keys,
-            on=[
-                self.group_keys[column].eqNullSafe(other_group_keys[column])
-                for column in self.group_keys.columns
-            ],
-            how="inner",
-        )
-        # this join duplicates columns, drop the duplicates
-        for column in other_group_keys.columns:
-            intersection = intersection.drop(other_group_keys[column])
-        return intersection.count() == group_keys_count
+        return True
 
     def __getitem__(self, col_name: str) -> SparkColumnDescriptor:
         """Returns column descriptor for given column."""

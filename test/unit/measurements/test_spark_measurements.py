@@ -81,7 +81,7 @@ class TestApplyInPandas(PySparkTest):
                 "A": SparkStringColumnDescriptor(),
                 "B": SparkIntegerColumnDescriptor(),
             },
-            group_keys=self.spark.createDataFrame([("x1",), ("x2",)], schema=["A"]),
+            groupby_columns=["A"],
         )
         self.measurement = ApplyInPandas(
             input_domain=self.domain,
@@ -102,7 +102,7 @@ class TestApplyInPandas(PySparkTest):
                 "A": SparkStringColumnDescriptor(),
                 "B": SparkFloatColumnDescriptor(allow_nan=True),
             },
-            group_keys=self.spark.createDataFrame([("x1",), ("x2",)], schema=["A"]),
+            groupby_columns=["A"],
         )
         measurement = ApplyInPandas(
             input_domain=input_domain,
@@ -173,7 +173,9 @@ class TestApplyInPandas(PySparkTest):
     ):
         """Test correctness for a GroupByApplyInPandas aggregation."""
         group_keys = self.spark.createDataFrame(pd.DataFrame(groupby_domains))
-        input_domain = SparkGroupedDataFrameDomain(schema=schema, group_keys=group_keys)
+        input_domain = SparkGroupedDataFrameDomain(
+            schema=schema, groupby_columns=list(groupby_domains)
+        )
         grouped_dataframe = GroupedDataFrame(
             dataframe=self.spark.createDataFrame(pd.DataFrame(df_dict)),
             group_keys=group_keys,
@@ -212,9 +214,7 @@ class TestApplyInPandas(PySparkTest):
                     "Gender": SparkStringColumnDescriptor(),
                     "Age": SparkIntegerColumnDescriptor(),
                 },
-                group_keys=self.spark.createDataFrame(
-                    pd.DataFrame({"Gender": ["M", "F"]})
-                ),
+                groupby_columns=["Gender"],
             ),
             input_metric=SumOf(SymmetricDifference()),
             aggregation_function=df_aggregation_function,
