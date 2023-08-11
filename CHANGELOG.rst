@@ -6,6 +6,12 @@ Changelog
 Unreleased
 ----------
 
+Changed
+~~~~~~~
+- Replaced the `group_keys` for constructing :class:`~.SparkGroupedDataFrameDomain`\ s with `groupby_columns`.
+- Modified :class:`~.SymmetricDifference` to define the distance
+between two elements of :class:`~.SparkGroupedDataFrameDomain`\ s to be infinite when the two elements have different `group_keys`.
+
 0.10.2 - 2023-07-18
 -------------------
 

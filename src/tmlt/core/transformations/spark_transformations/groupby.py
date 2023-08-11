@@ -104,7 +104,7 @@ class GroupBy(Transformation):
         >>> groupby_B.input_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
         >>> groupby_B.output_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)}, group_keys=DataFrame[B: string])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)}, groupby_columns=['B'])
         >>> groupby_B.input_metric
         SymmetricDifference()
         >>> groupby_B.output_metric
@@ -158,8 +158,10 @@ class GroupBy(Transformation):
                     ),
                 )
         output_domain = SparkGroupedDataFrameDomain(
-            schema=input_domain.schema, group_keys=group_keys
+            schema=input_domain.schema, groupby_columns=group_keys.columns
         )
+        for groupby_column in group_keys.columns:
+            input_domain[groupby_column].validate_column(group_keys, groupby_column)
         if not group_keys.count():
             if group_keys.columns:
                 raise ValueError(

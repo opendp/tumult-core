@@ -16,7 +16,7 @@ import numpy as np  # pylint: disable=unused-import
 import pandas as pd
 import sympy as sp
 from pyspark.sql import functions as sf
-from pyspark.sql.session import SparkSession
+from pyspark.sql.session import SparkSession  # pylint: disable=unused-import
 from typeguard import typechecked
 
 from tmlt.core.domains.base import Domain
@@ -228,8 +228,11 @@ class SymmetricDifference(ExactNumberMetric):
     This metric is compatible with spark dataframes, pandas dataframes, and pandas
     series. It ignores ordering and, in the case of pandas, indices. That is, it treats
     each collection as a multiset of items. For non-grouped data, it treats each record
-    as an item. For grouped data there are a few cases:
+    as an item.
 
+    For grouped data there are a few cases:
+
+    - If the group keys are different, the distance is infinity
     - The distance between two groups with the same multi-set of records is 0
     - The distance between two groups where exactly one is empty is 1
     - The distance between two groups with different records (where neither is empty) is
@@ -261,7 +264,7 @@ class SymmetricDifference(ExactNumberMetric):
         ...         "A": SparkIntegerColumnDescriptor(),
         ...         "B": SparkIntegerColumnDescriptor(),
         ...     },
-        ...     group_keys,
+        ...     ["B"],
         ... )
         >>> grouped_df1 = GroupedDataFrame(df1, group_keys)
         >>> grouped_df2 = GroupedDataFrame(df2, group_keys)
@@ -342,6 +345,8 @@ class SymmetricDifference(ExactNumberMetric):
             assert isinstance(domain, SparkGroupedDataFrameDomain)
             groups1 = value1.get_groups()
             groups2 = value2.get_groups()
+            if groups1.keys() != groups2.keys():
+                return ExactNumber(sp.oo)
             group_domain = domain.get_group_domain()
 
             # If this fails, one of the grouped dataframes isn't part of the domain, and
@@ -470,6 +475,12 @@ class AggregationMetric(ExactNumberMetric):
     of a list. This metric is parameterized by an `inner_metric` that is used to compute
     the distances of the components. See :class:`SumOf` or :class`RootSumOfSquared` for
     example usage.
+
+    If the values are grouped dataframes, the groups must be the same for both values,
+    or the distance is infinity.
+
+    If the values are pandas series or lists, they must be the same size, or the
+    distance is infinity. The index of the series is ignored.
     """
 
     @typechecked
@@ -538,9 +549,8 @@ class AggregationMetric(ExactNumberMetric):
             groups1 = value1.get_groups()
             groups2 = value2.get_groups()
 
-            # If this fails, one of the grouped dataframes isn't part of the domain, and
-            # something should have failed earlier.
-            assert set(groups1.keys()) == set(groups2.keys())
+            if groups1.keys() != groups2.keys():
+                return ExactNumber(sp.oo)
             group_domain = domain.get_group_domain()
             distance = self._aggregate(
                 [
@@ -632,7 +642,7 @@ class SumOf(AggregationMetric):
         ...         "A": SparkIntegerColumnDescriptor(),
         ...         "B": SparkIntegerColumnDescriptor(),
         ...     },
-        ...     group_keys,
+        ...     ["A"],
         ... )
         >>> df1 = GroupedDataFrame(
         ...     spark.createDataFrame(
@@ -708,7 +718,7 @@ class RootSumOfSquared(AggregationMetric):
         ...         "A": SparkIntegerColumnDescriptor(),
         ...         "B": SparkIntegerColumnDescriptor(),
         ...     },
-        ...     group_keys,
+        ...     ["A"],
         ... )
         >>> df1 = GroupedDataFrame(
         ...     spark.createDataFrame(
@@ -1098,18 +1108,7 @@ class IfGroupedBy(ExactNumberMetric):
             isinstance(domain, SparkDataFrameDomain) and self.column in domain.schema
         ):
             return False
-        # We create a grouped data frame domain that would result from grouping on
-        # column so that we can check the grouped data frame domain against the inner
-        # metric. We don't know the value of the groupby keys, so we use an empty
-        # dataframe. Whether the inner metric supports the domain shouldn't depend on
-        # these values.
-        grouped_df_domain = SparkGroupedDataFrameDomain(
-            domain.schema,
-            SparkSession.builder.getOrCreate().createDataFrame(
-                pd.DataFrame({self.column: []}),
-                schema=domain.project([self.column]).spark_schema,
-            ),
-        )
+        grouped_df_domain = SparkGroupedDataFrameDomain(domain.schema, [self.column])
         return self.inner_metric.supports_domain(grouped_df_domain)
 
     def distance(self, value1: Any, value2: Any, domain: Domain) -> ExactNumber:
@@ -1128,13 +1127,13 @@ class IfGroupedBy(ExactNumberMetric):
             value1.select(self.column).union(value2.select(self.column)).distinct()
         )
         # Constructing a GroupedDataFrame with empty rows but nonempty columns is not
-        # allowed.  So, we hardcode the distance to be zero when there are no groups.
+        # allowed, so the distance is hardcoded to zero when there are no groups.
         if groupby_keys.count() == 0:
             return ExactNumber(0)
         distance = self._inner_metric.distance(
             GroupedDataFrame(value1, groupby_keys),
             GroupedDataFrame(value2, groupby_keys),
-            SparkGroupedDataFrameDomain(domain.schema, groupby_keys),
+            SparkGroupedDataFrameDomain(domain.schema, [self.column]),
         )
         self.validate(distance)
         return distance

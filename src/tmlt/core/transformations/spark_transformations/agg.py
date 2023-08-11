@@ -301,7 +301,7 @@ class CountGrouped(Transformation):
         ...             "A": SparkStringColumnDescriptor(),
         ...             "X": SparkIntegerColumnDescriptor(),
         ...         },
-        ...         group_keys=group_keys
+        ...         groupby_columns=["A"],
         ...     ),
         ...     input_metric=SumOf(SymmetricDifference()),
         ... )
@@ -326,7 +326,7 @@ class CountGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, group_keys=DataFrame[A: string])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
         >>> count_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> count_by_A.input_metric
@@ -367,13 +367,13 @@ class CountGrouped(Transformation):
                     f" not {input_metric.inner_metric}."
                 ),
             )
-        if count_column in set(input_domain.group_keys.columns):
+        if count_column in set(input_domain.groupby_columns):
             raise ValueError(
                 f"Invalid count column name: ({count_column}) column already exists"
             )
         groupby_columns_schema = {
             groupby_column: input_domain[groupby_column]
-            for groupby_column in input_domain.group_keys.columns
+            for groupby_column in input_domain.groupby_columns
         }
         output_domain = SparkDataFrameDomain(
             schema={
@@ -476,7 +476,7 @@ class CountDistinctGrouped(Transformation):
         ...             "A": SparkStringColumnDescriptor(),
         ...             "X": SparkIntegerColumnDescriptor(),
         ...         },
-        ...         group_keys=group_keys
+        ...         groupby_columns=["A"],
         ...     ),
         ...     input_metric=SumOf(SymmetricDifference()),
         ... )
@@ -501,7 +501,7 @@ class CountDistinctGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_distinct_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, group_keys=DataFrame[A: string])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
         >>> count_distinct_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count_distinct': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> count_distinct_by_A.input_metric
@@ -542,13 +542,13 @@ class CountDistinctGrouped(Transformation):
                     f" not {input_metric.inner_metric}."
                 ),
             )
-        if count_column in set(input_domain.group_keys.columns):
+        if count_column in set(input_domain.groupby_columns):
             raise ValueError(
                 f"Invalid count column name: ({count_column}) column already exists"
             )
         groupby_columns_schema = {
             groupby_column: input_domain[groupby_column]
-            for groupby_column in input_domain.group_keys.columns
+            for groupby_column in input_domain.groupby_columns
         }
         output_domain = SparkDataFrameDomain(
             schema={
@@ -859,7 +859,7 @@ class SumGrouped(Transformation):
         ...             "A": SparkStringColumnDescriptor(),
         ...             "X": SparkIntegerColumnDescriptor(),
         ...         },
-        ...         group_keys=group_keys
+        ...         groupby_columns=["A"],
         ...     ),
         ...     input_metric=SumOf(SymmetricDifference()),
         ...     measure_column="X",
@@ -884,7 +884,7 @@ class SumGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> sum_X_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, group_keys=DataFrame[A: string])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
         >>> sum_X_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'sum(X)': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> sum_X_by_A.input_metric
@@ -928,7 +928,7 @@ class SumGrouped(Transformation):
         if sum_column is None:
             sum_column = f"sum({measure_column})"
 
-        groupby_columns = input_domain.group_keys.columns
+        groupby_columns = input_domain.groupby_columns
         if measure_column not in set(input_domain.schema) - set(groupby_columns):
             raise DomainColumnError(
                 input_domain,
@@ -978,7 +978,7 @@ class SumGrouped(Transformation):
 
         groupby_columns_schema = {
             groupby_column: input_domain[groupby_column]
-            for groupby_column in groupby_columns
+            for groupby_column in input_domain.groupby_columns
         }
         output_domain = SparkDataFrameDomain(
             schema={**groupby_columns_schema, sum_column: input_domain[measure_column]}

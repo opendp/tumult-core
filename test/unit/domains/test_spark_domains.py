@@ -10,7 +10,7 @@ from contextlib import nullcontext as does_not_raise
 from itertools import combinations_with_replacement, product
 from test.conftest import assert_frame_equal_with_sort
 from test.unit.domains.abstract import DomainTests
-from typing import Any, Callable, ContextManager, Dict, Optional, Type
+from typing import Any, Callable, ContextManager, Dict, List, Optional, Type
 
 import pandas as pd
 import pytest
@@ -517,6 +517,7 @@ _schema_without_nulls: Dict[str, SparkColumnDescriptor] = {
     "C": SparkIntegerColumnDescriptor(allow_null=False),
 }
 
+_base_groupby_columns: List[str] = ["A", "B"]
 _base_group_key_args: Dict[str, Any] = {
     "data": [(1, "W"), (2, "X"), (3, "Y")],
     "schema": ["A", "B"],
@@ -545,62 +546,23 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         """Returns the type of the domain to be tested."""
         return SparkGroupedDataFrameDomain
 
-    def construct_domain(
-        self, domain_args: Dict[str, Any]
-    ) -> SparkGroupedDataFrameDomain:
-        """Construct a SparkGroupedDataFrameDomain with the given arguments."""
-        domain_args["group_keys"] = self.spark.createDataFrame(
-            **domain_args["group_keys"]
-        )
-        return SparkGroupedDataFrameDomain(**domain_args)
-
-    @pytest.fixture
-    def domain(self, request) -> SparkGroupedDataFrameDomain:
-        """Get a base SparkGroupedDataFrameDomain."""
-        return self.construct_domain(request.param)
-
-    @pytest.fixture
-    def other_domain(self, request) -> SparkGroupedDataFrameDomain:
-        """Get a base SparkGroupedDataFrameDomain."""
-        return self.construct_domain(request.param)
-
     @pytest.mark.parametrize(
         "domain_args, expectation, exception_properties",
         [
             (
-                {"schema": _base_schema, "group_keys": _base_group_key_args},
+                {"schema": _base_schema, "groupby_columns": _base_groupby_columns},
                 does_not_raise(),
                 None,
             ),
             # _base_schema does not have column "D"
             (
-                {
-                    "schema": _base_schema,
-                    "group_keys": {"data": pd.DataFrame({"D": [1, 2]})},
-                },
-                pytest.raises(ValueError, match="Invalid groupby column: {'D'}"),
-                None,
-            ),
-            # Column "B" is a SparkStringColumnDescriptor,
-            # not SparkIntegerColumnDescriptor
-            (
-                {
-                    "schema": _base_schema,
-                    "group_keys": {"data": pd.DataFrame({"B": [1, 2]})},
-                },
-                pytest.raises(
-                    ValueError,
-                    match=f"Column must be {get_fullname(StringType)}; got "
-                    f"{get_fullname(LongType)} instead",
-                ),
+                {"schema": _base_schema, "groupby_columns": ["D"]},
+                pytest.raises(ValueError, match="Invalid groupby columns: {'D'}"),
                 None,
             ),
             # Invalid schema
             (
-                {
-                    "schema": "not a schema",
-                    "group_keys": {"data": pd.DataFrame({"C": [1, 2]})},
-                },
+                {"schema": "not a schema", "groupby_columns": ["C"]},
                 pytest.raises(
                     TypeError,
                     match=f'type of argument "schema" must be {get_fullname(Mapping)}; '
@@ -616,7 +578,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                         "B": SparkStringColumnDescriptor(allow_null=True),
                         "C": ListDomain(NumpyIntegerDomain()),
                     },
-                    "group_keys": {"data": pd.DataFrame({"A": [1, 2]})},
+                    "groupby_columns": ["A"],
                 },
                 pytest.raises(
                     TypeError,
@@ -649,9 +611,6 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                 the exception is expected to have. Mostly used for testing the custom
                 exceptions.
         """
-        domain_args["group_keys"] = self.spark.createDataFrame(
-            **domain_args["group_keys"]
-        )
         super().test_construct_component(
             domain_type, domain_args, expectation, exception_properties
         )
@@ -660,37 +619,32 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         "domain, other_domain, expected",
         [
             (
-                # eq with nulls
-                {"schema": _base_schema, "group_keys": _group_key_with_nulls_args},
-                {"schema": _base_schema, "group_keys": _group_key_with_nulls_args},
+                # eq with same schema and groupby_columns
+                SparkGroupedDataFrameDomain(
+                    schema=_base_schema, groupby_columns=_base_groupby_columns
+                ),
+                SparkGroupedDataFrameDomain(
+                    schema=_base_schema, groupby_columns=_base_groupby_columns
+                ),
                 True,
             ),
             (
-                # eq with no group keys
-                {"schema": _base_schema, "group_keys": _empty_group_key_args},
-                {"schema": _base_schema, "group_keys": _empty_group_key_args},
+                # eq with no groupby columns
+                SparkGroupedDataFrameDomain(schema=_base_schema, groupby_columns=[]),
+                SparkGroupedDataFrameDomain(schema=_base_schema, groupby_columns=[]),
                 True,
             ),
             (
                 # not eq with different schemas
-                {"schema": _base_schema, "group_keys": _base_group_key_args},
-                {"schema": _schema_without_nulls, "group_keys": _base_group_key_args},
+                SparkGroupedDataFrameDomain(
+                    schema=_base_schema, groupby_columns=_base_groupby_columns
+                ),
+                SparkGroupedDataFrameDomain(
+                    schema=_schema_without_nulls, groupby_columns=_base_groupby_columns
+                ),
                 False,
-            ),
-            (
-                # not eq with different group keys
-                {"schema": _base_schema, "group_keys": _base_group_key_args},
-                {"schema": _base_schema, "group_keys": _group_key_with_nulls_args},
-                False,
-            ),
-            (
-                # eq with same schema and group keys
-                {"schema": _base_schema, "group_keys": _base_group_key_args},
-                {"schema": _base_schema, "group_keys": _base_group_key_args},
-                True,
             ),
         ],
-        indirect=["domain", "other_domain"],
     )
     def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
         """__eq__ works correctly.
@@ -708,7 +662,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             (
                 {
                     "schema": copy.deepcopy(_base_schema),
-                    "group_keys": _base_group_key_args,
+                    "groupby_columns": copy.deepcopy(_base_groupby_columns),
                 },
                 "schema",
                 lambda x: x.update({"A": SparkFloatColumnDescriptor()}),
@@ -730,16 +684,13 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             key: The parameter name to be changed.
             mutator: A lambda function that mutates the parameter.
         """
-        domain_args["group_keys"] = self.spark.createDataFrame(
-            **domain_args["group_keys"]
-        )
         super().test_mutable_inputs(domain_type, domain_args, key, mutator)
 
     @pytest.mark.parametrize(
         "domain, expected_properties",
         [
             (
-                {"schema": _base_schema, "group_keys": _base_group_key_args},
+                SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns),
                 {
                     "schema": _base_schema,
                     "carrier_type": GroupedDataFrame,
@@ -750,11 +701,10 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                             StructField("C", LongType(), True),
                         ]
                     ),
-                    "group_keys": _base_group_key_args,
+                    "groupby_columns": _base_groupby_columns,
                 },
             )
         ],
-        indirect=["domain"],
     )
     def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
         """All properties have the expected values.
@@ -766,20 +716,11 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         """
         actual_props = [prop[0] for prop in get_all_props(type(domain))]
         assert set(expected_properties.keys()) == set(actual_props)
-        expected_properties["group_keys"] = self.spark.createDataFrame(
-            **expected_properties["group_keys"]
-        )
         for prop, expected_val in expected_properties.items():
-            assert hasattr(domain, prop)
-            if isinstance(expected_val, DataFrame):
-                assert_frame_equal_with_sort(getattr(domain, prop), expected_val)
-                continue
-            assert getattr(domain, prop) == expected_val
+            assert hasattr(domain, prop) and getattr(domain, prop) == expected_val
 
     @pytest.mark.parametrize(
-        "domain",
-        [{"schema": _base_schema, "group_keys": _base_group_key_args}],
-        indirect=["domain"],
+        "domain", [SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns)]
     )
     def test_property_immutability(self, domain: Domain):
         """The properties return copies for mutable values.
@@ -792,72 +733,12 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
     @pytest.mark.parametrize(
         "domain, candidate, expectation, exception_properties",
         [
-            # This list comprehension is to generate all combinations of the following:
-            # SparkGroupedDataFrame: With or without nulls
-            # SparkDataFrame: With or without nulls
-            # GroupedDataFrame: With or without nulls
-            #
-            # If the SparkGroupedDataFrame group keys have a different domain than the
-            # GroupedDataFrame group keys, then we expect an OutOfDomainError.
             (
-                {"schema": _base_schema, "group_keys": domain_group_key},
-                {"dataframe": df, "group_keys": gdf_group_key},
-                # WidenContextManger is necessary to appease mypy since the current
-                # list comprehension is
-                # ContextManager[Optional[OutOfDomainError]] and the next one is
-                # Contextmanager[Optional[ValueError]], so we widen it to just
-                # ContextManager instead.
-                _WidenContextManager(
-                    does_not_raise()
-                    if domain_group_key == gdf_group_key
-                    else pytest.raises(
-                        OutOfDomainError, match="Groups keys do not match"
-                    )
-                ),
-                None
-                if domain_group_key == gdf_group_key
-                else {
-                    "domain": {"schema": _base_schema, "group_keys": domain_group_key},
-                    "value": {"dataframe": df, "group_keys": gdf_group_key},
-                },
-            )
-            for (domain_group_key, gdf_group_key, df) in product(
-                [_base_group_key_args, _group_key_with_nulls_args],
-                [_base_group_key_args, _group_key_with_nulls_args],
-                [
-                    # Dataframe with Nulls
-                    {
-                        "data": [(1, "W", 0), (None, "X", 1), (None, "X", 2)],
-                        "schema": ["A", "B", "C"],
-                    },
-                    # Dataframe without Nulls
-                    {
-                        "data": [(1, "W", 0), (2, "X", 1), (3, "Y", 2)],
-                        "schema": ["A", "B", "C"],
-                    },
-                ],
-            )
-        ]
-        + [
-            (
-                # Dataframe with Nulls should raise when schema does not allow nulls
-                {"schema": _schema_without_nulls, "group_keys": _base_group_key_args},
+                # Normal
+                SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns),
                 {
                     "dataframe": {
-                        "data": [(1, "W", 0), (None, "X", 1), (None, "X", 2)],
-                        "schema": ["A", "B", "C"],
-                    },
-                    "group_keys": _base_group_key_args,
-                },
-                pytest.raises(ValueError, match="Column contains null values."),
-                None,
-            ),
-            (
-                # Schema without nulls and dataframe without nulls should not raise
-                {"schema": _schema_without_nulls, "group_keys": _base_group_key_args},
-                {
-                    "dataframe": {
-                        "data": [(1, "W", 0), (2, "X", 1), (3, "Y", 2)],
+                        "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
                         "schema": ["A", "B", "C"],
                     },
                     "group_keys": _base_group_key_args,
@@ -865,8 +746,157 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                 does_not_raise(),
                 None,
             ),
+            (
+                # Nulls
+                SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns),
+                {
+                    "dataframe": {
+                        "data": [(1, "W", 10), (2, "X", 12), (3, "Y", None)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    "group_keys": _group_key_with_nulls_args,
+                },
+                does_not_raise(),
+                None,
+            ),
+            (
+                # Unexpected nulls in dataframe
+                SparkGroupedDataFrameDomain(
+                    _schema_without_nulls, _base_groupby_columns
+                ),
+                {
+                    "dataframe": {
+                        "data": [(1, "W", 10), (2, "X", 12), (3, "Y", None)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    "group_keys": _base_group_key_args,
+                },
+                pytest.raises(
+                    OutOfDomainError,
+                    match=(
+                        "Invalid inner DataFrame: Found invalid value in column"
+                        " 'C': Column contains null values."
+                    ),
+                ),
+                {
+                    "domain": SparkGroupedDataFrameDomain(
+                        _schema_without_nulls, _base_groupby_columns
+                    ),
+                    "value": {
+                        "dataframe": {
+                            "data": [(1, "W", 10), (2, "X", 12), (3, "Y", None)],
+                            "schema": ["A", "B", "C"],
+                        },
+                        "group_keys": _base_group_key_args,
+                    },
+                },
+            ),
+            (  # Unexpected nulls in group_keys
+                SparkGroupedDataFrameDomain(
+                    _schema_without_nulls, _base_groupby_columns
+                ),
+                {
+                    "dataframe": {
+                        "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    "group_keys": _group_key_with_nulls_args,
+                },
+                pytest.raises(
+                    OutOfDomainError,
+                    match=(
+                        "Invalid group keys: Found invalid value in column 'B': "
+                        "Column contains null values."
+                    ),
+                ),
+                {
+                    "domain": SparkGroupedDataFrameDomain(
+                        _schema_without_nulls, _base_groupby_columns
+                    ),
+                    "value": {
+                        "dataframe": {
+                            "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
+                            "schema": ["A", "B", "C"],
+                        },
+                        "group_keys": _group_key_with_nulls_args,
+                    },
+                },
+            ),
+            (  # Missing column in dataframe
+                SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns),
+                {
+                    "dataframe": {
+                        "data": [(1, "W"), (2, "X"), (3, "Y")],
+                        "schema": ["A", "B"],
+                    },
+                    "group_keys": _base_group_key_args,
+                },
+                pytest.raises(
+                    OutOfDomainError,
+                    match=(
+                        "Invalid inner DataFrame: Columns are not as expected. "
+                        "DataFrame and Domain must contain the same columns in the "
+                        "same order.\nDataFrame columns: \\['A', 'B'\\]\nDomain "
+                        "columns: \\['A', 'B', 'C'\\]"
+                    ),
+                ),
+                {
+                    "domain": SparkGroupedDataFrameDomain(
+                        _base_schema, _base_groupby_columns
+                    ),
+                    "value": {
+                        "dataframe": {
+                            "data": [(1, "W"), (2, "X"), (3, "Y")],
+                            "schema": ["A", "B"],
+                        },
+                        "group_keys": _base_group_key_args,
+                    },
+                },
+            ),
+            (  # Missing column in group_keys
+                SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns),
+                {
+                    "dataframe": {
+                        "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    "group_keys": _empty_group_key_args,
+                },
+                pytest.raises(
+                    OutOfDomainError,
+                    match=(
+                        "Invalid group keys: Columns are not as expected. "
+                        "DataFrame and Domain must contain the same columns in the "
+                        "same order.\nDataFrame columns: \\[\\]\nDomain "
+                        "columns: \\['A', 'B'\\]"
+                    ),
+                ),
+                {
+                    "domain": SparkGroupedDataFrameDomain(
+                        _base_schema, _base_groupby_columns
+                    ),
+                    "value": {
+                        "dataframe": {
+                            "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
+                            "schema": ["A", "B", "C"],
+                        },
+                        "group_keys": _empty_group_key_args,
+                    },
+                },
+            ),
+            (  # empty group_keys
+                SparkGroupedDataFrameDomain(_base_schema, []),
+                {
+                    "dataframe": {
+                        "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    "group_keys": _empty_group_key_args,
+                },
+                does_not_raise(),
+                None,
+            ),
         ],
-        indirect=["domain"],
     )
     def test_validate(
         self,
@@ -890,9 +920,6 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         candidate["group_keys"] = self.spark.createDataFrame(**candidate["group_keys"])
         candidate = GroupedDataFrame(**candidate)
         if exception_properties is not None:
-            exception_properties["domain"] = self.construct_domain(
-                exception_properties["domain"]
-            )
             exception_properties["value"]["dataframe"] = self.spark.createDataFrame(
                 **exception_properties["value"]["dataframe"]
             )
@@ -910,7 +937,9 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         assert isinstance(exception, pytest.ExceptionInfo)
         core_exception = exception.value
         assert hasattr(core_exception, "domain"), "Exception has no domain attribute"
-        assert exception_properties["domain"] == core_exception.domain
+        assert (
+            exception_properties["domain"] == core_exception.domain
+        ), "Exception domain is not as expected"
         assert hasattr(core_exception, "value"), "Exception has no value attribute"
         # Separate asserts for the frames are required since GroupedDataFrame does not
         # implement __eq__.
@@ -925,21 +954,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         )
 
     @pytest.mark.parametrize(
-        "domain",
-        [
-            {
-                "schema": {
-                    "A": SparkIntegerColumnDescriptor(allow_null=True),
-                    "B": SparkStringColumnDescriptor(allow_null=True),
-                    "C": SparkIntegerColumnDescriptor(allow_null=True),
-                },
-                "group_keys": {
-                    "data": [(1, "W"), (2, "X"), (3, "Y")],
-                    "schema": ["A", "B"],
-                },
-            }
-        ],
-        indirect=["domain"],
+        "domain", [SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns)]
     )
     def test_repr(self, domain: Domain):  # pylint: disable=no-self-use
         """Tests that __repr__ works correctly."""
@@ -947,39 +962,27 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             "SparkGroupedDataFrameDomain(schema={'A': SparkIntegerColumnDescriptor("
             "allow_null=True, size=64), 'B': SparkStringColumnDescriptor(allow_null="
             "True), 'C': SparkIntegerColumnDescriptor(allow_null=True, size=64)},"
-            " group_keys=DataFrame[A: bigint, B: string])"
+            " groupby_columns=['A', 'B'])"
         )
         assert repr(domain) == expected
-
-    def test_post_init_removes_duplicate_keys(self):
-        """Tests that __post_init__ removes duplicate group keys."""
-        domain_args = {
-            "schema": _base_schema,
-            "group_keys": {"data": [(1, "W"), (1, "W")], "schema": ["A", "B"]},
-        }
-        domain = self.construct_domain(domain_args)
-        expected = pd.DataFrame({"A": [1], "B": ["W"]})
-        assert_frame_equal_with_sort(expected, domain.group_keys)
 
     @pytest.mark.parametrize(
         "domain, expected, expectation, exception_properties",
         [
             (
-                {
-                    "schema": _base_schema,
-                    "group_keys": {
-                        "data": [(1, "W"), (2, "X"), (3, "Y")],
-                        "schema": ["A", "B"],
+                SparkGroupedDataFrameDomain(
+                    schema={
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkStringColumnDescriptor(),
+                        "C": SparkFloatColumnDescriptor(),
                     },
-                },
-                SparkDataFrameDomain(
-                    schema={"C": SparkIntegerColumnDescriptor(allow_null=True)}
+                    groupby_columns=["A", "B"],
                 ),
+                SparkDataFrameDomain(schema={"C": SparkFloatColumnDescriptor()}),
                 does_not_raise(),
                 None,
             )
         ],
-        indirect=["domain"],
     )
     def test_get_group_domain(  # pylint: disable=no-self-use
         self,

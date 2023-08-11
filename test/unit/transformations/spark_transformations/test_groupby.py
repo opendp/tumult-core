@@ -86,9 +86,7 @@ class TestGroupBy(PySparkTest):
         self.assertTrue(isinstance(output_domain, SparkGroupedDataFrameDomain))
         assert isinstance(output_domain, SparkGroupedDataFrameDomain)
         self.assertEqual(output_domain.schema, self.domain.schema)
-        self.assert_frame_equal_with_sort(
-            output_domain.group_keys.toPandas(), self.group_keys.toPandas()
-        )
+        self.assertEqual(output_domain.groupby_columns, ["A"])
         self.assertEqual(groupby.input_metric, SymmetricDifference())
         self.assertEqual(
             groupby.output_metric,
