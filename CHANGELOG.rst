@@ -6,6 +6,9 @@ Changelog
 Unreleased
 ----------
 
+0.11.0 - 2023-08-14
+-------------------
+
 Changed
 ~~~~~~~
 - Replaced the `group_keys` for constructing :class:`~.SparkGroupedDataFrameDomain`\ s with `groupby_columns`.
