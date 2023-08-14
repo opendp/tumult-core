@@ -6,14 +6,12 @@ Changelog
 Unreleased
 ----------
 
-0.11.0 - 2023-08-14
--------------------
-
 Changed
 ~~~~~~~
 - Replaced the `group_keys` for constructing :class:`~.SparkGroupedDataFrameDomain`\ s with `groupby_columns`.
 - Modified :class:`~.SymmetricDifference` to define the distance
-between two elements of :class:`~.SparkGroupedDataFrameDomain`\ s to be infinite when the two elements have different `group_keys`.
+  between two elements of :class:`~.SparkGroupedDataFrameDomain`\ s to be infinite when the two elements have different `group_keys`.
+- Updated maximum version for `pyspark` from 3.3.1 to 3.3.2.
 
 0.10.2 - 2023-07-18
 -------------------
