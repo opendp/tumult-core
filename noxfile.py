@@ -645,7 +645,9 @@ def get_wheels_from_circleci(session):
         commit_pipelines = [
             p
             for p in pipelines["items"]
-            if p["trigger_parameters"]["gitlab"]["commit_sha"] == commit_hash
+            if p["state"] != "errored"
+            and p.get("trigger_parameters", {}).get("gitlab", {}).get("commit_sha")
+            == commit_hash
         ]
         if len(commit_pipelines) > 0:
             break
