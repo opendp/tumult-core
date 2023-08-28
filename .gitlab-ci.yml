@@ -106,9 +106,7 @@ get_circleci_wheels:
    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
      when: delayed
      start_in: 30 seconds
-   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-     when: never
-   - when: manual
+   - when: never
 
 
 lint:
