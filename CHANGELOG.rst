@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+- Added documentation for known vulnerabilities related to Parallel Composition and the use of SymPy.
+
 0.11.0 - 2023-08-15
 -------------------
 
