@@ -293,7 +293,7 @@ test_dep_matrix:
 
 publish:
   stage: release
-  dependencies: [package_linux] # TODO(disable-broken-jobs): [get_circleci_wheels, package_linux]
+  dependencies: [get_circleci_wheels, package_linux]
   image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest
   script:
     - poetry publish -u __token__ -p "${RELEASE_PYPI_TOKEN}"
