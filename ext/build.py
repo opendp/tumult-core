@@ -20,8 +20,8 @@ def check_platform():
         failed = True
     elif platform.machine() not in SUPPORTED_ARCHITECTURES:
         print(
-            "It looks like you're running on an unsupported architecture"
-            f"({platform.machine()}). Supported architectures: "
+            "It looks like you're running on an unsupported architecture "
+            f"('{platform.machine()}'). Supported architectures: "
             f"{SUPPORTED_ARCHITECTURES}"
         )
         failed = True
