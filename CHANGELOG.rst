@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+- Added support for Python 3.11.
+
 0.11.1 - 2023-09-25
 -------------------
 
