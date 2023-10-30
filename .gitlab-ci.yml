@@ -241,7 +241,10 @@ test_release_linux:
   extends: .base
   stage: test-release
   needs: ["package_linux"]
-  image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   script:
     - nox -s release_smoketest release_test
   coverage: '/^TOTAL.+?(\d+\%)$/'
