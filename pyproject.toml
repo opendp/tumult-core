@@ -57,7 +57,7 @@ pyarrow = [
 ]
 pyspark = [
   { version = "^3.0.0,<3.4.0", extras = ["sql"], python = "<3.8" },
-  { version = "^3.0.0", extras = ["sql"], python = ">=3.9,<3.11" },
+  { version = "^3.0.0", extras = ["sql"], python = ">=3.8,<3.11" },
   { version = "^3.4.0", extras = ["sql"], python = ">=3.11" },
 ]
 randomgen = [

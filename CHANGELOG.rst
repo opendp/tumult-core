@@ -6,6 +6,8 @@ Changelog
 Unreleased
 ----------
 
+Fixed a typo preventing pyspark from being installed on Python 3.8.
+
 0.11.2 - 2023-10-27
 -------------------
 
