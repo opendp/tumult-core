@@ -6,6 +6,9 @@ Changelog
 Unreleased
 ----------
 
+0.11.4 - 2023-11-01
+-------------------
+
 Fixed a typo that prevented PyArrow from being installed on Python 3.8.
 
 0.11.3 - 2023-10-31
