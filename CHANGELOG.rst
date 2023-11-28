@@ -6,6 +6,15 @@ Changelog
 Unreleased
 ----------
 
+Fixed
+~~~~~
+-  Addressed a serious security vulnerability in PyArrow: `CVE-2023-47248 <https://nvd.nist.gov/vuln/detail/CVE-2023-47248>`__.
+
+   -  Python 3.8+ now requires PyArrow 14.0.1 or higher, which is the recommended fix and addresses the vulnerability.
+   -  Python 3.7 uses the hotfix, as PyArrow 14.0.1 is not compatible with Python 3.7. Note that if you are using 3.7 the hotfix must be imported before your Spark code. Core imports the hotfix, so importing Core before Spark will also work.
+   -  **It is strongly recommended to upgrade if you are using an older version of Core.**
+   -  Also see the `GitHub Advisory entry <https://github.com/advisories/GHSA-5wvp-7f3h-6wmm>`__ for more information.
+
 0.11.4 - 2023-11-01
 -------------------
 
