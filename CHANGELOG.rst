@@ -15,6 +15,8 @@ Fixed
    -  **It is strongly recommended to upgrade if you are using an older version of Core.**
    -  Also see the `GitHub Advisory entry <https://github.com/advisories/GHSA-5wvp-7f3h-6wmm>`__ for more information.
 
+- Fixed a reference to an uninitialized variable that could cause :func:`~.arb_union` to crash the Python interpreter.
+
 0.11.4 - 2023-11-01
 -------------------
 

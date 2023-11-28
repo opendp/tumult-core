@@ -540,7 +540,7 @@ def arb_const_pi(prec: int) -> Arb:
     return Arb(z)
 
 
-def arb_union(x: Arb, y: Arb) -> Arb:
+def arb_union(x: Arb, y: Arb, prec: int) -> Arb:
     """Returns union of `x` and `y`.
 
     If `x` and `y` represent intervals [x_l, x_u] and [y_l, y_u], this returns an
@@ -548,7 +548,7 @@ def arb_union(x: Arb, y: Arb) -> Arb:
     """
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
-    arblib.arb_union(z, x._ptr, y._ptr)
+    arblib.arb_union(z, x._ptr, y._ptr, prec)
     return Arb(z)
 
 
