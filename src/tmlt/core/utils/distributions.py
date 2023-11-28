@@ -254,7 +254,7 @@ def _discrete_gaussian_unnormalized_mass_from_k_to_inf(
 
     lower = integral(k)
     upper = integral(k - 1)
-    return arb_union(lower, upper)
+    return arb_union(lower, upper, prec)
 
 
 def _discrete_gaussian_unnormalized_mass_from_k_to_n_fast(

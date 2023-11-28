@@ -313,7 +313,7 @@ class TestArbFunctions(TestCase):
         """`arb_union` works as expected."""
         arb1 = Arb.from_midpoint_radius(1, 0.5)  # [0.5,1.5]
         arb2 = Arb.from_midpoint_radius(3, 0.5)  # [2.5,3.5]
-        actual = arb_union(arb1, arb2)
+        actual = arb_union(arb1, arb2, prec=100)
         true_interval = Arb.from_midpoint_radius(2, 1.5)  # [0.5, 3.5]
         self.assertTrue(true_interval in actual)
 
