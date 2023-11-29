@@ -6,6 +6,9 @@ Changelog
 Unreleased
 ----------
 
+0.11.5 - 2023-11-29
+-------------------
+
 Fixed
 ~~~~~
 -  Addressed a serious security vulnerability in PyArrow: `CVE-2023-47248 <https://nvd.nist.gov/vuln/detail/CVE-2023-47248>`__.
