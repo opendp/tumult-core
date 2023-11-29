@@ -181,6 +181,31 @@ benchmark_nightly:
       allow_failure: true
   tags: [aws-c6a.xlarge]
 
+benchmark_dependency_matrix:
+  extends: .base
+  stage: benchmark
+  needs: ["package_linux"]
+  parallel:
+    matrix:
+      - PYTHON_VERSION: [ "3.7", "3.8", "3.9", "3.10", "3.11" ]
+        TEST_TYPE: [ "oldest", "newest" ]
+      - PYTHON_VERSION: [ "3.7" ]
+        TEST_TYPE: [ "pyspark3.1", "pyspark3.2" ]
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
+  script:
+    - nox -s "benchmark_multi_deps(${PYTHON_VERSION}-${TEST_TYPE})"
+  artifacts:
+    paths:
+      - benchmark_output/
+    expose_as: "Benchmarks"
+  timeout: 3h
+  rules:  # Can only be triggered manually
+    - if: "$CI_COMMIT_TAG"
+      when: never
+    - when: manual
+      allow_failure: true
+  tags: [aws-c6a.xlarge]
+
 trigger_analytics_with_core_commit_hash_nightly:
   stage: test
   needs:
