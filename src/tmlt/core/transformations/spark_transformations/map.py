@@ -274,7 +274,7 @@ class RowToRowsTransformation(Transformation):
         ...             {
         ...                 "A": SparkStringColumnDescriptor(),
         ...                 "B": SparkStringColumnDescriptor(),
-        ...                 "C": SparkIntegerColumnDescriptor(),
+        ...                 "i": SparkIntegerColumnDescriptor(),
         ...             }
         ...         )
         ...     ),
@@ -631,14 +631,15 @@ class FlatMap(Transformation):
 class GroupingFlatMap(Transformation):
     """Applies a :class:`~.RowToRowsTransformation` to each row and flattens the result.
 
-    A :class:`~.GroupingFlatMap` is a special case of a :class:`~.FlatMap` that allows
-    for a tighter stability analysis.
+    A :class:`~.GroupingFlatMap` is a special case of a :class:`~.FlatMap` that has
+    different input and output metrics (a `FlatMap`'s input and output metrics are
+    always identical) and allows for a tighter stability analysis.
 
-    The requirements are that
+    Compared to a regular `FlatMap`, a `GroupingFlatMap` also requires that:
 
     1. The `row_transformer` creates a single column that is augmented to the input
-    2. For each input row, the values in the created column are distinct (This is
-       enforced by the implementation).
+    2. For each input row, the `row_transformer` creates no duplicate values in the
+       created column (This is enforced by the implementation).
 
     .. note::
         The transformation function must not contain any objects that
@@ -740,13 +741,24 @@ class GroupingFlatMap(Transformation):
         IfGroupedBy(column='i', inner_metric=RootSumOfSquared(inner_metric=SymmetricDifference()))
 
         Stability Guarantee:
-            :class:`~.GroupingFlatMap`'s :meth:`~.stability_function` has two cases:
+            :class:`~.GroupingFlatMap` supports two different output metrics:
+
+            - IfGroupedBy(column='new_column', inner_metric=SumOf(SummetricDifference()))
+            - IfGroupedBy(column='new_column', inner_metric=RootSumOfSquared(SymmetricDifference()))
+
+            The meth:`~.stability_function` is different depending on the output
+            metric:
 
             If the inner metric is `SumOf(SymmetricDifference())`, `d_out` is
 
                 `d_in * self.max_num_rows`
 
-            If the inner metric is `RootSumOfSquared(SymmetricDifference())`, `d_out` is
+            If the inner metric is `RootSumOfSquares(SymmetricDifference())`, we
+            can use the added structure of the `row_transformer` to achieve a
+            tighter analysis. We know that for each input row, the function will
+            produce at most one output row per value of the new column, so in total
+            we can produce up to `d_in` rows for each of up to `self.max_num_rows`
+            values of the new column. Therefore, under `RootSumOfSquares`, `d_out` is
 
                 `d_in * sqrt(self.max_num_rows)`
 

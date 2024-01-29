@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+Changed
+~~~~~~~
+- Expanded the explanation of `GroupingFlatMap`'s stability.
+
 Fixed
 ~~~~~
 - Fixed missing minus sign in the documentation of the discrete Gaussian pmf.
