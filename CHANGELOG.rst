@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+Fixed
+~~~~~
+- Fixed missing minus sign in the documentation of the discrete Gaussian pmf.
+
 0.11.5 - 2023-11-29
 -------------------
 

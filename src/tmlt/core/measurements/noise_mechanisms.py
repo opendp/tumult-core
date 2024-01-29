@@ -395,7 +395,7 @@ class AddDiscreteGaussianNoise(Measurement):
         .. math::
 
             f(k) = \frac
-            {e^{k^2/2\sigma^2}}
+            {e^{-k^2/2\sigma^2}}
             {
                 \sum_{n\in \mathbb{Z}}
                 e^{n^2/2\sigma^2}
