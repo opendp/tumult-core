@@ -225,7 +225,7 @@ def show_installed(f):
 def black(session):
     """Run black. If the --check argument is given, only check, don't make changes."""
     check_flags = ["--check", "--diff"] if "--check" in session.posargs else []
-    session.run("black", "--skip-magic-trailing-comma", *check_flags, *CODE_DIRS)
+    session.run("black", *check_flags, *CODE_DIRS)
 
 
 @poetry_session(tags=["lint"], python="3.7")
