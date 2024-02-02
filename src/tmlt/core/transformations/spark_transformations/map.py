@@ -506,7 +506,7 @@ class FlatMap(Transformation):
             - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
 
             :class:`~.FlatMap`'s :meth:`~.stability_function` returns the `d_in`
-            times :attr:`.max_num_rows`.
+            times :attr:`.max_num_rows`. If :attr:`.max_num_rows` is None, it returns infinity.
 
             >>> duplicate_flat_map.stability_function(1)
             2
@@ -538,15 +538,6 @@ class FlatMap(Transformation):
                 rows. None is only allowed if the metric is
                 IfGroupedBy(SymmetricDifference()).
         """
-        if not (
-            isinstance(metric, IfGroupedBy)
-            and isinstance(metric.inner_metric, SymmetricDifference)
-        ):
-            if max_num_rows is None:
-                raise ValueError(
-                    "max_num_rows must be specified if metric is not"
-                    " IfGroupedBy(column, SymmetricDifference())."
-                )
         if max_num_rows is not None and max_num_rows < 0:
             raise ValueError(f"max_num_rows ({max_num_rows}) must be nonnegative.")
 
@@ -609,6 +600,9 @@ class FlatMap(Transformation):
             self.input_metric.inner_metric, SymmetricDifference
         ):
             return ExactNumber(d_in)
+        else:
+            if self.max_num_rows is None:
+                return ExactNumber(float("inf"))
         # help mypy
         assert self.max_num_rows is not None
         return ExactNumber(d_in) * self.max_num_rows

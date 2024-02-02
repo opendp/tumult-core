@@ -415,6 +415,7 @@ class TestFlatMap(TestComponent):
     @parameterized.expand(
         [
             (SymmetricDifference(), 2, 2),
+            (SymmetricDifference(), float("inf"), None),
             (IfGroupedBy("B", SumOf(SymmetricDifference())), 2, 2),
             (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())), 2, 2),
             (IfGroupedBy("B", SymmetricDifference()), 1, 2),
@@ -501,21 +502,20 @@ class TestFlatMap(TestComponent):
             (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),),
         ]
     )
-    def test_none_stability(self, metric: Union[SymmetricDifference, IfGroupedBy]):
-        """Tests that FlatMap raises exaception when None stability not allowed."""
-        with self.assertRaisesRegex(
-            ValueError, "max_num_rows must be specified if metric is not"
-        ):
-            FlatMap(
-                metric=metric,
-                row_transformer=RowToRowsTransformation(
-                    input_domain=SparkRowDomain(self.schema_a),
-                    output_domain=ListDomain(SparkRowDomain(self.schema_a)),
-                    trusted_f=lambda row: [row],
-                    augment=True,
-                ),
-                max_num_rows=None,
-            )
+    def test_infinite_stability(self, metric: Union[SymmetricDifference, IfGroupedBy]):
+        """FlatMap has inf stability for certain metrics when `max_num_rows` is None."""
+        flat_map_transformation = FlatMap(
+            metric=metric,
+            row_transformer=RowToRowsTransformation(
+                input_domain=SparkRowDomain(self.schema_a),
+                output_domain=ListDomain(SparkRowDomain(self.schema_a)),
+                trusted_f=lambda row: [row],
+                augment=True,
+            ),
+            max_num_rows=None,
+        )
+        self.assertTrue(flat_map_transformation.stability_function(1), float("inf"))
+        self.assertTrue(flat_map_transformation.stability_relation(1, float("inf")))
 
 
 class TestGroupingFlatMap(TestComponent):
