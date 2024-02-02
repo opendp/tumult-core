@@ -9,6 +9,7 @@ Unreleased
 Changed
 ~~~~~~~
 - Expanded the explanation of `GroupingFlatMap`'s stability.
+- Support all metrics for the flat map transformation.
 
 Fixed
 ~~~~~
