@@ -415,6 +415,8 @@ class TruncationStrategy(Enum):
     """Use :func:`~.truncate_large_groups`."""
     DROP = 2
     """Use :func:`~.drop_large_groups`."""
+    NO_TRUNCATION = 3
+    """No truncation, results in infinite stability."""
 
 
 class PrivateJoin(Transformation):
@@ -553,6 +555,7 @@ class PrivateJoin(Transformation):
             - TruncationStrategy.TRUNCATE has a stability of 2 (This is because
               adding a new row can not only add a new row to the output, it also can
               displace another row)
+            - TruncationStrategy.NO_TRUNCATION has infinite stablity.
 
             >>> # TRUNCATE has a stability of 2
             >>> s_r = s_l = private_join.truncation_strategy_stability(
@@ -573,8 +576,8 @@ class PrivateJoin(Transformation):
         right_key: Any,
         left_truncation_strategy: TruncationStrategy,
         right_truncation_strategy: TruncationStrategy,
-        left_truncation_threshold: int,
-        right_truncation_threshold: int,
+        left_truncation_threshold: Union[int, float],
+        right_truncation_threshold: Union[int, float],
         join_cols: Optional[List[str]] = None,
         join_on_nulls: bool = False,
     ):
@@ -634,6 +637,16 @@ class PrivateJoin(Transformation):
             raise UnsupportedDomainError(
                 input_domain, "Input domain must be SparkDataFrameDomain for both keys."
             )
+        if (
+            left_truncation_strategy == TruncationStrategy.NO_TRUNCATION
+            and left_truncation_threshold != float("inf")
+        ) or (
+            right_truncation_strategy == TruncationStrategy.NO_TRUNCATION
+            and right_truncation_threshold != float("inf")
+        ):
+            raise ValueError(
+                "The left/right_truncation_threshold must be infinite if the left/right_truncation_strategy is NO_TRUNCATION."
+            )
 
         output_domain = domain_after_join(
             left_domain=left_domain,
@@ -687,12 +700,12 @@ class PrivateJoin(Transformation):
         return self._right_truncation_strategy
 
     @property
-    def left_truncation_threshold(self) -> int:
+    def left_truncation_threshold(self) -> Union[int, float]:
         """Returns the threshold for truncating the left DataFrame."""
         return self._left_truncation_threshold
 
     @property
-    def right_truncation_threshold(self) -> int:
+    def right_truncation_threshold(self) -> Union[int, float]:
         """Returns the threshold for truncating the right DataFrame."""
         return self._right_truncation_threshold
 
@@ -708,12 +721,14 @@ class PrivateJoin(Transformation):
 
     @staticmethod
     def truncation_strategy_stability(
-        truncation_strategy: TruncationStrategy, threshold: int
-    ) -> int:
+        truncation_strategy: TruncationStrategy, threshold: Union[int, float]
+    ) -> Union[int, float]:
         """Returns the stability for the given truncation strategy."""
-        return {TruncationStrategy.TRUNCATE: 2, TruncationStrategy.DROP: threshold}[
-            truncation_strategy
-        ]
+        return {
+            TruncationStrategy.TRUNCATE: 2,
+            TruncationStrategy.DROP: threshold,
+            TruncationStrategy.NO_TRUNCATION: float("inf"),
+        }[truncation_strategy]
 
     @typechecked
     def stability_function(self, d_in: Dict[Any, ExactNumberInput]) -> ExactNumber:
@@ -736,11 +751,17 @@ class PrivateJoin(Transformation):
     def __call__(self, dfs: Dict[Any, DataFrame]) -> DataFrame:
         """Perform join."""
 
-        def truncate(df: DataFrame, strategy: TruncationStrategy, threshold: int):
+        def truncate(
+            df: DataFrame, strategy: TruncationStrategy, threshold: Union[int, float]
+        ):
             if strategy == TruncationStrategy.TRUNCATE:
+                assert isinstance(threshold, int)
                 return truncate_large_groups(df, self.join_cols, threshold)
             elif strategy == TruncationStrategy.DROP:
+                assert isinstance(threshold, int)
                 return drop_large_groups(df, self.join_cols, threshold)
+            elif strategy == TruncationStrategy.NO_TRUNCATION:
+                return df
             else:
                 raise AssertionError("Unsupported TruncationStrategy")
 
