@@ -652,13 +652,19 @@ class TestPrivateJoin(PySparkTest):
             (5, 5, 20, TruncationStrategy.TRUNCATE),
             (1, 10, 20, TruncationStrategy.DROP),
             (5, 5, 50, TruncationStrategy.DROP),
+            (
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                TruncationStrategy.NO_TRUNCATION,
+            ),
         ]
     )
     def test_stability_relation(
         self,
-        threshold_left: int,
-        threshold_right: int,
-        d_out: int,
+        threshold_left: Union[float, int],
+        threshold_right: Union[float, int],
+        d_out: Union[int, float],
         truncation_strategy: TruncationStrategy,
     ):
         """Tests that PrivateJoin's stability relation is correct."""
@@ -707,6 +713,17 @@ class TestPrivateJoin(PySparkTest):
                 ["A"],
                 pd.DataFrame([], columns=["A", "B_left", "B_right"]),
             ),
+            (
+                pd.DataFrame([(1, 2), (1, 3), (2, 4)], columns=["A", "B"]),
+                pd.DataFrame([(2, 5), (2, 2), (1, 6)], columns=["A", "B"]),
+                TruncationStrategy.NO_TRUNCATION,
+                float("inf"),
+                ["A"],
+                pd.DataFrame(
+                    [(1, 2, 6), (1, 3, 6), (2, 4, 5), (2, 4, 2)],
+                    columns=["A", "B_left", "B_right"],
+                ),
+            ),
         ]
     )
     def test_correctness(
@@ -714,7 +731,7 @@ class TestPrivateJoin(PySparkTest):
         left: pd.DataFrame,
         right: pd.DataFrame,
         truncation_strategy: TruncationStrategy,
-        threshold: int,
+        threshold: Union[float, int],
         join_cols: List[str],
         expected: pd.DataFrame,
     ):
@@ -758,6 +775,7 @@ class TestPrivateJoin(PySparkTest):
                 ),
                 "df1",
                 "df2",
+                TruncationStrategy.TRUNCATE,
                 ["A"],
                 "must be a DictDomain with 2 keys",
             ),
@@ -774,6 +792,7 @@ class TestPrivateJoin(PySparkTest):
                 ),
                 "df3",
                 "df1",
+                TruncationStrategy.TRUNCATE,
                 ["A"],
                 "Key 'df3' not in input domain",
             ),
@@ -790,6 +809,7 @@ class TestPrivateJoin(PySparkTest):
                 ),
                 "df1",
                 "df1",
+                TruncationStrategy.TRUNCATE,
                 ["A"],
                 "Left and right keys must be distinct",
             ),
@@ -806,6 +826,7 @@ class TestPrivateJoin(PySparkTest):
                 ),
                 "df1",
                 "df2",
+                TruncationStrategy.TRUNCATE,
                 None,
                 "Join must involve at least one column.",
             ),
@@ -822,6 +843,7 @@ class TestPrivateJoin(PySparkTest):
                 ),
                 "df1",
                 "df2",
+                TruncationStrategy.TRUNCATE,
                 ["A"],
                 (
                     "'A' has different data types in left (StringType) and right "
@@ -848,8 +870,33 @@ class TestPrivateJoin(PySparkTest):
                 ),
                 "df1",
                 "df2",
+                TruncationStrategy.TRUNCATE,
                 ["A"],
                 "Name collision, 'B_right' would appear more than once in the output.",
+            ),
+            (  # Invalid threshold for NO_TRUNCATION strategy
+                DictDomain(
+                    {
+                        "df1": SparkDataFrameDomain(
+                            {
+                                "A": SparkStringColumnDescriptor(),
+                                "B": SparkStringColumnDescriptor(),
+                            }
+                        ),
+                        "df2": SparkDataFrameDomain(
+                            {
+                                "A": SparkStringColumnDescriptor(),
+                                "B": SparkStringColumnDescriptor(),
+                            }
+                        ),
+                    }
+                ),
+                "df1",
+                "df2",
+                TruncationStrategy.NO_TRUNCATION,
+                None,
+                "The left/right_truncation_threshold must be infinite if the "
+                "left/right_truncation_strategy is NO_TRUNCATION.",
             ),
         ]
     )
@@ -858,6 +905,7 @@ class TestPrivateJoin(PySparkTest):
         input_domain: DictDomain,
         left: str,
         right: str,
+        truncation_strategy: TruncationStrategy,
         join_cols: Optional[List[str]],
         error_msg: str,
     ):
@@ -869,8 +917,8 @@ class TestPrivateJoin(PySparkTest):
                 input_domain=input_domain,
                 left_key=left,
                 right_key=right,
-                left_truncation_strategy=TruncationStrategy.TRUNCATE,
-                right_truncation_strategy=TruncationStrategy.TRUNCATE,
+                left_truncation_strategy=truncation_strategy,
+                right_truncation_strategy=truncation_strategy,
                 left_truncation_threshold=1,
                 right_truncation_threshold=1,
                 join_cols=join_cols,

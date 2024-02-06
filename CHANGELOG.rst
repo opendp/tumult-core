@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+- Added a non-truncating truncation strategy with infinite stability.
+
 Changed
 ~~~~~~~
 - Expanded the explanation of `GroupingFlatMap`'s stability.
