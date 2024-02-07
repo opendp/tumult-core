@@ -71,8 +71,8 @@ class LimitRowsPerGroup(Transformation):
         1  a2  b1
         2  a3  b2
         3  a3  b2
-        4  a4  b2
-        5  a4  b3
+        4  a4  b3
+        5  a4  b4
 
     Transformation Contract:
         * Input domain - :class:`~.SparkDataFrameDomain`
@@ -231,8 +231,8 @@ class LimitKeysPerGroup(Transformation):
         2  a3  b2
         3  a3  b2
         4  a3  b2
-        5  a4  b2
-        6  a4  b3
+        5  a4  b3
+        6  a4  b4
 
     Transformation Contract:
         * Input domain - :class:`~.SparkDataFrameDomain`
