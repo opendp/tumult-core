@@ -3,12 +3,88 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2023
 
-from typing import List
+from typing import List, Tuple
 
 from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as sf
+from pyspark.sql.types import (
+    BinaryType,
+    DateType,
+    DoubleType,
+    FloatType,
+    IntegerType,
+    LongType,
+    StringType,
+    TimestampType,
+)
 
 from tmlt.core.utils.misc import get_nonconflicting_string
+
+
+def _hash_column(df: DataFrame, column: str) -> Tuple[DataFrame, str]:
+    """Hashes every value in the column.
+
+    Returns:
+        The updated DataFrame and the name of the new column.
+    """
+    new_column = get_nonconflicting_string(df.columns + [column])
+    dataType = df.schema[column].dataType
+    if (
+        dataType == IntegerType()
+        or dataType == LongType()
+        or dataType == FloatType()
+        or dataType == DoubleType()
+    ):
+        df = df.withColumn(new_column, sf.sha2(sf.bin(column), 256))
+    elif dataType == BinaryType() or dataType == StringType():
+        df = df.withColumn(new_column, sf.sha2(sf.col(column), 256))
+    elif dataType == DateType() or dataType == TimestampType():
+        df = df.withColumn(new_column, sf.sha2(sf.unix_timestamp(column), 256))
+    else:
+        raise NotImplementedError(f"Unsupported data type {dataType}")
+    return df, new_column
+
+
+def _hash_columns(df: DataFrame, columns: List[str]) -> Tuple[DataFrame, str]:
+    """Hashes every value in the columns and combines them into a single column.
+
+    Returns:
+        The updated DataFrame and the name of the new column.
+    """
+    # We need to avoid hash collisions when concatenating the columns.
+    # If we naively concatenate the columns, we may get the same hash for different
+    # rows:
+    #   "a," and "b" -> "a,b" -> hash("a,b")
+    #   "a" and ",b" -> "a,b" -> hash("a,b")
+    # To avoid this, we add a separator to the concatenated string
+    #   "a," and "b" -> hash("a,") + "," + hash("b")
+    #   "a" and ",b" -> hash("a") + "," + hash(",b")
+    # Additionally, the separator we are using won't be contained in the hashed
+    # columns, so we don't have to worry about the hashed columns having an analogous
+    # problem.
+    columns_to_drop = []
+    for column in columns:
+        df, hashed_column = _hash_column(df, column)
+        columns_to_drop.append(hashed_column)
+    concatenated_column = get_nonconflicting_string(df.columns)
+    # At this point we have handled collisions, but we also need to ensure that the
+    # resulting hashes are distributed uniformly.
+    # Without handling this:
+    #  "a" and "b" -> hash("a") + "," + hash("b")
+    #  "a" and "c" -> hash("a") + "," + hash("c")
+    #
+    # The above values both have the same prefix, and would be nearby after sorting.
+    #
+    # We can avoid this by hashing again:
+    #  "a" and "b" -> hash("a") + "," + hash("b") -> hash(hash("a") + "," + hash("b"))
+    #  "a" and "c" -> hash("a") + "," + hash("c") -> hash(hash("a") + "," + hash("c"))
+    df = df.withColumn(
+        concatenated_column, sf.sha2(sf.concat_ws(",", *columns_to_drop), 256)
+    )
+    columns_to_drop.append(concatenated_column)
+    df, new_column = _hash_column(df, concatenated_column)
+    df = df.drop(*columns_to_drop)
+    return df, new_column
 
 
 def truncate_large_groups(
@@ -52,7 +128,7 @@ def truncate_large_groups(
         0  a1  b1
         1  a2  b1
         2  a3  b2
-        3  a3  b2
+        3  a3  b3
         >>> print_sdf(truncate_large_groups(spark_dataframe, ["A"], 1))
             A   B
         0  a1  b1
@@ -64,22 +140,19 @@ def truncate_large_groups(
         grouping_columns: Columns defining the groups.
         threshold: Maximum number of rows to include for each group.
     """
-    rank_column = get_nonconflicting_string(df.columns)
-    row_index_column = get_nonconflicting_string(df.columns + [rank_column])
-    hash_column = get_nonconflicting_string(
-        df.columns + [row_index_column, rank_column]
+    starting_columns = list(df.columns)
+    row_index_column = get_nonconflicting_string(starting_columns)
+    distinct_row_partitions = Window.partitionBy(*starting_columns).orderBy(
+        *starting_columns
     )
-    distinct_row_partitions = Window.partitionBy(*df.columns).orderBy(*df.columns)
+    df = df.withColumn(row_index_column, sf.row_number().over(distinct_row_partitions))
+    df, hash_column = _hash_columns(df, starting_columns + [row_index_column])
     shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(
-        hash_column, *df.columns
+        hash_column, *starting_columns
     )
+    rank_column = get_nonconflicting_string(df.columns)
     return (
-        df.withColumn(row_index_column, sf.row_number().over(distinct_row_partitions))
-        .withColumn(
-            hash_column,
-            sf.hash(*df.columns, row_index_column),  # pylint: disable=no-member
-        )
-        .withColumn(
+        df.withColumn(
             rank_column,
             sf.row_number().over(shuffled_partitions),  # pylint: disable=no-member
         )
@@ -215,9 +288,8 @@ def limit_keys_per_group(
             A   B
         0  a1  b1
         1  a2  b1
-        2  a3  b2
-        3  a3  b2
-        4  a4  b3
+        2  a3  b3
+        3  a4  b3
 
     Args:
         df: DataFrame to truncate.
@@ -225,16 +297,13 @@ def limit_keys_per_group(
         key_columns: Column defining the keys.
         threshold: Maximum number of keys to include for each group.
     """
-    rank_column = get_nonconflicting_string(df.columns)
-    hash_column = get_nonconflicting_string(df.columns + [rank_column])
+    df, hash_column = _hash_columns(df, grouping_columns + key_columns)
     shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(
         hash_column, *key_columns
     )
+    rank_column = get_nonconflicting_string(df.columns)
     return (
         df.withColumn(
-            hash_column, sf.hash(*grouping_columns, *key_columns)
-        )  # pylint: disable=no-member
-        .withColumn(
             rank_column,
             sf.dense_rank().over(shuffled_partitions),  # pylint: disable=no-member
         )

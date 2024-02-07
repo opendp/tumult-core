@@ -12,6 +12,13 @@ Added
 
 Changed
 ~~~~~~~
+- Changed :func:`~.truncate_large_groups` and :func:`~.limit_keys_per_group` to use
+  SHA-2 (256 bits) instead of Spark's default hash (Murmur3). This results in a minor
+  performance hit, but these functions should be less likely to have collisions which
+  could impact utility. **Note that this may change the output of transformations which
+  use these functions.** In particular, :class:`~.PrivateJoin`,
+  :class:`~.LimitRowsPerGroup`, :class:`~.LimitKeysPerGroup`, and
+  :class:`~.LimitRowsPerKeyPerGroup`.
 - Expanded the explanation of `GroupingFlatMap`'s stability.
 - Support all metrics for the flat map transformation.
 
