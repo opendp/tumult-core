@@ -32,6 +32,7 @@ from tmlt.core.measurements.converters import PureDPToApproxDP, PureDPToRhoZCDP
 from tmlt.core.measurements.spark_measurements import BoundSelection
 from tmlt.core.measures import (
     ApproxDP,
+    ApproxDPBudget,
     PrivacyBudget,
     PrivacyBudgetInput,
     PureDP,
@@ -922,7 +923,8 @@ class TestAggregationMeasurement(PySparkTest):
 
     @parameterized.expand(
         [
-            (float("inf"), 0, 1, 0, 9223372036854775807, None),
+            (float("inf"), 0, 1, 0, 0, None),
+            (1, 1, 1, 0, 0, None),
             (
                 ExactNumber(1) / ExactNumber(3),
                 1 - double_sided_geometric_cmf_exact(7 - 2, 3),
@@ -975,8 +977,13 @@ class TestAggregationMeasurement(PySparkTest):
             self.assertEqual(measurement.count_column, count_column)
         # Check that measurement.privacy_function(d_in) = (epsilon, delta)
         measurement_epsilon, measurement_delta = measurement.privacy_function(d_in)
-        self.assertEqual(measurement_epsilon, epsilon)
-        self.assertEqual(measurement_delta, delta)
+        if ApproxDPBudget((epsilon, delta)).is_finite():
+            self.assertEqual(measurement_epsilon, epsilon)
+            self.assertEqual(measurement_delta, delta)
+        else:
+            self.assertFalse(
+                ApproxDPBudget((measurement_epsilon, measurement_delta)).is_finite()
+            )
 
     @parameterized.expand(
         [
