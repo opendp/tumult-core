@@ -1999,22 +1999,14 @@ def create_partition_selection_measurement(
             "Creating a partition selection measurement with d_in < 1 is not yet"
             " supported."
         )
-    if delta > 1 or delta < 0:
-        raise RuntimeError(
-            f"Delta should be between 0 and 1 (inclusive). Instead, it is {delta}"
-        )
 
-    if d_in != 1:
-        # Convert everything to its d_in=1 equivalent
-        epsilon = epsilon / d_in
-        delta = delta / (d_in * sp.E ** (d_in * epsilon))
+    # Constructing the ApproxDPBudget does validation on the values.
+    if ApproxDPBudget((epsilon, delta)).is_finite():
+        if d_in != 1:
+            # Convert everything to its d_in=1 equivalent
+            epsilon = epsilon / d_in
+            delta = delta / (d_in * sp.E ** (d_in * epsilon))
 
-    # Special case for infinite privacy budget
-    if epsilon == float("inf"):
-        alpha = 0
-        threshold = 9223372036854775807  # largest Long that Spark supports
-    # Normal cases
-    else:
         alpha = 1 / epsilon
         threshold = (
             int(
@@ -2027,6 +2019,11 @@ def create_partition_selection_measurement(
             )
             + 2
         )
+
+    else:  # If the budget is infinite.
+        alpha = 0
+        threshold = 0
+
     return GeometricPartitionSelection(
         input_domain=input_domain,
         threshold=threshold,
