@@ -181,6 +181,28 @@ def double_sided_geometric_inverse_cmf(
     )
 
 
+def double_sided_geometric_inverse_cmf_exact(
+    p: ExactNumberInput, alpha: ExactNumberInput
+) -> ExactNumber:
+    """Return exact value of inverse cmf of double-sided geometric distribution at p.
+
+    See :func:`double_sided_geometric_inverse_cmf` for more information.
+
+    Args:
+        p: The values to calculate the inverse cmf for.
+        alpha: The scale of the geometric distribution.
+    """
+    p_expr = ExactNumber(p).expr
+    alpha_expr = ExactNumber(alpha).expr
+    if p_expr < ExactNumber("0.5"):
+        k = alpha_expr * sp.log(
+            p_expr * (sp.exp(1 / alpha_expr) + 1) / sp.exp(1 / alpha_expr)
+        )
+    else:
+        k = -alpha_expr * sp.log((sp.exp(1 / alpha_expr) + 1) * (1 - p_expr))
+    return ExactNumber(sp.ceiling(k))
+
+
 def _discrete_gaussian_unnormalized_pmf(k: int, sigma_squared: Arb, prec: int) -> Arb:
     r"""Returns the unnormalized pmf for a discrete gaussian distribution at k.
 

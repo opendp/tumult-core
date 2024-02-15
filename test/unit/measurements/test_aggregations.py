@@ -924,7 +924,20 @@ class TestAggregationMeasurement(PySparkTest):
     @parameterized.expand(
         [
             (float("inf"), 0, 1, 0, 0, None),
+            # Test with alternate definition of infinite budget.
             (1, 1, 1, 0, 0, None),
+            # Test large value of epsilon succeeds without error.
+            (
+                10000,
+                1
+                - double_sided_geometric_cmf_exact(
+                    5 - 2, ExactNumber(1) / ExactNumber(10000)
+                ),
+                1,
+                ExactNumber(1) / ExactNumber(10000),
+                5,
+                None,
+            ),
             (
                 ExactNumber(1) / ExactNumber(3),
                 1 - double_sided_geometric_cmf_exact(7 - 2, 3),
