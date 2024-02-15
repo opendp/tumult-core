@@ -81,7 +81,7 @@ from tmlt.core.transformations.spark_transformations.map import (
     Map,
     RowToRowTransformation,
 )
-from tmlt.core.utils.distributions import double_sided_geometric_inverse_cmf
+from tmlt.core.utils.distributions import double_sided_geometric_inverse_cmf_exact
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.join import join
 from tmlt.core.utils.misc import get_nonconflicting_string
@@ -2008,17 +2008,13 @@ def create_partition_selection_measurement(
             delta = delta / (d_in * sp.E ** (d_in * epsilon))
 
         alpha = 1 / epsilon
+        # Despite the name, to_float will return an integer here.
+        # The value of round_up is irrelevant.
         threshold = (
-            int(
-                double_sided_geometric_inverse_cmf(
-                    # These both need to be round_up=False
-                    # otherwise you will not get the result you want
-                    (1 - delta).to_float(round_up=False),
-                    alpha.to_float(round_up=False),
-                )
-            )
+            double_sided_geometric_inverse_cmf_exact(1 - delta, alpha)  # type: ignore
             + 2
-        )
+        ).to_float(round_up=True)
+        assert isinstance(threshold, int)
 
     else:  # If the budget is infinite.
         alpha = 0

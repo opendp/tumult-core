@@ -27,6 +27,8 @@ Fixed
 - Fixed missing minus sign in the documentation of the discrete Gaussian pmf.
 - Fixed :func:`~.create_partition_selection_measurement` behavior when called
   with infinite budgets.
+- Fixed :func:`~.create_partition_selection_measurement` crashing when called
+  with very large budgets.
 
 0.11.5 - 2023-11-29
 -------------------

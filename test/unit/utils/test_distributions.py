@@ -20,8 +20,10 @@ from tmlt.core.utils.distributions import (
     double_sided_geometric_cmf,
     double_sided_geometric_cmf_exact,
     double_sided_geometric_inverse_cmf,
+    double_sided_geometric_inverse_cmf_exact,
     double_sided_geometric_pmf,
 )
+from tmlt.core.utils.exact_number import ExactNumber
 
 
 class TestDoubleSidedGeometric(unittest.TestCase):
@@ -89,6 +91,15 @@ class TestDoubleSidedGeometric(unittest.TestCase):
 
             np.testing.assert_allclose(
                 double_sided_geometric_inverse_cmf(weighted_cmf, alpha), k
+            )
+
+            # Test inverse exact cmf
+            np.testing.assert_allclose(
+                double_sided_geometric_inverse_cmf_exact(
+                    ExactNumber.from_float(weighted_cmf, round_up=False),
+                    ExactNumber.from_float(alpha, round_up=False),
+                ).to_float(round_up=False),
+                k,
             )
 
         # Test passing multiple ks as an np.ndarray
