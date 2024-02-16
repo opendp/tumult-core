@@ -163,6 +163,7 @@ follow_imports = "silent"
 ignore_missing_imports = true
 namespace_packages = true
 check_untyped_defs = true
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
 
 [tool.pylint.master]
 # See https://github.com/PyCQA/pylint/issues/1975#issuecomment-387924981
