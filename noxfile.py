@@ -111,7 +111,7 @@ DEPENDENCY_ARG_IDS = [
 ]
 BENCHMARK_ARG_NAMES = "benchmark,timeout"
 BENCHMARK_ARG_VALUES = [
-    ("private_join", 17),
+    ("private_join", 35),
     ("count_sum", 25),
     ("quantile", 84),
     ("noise_mechanism", 7),
