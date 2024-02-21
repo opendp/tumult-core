@@ -6,6 +6,9 @@ Changelog
 Unreleased
 ----------
 
+0.11.6 - 2024-02-21
+-------------------
+
 Added
 ~~~~~
 - Added a non-truncating truncation strategy with infinite stability.
