@@ -6,6 +6,15 @@ Changelog
 Unreleased
 ----------
 
+Fixed
+~~~~~
+
+- Fixed a bug in :func:`~.truncate_large_groups` and :func:`~.limit_keys_per_group`
+  where dates and timestamps were being incorrectly hashed resulting in errors. This
+  fixes date and timestamp support for :class:`~.PrivateJoin`,
+  :class:`~.LimitRowsPerGroup`, :class:`~.LimitKeysPerGroup`, and
+  :class:`~.LimitRowsPerKeyPerGroup`.
+
 0.11.6 - 2024-02-21
 -------------------
 

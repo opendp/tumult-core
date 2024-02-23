@@ -39,7 +39,8 @@ def _hash_column(df: DataFrame, column: str) -> Tuple[DataFrame, str]:
     elif dataType == BinaryType() or dataType == StringType():
         df = df.withColumn(new_column, sf.sha2(sf.col(column), 256))
     elif dataType == DateType() or dataType == TimestampType():
-        df = df.withColumn(new_column, sf.sha2(sf.unix_timestamp(column), 256))
+        # Casts to a type that can be hashed but doesn't lose information.
+        df = df.withColumn(new_column, sf.sha2(sf.col(column).cast("string"), 256))
     else:
         raise NotImplementedError(f"Unsupported data type {dataType}")
     return df, new_column
