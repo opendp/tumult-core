@@ -3,17 +3,32 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2023
 
+import datetime
 import itertools
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 from unittest.mock import patch
 
 import pandas as pd
+import pytest
 from parameterized import parameterized
+from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf
-from pyspark.sql.types import IntegerType
+from pyspark.sql.types import (
+    BinaryType,
+    DateType,
+    DoubleType,
+    FloatType,
+    IntegerType,
+    LongType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
+)
 
 from tmlt.core.utils.testing import PySparkTest
 from tmlt.core.utils.truncation import (
+    _hash_column,
     drop_large_groups,
     limit_keys_per_group,
     truncate_large_groups,
@@ -139,3 +154,64 @@ class TestLimitKeysPerGroup(PySparkTest):
         with patch("pyspark.sql.functions.hash", hash_collision_mock):
             actual = limit_keys_per_group(df, ["A"], ["B"], 1)
         self.assertEqual(actual.count(), 3)
+
+
+# Note: The values in these tests are arbitrary and not meaningful.
+@pytest.mark.parametrize(
+    "test_rows,schema",
+    [
+        # Int, Long, Float, Double Types Checked
+        (
+            [(1, 1, 1.0, 1.0)],
+            StructType(
+                [
+                    StructField("A", IntegerType(), True),
+                    StructField("B", LongType(), True),
+                    StructField("C", FloatType(), True),
+                    StructField("D", DoubleType(), True),
+                ]
+            ),
+        ),
+        # Binary and String Types Checked
+        (
+            [("String", bytes("String", "utf-8"))],
+            StructType(
+                [
+                    StructField("A", StringType(), True),
+                    StructField("B", BinaryType(), True),
+                ]
+            ),
+        ),
+        # Date and Timestamp Types Checked
+        (
+            [
+                (
+                    datetime.date.fromisoformat("2022-01-01"),
+                    datetime.datetime.fromisoformat("2022-01-01T12:30:00"),
+                )
+            ],
+            StructType(
+                [
+                    StructField("A", DateType(), True),
+                    StructField("B", TimestampType(), True),
+                ]
+            ),
+        ),
+    ],
+)
+def test_hash_column(test_rows: List[Any], schema: Dict[str, Any]):
+    """Smoke test to ensure that expected datatypes are hashed correctly."""
+    # Initialize Spark Session
+    spark = SparkSession.builder.getOrCreate()
+
+    # Create a DataFrame with the specific data types from a schema
+    test_df = spark.createDataFrame(test_rows, schema)  # type: ignore
+
+    for column in test_df.columns:
+        end_df, _ = _hash_column(test_df, column)
+
+        # Triggers Spark's lazy evaluation
+        end_df.count()
+
+        # Check that the end dtype is correct.
+        assert end_df.schema[column] == schema[column]
