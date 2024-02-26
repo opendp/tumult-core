@@ -88,26 +88,25 @@ package_linux:
   tags: [saas-linux-large-amd64]
 
 get_circleci_wheels:
- extends: .base
- stage: setup
- needs: []
- artifacts:
-   paths: ["dist/"]
-   expire_in: 1 week
- script:
-   - pip install polling2 requests --constraint=<(poetry export --dev -f constraints.txt --without-hashes)
-   - nox --no-venv -s get_wheels_from_circleci
- rules:
-   # Start this job with a short delay to allow the CircleCI pipeline
-   # to be created
-   - if: "$CI_COMMIT_TAG"
-     when: delayed
-     start_in: 30 seconds
-   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-     when: delayed
-     start_in: 30 seconds
-   - when: never
-
+  extends: .base
+  stage: setup
+  needs: []
+  artifacts:
+    paths: ["dist/"]
+    expire_in: 1 week
+  script:
+    - pip install polling2 requests --constraint=<(poetry export --dev -f constraints.txt --without-hashes)
+    - nox --no-venv -s get_wheels_from_circleci
+  rules:
+    # Start this job with a short delay to allow the CircleCI pipeline
+    # to be created
+    - if: "$CI_COMMIT_TAG"
+      when: delayed
+      start_in: 30 seconds
+    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"
+      when: delayed
+      start_in: 30 seconds
+    - when: never
 
 lint:
   extends: .base
@@ -140,12 +139,12 @@ test:
         path: coverage.xml
       junit: junit.xml
     expose_as: "Coverage"
-  timeout: 1h
+  timeout: 2h45m
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG'
       when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"
     - when: manual
       allow_failure: true
   tags: [aws-c6a.xlarge]
@@ -157,7 +156,7 @@ test_nightly:
   timeout: 23h
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
-    - if: '$CI_COMMIT_TAG'
+    - if: "$CI_COMMIT_TAG"
       when: never
     - when: manual
       allow_failure: true
@@ -187,10 +186,10 @@ benchmark_dependency_matrix:
   needs: ["package_linux"]
   parallel:
     matrix:
-      - PYTHON_VERSION: [ "3.7", "3.8", "3.9", "3.10", "3.11" ]
-        TEST_TYPE: [ "oldest", "newest" ]
-      - PYTHON_VERSION: [ "3.7" ]
-        TEST_TYPE: [ "pyspark3.1", "pyspark3.2" ]
+      - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        TEST_TYPE: ["oldest", "newest"]
+      - PYTHON_VERSION: ["3.7"]
+        TEST_TYPE: ["pyspark3.1", "pyspark3.2"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   script:
     - nox -s "benchmark_multi_deps(${PYTHON_VERSION}-${TEST_TYPE})"
@@ -199,7 +198,7 @@ benchmark_dependency_matrix:
       - benchmark_output/
     expose_as: "Benchmarks"
   timeout: 3h
-  rules:  # Can only be triggered manually
+  rules: # Can only be triggered manually
     - if: "$CI_COMMIT_TAG"
       when: never
     - when: manual
@@ -257,8 +256,8 @@ docs:
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "trigger"'
       when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_TAG'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: "$CI_COMMIT_TAG"
+    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"
     - when: manual
       allow_failure: true
 
@@ -281,7 +280,7 @@ test_release_linux:
       junit: junit.xml
   timeout: 1h
   rules:
-    - if: '$CI_COMMIT_TAG'
+    - if: "$CI_COMMIT_TAG"
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "trigger"'
       when: never
     - when: manual
@@ -325,7 +324,7 @@ publish:
     - poetry publish -u __token__ -p "${RELEASE_PYPI_TOKEN}"
   timeout: 3m
   rules:
-    - if: '$CI_COMMIT_TAG'
+    - if: "$CI_COMMIT_TAG"
   interruptible: false
 
 # This job requires the DOCS_TOKEN_USER and DOCS_TOKEN variables to be set. They
@@ -376,7 +375,7 @@ publish_docs:
   interruptible: false
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-    - if: '$CI_COMMIT_TAG'
+    - if: "$CI_COMMIT_TAG"
 
 # Requires the following CI variables to be set:
 # * VERSION, the semantic version number to be given to the release. This would

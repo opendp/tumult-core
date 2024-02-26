@@ -220,6 +220,27 @@ class Arb:
         arblib.arb_set_arf(x, mid)
         return Arb(x)
 
+    @staticmethod
+    def one() -> "Arb":
+        """Returns an exact Arb with midpoint 1 and radius 0."""
+        return Arb.from_int(1)
+
+    @staticmethod
+    def positive_infinity() -> "Arb":
+        """Returns an Arb representing positive infinity."""
+        x = ctypes.pointer(_ArbStruct())
+        arblib.arb_init(x)
+        arblib.arb_pos_inf(x)
+        return Arb(x)
+
+    @staticmethod
+    def negative_infinity() -> "Arb":
+        """Returns an Arb representing negative infinity."""
+        x = ctypes.pointer(_ArbStruct())
+        arblib.arb_init(x)
+        arblib.arb_neg_inf(x)
+        return Arb(x)
+
     def __lt__(self, other: Any) -> bool:
         """Returns True if self is less than other.
 
@@ -326,6 +347,10 @@ class Arb:
             upper_float = math.ldexp(int(u_man), int(u_exp))
             if lower_float == upper_float:
                 return lower_float
+        if not self.is_finite() and self.is_exact():
+            if self.midpoint() > Arb.from_int(0):
+                return float("inf")
+            return -float("inf")
         raise ValueError("Arb contains more than one float.")
 
     def man_exp(self) -> Tuple[int, int]:
@@ -460,6 +485,14 @@ def arb_exp(x: Arb, prec: int) -> Arb:
     return Arb(z)
 
 
+def arb_pow(x: Arb, y: Arb, prec: int) -> Arb:
+    """Returns x^y."""
+    z = ctypes.pointer(_ArbStruct())
+    arblib.arb_init(z)
+    arblib.arb_pow(z, x._ptr, y._ptr, prec)
+    return Arb(z)
+
+
 def arb_min(x: Arb, y: Arb, prec: int) -> Arb:
     """Returns min of `x` and `y`.
 
@@ -566,6 +599,16 @@ def arb_product(xs: List[Arb], prec: int) -> Arb:
     for x in xs:
         total = arb_mul(total, x, prec)
     return total
+
+
+def arb_lambertw(x: Arb, branch: int, prec: int) -> Arb:
+    """Lambert W function."""
+    if branch not in [0, 1]:
+        raise ValueError(f"Invalid branch: {branch}. Expected 0 or 1.")
+    z = ctypes.pointer(_ArbStruct())
+    arblib.arb_init(z)
+    arblib.arb_lambertw(z, x._ptr, branch, prec)
+    return Arb(z)
 
 
 def _int_to_fmpz_t(val: int) -> "ctypes._PointerLike":
