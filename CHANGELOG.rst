@@ -6,28 +6,10 @@ Changelog
 Unreleased
 ----------
 
-0.12.0 - 2024-02-26
--------------------
-
-Added
-~~~~~
-- Added functions implementing various mechanisms to support slow scaling PRDP.
-
-Fixed
-~~~~~
-
-- Fixed a bug in :func:`~.truncate_large_groups` and :func:`~.limit_keys_per_group`
-  where dates and timestamps were being incorrectly hashed resulting in errors. This
-  fixes date and timestamp support for :class:`~.PrivateJoin`,
-  :class:`~.LimitRowsPerGroup`, :class:`~.LimitKeysPerGroup`, and
-  :class:`~.LimitRowsPerKeyPerGroup`.
-
-0.11.6 - 2024-02-21
--------------------
-
 Added
 ~~~~~
 - Added a non-truncating truncation strategy with infinite stability.
+- Added functions implementing various mechanisms to support slow scaling PRDP.
 
 Changed
 ~~~~~~~
@@ -48,6 +30,13 @@ Fixed
   with infinite budgets.
 - Fixed :func:`~.create_partition_selection_measurement` crashing when called
   with very large budgets.
+
+
+0.11.6 - 2024-02-21
+-------------------
+
+0.11.6 was yanked. Those changes will be released in 0.12.0.
+
 
 0.11.5 - 2023-11-29
 -------------------

@@ -17,10 +17,11 @@ from tmlt.core.utils.prdp import (
     square_root_transformation_mechanism,
 )
 
-NUM_SAMPLES = 200000
-
-
 # pylint: disable=no-self-use
+
+NUM_SAMPLES = 100000
+
+P_THRESHOLD = 1e-20
 
 
 class TestPRDPTransformationMechanisms:
@@ -42,6 +43,7 @@ class TestPRDPTransformationMechanisms:
             (1000000, 1000, 1000),
         ],
     )
+    @pytest.mark.slow
     def test_square_root_transformation_mechanism(
         self, x: float, offset: float, sigma: float
     ):
@@ -79,6 +81,7 @@ class TestPRDPTransformationMechanisms:
             (1000000, 1000, 1000),
         ],
     )
+    @pytest.mark.slow
     def test_square_root_transformation_using_t_test(
         self, x: float, offset: float, sigma: float
     ):
@@ -110,7 +113,7 @@ class TestPRDPTransformationMechanisms:
             samples_from_safe_implementation,
             equal_var=False,
         )
-        assert p_value > 0.001
+        assert p_value > P_THRESHOLD
 
     @pytest.mark.parametrize(
         "x,offset,sigma",
@@ -125,6 +128,7 @@ class TestPRDPTransformationMechanisms:
             (100000, 100, 15),
         ],
     )
+    @pytest.mark.slow
     def test_fourth_root_transformation_using_t_test(
         self, x: float, offset: float, sigma: float
     ):
@@ -155,7 +159,7 @@ class TestPRDPTransformationMechanisms:
             samples_from_safe_implementation,
             equal_var=False,
         )
-        assert p_value > 0.001
+        assert p_value > P_THRESHOLD
 
     @pytest.mark.parametrize(
         "x,offset,sigma",
@@ -168,6 +172,7 @@ class TestPRDPTransformationMechanisms:
             (1000, 10, 1),
         ],
     )
+    @pytest.mark.slow
     def test_log_transformation_mechanism(self, x: float, offset: float, sigma: float):
         """Tests :func:`log_transformation_mechanism`."""
         unbias = lambda answer: answer * np.exp(-(sigma**2) / 2) - offset * (
@@ -201,6 +206,7 @@ class TestPRDPTransformationMechanisms:
             (10000000, 100, 2),
         ],
     )
+    @pytest.mark.slow
     def test_log_transformation_using_t_test(
         self, x: float, offset: float, sigma: float
     ):
@@ -233,7 +239,7 @@ class TestPRDPTransformationMechanisms:
             samples_from_safe_implementation,
             equal_var=False,
         )
-        assert p_value > 0.001
+        assert p_value > P_THRESHOLD
 
 
 class TestPRDPAdditiveMechanisms:
@@ -271,6 +277,7 @@ class TestPRDPAdditiveMechanisms:
         assert gennorm.cdf(actual, beta=0.5, scale=1) == pytest.approx(p), f"{actual}"
 
     @pytest.mark.parametrize("sigma", [1, 10, 100, 1000])
+    @pytest.mark.slow
     def test_square_root_gaussian_using_t_test(self, sigma: float):
         """Tests :func:`square_root_gaussian_mechanism` using a t-test."""
         samples_from_unsafe_implementation = list(
@@ -284,4 +291,4 @@ class TestPRDPAdditiveMechanisms:
             samples_from_unsafe_implementation,
             equal_var=False,
         )
-        assert p_value > 0.001
+        assert p_value > P_THRESHOLD

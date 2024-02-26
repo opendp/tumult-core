@@ -45,7 +45,7 @@ from tmlt.core.utils.arb import Arb
 """
 """Python script to run as a quick self-test."""
 
-MIN_COVERAGE = 40  # TODO: Set this back to 75
+MIN_COVERAGE = 75
 """For test suites where we track coverage (i.e. the fast tests and the full
 test suite), fail if test coverage falls below this percentage."""
 
