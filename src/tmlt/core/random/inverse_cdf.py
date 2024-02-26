@@ -40,7 +40,7 @@ def construct_inverse_sampler(
             )
             try:
                 return value.to_float(n)
-            except ValueError:
+            except (ValueError, OverflowError):
                 pass
 
     return sampler

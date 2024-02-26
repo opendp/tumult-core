@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+- Added functions implementing various mechanisms to support slow scaling PRDP.
+
 Fixed
 ~~~~~
 
