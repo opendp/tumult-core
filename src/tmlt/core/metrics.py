@@ -1,7 +1,7 @@
 """Module containing metrics used for constructing measurements and transformations."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 
 # pylint: disable=no-member
 

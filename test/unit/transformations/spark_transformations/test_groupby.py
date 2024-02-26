@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.groupby`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
