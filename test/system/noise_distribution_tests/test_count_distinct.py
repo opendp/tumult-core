@@ -1,7 +1,7 @@
 """Tests `create_count_distinct_measurement` noise distributions are as expected."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 
 # pylint: disable=no-member, no-self-use
 

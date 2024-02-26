@@ -1,7 +1,7 @@
 """Miscellaneous helper functions and classes."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 
 import copy
 from typing import Any, List, TypeVar

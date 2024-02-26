@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.measurements.aggregations`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 import functools
 import unittest
 from typing import Callable, List, Optional, Tuple, Union, cast

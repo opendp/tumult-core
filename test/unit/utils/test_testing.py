@@ -1,7 +1,7 @@
 """Test for :mod:`tmlt.core.utils.testing`"""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 
 from operator import add
 

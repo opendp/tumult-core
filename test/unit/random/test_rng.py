@@ -1,7 +1,7 @@
 """Tests for :mod:`~tmlt.core.random.rng`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 
 from importlib import reload
 from unittest import TestCase
