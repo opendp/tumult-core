@@ -6,6 +6,9 @@ Changelog
 Unreleased
 ----------
 
+0.12.0 - 2024-02-26
+-------------------
+
 Added
 ~~~~~
 - Added functions implementing various mechanisms to support slow scaling PRDP.
