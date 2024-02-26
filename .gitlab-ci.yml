@@ -139,7 +139,7 @@ test:
         path: coverage.xml
       junit: junit.xml
     expose_as: "Coverage"
-  timeout: 2h45m
+  timeout: 1h
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG'
       when: never
