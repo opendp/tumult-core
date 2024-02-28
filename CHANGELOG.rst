@@ -22,6 +22,8 @@ Changed
   :class:`~.LimitRowsPerKeyPerGroup`.
 - Expanded the explanation of `GroupingFlatMap`'s stability.
 - Support all metrics for the flat map transformation.
+- Updated :func:`~.calculate_noise_scale` to return a noise scale of 0 when both the
+  `d_in` and `d_out` are infinite.
 
 Fixed
 ~~~~~

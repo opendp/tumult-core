@@ -95,6 +95,12 @@ def calculate_noise_scale(
         ...     output_measure=PureDP(),
         ... )
         oo
+        >>> calculate_noise_scale(
+        ...     d_in=float('inf'),
+        ...     d_out=float('inf'),
+        ...     output_measure=PureDP(),
+        ... )
+        0
 
     Args:
         d_in: The absolute distance between neighboring inputs.
@@ -107,6 +113,8 @@ def calculate_noise_scale(
     d_out = ExactNumber(d_out)
     if d_out == 0:
         return ExactNumber(float("inf"))
+    if d_out == float("inf"):
+        return ExactNumber(0)
     if isinstance(output_measure, PureDP):
         epsilon = d_out
     elif isinstance(output_measure, RhoZCDP):
