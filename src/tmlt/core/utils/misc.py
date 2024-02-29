@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2024
 
 import copy
+import re
 from typing import Any, List, TypeVar
 
 import numpy as np
@@ -104,3 +105,20 @@ def get_fullname(obj: Any) -> str:
     if module is None or module == str.__class__.__module__:
         return klass
     return module + "." + klass
+
+
+def escape_column_name(column_name: str) -> str:
+    """Escapes column name if it contains special characters.
+
+    Args:
+        column_name: The name of the column to check and potentially escape.
+    """
+    special_chars_pattern = r"[^a-zA-Z0-9_]"
+
+    # Check if the column name contains special characters and isn't already escaped
+    if re.search(special_chars_pattern, column_name) and not (
+        column_name.startswith("`") and column_name.endswith("`")
+    ):
+        return f"`{column_name}`"
+    else:
+        return column_name

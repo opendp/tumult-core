@@ -20,7 +20,7 @@ from tmlt.core.domains.spark_domains import (
     SparkStringColumnDescriptor,
     SparkTimestampColumnDescriptor,
 )
-from tmlt.core.utils.misc import get_nonconflicting_string
+from tmlt.core.utils.misc import escape_column_name, get_nonconflicting_string
 
 # pylint: disable=no-member
 
@@ -436,7 +436,9 @@ def _join_where_nulls_are_not_equal(
             defaults to "inner".
     """
     left, right, output_columns = _rename_columns(left=left, right=right, on=on)
-    return left.join(right, on=on, how=how).select(list(output_columns))
+    return left.join(right, on=on, how=how).select(
+        [escape_column_name(column) for column in output_columns]
+    )
 
 
 def _join_where_nulls_are_equal(
@@ -479,7 +481,7 @@ def _join_where_nulls_are_equal(
         [
             sf.col(column).alias(left_temporary_names[column])
             if column in on
-            else sf.col(column)
+            else sf.col(escape_column_name(column))
             for column in left.columns
         ]
     )
@@ -487,7 +489,7 @@ def _join_where_nulls_are_equal(
         [
             sf.col(column).alias(right_temporary_names[column])
             if column in on
-            else sf.col(column)
+            else sf.col(escape_column_name(column))
             for column in right.columns
         ]
     )
@@ -519,4 +521,4 @@ def _join_where_nulls_are_equal(
         )
         result = result.withColumn(column, merged_column)
     # Drop temporary columns and fix order
-    return result.select(list(output_columns))
+    return result.select([escape_column_name(column) for column in output_columns])

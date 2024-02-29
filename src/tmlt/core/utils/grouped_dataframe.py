@@ -13,7 +13,7 @@ from pyspark.sql import functions as sf
 from pyspark.sql.types import StructType
 
 from tmlt.core.utils.join import join
-from tmlt.core.utils.misc import get_nonconflicting_string
+from tmlt.core.utils.misc import escape_column_name, get_nonconflicting_string
 
 
 class GroupedDataFrame:
@@ -123,7 +123,7 @@ class GroupedDataFrame:
         return all_groups_output.withColumn(
             output_column,
             sf.when(sf.col(empty_indicator) == 1, sf.lit(fill_value)).otherwise(
-                sf.col(output_column)
+                sf.col(escape_column_name(output_column))
             ),
         ).drop(empty_indicator)
 
