@@ -677,6 +677,120 @@ class TestJoin(PySparkTest):
                     }
                 ),
             ),
+            (  # Basic outer join with equal nulls, weird column names
+                {
+                    "A&8*": [1, None, 3, None],
+                    "B%5": ["a", "b", None, None],
+                    "C_(.)(/x": [1.0, 2.0, 3.0, 4.0],
+                },
+                SparkDataFrameDomain(
+                    {
+                        "A&8*": SparkIntegerColumnDescriptor(allow_null=True),
+                        "B%5": SparkStringColumnDescriptor(allow_null=True),
+                        "C_(.)(/x": SparkFloatColumnDescriptor(allow_null=False),
+                    }
+                ),
+                {"A&8*": [None, 1, 4, None], "D": ["a", "b", "c", "d"]},
+                SparkDataFrameDomain(
+                    {
+                        "A&8*": SparkIntegerColumnDescriptor(allow_null=True),
+                        "D": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+                ["A&8*"],
+                "outer",
+                True,
+                {
+                    "A&8*": [1, None, None, 3, None, None, 4],
+                    "B%5": ["a", "b", "b", None, None, None, None],
+                    "C_(.)(/x": [1.0, 2.0, 2.0, 3.0, 4.0, 4.0, None],
+                    "D": ["b", "a", "d", None, "a", "d", "c"],
+                },
+                SparkDataFrameDomain(
+                    {
+                        "A&8*": SparkIntegerColumnDescriptor(allow_null=True),
+                        "B%5": SparkStringColumnDescriptor(allow_null=True),
+                        "C_(.)(/x": SparkFloatColumnDescriptor(allow_null=True),
+                        "D": SparkStringColumnDescriptor(allow_null=True),
+                    }
+                ),
+            ),
+            (  # Basic outer join without equal nulls, weird column names
+                {
+                    "A&8*": [1, None, 3, None],
+                    "B%5": ["a", "b", None, None],
+                    "C_(.)(/x": [1.0, 2.0, 3.0, 4.0],
+                },
+                SparkDataFrameDomain(
+                    {
+                        "A&8*": SparkIntegerColumnDescriptor(allow_null=True),
+                        "B%5": SparkStringColumnDescriptor(allow_null=True),
+                        "C_(.)(/x": SparkFloatColumnDescriptor(allow_null=False),
+                    }
+                ),
+                {"A&8*": [None, 1, 4, None], "D": ["a", "b", "c", "d"]},
+                SparkDataFrameDomain(
+                    {
+                        "A&8*": SparkIntegerColumnDescriptor(allow_null=True),
+                        "D": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+                ["A&8*"],
+                "outer",
+                False,
+                {
+                    "A&8*": [1, None, None, 3, None, None, 4],
+                    "B%5": ["a", "b", None, None, None, None, None],
+                    "C_(.)(/x": [1.0, 2.0, None, 3.0, 4.0, None, None],
+                    "D": ["b", None, "a", None, None, "d", "c"],
+                },
+                SparkDataFrameDomain(
+                    {
+                        "A&8*": SparkIntegerColumnDescriptor(allow_null=True),
+                        "B%5": SparkStringColumnDescriptor(allow_null=True),
+                        "C_(.)(/x": SparkFloatColumnDescriptor(allow_null=True),
+                        "D": SparkStringColumnDescriptor(allow_null=True),
+                    }
+                ),
+            ),
+            (  # Basic outer join without equal nulls
+                {
+                    "A": [1, None, 3, None],
+                    "B": ["a", "b", None, None],
+                    "C": [1.0, 2.0, 3.0, 4.0],
+                },
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkIntegerColumnDescriptor(allow_null=True),
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                        "C": SparkFloatColumnDescriptor(allow_null=False),
+                    }
+                ),
+                {"A": [None, 1, 4, None], "D": ["a", "b", "c", "d"]},
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkIntegerColumnDescriptor(allow_null=True),
+                        "D": SparkStringColumnDescriptor(allow_null=False),
+                    }
+                ),
+                ["A"],
+                "outer",
+                False,
+                {
+                    "A": [1, None, 3, None, None, 4, None],
+                    "B": ["a", "b", None, None, None, None, None],
+                    "C": [1.0, 2.0, 3.0, 4.0, None, None, None],
+                    "D": ["b", None, None, None, "a", "c", "d"],
+                },
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkIntegerColumnDescriptor(allow_null=True),
+                        "B": SparkStringColumnDescriptor(allow_null=True),
+                        "C": SparkFloatColumnDescriptor(allow_null=True),
+                        "D": SparkStringColumnDescriptor(allow_null=True),
+                    }
+                ),
+            ),
             (  # Outer join, join columns don't have nulls
                 {
                     "A": [1, 2, 3, 4],

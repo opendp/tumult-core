@@ -35,7 +35,7 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
-from tmlt.core.utils.misc import get_fullname
+from tmlt.core.utils.misc import escape_column_name, get_fullname
 
 
 class SparkColumnDescriptor(ABC):
@@ -66,7 +66,7 @@ class SparkColumnDescriptor(ABC):
                 f"{get_fullname(sdf.schema[col_name].dataType)} instead"
             )
         if not self.allow_null:
-            if sdf.filter(sdf[col_name].isNull()).first():
+            if sdf.filter(sdf[escape_column_name(col_name)].isNull()).first():
                 raise ValueError("Column contains null values.")
 
     @abstractmethod
@@ -178,12 +178,14 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
         """
         super().validate_column(sdf, col_name)
         if not self.allow_nan:
-            if sdf.filter(sdf[col_name].contains(float("nan"))).first():
+            if sdf.filter(
+                sdf[escape_column_name(col_name)].contains(float("nan"))
+            ).first():
                 raise ValueError("Column contains NaN values.")
         if not self.allow_inf:
             if sdf.filter(
-                sdf[col_name].contains(float("inf"))
-                | sdf[col_name].contains(-float("inf"))
+                sdf[escape_column_name(col_name)].contains(float("inf"))
+                | sdf[escape_column_name(col_name)].contains(-float("inf"))
             ).first():
                 raise ValueError("Column contains infinite values.")
 
