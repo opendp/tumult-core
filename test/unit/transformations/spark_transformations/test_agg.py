@@ -8,6 +8,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 from parameterized import parameterized
+from pyspark.sql.types import StructType
 
 from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
@@ -93,6 +94,12 @@ class TestCount(PySparkTest):
             ),
             0,
         )
+        self.assertIn(
+            transformation(
+                self.spark.createDataFrame([(1, "x1"), (2, "x2")], schema=["A", "B"])
+            ),
+            transformation.output_domain,
+        )
 
     @parameterized.expand([(SymmetricDifference(), 1), (HammingDistance(), 2)])
     def test_stability_function(
@@ -105,6 +112,18 @@ class TestCount(PySparkTest):
             input_domain=self.domain, input_metric=input_metric
         )
         self.assertEqual(count_transformation.stability_function(1), expected_d_out)
+
+    def test_empty_input(self):
+        """Tests that count transformation returns 0 for empty input."""
+        count_transformation = Count(
+            input_domain=self.domain, input_metric=SymmetricDifference()
+        )
+        self.assertEqual(
+            count_transformation(
+                self.spark.createDataFrame([], schema=self.domain.spark_schema)
+            ),
+            0,
+        )
 
 
 class TestCountDistinct(PySparkTest):
@@ -158,6 +177,7 @@ class TestCountDistinct(PySparkTest):
                 ],
                 2,
             ),
+            ([], 0),
         ]
     )
     def test_correctness(self, rows: List[Tuple], expected: int):
@@ -176,10 +196,14 @@ class TestCountDistinct(PySparkTest):
             ),
             input_metric=SymmetricDifference(),
         )
+        actual = transformation(
+            self.spark.createDataFrame(rows, schema="A: long, B: string, C: double")
+        )
         self.assertEqual(
-            transformation(self.spark.createDataFrame(rows, schema=["A", "B", "C"])),
+            actual,
             expected,
         )
+        self.assertIn(actual, transformation.output_domain)
 
     @parameterized.expand([(SymmetricDifference(), 1), (HammingDistance(), 2)])
     def test_stability_function(
@@ -265,11 +289,83 @@ class TestCountGrouped(PySparkTest):
             input_metric=SumOf(SymmetricDifference()),
             count_column="C",
         )
-        actual_counts_df = count_groups(
+        actual = count_groups(
             GroupedDataFrame(
                 dataframe=self.spark.createDataFrame(input_df), group_keys=group_keys
             )
+        )
+        self.assert_frame_equal_with_sort(actual.toPandas(), expected_counts_df)
+        self.assertIn(actual, count_groups.output_domain)
+
+    def test_empty_with_keys(self):
+        """Tests that count grouped returns 0's for empty input."""
+        group_keys = self.spark.createDataFrame([(1,), (2,), (3,)], schema=["A"])
+        count_groups = CountGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                },
+                groupby_columns=["A"],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            count_column="C",
+        )
+        actual_counts_df = count_groups(
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame([], schema="A: long, B: long"),
+                group_keys=group_keys,
+            )
         ).toPandas()
+        expected_counts_df = pd.DataFrame({"A": [1, 2, 3], "C": [0, 0, 0]})
+        self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
+
+    def test_empty_with_empty_keys(self):
+        """Tests that count grouped works with empty dataframes and keys."""
+        group_keys = self.spark.createDataFrame([], schema=StructType([]))
+        count_groups = CountGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                },
+                groupby_columns=[],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            count_column="C",
+        )
+        actual_counts_df = count_groups(
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame([], schema="A: long, B: long"),
+                group_keys=group_keys,
+            )
+        ).toPandas()
+        expected_counts_df = pd.DataFrame({"C": [0]})
+        self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
+
+    def test_empty_keys_but_nonempty_data(self):
+        """Tests that count grouped works with empty keys but nonempty data."""
+        group_keys = self.spark.createDataFrame([], schema=StructType([]))
+        count_groups = CountGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                },
+                groupby_columns=[],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            count_column="C",
+        )
+        actual_counts_df = count_groups(
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame(
+                    [(1, "x1"), (2, "x2")], schema="A: long, B: string"
+                ),
+                group_keys=group_keys,
+            )
+        ).toPandas()
+        expected_counts_df = pd.DataFrame({"C": [2]})
         self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
 
     @parameterized.expand(
@@ -394,6 +490,10 @@ class TestCountDistinctGrouped(PySparkTest):
                 ],
                 [(1, 3), (2, 3), (3, 0)],
             ),
+            (
+                [],
+                [(1, 0), (2, 0), (3, 0)],
+            ),
         ]
     )
     def test_correctness(
@@ -416,18 +516,19 @@ class TestCountDistinctGrouped(PySparkTest):
             input_metric=SumOf(SymmetricDifference()),
             count_column="C",
         )
-        actual_count_distinct_df = count_distinct_groups(
+        actual = count_distinct_groups(
             GroupedDataFrame(
                 dataframe=self.spark.createDataFrame(
-                    input_rows, schema=["X", "Y", "Z"]
+                    input_rows, schema="X: long, Y: string, Z: double"
                 ),
                 group_keys=group_keys,
             )
-        ).toPandas()
+        )
         expected_counts_df = self.spark.createDataFrame(
             expected_output_rows, schema=["X", "C"]
         ).toPandas()
-        self.assert_frame_equal_with_sort(actual_count_distinct_df, expected_counts_df)
+        self.assert_frame_equal_with_sort(actual.toPandas(), expected_counts_df)
+        self.assertIn(actual, count_distinct_groups.output_domain)
 
     @parameterized.expand(
         [
@@ -468,6 +569,54 @@ class TestCountDistinctGrouped(PySparkTest):
         self.assertEqual(
             count_distinct_transformation.stability_function(1), expected_d_out
         )
+
+    def test_empty_with_empty_keys(self):
+        """Tests that count distinct grouped returns 0's for empty input."""
+        group_keys = self.spark.createDataFrame([], schema=StructType([]))
+        count_distinct_groups = CountDistinctGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                },
+                groupby_columns=[],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            count_column="C",
+        )
+        actual_counts_df = count_distinct_groups(
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame([], schema="A: long, B: long"),
+                group_keys=group_keys,
+            )
+        ).toPandas()
+        expected_counts_df = pd.DataFrame({"C": [0]})
+        self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
+
+    def test_empty_keys(self):
+        """Tests that count distinct grouped works with empty keys."""
+        group_keys = self.spark.createDataFrame([], schema=StructType([]))
+        count_distinct_groups = CountDistinctGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                },
+                groupby_columns=[],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            count_column="C",
+        )
+        actual_counts_df = count_distinct_groups(
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame(
+                    [(1, "x1"), (1, "x1")], schema="A: long, B: string"
+                ),
+                group_keys=group_keys,
+            )
+        ).toPandas()
+        expected_counts_df = pd.DataFrame({"C": [1]})
+        self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
 
 
 class TestSum(PySparkTest):
@@ -511,7 +660,9 @@ class TestSum(PySparkTest):
     )
     def test_correctness(self, input_df: pd.DataFrame, expected_sum: pd.DataFrame):
         """Tests that sum transformation returns expected answer."""
-        self.assertEqual(self.sum_B(self.spark.createDataFrame(input_df)), expected_sum)
+        actual = self.sum_B(self.spark.createDataFrame(input_df))
+        self.assertEqual(actual, expected_sum)
+        self.assertIn(actual, self.sum_B.output_domain)
 
     @parameterized.expand([(SymmetricDifference(), 4), (HammingDistance(), 2)])
     def test_stability_function(
@@ -611,6 +762,22 @@ class TestSum(PySparkTest):
                 lower=lower,
             )
 
+    def test_empty_input(self):
+        """Tests that sum transformation returns 0 for empty input."""
+        sum_transformation = Sum(
+            input_domain=self.domain,
+            input_metric=SymmetricDifference(),
+            measure_column="B",
+            upper=4,
+            lower=2,
+        )
+        self.assertEqual(
+            sum_transformation(
+                self.spark.createDataFrame([], schema=self.domain.spark_schema)
+            ),
+            0,
+        )
+
 
 class TestSumGrouped(PySparkTest):
     """Unit tests for SumGrouped."""
@@ -695,9 +862,9 @@ class TestSumGrouped(PySparkTest):
                 [(None,), ("x1",), ("x2",), ("x3",)], schema=["A"]
             ),
         )
-        self.assert_frame_equal_with_sort(
-            self.groupby_A_sum_B(grouped_dataframe).toPandas(), expected_df
-        )
+        actual = self.groupby_A_sum_B(grouped_dataframe)
+        self.assert_frame_equal_with_sort(actual.toPandas(), expected_df)
+        self.assertIn(actual, self.groupby_A_sum_B.output_domain)
 
     @parameterized.expand(
         [
@@ -817,6 +984,94 @@ class TestSumGrouped(PySparkTest):
                 upper=upper,
                 lower=lower,
             )
+
+    def test_empty_with_keys(self):
+        """Tests that sum grouped returns 0's for empty input."""
+        group_keys = self.spark.createDataFrame([(1,), (2,), (3,)], schema=["A"])
+        count_groups = SumGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                    "C": SparkFloatColumnDescriptor(),
+                },
+                groupby_columns=["A"],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            measure_column="C",
+            sum_column="sum",
+            lower=0,
+            upper=3,
+        )
+        actual_counts_df = count_groups(
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame(
+                    [], schema="A: long, B: string, C: float"
+                ),
+                group_keys=group_keys,
+            )
+        ).toPandas()
+        expected_sums_df = pd.DataFrame({"A": [1, 2, 3], "sum": [0.0, 0.0, 0.0]})
+        self.assert_frame_equal_with_sort(actual_counts_df, expected_sums_df)
+
+    def test_empty_with_empty_keys(self):
+        """Tests that sum grouped works with empty dataframes and keys."""
+        group_keys = self.spark.createDataFrame([], schema=StructType([]))
+        sum_groups = SumGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                    "C": SparkFloatColumnDescriptor(),
+                },
+                groupby_columns=[],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            measure_column="C",
+            lower=0,
+            upper=3,
+            sum_column="sum",
+        )
+        actual_sums_df = sum_groups(
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame(
+                    [], schema="A: long, B: string, C: double"
+                ),
+                group_keys=group_keys,
+            )
+        ).toPandas()
+        expected_sums_df = pd.DataFrame({"sum": [0.0]})
+        self.assert_frame_equal_with_sort(actual_sums_df, expected_sums_df)
+
+    def test_empty_keys_but_nonempty_data(self):
+        """Tests that sum grouped works with empty keys but nonempty data."""
+        group_keys = self.spark.createDataFrame([], schema=StructType([]))
+        sum_groups = SumGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                    "C": SparkFloatColumnDescriptor(),
+                },
+                groupby_columns=[],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            measure_column="C",
+            lower=0,
+            upper=3,
+            sum_column="sum",
+        )
+        actual_sums_df = sum_groups(
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame(
+                    [(1, "x1", 1.0), (2, "x2", 1.0)],
+                    schema="A: long, B: string, C: double",
+                ),
+                group_keys=group_keys,
+            )
+        ).toPandas()
+        expected_sums_df = pd.DataFrame({"sum": [2.0]})
+        self.assert_frame_equal_with_sort(actual_sums_df, expected_sums_df)
 
 
 class TestDerivedTransformations(PySparkTest):

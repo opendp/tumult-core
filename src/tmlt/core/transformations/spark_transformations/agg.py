@@ -244,10 +244,10 @@ class CountDistinct(Transformation):
         else:  # input metric is HammingDistance
             return d_in * 2
 
-    def __call__(self, df: DataFrame) -> int:
+    def __call__(self, df: DataFrame) -> np.int64:
         """Returns the number of distinct records in the given DataFrame."""
         # Note: This cannot use sf.count_distinct since it ignores rows with nulls.
-        return df.distinct().count()
+        return self.output_domain.carrier_type(df.distinct().count())
 
 
 class CountGrouped(Transformation):
@@ -595,9 +595,18 @@ class CountDistinctGrouped(Transformation):
         """Returns a DataFrame containing counts for each group."""
         # pylint: disable=no-member
         # Note: This cannot use sf.count_distinct since it ignores rows with nulls.
-        return grouped_data.agg(
+        result = grouped_data.agg(
             sf.size(sf.collect_set(sf.struct("*"))).alias(self.count_column),
             fill_value=0,
+        )
+        # Ensure the new column has the expected output type.
+        return result.withColumn(
+            self.count_column,
+            result[self.count_column].cast(
+                cast(SparkDataFrameDomain, self.output_domain)[
+                    self.count_column
+                ].data_type
+            ),
         )
 
 
@@ -1042,7 +1051,7 @@ class SumGrouped(Transformation):
             else self.upper.to_float(round_up=False)
         )
 
-        return grouped_dataframe.agg(
+        result = grouped_dataframe.agg(
             func=sf.sum(
                 sf.array_min(
                     sf.array(
@@ -1058,6 +1067,14 @@ class SumGrouped(Transformation):
                 )
             ).alias(self.sum_column),
             fill_value=0,
+        )
+        return result.withColumn(
+            self.sum_column,
+            result[self.sum_column].cast(
+                cast(SparkDataFrameDomain, self.output_domain)
+                .schema[self.sum_column]
+                .data_type
+            ),
         )
 
 

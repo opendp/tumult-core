@@ -6,6 +6,16 @@ Changelog
 Unreleased
 ----------
 
+Changed
+~~~~~~~
+- Updated :func:`~.calculate_noise_scale` to return a noise scale of 0 when both the
+  `d_in` and `d_out` are infinite.
+
+Fixed
+~~~~~
+- SumGrouped now correctly handles the case with both empty input dataframes and empty group keys.
+- SumGrouped, CountDistinct, and CountDistinctGrouped now always returns the correct output datatypes.
+
 0.12.0 - 2024-02-26
 -------------------
 
@@ -25,8 +35,6 @@ Changed
   :class:`~.LimitRowsPerKeyPerGroup`.
 - Expanded the explanation of `GroupingFlatMap`'s stability.
 - Support all metrics for the flat map transformation.
-- Updated :func:`~.calculate_noise_scale` to return a noise scale of 0 when both the
-  `d_in` and `d_out` are infinite.
 
 Fixed
 ~~~~~
