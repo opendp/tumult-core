@@ -124,7 +124,7 @@ class GroupedDataFrame:
             on=self.groupby_columns,
             how="left",
             nulls_are_equal=True,
-        ).fillna({empty_indicator: 1})
+        ).fillna(1, empty_indicator)
         return all_groups_output.withColumn(
             output_column,
             sf.when(sf.col(empty_indicator) == 1, sf.lit(fill_value)).otherwise(
