@@ -3,7 +3,7 @@
 # TODO(#1320): Add link to privacy and stability tutorial
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 
 from typing import Dict, Union
 
