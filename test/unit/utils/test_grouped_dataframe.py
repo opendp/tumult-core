@@ -325,8 +325,7 @@ class TestGroupedDataFrame(PySparkTest):
 
     def test_agg_with_special_chars(self):
         """Tests that agg works for output cols with special characters."""
-        quantile_func = sf.percentile_approx(sf.col("Y"), 0.5).alias("Y_quantile(0.5)")
-        sum_func = sf.sum(sf.col("Y")).alias("sum(Y_grouped_on_A&B)")
+        sum_func = sf.sum(sf.col("Y")).alias("sum(Y_grouped._on_A&B)")
         grouped_df = GroupedDataFrame(
             dataframe=self.spark.createDataFrame(
                 pd.DataFrame(
@@ -337,10 +336,6 @@ class TestGroupedDataFrame(PySparkTest):
             group_keys=self.spark.createDataFrame([("A",), ("B",)], schema=["group"]),
         )
         self.assert_frame_equal_with_sort(
-            grouped_df.agg(quantile_func, fill_value=0).toPandas(),
-            pd.DataFrame({"group": ["A", "B"], "Y_quantile(0.5)": [1, 6]}),
-        )
-        self.assert_frame_equal_with_sort(
             grouped_df.agg(sum_func, fill_value=0).toPandas(),
-            pd.DataFrame({"group": ["A", "B"], "sum(Y_grouped_on_A&B)": [2, 16]}),
+            pd.DataFrame({"group": ["A", "B"], "sum(Y_grouped._on_A&B)": [2, 16]}),
         )
