@@ -17,6 +17,41 @@ PrivacyBudgetInput = Union[ExactNumberInput, Tuple[ExactNumberInput, ExactNumber
 PrivacyBudgetValue = Union[ExactNumber, Tuple[ExactNumber, ExactNumber]]
 
 
+class InsufficientBudgetError(ValueError):
+    """Exception raised when there is not enough budget to perform an operation.
+
+    The PrivacyBudget will raise this exception when an operation requests more
+    budget than is remaining.
+    """
+
+    def __init__(
+        self, remaining_budget: PrivacyBudget, requested_budget: PrivacyBudget
+    ):
+        """Constructor.
+
+        Args:
+            remaining_budget: The remaining budget.
+            requested_budget: The requested budget.
+        """
+        self._remaining_budget = remaining_budget
+        self._requested_budget = requested_budget
+        message = (
+            f"The remaining privacy budget is {self._remaining_budget}, which "
+            f"is insufficient given the requested budget {self._requested_budget}."
+        )
+        super().__init__(message)
+
+    @property
+    def remaining_budget(self) -> PrivacyBudget:
+        """Returns the remaining budget."""
+        return self._remaining_budget
+
+    @property
+    def requested_budget(self) -> PrivacyBudget:
+        """Returns the requested budget."""
+        return self._requested_budget
+
+
 class Measure(ABC):
     """Base class for output measures.
 
@@ -251,8 +286,8 @@ class PrivacyBudget(ABC):
         """Return true iff the budget is finite."""
 
     @abstractmethod
-    def can_spend_budget(self, other: PrivacyBudgetInput) -> bool:
-        """Return true iff we can spend budget `other`.
+    def assert_can_spend_budget(self, other: PrivacyBudgetInput):
+        """Return true iff we can spend budget `other`. Otherwise, raise an error.
 
         Args:
             other: The privacy budget we would like to spend.
@@ -302,18 +337,23 @@ class PureDPBudget(PrivacyBudget):
         """The pure dp privacy loss."""
         return self._epsilon
 
+    def __repr__(self) -> str:
+        """Return a string representation displaying epsilon."""
+        return f"(epsilon={self._epsilon})"
+
     def is_finite(self) -> bool:
         """Return true iff the budget is finite."""
         return self._epsilon.is_finite
 
-    def can_spend_budget(self, other: PrivacyBudgetInput) -> bool:
-        """Return true iff we can spend budget `other`.
+    def assert_can_spend_budget(self, other: PrivacyBudgetInput):
+        """Return true iff we can spend budget `other`. Otherwise, raise an error.
 
         Args:
             other: The privacy budget we would like to spend.
         """
         validated_other = PureDPBudget(other)
-        return self._epsilon >= validated_other.epsilon
+        if self.epsilon < validated_other.epsilon:
+            raise InsufficientBudgetError(self, validated_other)
 
     def subtract(self, other: PrivacyBudgetInput) -> "PureDPBudget":
         """Return a new budget after subtracting `other`.
@@ -327,8 +367,7 @@ class PureDPBudget(PrivacyBudget):
             ValueError: If there is not enough privacy budget to subtract other.
         """
         validated_other = PureDPBudget(other)
-        if not self.can_spend_budget(other):
-            raise ValueError("Cannot subtract a larger budget from a smaller budget.")
+        self.assert_can_spend_budget(other)
         if not self.is_finite():
             return self
         return PureDPBudget(self._epsilon - validated_other.epsilon)
@@ -363,21 +402,25 @@ class ApproxDPBudget(PrivacyBudget):
         """The second component of the privacy loss."""
         return self._delta
 
+    def __repr__(self) -> str:
+        """Return a string representation displaying epsilon and delta."""
+        return f"(epsilon={self._epsilon}, delta={self._delta})"
+
     def is_finite(self) -> bool:
         """Return true iff the budget is finite."""
         return self._epsilon.is_finite and self._delta < 1
 
-    def can_spend_budget(self, other: PrivacyBudgetInput) -> bool:
-        """Return true iff we can spend budget `other`.
+    def assert_can_spend_budget(self, other: PrivacyBudgetInput):
+        """Return true iff we can spend budget `other`. Otherwise, raise an error.
 
         Args:
             other: The privacy budget we would like to spend.
         """
         validated_other = ApproxDPBudget(other)
-        return not self.is_finite() or (
-            self._epsilon >= validated_other.epsilon
-            and self._delta >= validated_other.delta
-        )
+        if self.is_finite() and (
+            self.epsilon < validated_other.epsilon or self.delta < validated_other.delta
+        ):
+            raise InsufficientBudgetError(self, validated_other)
 
     def subtract(self, other: PrivacyBudgetInput) -> "ApproxDPBudget":
         """Return a new budget after subtracting `other`.
@@ -393,8 +436,7 @@ class ApproxDPBudget(PrivacyBudget):
         validated_other = ApproxDPBudget(other)
         if not self.is_finite():
             return self
-        if not self.can_spend_budget(other):
-            raise ValueError("Cannot subtract a larger budget from a smaller budget.")
+        self.assert_can_spend_budget(other)
         return ApproxDPBudget(
             (
                 self._epsilon - validated_other.epsilon,
@@ -425,18 +467,23 @@ class RhoZCDPBudget(PrivacyBudget):
         """The zCDP privacy loss."""
         return self._rho
 
+    def __repr__(self) -> str:
+        """Return a string representation displaying rho."""
+        return f"(rho={self._rho})"
+
     def is_finite(self) -> bool:
         """Return true iff the budget is finite."""
         return self._rho.is_finite
 
-    def can_spend_budget(self, other: PrivacyBudgetInput) -> bool:
-        """Return true iff we can spend budget `other`.
+    def assert_can_spend_budget(self, other: PrivacyBudgetInput):
+        """Return true iff we can spend budget `other`. Otherwise, raise an error.
 
         Args:
             other: The privacy budget we would like to spend.
         """
         validated_other = RhoZCDPBudget(other)
-        return self._rho >= validated_other.rho
+        if self.rho < validated_other.rho:
+            raise InsufficientBudgetError(self, validated_other)
 
     def subtract(self, other: PrivacyBudgetInput) -> "RhoZCDPBudget":
         """Return a new budget after subtracting `other`.
@@ -450,8 +497,7 @@ class RhoZCDPBudget(PrivacyBudget):
             ValueError: If there is not enough privacy budget to subtract other.
         """
         validated_other = RhoZCDPBudget(other)
-        if not self.can_spend_budget(other):
-            raise ValueError("Cannot subtract a larger budget from a smaller budget.")
+        self.assert_can_spend_budget(other)
         if not self.is_finite():
             return self
         return RhoZCDPBudget(self._rho - validated_other.rho)

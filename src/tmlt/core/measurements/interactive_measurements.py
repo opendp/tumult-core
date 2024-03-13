@@ -279,10 +279,8 @@ class SequentialQueryable(Queryable):
             else:
                 privacy_loss = query.measurement.privacy_function(self._d_in)
 
-            if not self._remaining_budget.can_spend_budget(privacy_loss):
-                raise ValueError(
-                    "Cannot answer query without exceeding available privacy budget."
-                )
+            self._remaining_budget.assert_can_spend_budget(privacy_loss)
+
             if self._previous_queryable:
                 self._previous_queryable(RetireQuery())
                 self._previous_queryable = None
@@ -850,42 +848,6 @@ class PrivacyAccountantState(Enum):
     """
 
 
-class InsufficientBudgetError(ValueError):
-    """Exception raised when there is not enough budget to perform an operation.
-
-    PrivacyAccountant will raise this exception when asked to perform an
-    operation that exceeds its budget.
-    """
-
-    def __init__(
-        self, remaining_budget: PrivacyBudgetValue, requested_budget: PrivacyBudgetValue
-    ):
-        """Constructor.
-
-        Args:
-            remaining_budget: The remaining budget.
-            requested_budget: The requested budget.
-        """
-        self._remaining_budget = remaining_budget
-        self._requested_budget = requested_budget
-        message = (
-            f"PrivacyAccountant's remaining privacy budget is {self._remaining_budget},"
-            " which is insufficient for this operation that requires privacy loss"
-            f" {self._requested_budget}."
-        )
-        super().__init__(message)
-
-    @property
-    def remaining_budget(self) -> PrivacyBudgetValue:
-        """Returns the remaining budget."""
-        return self._remaining_budget
-
-    @property
-    def requested_budget(self) -> PrivacyBudgetValue:
-        """Returns the requested budget."""
-        return self._requested_budget
-
-
 class InactiveAccountantError(RuntimeError):
     """Raised when trying to perform operations on an accountant that is not ACTIVE.
 
@@ -1356,12 +1318,7 @@ class PrivacyAccountant:
         else:
             d_out = measurement.privacy_function(self.d_in)
         d_out = cast(PrivacyBudgetInput, d_out)
-
-        if not self._privacy_budget.can_spend_budget(d_out):
-            raise InsufficientBudgetError(
-                self.privacy_budget,
-                PrivacyBudget.cast(self.output_measure, d_out).value,
-            )
+        self._privacy_budget.assert_can_spend_budget(d_out)
 
         if self._privacy_budget.is_finite():
             self._privacy_budget = self._privacy_budget.subtract(d_out)
@@ -1611,11 +1568,7 @@ class PrivacyAccountant:
         assert isinstance(
             splitting_transformation.output_metric, (SumOf, RootSumOfSquared)
         )
-        if not self._privacy_budget.can_spend_budget(privacy_budget):
-            raise InsufficientBudgetError(
-                self.privacy_budget,
-                PrivacyBudget.cast(self.output_measure, privacy_budget).value,
-            )
+        self._privacy_budget.assert_can_spend_budget(privacy_budget)
 
         if self._privacy_budget.is_finite():
             self._privacy_budget = self._privacy_budget.subtract(privacy_budget)
