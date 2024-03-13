@@ -114,7 +114,7 @@ class BudgetTests(ABC):
         assert budget_type(value).is_finite() == expected
 
     @abstractmethod
-    def test_can_spend_budget(
+    def test_assert_can_spend_budget(
         self,
         budget_type: Type[PrivacyBudget],
         initial_budget: Any,
@@ -138,7 +138,7 @@ class BudgetTests(ABC):
         """
         with expectation as exception:
             assert (
-                budget_type(initial_budget).can_spend_budget(spending_budget)
+                budget_type(initial_budget).assert_can_spend_budget(spending_budget)
                 == expected
             )
         if exception_properties is None or len(exception_properties) == 0:

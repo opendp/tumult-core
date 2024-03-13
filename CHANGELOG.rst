@@ -10,6 +10,8 @@ Changed
 ~~~~~~~
 - Updated :func:`~.calculate_noise_scale` to return a noise scale of 0 when both the
   `d_in` and `d_out` are infinite.
+- Adjusted error messages related to spending privacy budgets in classes of type :class:`~.PrivacyBudget`.
+- Moved InsufficientBudgetError from :mod:`~.interactive_measurements` to :mod:`~.measures`.
 
 Fixed
 ~~~~~

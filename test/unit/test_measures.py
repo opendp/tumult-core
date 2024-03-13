@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 import itertools
-from typing import Any, Tuple
+import re
+from typing import Any, Tuple, Union
 from unittest.case import TestCase
 
 import sympy as sp
@@ -12,6 +13,7 @@ from parameterized import parameterized
 from tmlt.core.measures import (
     ApproxDP,
     ApproxDPBudget,
+    InsufficientBudgetError,
     PureDP,
     PureDPBudget,
     RhoZCDP,
@@ -204,15 +206,19 @@ class TestPureDPBudget(TestCase):
             (sp.oo, sp.Integer(1000), True),
         ]
     )
-    def test_can_spend_budget(self, value1, value2, expected: bool):
-        """Test that can_spend_budget returns the expected value."""
-        self.assertEqual(PureDPBudget(value1).can_spend_budget(value2), expected)
+    def test_assert_can_spend_budget(self, value1, value2, expected: bool):
+        """Test that assert_can_spend_budget returns the expected value."""
+        if expected:
+            PureDPBudget(value1).assert_can_spend_budget(value2)
+        else:
+            with self.assertRaises(ValueError):
+                PureDPBudget(value1).assert_can_spend_budget(value2)
 
     @parameterized.expand(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS))
-    def test_can_spend_budget_invalid(self, value):
-        """Test that can_spend_budget raises an error when passed an invalid value."""
+    def test_assert_can_spend_budget_invalid(self, value):
+        """Test that assert_can_spend_budget raises an error for invalid values."""
         with self.assertRaises((TypeError, ValueError)):
-            PureDPBudget(1).can_spend_budget(value)
+            PureDPBudget(1).assert_can_spend_budget(value)
 
     @parameterized.expand(
         [
@@ -288,15 +294,19 @@ class TestApproxDPBudget(TestCase):
             ((sp.oo, 1), (sp.oo, 1), True),
         ]
     )
-    def test_can_spend_budget(self, value1, value2, expected: bool):
-        """Test that can_spend_budget returns the expected value."""
-        self.assertEqual(ApproxDPBudget(value1).can_spend_budget(value2), expected)
+    def test_assert_can_spend_budget(self, value1, value2, expected: bool):
+        """Test that assert_can_spend_budget returns the expected value."""
+        if expected:
+            ApproxDPBudget(value1).assert_can_spend_budget(value2)
+        else:
+            with self.assertRaises(ValueError):
+                ApproxDPBudget(value1).assert_can_spend_budget(value2)
 
     @parameterized.expand(to_singletons(INVALID_APPROX_DP_INPUTS))
-    def test_can_spend_budget_invalid(self, value):
-        """Test that can_spend_budget raises an error when passed an invalid value."""
+    def test_assert_can_spend_budget_invalid(self, value):
+        """Test that assert_can_spend_budget raises an error for invalid values."""
         with self.assertRaises((TypeError, ValueError)):
-            ApproxDPBudget((1, sp.Rational("0.1"))).can_spend_budget(value)
+            ApproxDPBudget((1, sp.Rational("0.1"))).assert_can_spend_budget(value)
 
     @parameterized.expand(
         [
@@ -381,15 +391,19 @@ class TestRhoZCDPBudget(TestCase):
             (sp.oo, sp.Integer(1000), True),
         ]
     )
-    def test_can_spend_budget(self, value1, value2, expected: bool):
-        """Test that can_spend_budget returns the expected value."""
-        self.assertEqual(RhoZCDPBudget(value1).can_spend_budget(value2), expected)
+    def test_assert_can_spend_budget(self, value1, value2, expected: bool):
+        """Test that assert_can_spend_budget returns the expected value."""
+        if expected:
+            RhoZCDPBudget(value1).assert_can_spend_budget(value2)
+        else:
+            with self.assertRaises(ValueError):
+                RhoZCDPBudget(value1).assert_can_spend_budget(value2)
 
     @parameterized.expand(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS))
-    def test_can_spend_budget_invalid(self, value):
-        """Test that can_spend_budget raises an error when passed an invalid value."""
+    def test_assert_can_spend_budget_invalid(self, value):
+        """Test that assert_can_spend_budget raises an error for invalid values."""
         with self.assertRaises((TypeError, ValueError)):
-            RhoZCDPBudget(1).can_spend_budget(value)
+            RhoZCDPBudget(1).assert_can_spend_budget(value)
 
     @parameterized.expand(
         [
@@ -414,3 +428,44 @@ class TestRhoZCDPBudget(TestCase):
         """Test that subtract raises an error when passed an invalid value."""
         with self.assertRaises((TypeError, ValueError)):
             RhoZCDPBudget(1).subtract(value)
+
+
+class TestInsufficientBudgetError(TestCase):
+    """Test cases for InsufficientBudgetError."""
+
+    @parameterized.expand(
+        [
+            (
+                ApproxDPBudget,
+                ((ExactNumber(1), ExactNumber("0.1"))),
+                (ExactNumber(1), ExactNumber("0.2")),
+            ),
+            (
+                ApproxDPBudget,
+                ((ExactNumber(1), ExactNumber("0.1"))),
+                (ExactNumber(2), ExactNumber("0.1")),
+            ),
+            (PureDPBudget, ExactNumber(1), ExactNumber(2)),
+            (RhoZCDPBudget, ExactNumber(1), ExactNumber(2)),
+        ]
+    )
+    def test_InsufficientBudgetError(
+        self,
+        budget_type: Union[PureDPBudget, ApproxDPBudget, RhoZCDPBudget],
+        low_budget: Union[ExactNumber, Tuple[ExactNumber, ExactNumber]],
+        high_budget: Union[ExactNumber, Tuple[ExactNumber, ExactNumber]],
+    ):
+        """Tests that the error message related to InsufficientBudgetError is useful."""
+
+        low = budget_type(low_budget)  # type: ignore
+        high = budget_type(high_budget)  # type: ignore
+
+        error_message = re.escape(
+            (
+                f"The remaining privacy budget is {low}, which "
+                f"is insufficient given the requested budget {high}."
+            )
+        )
+
+        with self.assertRaisesRegex(InsufficientBudgetError, error_message):
+            raise InsufficientBudgetError(low, high)

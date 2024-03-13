@@ -5,6 +5,7 @@
 
 # pylint: disable=no-self-use
 
+import re
 from typing import Any, List, Optional, Tuple, Type, Union
 from unittest import TestCase
 from unittest.mock import ANY, MagicMock, Mock, patch
@@ -46,7 +47,15 @@ from tmlt.core.measurements.interactive_measurements import (
     TransformationQuery,
     create_adaptive_composition,
 )
-from tmlt.core.measures import ApproxDP, Measure, PureDP, RhoZCDP
+from tmlt.core.measures import (
+    ApproxDP,
+    ApproxDPBudget,
+    Measure,
+    PureDP,
+    PureDPBudget,
+    RhoZCDP,
+    RhoZCDPBudget,
+)
 from tmlt.core.metrics import (
     AbsoluteDifference,
     DictMetric,
@@ -456,10 +465,12 @@ class TestRetirableQueryable(PySparkTest):
     [
         {
             "output_measure": PureDP(),
+            "budget_type": PureDPBudget,
             "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
         },
         {
             "output_measure": ApproxDP(),
+            "budget_type": ApproxDPBudget,
             "budget_quarters": [
                 (0, 0),
                 (sp.Rational("2.5"), sp.Rational("0.1")),
@@ -470,6 +481,7 @@ class TestRetirableQueryable(PySparkTest):
         },
         {
             "output_measure": RhoZCDP(),
+            "budget_type": RhoZCDPBudget,
             "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
         },
     ]
@@ -479,6 +491,8 @@ class TestSequentialQueryable(PySparkTest):
 
     output_measure: Union[PureDP, ApproxDP, RhoZCDP]
     """The output measure to use during the tests."""
+
+    budget_type: Type[Union[PureDPBudget, ApproxDPBudget, RhoZCDPBudget]]
 
     budget_quarters: List
     """Zero, one quarter, one half, three quarters, and all of the privacy budget."""
@@ -545,9 +559,17 @@ class TestSequentialQueryable(PySparkTest):
                 )
             )
         )
-        with self.assertRaisesRegex(
-            ValueError, "Cannot answer query without exceeding available privacy budget"
-        ):
+        remaining_budget = self.budget_type(self.privacy_budget).subtract(
+            self.budget_quarters[2]
+        )
+        requested_budget = self.budget_type(self.budget_quarters[3])
+        error_message = re.escape(
+            (
+                f"The remaining privacy budget is {remaining_budget}, which "
+                f"is insufficient given the requested budget {requested_budget}."
+            )
+        )
+        with self.assertRaisesRegex(ValueError, error_message):
             queryable(
                 MeasurementQuery(
                     measurement=create_mock_measurement(
@@ -1357,8 +1379,8 @@ class TestPrivacyAccountant(PySparkTest):
                 8,
             ),
             (
-                r"PrivacyAccountant's remaining privacy budget is 10, which is"
-                r" insufficient for this operation that requires privacy loss 11.",
+                "The remaining privacy budget is (epsilon=10), which "
+                "is insufficient given the requested budget (epsilon=11).",
                 NumpyIntegerDomain(),
                 AbsoluteDifference(),
                 ListDomain(NumpyIntegerDomain(), length=2),
@@ -1402,7 +1424,7 @@ class TestPrivacyAccountant(PySparkTest):
             return_value=[np.int64(2), np.int64(3)],
         )
         with self.assertRaisesRegex(
-            (ValueError, UnsupportedDomainError), error_message
+            (ValueError, UnsupportedDomainError), re.escape(error_message)
         ):
             accountant.split(
                 splitting_transformation=splitting_transformation,
@@ -1936,10 +1958,12 @@ class TestDecoratedQueryable(TestCase):
     [
         {
             "output_measure": PureDP(),
+            "budget_type": PureDPBudget,
             "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
         },
         {
             "output_measure": ApproxDP(),
+            "budget_type": ApproxDPBudget,
             "budget_quarters": [
                 (0, 0),
                 (sp.Rational("2.5"), sp.Rational("0.1")),
@@ -1950,6 +1974,7 @@ class TestDecoratedQueryable(TestCase):
         },
         {
             "output_measure": RhoZCDP(),
+            "budget_type": RhoZCDPBudget,
             "budget_quarters": [0, sp.Rational("2.5"), 5, sp.Rational("7.5"), 10],
         },
     ]
@@ -1959,6 +1984,9 @@ class TestCreateAdaptiveComposition(TestCase):
 
     output_measure: Union[PureDP, ApproxDP, RhoZCDP]
     """The output measure to use during the tests."""
+
+    budget_type: Type[Union[PureDPBudget, ApproxDPBudget, RhoZCDPBudget]]
+    """The type of budget being tested."""
 
     budget_quarters: List
     """Zero, one quarter, one half, three quarters, and all of the privacy budget."""
@@ -2040,7 +2068,15 @@ class TestCreateAdaptiveComposition(TestCase):
                 privacy_function_return_value=self.budget_quarters[3],
             )
         )
-        with self.assertRaisesRegex(
-            ValueError, "Cannot answer query without exceeding available privacy budget"
-        ):
+        remaining_budget = self.budget_type(self.privacy_budget).subtract(
+            self.budget_quarters[2]
+        )
+        requested_budget = self.budget_type(self.budget_quarters[3])
+        error_message = re.escape(
+            (
+                f"The remaining privacy budget is {str(remaining_budget)}, which "
+                f"is insufficient given the requested budget {str(requested_budget)}."
+            )
+        )
+        with self.assertRaisesRegex(ValueError, error_message):
             self.queryable(query2)
