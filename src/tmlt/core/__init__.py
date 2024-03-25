@@ -2,6 +2,9 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
+
+__version__ = "0.12.0"
+
 import warnings
 
 try:
