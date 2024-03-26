@@ -105,7 +105,7 @@ class DictDomain(Domain):
     def validate(self, value: Any):
         """Raises error if value is not in the domain."""
         super().validate(value)
-        value_keys, domain_keys = sorted(set(value)), sorted(set(self.key_to_domain))
+        value_keys, domain_keys = set(value), set(self.key_to_domain)
         if value_keys != domain_keys:
             raise OutOfDomainError(
                 self,
