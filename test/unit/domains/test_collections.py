@@ -6,6 +6,7 @@
 import re
 from collections.abc import Mapping
 from contextlib import nullcontext as does_not_raise
+from dataclasses import dataclass
 from itertools import combinations_with_replacement
 from test.unit.domains.abstract import DomainTests
 from typing import Any, Callable, ContextManager, Dict, Optional, Type
@@ -521,12 +522,12 @@ class TestDictDomain(DomainTests):
                     OutOfDomainError,
                     match=re.escape(
                         "Keys are not as expected, value must match domain.\n"
-                        "Value keys: ['A', 'B']\nDomain keys: ['A']"
+                        "Value keys: {'A', 'B'}\nDomain keys: {'A'}"
                     ),
                 ),
                 {
                     "domain": DictDomain({"A": NumpyIntegerDomain()}),
-                    "value": ["A", "B"],
+                    "value": {"A", "B"},
                 },
             ),
             (
@@ -536,14 +537,14 @@ class TestDictDomain(DomainTests):
                     OutOfDomainError,
                     match=re.escape(
                         "Keys are not as expected, value must match domain.\n"
-                        "Value keys: ['A']\nDomain keys: ['A', 'B']"
+                        "Value keys: {'A'}\nDomain keys: {'A', 'B'}"
                     ),
                 ),
                 {
                     "domain": DictDomain(
                         {"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}
                     ),
-                    "value": ["A"],
+                    "value": {"A"},
                 },
             ),
             (
@@ -570,10 +571,10 @@ class TestDictDomain(DomainTests):
                     OutOfDomainError,
                     match=re.escape(
                         "Keys are not as expected, value must match domain.\n"
-                        "Value keys: ['A', 'B']\nDomain keys: []"
+                        "Value keys: {'A', 'B'}\nDomain keys: set()"
                     ),
                 ),
-                {"domain": DictDomain({}), "value": ["A", "B"]},
+                {"domain": DictDomain({}), "value": {"A", "B"}},
             ),
         ],
     )
@@ -596,3 +597,47 @@ class TestDictDomain(DomainTests):
                 exceptions.
         """
         super().test_validate(domain, candidate, expectation, exception_properties)
+
+    def test_validate_with_unsortable_types(self):  # pylint: disable=no-self-use
+        """Test that DictDomain.validate works with keys that don't support sorting."""
+
+        @dataclass(frozen=True)
+        class UnsortableKey:
+            """Class to use as DictDomain key; cannot be sorted."""
+
+            s: str
+
+        key_a = UnsortableKey("A")
+        key_b = UnsortableKey("B")
+
+        domain = DictDomain({key_a: NumpyIntegerDomain(), key_b: NumpyFloatDomain()})
+
+        in_domain = {key_a: np.int64(1), key_b: np.float64(2.5)}
+
+        assert domain.validate(in_domain) is None
+
+        with pytest.raises(
+            OutOfDomainError,
+            match=re.escape(
+                f"Keys are not as expected, value must match domain.\n"
+                f"Value keys: {set([key_a])}\n"
+                f"Domain keys: {set([key_a, key_b])}"
+            ),
+        ):
+            domain.validate({key_a: np.int64(1)})
+
+        with pytest.raises(
+            OutOfDomainError,
+            match=re.escape(
+                "Keys are not as expected, value must match domain.\n"
+                f"Value keys: {set([key_b])}\n"
+                f"Domain keys: {set([key_a, key_b])}"
+            ),
+        ):
+            domain.validate({key_b: np.int64(1)})
+
+        with pytest.raises(
+            OutOfDomainError, match=re.escape(f"Found invalid value at '{key_a}'")
+        ):
+            # right keys, but they're both floats
+            domain.validate({key_a: np.float64(1.5), key_b: np.float64(1.5)})

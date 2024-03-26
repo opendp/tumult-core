@@ -17,6 +17,8 @@ Fixed
 ~~~~~
 - SumGrouped now correctly handles the case with both empty input dataframes and empty group keys.
 - SumGrouped, CountDistinct, and CountDistinctGrouped now always returns the correct output datatypes.
+- :meth:`tmlt.core.domains.collections.DictDomain.validate` will no longer raise
+  a ``TypeError`` when its dictionary keys cannot be sorted.
 
 0.12.0 - 2024-02-26
 -------------------
