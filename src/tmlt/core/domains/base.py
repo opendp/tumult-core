@@ -19,7 +19,7 @@ class Domain(ABC):
     def carrier_type(self) -> type:
         """Returns the type of elements in the domain."""
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises an error if value is not in the domain."""
         if value.__class__ is not self.carrier_type:
             raise OutOfDomainError(

@@ -65,7 +65,7 @@ class Measure(ABC):
         return self.__class__ is other.__class__
 
     @abstractmethod
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises an error if `value` not a valid distance.
 
         Args:
@@ -97,7 +97,7 @@ class PureDP(Measure):
 
     """
 
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a nonnegative real or infinity
@@ -139,7 +139,7 @@ class ApproxDP(Measure):
 
     """
 
-    def validate(self, value: Tuple[ExactNumberInput, ExactNumberInput]):
+    def validate(self, value: Tuple[ExactNumberInput, ExactNumberInput]) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a tuple with two values: (epsilon, delta)
@@ -203,7 +203,7 @@ class RhoZCDP(Measure):
     where :math:`D_{\alpha}(X||Y)` is the α-Rényi divergence between X and Y.
     """
 
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a nonnegative real or infinity
@@ -286,7 +286,7 @@ class PrivacyBudget(ABC):
         """Return true iff the budget is finite."""
 
     @abstractmethod
-    def assert_can_spend_budget(self, other: PrivacyBudgetInput):
+    def assert_can_spend_budget(self, other: PrivacyBudgetInput) -> None:
         """Return true iff we can spend budget `other`. Otherwise, raise an error.
 
         Args:
@@ -345,7 +345,7 @@ class PureDPBudget(PrivacyBudget):
         """Return true iff the budget is finite."""
         return self._epsilon.is_finite
 
-    def assert_can_spend_budget(self, other: PrivacyBudgetInput):
+    def assert_can_spend_budget(self, other: PrivacyBudgetInput) -> None:
         """Return true iff we can spend budget `other`. Otherwise, raise an error.
 
         Args:
@@ -410,7 +410,7 @@ class ApproxDPBudget(PrivacyBudget):
         """Return true iff the budget is finite."""
         return self._epsilon.is_finite and self._delta < 1
 
-    def assert_can_spend_budget(self, other: PrivacyBudgetInput):
+    def assert_can_spend_budget(self, other: PrivacyBudgetInput) -> None:
         """Return true iff we can spend budget `other`. Otherwise, raise an error.
 
         Args:
@@ -475,7 +475,7 @@ class RhoZCDPBudget(PrivacyBudget):
         """Return true iff the budget is finite."""
         return self._rho.is_finite
 
-    def assert_can_spend_budget(self, other: PrivacyBudgetInput):
+    def assert_can_spend_budget(self, other: PrivacyBudgetInput) -> None:
         """Return true iff we can spend budget `other`. Otherwise, raise an error.
 
         Args:

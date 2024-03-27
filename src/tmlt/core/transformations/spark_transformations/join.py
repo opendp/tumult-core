@@ -330,7 +330,7 @@ class PublicJoin(Transformation):
             self._join_stability = 1
         else:
             self._join_stability = max(
-                public_df_join_columns.groupby(*join_cols)
+                public_df_join_columns.groupby(*join_cols)  # type: ignore
                 .count()
                 .select("count")
                 .toPandas()["count"]
@@ -753,7 +753,7 @@ class PrivateJoin(Transformation):
 
         def truncate(
             df: DataFrame, strategy: TruncationStrategy, threshold: Union[int, float]
-        ):
+        ) -> DataFrame:
             if strategy == TruncationStrategy.TRUNCATE:
                 assert isinstance(threshold, int)
                 return truncate_large_groups(df, self.join_cols, threshold)
@@ -1066,7 +1066,7 @@ class PrivateJoinOnKey(Transformation):
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
-    def __call__(self, dfs: Dict[Any, DataFrame]):
+    def __call__(self, dfs: Dict[Any, DataFrame]) -> Dict[Any, DataFrame]:
         """Perform join."""
         left = dfs[self.left_key]
         right = dfs[self.right_key]

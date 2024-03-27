@@ -133,7 +133,7 @@ def get_java11_config() -> SparkConf:
     return conf
 
 
-def check_java11():
+def check_java11() -> None:
     """Check for running on Java11+, and make sure the correct options are set.
 
     Raises:

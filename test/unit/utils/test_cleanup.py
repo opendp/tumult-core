@@ -30,6 +30,8 @@ class TestCleanup(PySparkTest):
     def _get_warehouse_path(self) -> Path:
         """Get a Path object pointing to Spark's warehouse directory."""
         config_path = self.spark.conf.get("spark.sql.warehouse.dir")
+        if config_path is None:
+            raise RuntimeError("Unable to get config path")
         if config_path[0:5] == "file:":
             config_path = config_path[5:]
         return Path(config_path).resolve()

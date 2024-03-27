@@ -38,7 +38,7 @@ class Metric(ABC):
     """Base class for input/output metrics."""
 
     @abstractmethod
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises an error if `value` not a valid distance.
 
         Args:
@@ -82,7 +82,7 @@ class Metric(ABC):
         """Return True if both metrics are equal."""
         return repr(self) == repr(other)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Returns hash value."""
         return hash(repr(self))
 
@@ -94,7 +94,7 @@ class Metric(ABC):
 class NullMetric(Metric):
     """Metric for use when distance is undefined."""
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises an error if `value` not a valid distance.
 
         This method is not implemented.
@@ -163,7 +163,7 @@ class AbsoluteDifference(ExactNumberMetric):
         900719925474099/4503599627370496
     """
 
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a nonnegative real or infinite
@@ -272,7 +272,7 @@ class SymmetricDifference(ExactNumberMetric):
         3
     """
 
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a nonnegative integer or infinity
@@ -400,7 +400,7 @@ class HammingDistance(ExactNumberMetric):
         1
     """
 
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a nonnegative and integer or infinity
@@ -673,7 +673,7 @@ class SumOf(AggregationMetric):
         27021597764222973/18014398509481984
     """
 
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a a valid distance for :attr:`~.inner_metric`
@@ -741,7 +741,7 @@ class RootSumOfSquared(AggregationMetric):
         oo
     """
 
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a nonnegative real or infinity
@@ -822,7 +822,7 @@ class OnColumn(ExactNumberMetric):
         """Return the metric to apply."""
         return self._metric
 
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a a valid distance for :attr:`~.metric`
@@ -930,7 +930,7 @@ class OnColumns(Metric):
         """Return the OnColumn metrics to apply."""
         return self._on_columns
 
-    def validate(self, value: Tuple[ExactNumberInput, ...]):
+    def validate(self, value: Tuple[ExactNumberInput, ...]) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a tuple with one value for each metric in :attr:`~.on_columns`
@@ -1074,7 +1074,7 @@ class IfGroupedBy(ExactNumberMetric):
         """Metric to be applied for corresponding groups."""
         return self._inner_metric
 
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a a valid distance for :attr:`~.inner_metric`
@@ -1195,7 +1195,7 @@ class DictMetric(Metric):
         """Returns mapping from keys to metrics."""
         return self._key_to_metric.copy()
 
-    def validate(self, value: Dict[Any, Any]):
+    def validate(self, value: Dict[Any, Any]) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a dictionary with the same keys as :attr:`~.key_to_metric`
@@ -1387,7 +1387,7 @@ class AddRemoveKeys(Metric):
         return self._df_to_key_column.copy()
 
     @typechecked
-    def validate(self, value: ExactNumberInput):
+    def validate(self, value: ExactNumberInput) -> None:
         """Raises an error if `value` not a valid distance.
 
         * `value` must be a nonnegative real or infinite

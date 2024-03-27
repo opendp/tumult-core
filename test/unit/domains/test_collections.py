@@ -522,8 +522,10 @@ class TestDictDomain(DomainTests):
                     OutOfDomainError,
                     match=re.escape(
                         "Keys are not as expected, value must match domain.\n"
-                        "Value keys: {'A', 'B'}\nDomain keys: {'A'}"
-                    ),
+                        "Value keys: {"
+                    )
+                    + "'.', '.'"
+                    + re.escape("}\nDomain keys: {'A'}"),
                 ),
                 {
                     "domain": DictDomain({"A": NumpyIntegerDomain()}),
@@ -537,8 +539,10 @@ class TestDictDomain(DomainTests):
                     OutOfDomainError,
                     match=re.escape(
                         "Keys are not as expected, value must match domain.\n"
-                        "Value keys: {'A'}\nDomain keys: {'A', 'B'}"
-                    ),
+                        "Value keys: {'A'}\nDomain keys: {"
+                    )
+                    + "'.', '.'"
+                    + re.escape("}"),
                 ),
                 {
                     "domain": DictDomain(
@@ -571,8 +575,10 @@ class TestDictDomain(DomainTests):
                     OutOfDomainError,
                     match=re.escape(
                         "Keys are not as expected, value must match domain.\n"
-                        "Value keys: {'A', 'B'}\nDomain keys: set()"
-                    ),
+                        "Value keys: {"
+                    )
+                    + "'.', '.'"
+                    + re.escape("}\nDomain keys: set()"),
                 ),
                 {"domain": DictDomain({}), "value": {"A", "B"}},
             ),
@@ -614,7 +620,8 @@ class TestDictDomain(DomainTests):
 
         in_domain = {key_a: np.int64(1), key_b: np.float64(2.5)}
 
-        assert domain.validate(in_domain) is None
+        # This should run without raising an error
+        domain.validate(in_domain)
 
         with pytest.raises(
             OutOfDomainError,

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import sympy as sp
+from numpy.typing import ArrayLike
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as sf
 from pyspark.sql.types import StructType
@@ -1684,7 +1685,9 @@ def create_standard_deviation_measurement(
 
     if groupby_transformation is None:
 
-        def postprocess_variance(answer):
+        def postprocess_variance(
+            answer: Union[Dict[str, ArrayLike], ArrayLike]
+        ) -> Union[Dict[str, ArrayLike], ArrayLike]:
             """Computes variance from noisy standard deviation."""
             if isinstance(answer, dict):
                 answer["standard-deviation"] = np.sqrt(answer["variance"])

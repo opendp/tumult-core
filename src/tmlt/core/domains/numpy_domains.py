@@ -38,7 +38,7 @@ class NumpyIntegerDomain(NumpyDomain):
     size: int = 64
     """Number of bits a member of the domain occupies. Must be 32 or 64."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type("size", self.size, int)
         if self.size not in [32, 64]:
@@ -63,7 +63,7 @@ class NumpyFloatDomain(NumpyDomain):
     size: int = 64
     """Number of bits a member of the domain occupies. Must be 32 or 64."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type("allow_nan", self.allow_nan, bool)
         check_type("allow_inf", self.allow_inf, bool)
@@ -78,7 +78,7 @@ class NumpyFloatDomain(NumpyDomain):
             return np.float32
         return np.float64
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises error if value is not a member of the domain."""
         super().validate(value)
         if not self.allow_inf and np.isinf(value):
@@ -99,11 +99,11 @@ class NumpyStringDomain(NumpyDomain):
     allow_null: bool = False
     """If True, None is allowed."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type("allow_null", self.allow_null, bool)
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises error if value is not in domain."""
         if not isinstance(value, self.carrier_type) and value.__class__ is not str:
             raise OutOfDomainError(

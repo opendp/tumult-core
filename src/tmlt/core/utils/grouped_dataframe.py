@@ -219,7 +219,7 @@ def _create_aggregation_wrapper(
     output_schema: StructType,
     groupby_columns: List[str],
     input_columns: List[str],
-):
+) -> Callable[[pd.DataFrame], pd.DataFrame]:
     """Returns a wrapper function for aggregating all (including empty) groups."""
 
     def _wrapper(df: pd.DataFrame) -> pd.DataFrame:
