@@ -162,8 +162,18 @@ explicit_package_bases = true
 follow_imports = "silent"
 ignore_missing_imports = true
 namespace_packages = true
-check_untyped_defs = true
+disallow_untyped_defs = true
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+
+[[tool.mypy.overrides]]
+module = "test.*"
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tmlt.core.utils.arb"
+disallow_untyped_defs = false
+check_untyped_defs = true
 
 [tool.pylint.master]
 # See https://github.com/PyCQA/pylint/issues/1975#issuecomment-387924981

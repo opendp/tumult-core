@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Any, Union, overload
 
@@ -111,7 +113,7 @@ class Transformation(ABC):
     ) -> Measurement:  # noqa: D105 https://github.com/PyCQA/pydocstyle/issues/525
         ...
 
-    def __or__(self, other):
+    def __or__(self, other: Any) -> Union[Measurement, Transformation]:
         """Return this transformation chained with another component."""
         # pylint: disable=import-outside-toplevel
         check_type("other", other, Union[Measurement, Transformation])

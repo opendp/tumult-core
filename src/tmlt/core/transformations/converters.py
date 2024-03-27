@@ -103,6 +103,6 @@ class HammingDistanceToSymmetricDifference(Transformation):
         self.input_metric.validate(d_in)
         return ExactNumber(2) * d_in
 
-    def __call__(self, data: Any):
+    def __call__(self, data: Any) -> Any:
         """Returns unchanged input."""
         return data

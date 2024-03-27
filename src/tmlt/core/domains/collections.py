@@ -23,7 +23,7 @@ class ListDomain(Domain):
     length: Optional[int] = None
     """Number of elements in lists in the domain. If None, this is unrestricted."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Check inputs to constructor."""
         check_type("element_domain", self.element_domain, Domain)
         check_type("length", self.length, Optional[int])
@@ -35,7 +35,7 @@ class ListDomain(Domain):
         """Returns python list type."""
         return list
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises error if value is not a row with matching schema."""
         super().validate(value)
         if self.length is not None and len(value) != self.length:
@@ -102,7 +102,7 @@ class DictDomain(Domain):
         """Returns the type of elements in the domain."""
         return dict
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises error if value is not in the domain."""
         super().validate(value)
         value_keys, domain_keys = set(value), set(self.key_to_domain)

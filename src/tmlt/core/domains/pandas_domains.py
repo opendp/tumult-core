@@ -26,7 +26,7 @@ class PandasSeriesDomain(Domain):
     element_domain: NumpyDomain
     """Domain of elements in the Series."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type("element_domain", self.element_domain, NumpyDomain)
 
@@ -35,7 +35,7 @@ class PandasSeriesDomain(Domain):
         """Returns carrier type for members of the domain."""
         return pd.Series
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises error if value is not a DataFrame with matching schema."""
         # NOTE: Can not assert (elem in self.element_domain for elem in value) because
         # iterating over a Series implicitly calls item() on the NumPy values
@@ -85,7 +85,7 @@ class PandasDataFrameDomain(Domain):
         """Returns carrier type for the domain."""
         return pd.DataFrame
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises error if value is not a Pandas DataFrame with matching schema."""
         super().validate(value)
         value_columns = list(value.columns)

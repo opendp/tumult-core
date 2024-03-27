@@ -47,7 +47,7 @@ class Queryable(ABC):
     """
 
     @abstractmethod
-    def __call__(self, query: Any):
+    def __call__(self, query: Any) -> Any:
         """Returns answer to given query."""
 
 
@@ -74,7 +74,7 @@ class MeasurementQuery:
     raises :class:`NotImplementedError`.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Check inputs to constructor."""
         check_type("measurement", self.measurement, Measurement)
         if self.d_out is not None:
@@ -103,7 +103,7 @@ class TransformationQuery:
     :meth:`.Transformation.stability_function` raises :class:`NotImplementedError`.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Check inputs to constructor."""
         check_type("transformation", self.transformation, Transformation)
         if self.d_out is not None:
@@ -233,7 +233,9 @@ class SequentialQueryable(Queryable):
         self._data = copy_if_mutable(data)
         self._previous_queryable: Optional[RetirableQueryable] = None
 
-    def __call__(self, query: Union[MeasurementQuery, TransformationQuery]):
+    def __call__(
+        self, query: Union[MeasurementQuery, TransformationQuery]
+    ) -> Optional[RetirableQueryable]:
         """Answers the query."""
         if isinstance(query, MeasurementQuery):
             if not query.measurement.is_interactive:
@@ -369,7 +371,7 @@ class GetAnswerQueryable(Queryable):
             raise ValueError("Measurement must be non-interactive.")
         self._answer = measurement(data)
 
-    def __call__(self, query: None):
+    def __call__(self, query: None) -> Any:
         """Returns answer."""
         return self._answer
 
@@ -715,7 +717,7 @@ class ParallelComposition(Measurement):
         )
         return d_out
 
-    def __call__(self, data) -> ParallelQueryable:
+    def __call__(self, data: Any) -> ParallelQueryable:
         """Returns a :class:`~.ParallelQueryable`."""
         return ParallelQueryable(data, self._measurements)
 
@@ -1805,7 +1807,7 @@ class PrivacyAccountant:
             )
             self._pending_transformation = None
 
-    def _activate_next(self, child: "PrivacyAccountant"):
+    def _activate_next(self, child: "PrivacyAccountant") -> None:
         r"""Activates next child or self.
 
         If `child` is the last child of this :class:`~.PrivacyAccountant`, this
@@ -1825,7 +1827,7 @@ class PrivacyAccountant:
         else:
             self._activate_child(index + 1)
 
-    def _retire_preceding_siblings(self, child: "PrivacyAccountant"):
+    def _retire_preceding_siblings(self, child: "PrivacyAccountant") -> None:
         """Retires preceding siblings of given child."""
         index = self.children.index(child)
         if not self._parallel_queryable:
@@ -1838,7 +1840,7 @@ class PrivacyAccountant:
             )
         self.children[index - 1].retire(force=True)
 
-    def _activate_child(self, index: int):
+    def _activate_child(self, index: int) -> None:
         """Activates child by index."""
         if not self._parallel_queryable:
             raise AssertionError(

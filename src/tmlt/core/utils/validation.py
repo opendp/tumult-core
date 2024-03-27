@@ -29,7 +29,7 @@ def validate_groupby_domains(
         ],
     ],
     input_domain: SparkDataFrameDomain,
-):
+) -> None:
     """Raises error if groupby domains are invalid.
 
     In particular, this passes only if:

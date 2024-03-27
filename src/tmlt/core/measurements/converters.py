@@ -86,7 +86,7 @@ class PureDPToRhoZCDP(Measurement):
         pure_dp_epsilon = sp.sqrt(2 * ExactNumber(d_out).expr)
         return self.pure_dp_measurement.privacy_relation(d_in, pure_dp_epsilon)
 
-    def __call__(self, data: Any):
+    def __call__(self, data: Any) -> Any:
         """Apply measurement."""
         return self.pure_dp_measurement(data)
 
@@ -156,7 +156,7 @@ class PureDPToApproxDP(Measurement):
         self.output_measure.validate(d_out)
         return self.pure_dp_measurement.privacy_relation(d_in, d_out[0])
 
-    def __call__(self, data: Any):
+    def __call__(self, data: Any) -> Any:
         """Apply measurement."""
         return self.pure_dp_measurement(data)
 
@@ -242,6 +242,6 @@ class RhoZCDPToApproxDP(Measurement):
         )
         return self.zcdp_measurement.privacy_relation(d_in, solutions[0])
 
-    def __call__(self, data: Any):
+    def __call__(self, data: Any) -> Any:
         """Apply measurement."""
         return self.zcdp_measurement(data)

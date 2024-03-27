@@ -183,12 +183,12 @@ class GroupBy(Transformation):
         return self._use_l2
 
     @property
-    def group_keys(self):
+    def group_keys(self) -> DataFrame:
         """Returns DataFrame containing group keys."""
         return self._group_keys
 
     @property
-    def groupby_columns(self):
+    def groupby_columns(self) -> List[str]:
         """Returns list of columns to groupby."""
         return self._groupby_columns.copy()
 
@@ -421,7 +421,7 @@ def compute_full_domain_df(
             List[Optional[datetime.date]],
         ],
     ]
-):
+) -> DataFrame:
     """Returns a DataFrame containing the Cartesian product of given column domains."""
     spark = SparkSession.builder.getOrCreate()
     if not column_domains:
@@ -447,6 +447,13 @@ def compute_full_domain_df(
         )
     cores_per_executor = spark.conf.get("spark.executor.cores", "2")
     num_executors = spark.conf.get("spark.executor.instances", "8")
+    # Spark's documentation says `spark.conf.get` will return the default
+    # value instead of returning None,
+    # but its type annotation disagrees.
+    if cores_per_executor is None:
+        cores_per_executor = "2"
+    if num_executors is None:
+        num_executors = "8"
     num_cores = int(cores_per_executor) * int(num_executors) * 3
     full_domain_columns = [
         spark.createDataFrame(

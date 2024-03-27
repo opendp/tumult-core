@@ -4,7 +4,7 @@
 # Copyright Tumult Labs 2024
 
 from functools import lru_cache
-from typing import overload
+from typing import Union, overload
 
 import numpy as np
 import sympy as sp
@@ -45,8 +45,8 @@ def double_sided_geometric_pmf(k: int, alpha: np.ndarray) -> np.ndarray:
 
 
 def double_sided_geometric_pmf(
-    k, alpha
-):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    k: Union[int, np.ndarray], alpha: Union[float, np.ndarray]
+) -> Union[float, np.ndarray]:
     r"""Returns the pmf for a double-sided geometric distribution at k.
 
     For :math:`k \in \mathbb{Z}`
@@ -88,8 +88,8 @@ def double_sided_geometric_cmf(k: np.ndarray, alpha: float) -> np.ndarray:
 
 
 def double_sided_geometric_cmf(
-    k, alpha
-):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    k: Union[int, np.ndarray], alpha: float
+) -> Union[float, np.ndarray]:
     r"""Returns the cmf for a double-sided geometric distribution at k.
 
     For :math:`k \in \mathbb{Z}`
@@ -153,8 +153,8 @@ def double_sided_geometric_inverse_cmf(p: np.ndarray, alpha: float) -> np.ndarra
 
 
 def double_sided_geometric_inverse_cmf(
-    p, alpha
-):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    p: Union[float, np.ndarray], alpha: float
+) -> Union[int, np.ndarray]:
     r"""Returns the inverse cmf of a double-sided geometric distribution at p.
 
     In other words, it returns the smallest k s.t. CMF(k) >= p.
@@ -257,7 +257,7 @@ def _discrete_gaussian_unnormalized_mass_from_k_to_inf(
     """
     sigma = arb_sqrt(sigma_squared, prec)
 
-    def integral(n):
+    def integral(n: int) -> Arb:
         return arb_product(
             [
                 arb_sqrt(arb_div(arb_const_pi(prec), Arb.from_int(2), prec), prec),
@@ -436,8 +436,8 @@ def discrete_gaussian_pmf(k: np.ndarray, sigma_squared: float) -> np.ndarray:
 
 
 def discrete_gaussian_pmf(
-    k, sigma_squared
-):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    k: Union[int, np.ndarray], sigma_squared: float
+) -> Union[float, np.ndarray]:
     r"""Returns the pmf for a discrete gaussian distribution at k.
 
     For :math:`k \in \mathbb{Z}`
@@ -477,11 +477,13 @@ def discrete_gaussian_pmf(
     # see https://gitlab.com/tumult-labs/tumult/-/issues/2358#note_1418996578 for more
     # information.
     n_terms = int(np.sqrt(sigma_squared) * 10) + 1
-    sigma_squared = Arb.from_float(sigma_squared)
+    sigma_squared_arb = Arb.from_float(sigma_squared)
     prec = 100
     while True:
         try:
-            return _discrete_gaussian_pmf(k, sigma_squared, n_terms, prec).to_float()
+            return _discrete_gaussian_pmf(
+                k, sigma_squared_arb, n_terms, prec
+            ).to_float()
         except ValueError:
             prec *= 2
             n_terms *= 2
@@ -498,8 +500,8 @@ def discrete_gaussian_cmf(k: np.ndarray, sigma_squared: float) -> np.ndarray:
 
 
 def discrete_gaussian_cmf(
-    k, sigma_squared
-):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    k: Union[int, np.ndarray], sigma_squared: float
+) -> Union[float, np.ndarray]:
     """Returns the cmf for a discrete gaussian distribution at k.
 
     See :eq:`discrete_gaussian_pmf` for the probability mass function.
@@ -550,8 +552,8 @@ def discrete_gaussian_inverse_cmf(p: Arb, sigma_squared: Arb) -> int:
 
 
 def discrete_gaussian_inverse_cmf(
-    p, sigma_squared
-):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    p: Union[float, np.ndarray, Arb], sigma_squared: Union[float, Arb]
+) -> Union[int, np.ndarray]:
     """Returns the inverse cmf for a discrete gaussian distribution at p.
 
     In other words, it returns the smallest k s.t. CMF(k) >= p.

@@ -1097,8 +1097,12 @@ def create_count_aggregation(
 
 
 def create_count_aggregation(
-    input_domain, input_metric, count_column=None
-):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    input_domain: Union[SparkDataFrameDomain, SparkGroupedDataFrameDomain],
+    input_metric: Union[SymmetricDifference, HammingDistance, SumOf, RootSumOfSquared],
+    count_column: Optional[str] = None,
+) -> Union[
+    Count, CountGrouped
+]:  # pylint: disable=missing-type-doc, missing-return-type-doc
     """Returns a :class:`~.Count` or :class:`~.CountGrouped` transformation.
 
     Args:
@@ -1108,6 +1112,7 @@ def create_count_aggregation(
             name of the output count column.
     """
     if isinstance(input_domain, SparkDataFrameDomain):
+        assert isinstance(input_metric, (SymmetricDifference, HammingDistance))
         return Count(input_domain=input_domain, input_metric=input_metric)
     else:
         if not isinstance(input_domain, SparkGroupedDataFrameDomain):
@@ -1118,6 +1123,7 @@ def create_count_aggregation(
                     " SparkGroupedDataFrameDomain."
                 ),
             )
+        assert isinstance(input_metric, (SumOf, RootSumOfSquared))
         return CountGrouped(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -1130,7 +1136,7 @@ def create_count_distinct_aggregation(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance],
     count_column: Optional[str],
-) -> Count:
+) -> CountDistinct:
     ...
 
 
@@ -1139,13 +1145,16 @@ def create_count_distinct_aggregation(
     input_domain: SparkGroupedDataFrameDomain,
     input_metric: Union[SumOf, RootSumOfSquared],
     count_column: Optional[str],
-) -> CountGrouped:
+) -> CountDistinctGrouped:
     ...
 
 
+# pylint: disable=line-too-long
 def create_count_distinct_aggregation(
-    input_domain, input_metric, count_column=None
-):  # pylint: disable=missing-type-doc, missing-return-type-doc, line-too-long
+    input_domain: Union[SparkDataFrameDomain, SparkGroupedDataFrameDomain],
+    input_metric: Union[SymmetricDifference, HammingDistance, SumOf, RootSumOfSquared],
+    count_column: Optional[str] = None,
+) -> Union[CountDistinct, CountDistinctGrouped]:
     """Returns a :class:`~.CountDistinct` or :class:`~.CountDistinctGrouped` transformation.
 
     Args:
@@ -1154,7 +1163,9 @@ def create_count_distinct_aggregation(
         count_column: If `input_domain` is a SparkGroupedDataFrameDomain, this is the
             name of the output count column.
     """
+    # pylint: enable=line-too-long
     if isinstance(input_domain, SparkDataFrameDomain):
+        assert isinstance(input_metric, (SymmetricDifference, HammingDistance))
         return CountDistinct(input_domain=input_domain, input_metric=input_metric)
     else:
         if not isinstance(input_domain, SparkGroupedDataFrameDomain):
@@ -1165,6 +1176,7 @@ def create_count_distinct_aggregation(
                     " SparkGroupedDataFrameDomain."
                 ),
             )
+        assert isinstance(input_metric, (SumOf, RootSumOfSquared))
         return CountDistinctGrouped(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -1197,8 +1209,13 @@ def create_sum_aggregation(
 
 
 def create_sum_aggregation(
-    input_domain, input_metric, measure_column, lower, upper, sum_column=None
-):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    input_domain: Union[SparkDataFrameDomain, SparkGroupedDataFrameDomain],
+    input_metric: Union[SymmetricDifference, HammingDistance, SumOf, RootSumOfSquared],
+    measure_column: str,
+    lower: ExactNumberInput,
+    upper: ExactNumberInput,
+    sum_column: Optional[str] = None,
+) -> Union[Sum, SumGrouped]:
     """Returns a :class:`~.Sum` or :class:`~.SumGrouped` transformation.
 
     Args:
@@ -1213,6 +1230,7 @@ def create_sum_aggregation(
             measurement. If None, this column will be named “sum(<measure_column>)”.
     """
     if isinstance(input_domain, SparkDataFrameDomain):
+        assert isinstance(input_metric, (SymmetricDifference, HammingDistance))
         return Sum(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -1229,6 +1247,7 @@ def create_sum_aggregation(
                     " SparkGroupedDataFrameDomain"
                 ),
             )
+        assert isinstance(input_metric, (SumOf, RootSumOfSquared))
         return SumGrouped(
             input_domain=input_domain,
             input_metric=input_metric,

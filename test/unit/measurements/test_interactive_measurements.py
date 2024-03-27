@@ -822,6 +822,7 @@ class TestSequentialQueryable(PySparkTest):
                 )
             )
         )
+        assert child1_queryable is not None
         grandchild_queryable = child1_queryable(None)
         _ = queryable(
             MeasurementQuery(

@@ -51,7 +51,7 @@ class SparkColumnDescriptor(ABC):
     def to_numpy_domain(self) -> NumpyDomain:
         """Returns corresponding NumPy domain."""
 
-    def validate_column(self, sdf: DataFrame, col_name: str):
+    def validate_column(self, sdf: DataFrame, col_name: str) -> None:
         """Raises error if not all values in given DataFrame column match descriptor.
 
         Args:
@@ -101,7 +101,7 @@ class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
     size: int = 64
     """Number of bits a member of the domain occupies. Must be 32 or 64."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type("allow_null", self.allow_null, bool)
         check_type("size", self.size, int)
@@ -116,7 +116,7 @@ class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
             )
         return NumpyIntegerDomain(self.size)
 
-    def valid_py_value(self, val: Any):
+    def valid_py_value(self, val: Any) -> bool:
         """Returns True if value is a valid python value for the descriptor."""
         if isinstance(val, int):
             min_, max_ = self.SIZE_TO_MIN_MAX[self.size]
@@ -149,7 +149,7 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
     size: int = 64
     """Number of bits a member of the domain occupies. Must be 32 or 64."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type("allow_nan", self.allow_nan, bool)
         check_type("allow_inf", self.allow_inf, bool)
@@ -169,7 +169,7 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
             allow_nan=self.allow_nan, allow_inf=self.allow_inf, size=self.size
         )
 
-    def validate_column(self, sdf: DataFrame, col_name: str):
+    def validate_column(self, sdf: DataFrame, col_name: str) -> None:
         """Raises error if not all values in given DataFrame column match descriptor.
 
         Args:
@@ -189,7 +189,7 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
             ).first():
                 raise ValueError("Column contains infinite values.")
 
-    def valid_py_value(self, val: Any):
+    def valid_py_value(self, val: Any) -> bool:
         """Returns True if value is a valid python value for the descriptor.
 
         In particular, this returns True only if one of the following is true:
@@ -220,15 +220,15 @@ class SparkStringColumnDescriptor(SparkColumnDescriptor):
     allow_null: bool = False
     """If True, null values are permitted in the domain."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type("allow_null", self.allow_null, bool)
 
-    def to_numpy_domain(self):
+    def to_numpy_domain(self) -> NumpyStringDomain:
         """Returns corresponding NumPy domain."""
         return NumpyStringDomain(allow_null=self.allow_null)
 
-    def valid_py_value(self, val: Any):
+    def valid_py_value(self, val: Any) -> bool:
         """Returns True if value is a valid python value for the descriptor."""
         return isinstance(val, str) or (self.allow_null and val is None)
 
@@ -245,11 +245,11 @@ class SparkDateColumnDescriptor(SparkColumnDescriptor):
     allow_null: bool = False
     """If True, null values are permitted in the domain."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type("allow_null", self.allow_null, bool)
 
-    def to_numpy_domain(self):
+    def to_numpy_domain(self) -> NumpyDomain:
         """Returns corresponding NumPy domain.
 
         Note:
@@ -258,7 +258,7 @@ class SparkDateColumnDescriptor(SparkColumnDescriptor):
         """
         raise RuntimeError("NumPy does not have support for date types.")
 
-    def valid_py_value(self, val: Any):
+    def valid_py_value(self, val: Any) -> bool:
         """Returns True if the value is a valid Python value for the descriptor."""
         return isinstance(val, datetime.date) or (self.allow_null and val is None)
 
@@ -275,11 +275,11 @@ class SparkTimestampColumnDescriptor(SparkColumnDescriptor):
     allow_null: bool = False
     """If True, null values are permitted in the domain."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type("allow_null", self.allow_null, bool)
 
-    def to_numpy_domain(self):
+    def to_numpy_domain(self) -> NumpyDomain:
         """Returns corresponding NumPy domain.
 
         Note:
@@ -288,7 +288,7 @@ class SparkTimestampColumnDescriptor(SparkColumnDescriptor):
         """
         raise RuntimeError("NumPy does not have support for timestamp types.")
 
-    def valid_py_value(self, val: Any):
+    def valid_py_value(self, val: Any) -> bool:
         """Returns True if the value is a valid Python value for the descriptor."""
         return isinstance(val, datetime.datetime) or (self.allow_null and val is None)
 
@@ -319,7 +319,7 @@ class SparkRowDomain(Domain):
         """Returns mapping from column names to column descriptors."""
         return self._schema.copy()
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises error if value is not a row with matching schema."""
         raise NotImplementedError()
 
@@ -368,7 +368,7 @@ class SparkDataFrameDomain(Domain):
         """Returns mapping from column names to column descriptors."""
         return self._schema.copy()
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises error if value is not a DataFrame with matching schema."""
         super().validate(value)
         value_columns = list(value.schema.fieldNames())
@@ -568,7 +568,7 @@ class SparkGroupedDataFrameDomain(Domain):
             ]
         )
 
-    def validate(self, value: Any):
+    def validate(self, value: Any) -> None:
         """Raises error if value is not a GroupedDataFrame with matching group_keys."""
         # avoid circular import
         from tmlt.core.utils.grouped_dataframe import (  # pylint: disable=import-outside-toplevel

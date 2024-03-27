@@ -80,7 +80,7 @@ def get_all_props(Component: type) -> List[Tuple[str]]:
     return component_properties + component_fields
 
 
-def assert_property_immutability(component: Any, prop_name: str):
+def assert_property_immutability(component: Any, prop_name: str) -> None:
     """Raises error if property is mutable.
 
     Args:
@@ -95,7 +95,7 @@ def assert_property_immutability(component: Any, prop_name: str):
 
 def _mutate_list_and_check(
     component: Any, prop_name: str, prop_val: Any, list_obj: List
-):
+) -> None:
     """Raises error if mutating given list modifies component.
 
     Args:
@@ -114,7 +114,9 @@ def _mutate_list_and_check(
     _mutate_and_check_items(component, prop_name, prop_val, list_obj)
 
 
-def _mutate_set_and_check(component: Any, prop_name: str, prop_val: Any, set_obj: set):
+def _mutate_set_and_check(
+    component: Any, prop_name: str, prop_val: Any, set_obj: set
+) -> None:
     """Raises error if mutating given set modifies component.
 
     Args:
@@ -143,7 +145,7 @@ def _mutate_set_and_check(component: Any, prop_name: str, prop_val: Any, set_obj
 
 def _mutate_dict_and_check(
     component: Any, prop_name: str, prop_val: Any, dict_obj: Dict
-):
+) -> None:
     """Raises error if mutating given dictionary modifies component.
 
     Args:
@@ -173,7 +175,7 @@ def _mutate_dict_and_check(
 
 def _mutate_and_check_items(
     component: Any, prop_name: str, prop_val: Any, items: Iterable
-):
+) -> None:
     """Raises error if given property is mutable.
 
     Args:
@@ -295,7 +297,7 @@ def create_mock_measurement(
 class FakeAggregate(Aggregate):
     """Dummy Pandas Series aggregation for testing purposes."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Constructor."""
         super().__init__(
             input_domain=PandasDataFrameDomain(
@@ -333,7 +335,7 @@ class PySparkTest(unittest.TestCase):
         return self._spark
 
     @classmethod
-    def suppress_py4j_logging(cls):
+    def suppress_py4j_logging(cls) -> None:
         """Remove noise in the logs irrelevant to testing."""
         print("Calling PySparkTest:suppress_py4j_logging")
         logger = logging.getLogger("py4j")
@@ -341,7 +343,7 @@ class PySparkTest(unittest.TestCase):
         logger.setLevel(logging.ERROR)
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         """Setup SparkSession."""
         cls.suppress_py4j_logging()
         print("Setting up spark session.")
@@ -364,7 +366,7 @@ class PySparkTest(unittest.TestCase):
         cls._spark = spark
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         """Tears down SparkSession."""
         print("Tearing down spark session")
         shutil.rmtree("/tmp/hive_tables", ignore_errors=True)
@@ -378,7 +380,7 @@ class PySparkTest(unittest.TestCase):
         second_df: pd.DataFrame,
         sort_columns: Optional[Sequence[str]] = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         """Asserts that the two data frames are equal.
 
         Wrapper around pandas test function. Both dataframes are sorted
@@ -409,7 +411,7 @@ class PySparkTest(unittest.TestCase):
 class TestComponent(PySparkTest):
     """Helper class for component tests."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Common setup for all component tests."""
         self.schema_a = {
             "A": SparkFloatColumnDescriptor(),
@@ -442,7 +444,7 @@ class TestComponent(PySparkTest):
         )
 
 
-def skip(reason):
+def skip(reason: str) -> Callable[[Callable[..., Any]], Any]:
     """Skips tests and allows override using '--no-skip' flag."""
     if "--no-skip" in sys.argv:
         return lambda fn: fn
@@ -466,7 +468,7 @@ class FixedGroupDataSet:
     float_measure_column: bool = False
     """If True, measure column has floating point values."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Create groupby transformations and dataframe."""
         spark = SparkSession.builder.getOrCreate()
         self.group_keys = spark.createDataFrame(
@@ -522,8 +524,22 @@ class KSTestCase:
     scales: Dict[str, ExactNumberInput]
     cdfs: Dict[str, Callable]
 
-    def __init__(self, sampler=None, locations=None, scales=None, cdfs=None):
+    def __init__(
+        self,
+        sampler: Optional[Callable[[], Dict[str, np.ndarray]]] = None,
+        locations: Optional[Dict[str, Union[str, float]]] = None,
+        scales: Optional[Dict[str, ExactNumberInput]] = None,
+        cdfs: Optional[Dict[str, Callable]] = None,
+    ) -> None:
         """Constructor."""
+        if sampler is None:
+            sampler = lambda: {}
+        if locations is None:
+            locations = {}
+        if scales is None:
+            scales = {}
+        if cdfs is None:
+            cdfs = {}
         self.sampler = sampler
         self.locations = locations
         self.scales = scales
@@ -549,8 +565,25 @@ class ChiSquaredTestCase:
     cmfs: Dict[str, Callable]
     pmfs: Dict[str, Callable]
 
-    def __init__(self, sampler=None, locations=None, scales=None, cmfs=None, pmfs=None):
+    def __init__(
+        self,
+        sampler: Optional[Callable[[], Dict[str, np.ndarray]]] = None,
+        locations: Optional[Dict[str, int]] = None,
+        scales: Optional[Dict[str, ExactNumberInput]] = None,
+        cmfs: Optional[Dict[str, Callable]] = None,
+        pmfs: Optional[Dict[str, Callable]] = None,
+    ) -> None:
         """Constructor."""
+        if sampler is None:
+            sampler = lambda: {}
+        if locations is None:
+            locations = {}
+        if scales is None:
+            scales = {}
+        if cmfs is None:
+            cmfs = {}
+        if pmfs is None:
+            pmfs = {}
         self.sampler = sampler
         self.locations = locations
         self.scales = scales
@@ -652,7 +685,7 @@ def _run_chi_squared_tests(
 @pytest.mark.skip()
 def run_test_using_ks_test(
     case: KSTestCase, p_threshold: float, noise_scale_fudge_factor: float
-):
+) -> None:
     """Runs given :class:`~.KSTestCase`."""
     samples = case.sampler()  # type: ignore
     for sample_name, sample in samples.items():
@@ -672,7 +705,7 @@ def run_test_using_ks_test(
 @pytest.mark.skip()
 def run_test_using_chi_squared_test(
     case: ChiSquaredTestCase, p_threshold: float, noise_scale_fudge_factor: float
-):
+) -> None:
     """Runs given :class:`~.ChiSquaredTestCase`."""
     samples = case.sampler()  # type: ignore
     for sample_name, sample in samples.items():
@@ -702,8 +735,8 @@ def get_values_summing_to_loc(loc: float, n: int) -> List[float]:
 
 
 def get_values_summing_to_loc(
-    loc, n
-):  # pylint: disable=missing-type-doc, missing-return-type-doc
+    loc: Union[int, float], n: int
+) -> Union[List[int], List[float]]:
     """Returns a list of n values that sum to loc.
 
     Args:
@@ -824,27 +857,35 @@ def get_noise_scales(
     raise ValueError(agg)
 
 
-def _create_laplace_cdf(loc: float):
+def _create_laplace_cdf(loc: float) -> Callable[[Any, Any], Any]:
     return lambda value, noise_scale: laplace.cdf(value, loc=loc, scale=noise_scale)
 
 
-def _create_two_sided_geometric_cmf(loc: int):
+def _create_two_sided_geometric_cmf(
+    loc: int,
+) -> Callable[[Any, Any], Union[float, np.ndarray]]:
     return lambda k, noise_scale: double_sided_geometric_cmf(k - loc, noise_scale)
 
 
-def _create_two_sided_geometric_pmf(loc: int):
+def _create_two_sided_geometric_pmf(
+    loc: int,
+) -> Callable[[Any, Any], Union[float, np.ndarray]]:
     return lambda k, noise_scale: double_sided_geometric_pmf(k - loc, noise_scale)
 
 
-def _create_discrete_gaussian_cmf(loc: int):
+def _create_discrete_gaussian_cmf(
+    loc: int,
+) -> Callable[[Any, Any], Union[float, np.ndarray]]:
     return lambda k, noise_scale: discrete_gaussian_cmf(k - loc, noise_scale)
 
 
-def _create_discrete_gaussian_pmf(loc: int):
+def _create_discrete_gaussian_pmf(
+    loc: int,
+) -> Callable[[Any, Any], Union[float, np.ndarray]]:
     return lambda k, noise_scale: discrete_gaussian_pmf(k - loc, noise_scale)
 
 
-def _create_gaussian_cdf(loc: float):
+def _create_gaussian_cdf(loc: float) -> Callable[[Any, Any], Any]:
     return lambda value, noise_scale: norm.cdf(
         value, loc=loc, scale=math.sqrt(noise_scale)
     )
