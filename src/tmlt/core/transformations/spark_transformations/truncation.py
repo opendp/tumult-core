@@ -154,15 +154,18 @@ class LimitRowsPerGroup(Transformation):
         """Returns the maximum number of rows per group after truncation."""
         return self._threshold
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         if self.output_metric == SymmetricDifference():
             return ExactNumber(d_in) * self.threshold
@@ -340,15 +343,18 @@ class LimitKeysPerGroup(Transformation):
         """Returns the maximum number of keys per group after truncation."""
         return self._threshold
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         d_in = ExactNumber(d_in)
         self.input_metric.validate(d_in)
         if self.output_metric == IfGroupedBy(
@@ -543,15 +549,18 @@ class LimitRowsPerKeyPerGroup(Transformation):
         """Returns the maximum number of rows each unique (key, grouping column value) pair may appear in after truncation."""
         return self._threshold
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         d_in = ExactNumber(d_in)
         self.input_metric.validate(d_in)
         if self.input_metric == IfGroupedBy(

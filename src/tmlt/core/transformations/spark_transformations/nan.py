@@ -1,6 +1,10 @@
-"""Transformations to drop or replace NaNs, nulls, and infs in Spark DataFrames."""
+# pylint: disable=line-too-long
+"""Transformations to drop or replace NaNs, nulls, and infs in Spark DataFrames.
 
-# TODO(#1320): Add link to privacy and stability tutorial
+See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+for more information on transformations.
+"""
+# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
@@ -176,15 +180,18 @@ class DropInfs(Transformation):
         """Returns the columns to check for +inf and -inf."""
         return self._columns.copy()
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -353,15 +360,18 @@ class DropNaNs(Transformation):
         """Returns the columns to check for NaNs."""
         return self._columns.copy()
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -519,15 +529,18 @@ class DropNulls(Transformation):
         """Returns the columns to check for nulls."""
         return self._columns.copy()
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -705,15 +718,18 @@ class ReplaceInfs(Transformation):
         """Returns mapping used to replace infinite values."""
         return self._replace_map.copy()
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -890,15 +906,18 @@ class ReplaceNaNs(Transformation):
         """Returns mapping used to replace NaNs and nulls."""
         return self._replace_map.copy()
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -1067,15 +1086,18 @@ class ReplaceNulls(Transformation):
         """Returns mapping used to replace nulls."""
         return self._replace_map.copy()
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 

@@ -1,5 +1,10 @@
-"""Transformations for grouping and aggregating Spark DataFrames."""
-# TODO(#1320): Add link to privacy and stability tutorial
+# pylint: disable=line-too-long
+"""Transformations for grouping and aggregating Spark DataFrames.
+
+See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+for more information on transformations.
+"""
+# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024

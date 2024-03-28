@@ -1,5 +1,10 @@
-"""Transformations for joining Spark DataFrames."""
-# TODO(#1320): Add links to privacy and stability tutorial
+# pylint: disable=line-too-long
+"""Transformations for joining Spark DataFrames.
+
+See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+for more information on transformations.
+"""
+# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
@@ -730,15 +735,18 @@ class PrivateJoin(Transformation):
             TruncationStrategy.NO_TRUNCATION: float("inf"),
         }[truncation_strategy]
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: Dict[Any, ExactNumberInput]) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         tau_l = self.left_truncation_threshold
         tau_r = self.right_truncation_threshold
@@ -1054,15 +1062,18 @@ class PrivateJoinOnKey(Transformation):
         """Returns whether to consider null equal to null."""
         return self._join_on_nulls
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information on transformations.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
