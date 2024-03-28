@@ -1,5 +1,10 @@
-"""Measurements on Spark DataFrames."""
-# TODO(#1320): Add link to privacy and stability tutorial
+# pylint: disable=line-too-long
+"""Measurements on Spark DataFrames.
+
+See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+for more information.
+"""
+# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
@@ -215,7 +220,8 @@ class AddNoiseToColumn(SparkMeasurement):
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the measurement.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
@@ -321,11 +327,13 @@ class ApplyInPandas(SparkMeasurement):
         """Returns input domain."""
         return cast(SparkGroupedDataFrameDomain, super().input_domain)
 
+    # pylint: disable=line-too-long
     @typechecked
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the measurement.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
@@ -334,6 +342,7 @@ class ApplyInPandas(SparkMeasurement):
             NotImplementedError: If self.aggregation_function.privacy_function(d_in)
                 raises :class:`NotImplementedError`.
         """
+        # pylint: enable=line-too-long
         return self.aggregation_function.privacy_function(d_in)
 
     def call(self, val: GroupedDataFrame) -> DataFrame:
@@ -516,17 +525,20 @@ class GeometricPartitionSelection(SparkMeasurement):
         """Returns the count column name."""
         return self._count_column
 
+    # pylint: disable=line-too-long
     @typechecked
     def privacy_function(
         self, d_in: ExactNumberInput
     ) -> Tuple[ExactNumber, ExactNumber]:
         """Returns the smallest d_out satisfied by the measurement.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         d_in = ExactNumber(d_in)
         if d_in == 0:
@@ -748,7 +760,8 @@ class BoundSelection(Measurement):
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the measurement.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.

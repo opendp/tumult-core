@@ -1,5 +1,10 @@
-"""Transformations for selecting columns from Spark DataFrames."""
-# TODO(#1320): Add link to privacy and stability tutorial
+# pylint: disable=line-too-long
+"""Transformations for selecting columns from Spark DataFrames.
+
+See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+for more information.
+"""
+# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
@@ -154,15 +159,18 @@ class Select(Transformation):
         """Returns columns being selected."""
         return self._columns.copy()
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 

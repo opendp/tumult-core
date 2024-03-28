@@ -1,5 +1,10 @@
-"""Transformations for applying user defined maps to Spark DataFrames."""
-# TODO(#1320): Add links to privacy and stability tutorial
+# pylint: disable=line-too-long
+"""Transformations for applying user defined maps to Spark DataFrames.
+
+See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+for more information on transformations.
+"""
+# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
@@ -586,15 +591,18 @@ class FlatMap(Transformation):
         """Returns transformation object used for mapping rows to lists of rows."""
         return self._row_transformer
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         if isinstance(self.input_metric, IfGroupedBy) and isinstance(
             self.input_metric.inner_metric, SymmetricDifference
@@ -822,15 +830,18 @@ class GroupingFlatMap(Transformation):
         """Returns transformation object used for mapping rows to lists of rows."""
         return self._row_transformer
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         if cast(IfGroupedBy, self.output_metric).inner_metric == SumOf(
             SymmetricDifference()
@@ -1011,15 +1022,18 @@ class Map(Transformation):
         """Returns the transformation object used for mapping rows."""
         return self._row_transformer
 
+    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See the privacy and stability tutorial for more information. # TODO(#1320)
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information on transformations.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
+        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
