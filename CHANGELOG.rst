@@ -12,6 +12,7 @@ Changed
   `d_in` and `d_out` are infinite.
 - Adjusted error messages related to spending privacy budgets in classes of type :class:`~.PrivacyBudget`.
 - Moved InsufficientBudgetError from :mod:`~.interactive_measurements` to :mod:`~.measures`.
+- In :class:`~.GroupBy` and :class:`~.GroupedDataFrame` removed restriction on empty dataframes with non-empty columns.
 
 Fixed
 ~~~~~
