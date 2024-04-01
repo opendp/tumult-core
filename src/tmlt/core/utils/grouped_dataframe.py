@@ -43,13 +43,12 @@ class GroupedDataFrame:
         group_keys = group_keys.distinct()
         self._dataframe = dataframe
         self._group_keys = group_keys
-        self._groupby_keys_are_empty = False
-        if not group_keys.first():
-            if group_keys.columns:
-                raise ValueError(
-                    "Group keys cannot have no rows, unless it also has no columns"
-                )
-            self._groupby_keys_are_empty = True
+        self._total_aggregation = False
+        if not group_keys.columns:
+            if self.group_keys.count() > 0:
+                raise ValueError("Groupby keys cannot have records without columns.")
+            # empty groupkeys
+            self._total_aggregation = True
         self._groupby_columns = group_keys.columns
 
     @property
@@ -98,7 +97,7 @@ class GroupedDataFrame:
             fill_value: Output value for empty groups.
         """
         # pylint: disable=no-member
-        if self._groupby_keys_are_empty:
+        if self._total_aggregation:
             result = self._dataframe.agg(func)
             assert len(result.columns) == 1
             column = result.columns[0]

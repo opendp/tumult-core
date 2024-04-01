@@ -7,7 +7,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
-from parameterized import parameterized
+from parameterized import parameterized, parameterized_class
 from pyspark.sql.types import (
     DataType,
     DateType,
@@ -48,8 +48,18 @@ from tmlt.core.utils.testing import (
 )
 
 
+@parameterized_class(
+    [
+        # Tests with data.
+        {"data": [(1, "X"), (1, "Y"), (2, "Z")]},
+        # Tests with null data.
+        {"data": []},
+    ]
+)
 class TestGroupBy(PySparkTest):
     """Tests for GroupBy transformation on Spark DataFrames."""
+
+    data: List[Tuple[str, int]]
 
     def setUp(self):
         """Setup."""
@@ -57,7 +67,10 @@ class TestGroupBy(PySparkTest):
             {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()}
         )
         self.df = self.spark.createDataFrame(
-            [(1, "X"), (1, "Y"), (2, "Z")], schema=["A", "B"]
+            self.data,
+            schema=StructType(
+                [StructField("A", LongType()), StructField("B", StringType())]
+            ),
         )
         self.group_keys = self.spark.createDataFrame([(1,), (2,), (3,)], schema=["A"])
 
@@ -116,12 +129,6 @@ class TestGroupBy(PySparkTest):
                     "IfGroupedBy(column='A', inner_metric=SumOf("
                     "inner_metric=SymmetricDifference()))?"
                 ),
-            ),
-            (
-                SymmetricDifference(),
-                [],
-                StructType([StructField("A", LongType())]),
-                "Group keys cannot have no rows, unless it also has no columns",
             ),
             (
                 SymmetricDifference(),

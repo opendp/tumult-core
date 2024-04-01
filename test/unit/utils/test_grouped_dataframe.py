@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2024
 
 import pandas as pd
+import pytest
 from parameterized import parameterized
 from pyspark.sql import Row
 from pyspark.sql import functions as sf
@@ -128,21 +129,6 @@ class TestGroupedDataFrame(PySparkTest):
             StructType([StructField("count", IntegerType())]),
         ).toPandas()
         self.assert_frame_equal_with_sort(actual, expected)
-
-    def test_group_keys_no_rows_one_column(self):
-        """Tests that group keys must have no columns it is empty."""
-
-        with self.assertRaisesRegex(
-            ValueError, "Group keys cannot have no rows, unless it also has no columns"
-        ):
-            GroupedDataFrame(
-                dataframe=self.spark.createDataFrame(
-                    pd.DataFrame([(1, 2)], columns=["A", "Z"])
-                ),
-                group_keys=self.spark.createDataFrame(
-                    [], StructType([StructField("A", IntegerType())])
-                ),
-            )
 
     @parameterized.expand(
         [
@@ -339,3 +325,18 @@ class TestGroupedDataFrame(PySparkTest):
             grouped_df.agg(sum_func, fill_value=0).toPandas(),
             pd.DataFrame({"group": ["A", "B"], "sum(Y_grouped._on_A&B)": [2, 16]}),
         )
+
+    def test_agg_with_rows_no_cols(self):
+        """Tests that a groupby errors when there are keys but no columns."""
+
+        with pytest.raises(ValueError) as exp_info:
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame(
+                    [("A", 1), ("B", 2)], schema=["X", "Y"]
+                ),
+                group_keys=self.spark.createDataFrame([[], [], []], StructType()),
+            )
+            # The group_keys DF is a DF with rows but no columns.
+            # The dataframe is arbitrary
+
+        exp_info.match("Groupby keys cannot have records without columns.")

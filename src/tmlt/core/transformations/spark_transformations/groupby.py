@@ -162,11 +162,7 @@ class GroupBy(Transformation):
         )
         for groupby_column in group_keys.columns:
             input_domain[groupby_column].validate_column(group_keys, groupby_column)
-        if not group_keys.count():
-            if group_keys.columns:
-                raise ValueError(
-                    "Group keys cannot have no rows, unless it also has no columns"
-                )
+
         self._group_keys = group_keys
         self._use_l2 = use_l2
         self._groupby_columns = group_keys.columns

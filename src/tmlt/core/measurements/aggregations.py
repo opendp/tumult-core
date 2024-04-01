@@ -237,7 +237,7 @@ def create_count_measurement(
     count_aggregation: Transformation
     if groupby_transformation is None:
         if isinstance(input_metric, IfGroupedBy):
-            raise UnsupportedMetricError(
+            raise TypeError(
                 input_metric,
                 (
                     "Cannot use IfGroupedBy input metric if no groupby_transformation"
@@ -289,6 +289,15 @@ def create_count_measurement(
         return count_measurement
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
     assert isinstance(groupby_transformation.output_domain, SparkGroupedDataFrameDomain)
+
+    if isinstance(input_metric, IfGroupedBy):
+        if input_metric.column not in groupby_transformation.group_keys.columns:
+            raise ValueError(
+                "The input_metric column must be in the groupby_transformation "
+                f"group_keys columns. Got input_metric column = {input_metric.column},"
+                f" group_keys columns = {groupby_transformation.group_keys.columns}",
+            )
+
     count_aggregation = create_count_aggregation(
         input_domain=groupby_transformation.output_domain,
         input_metric=groupby_transformation.output_metric,
