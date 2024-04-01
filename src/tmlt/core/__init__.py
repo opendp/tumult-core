@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-__version__ = "0.12.0"
+__version__ = "0.0.0"
+__version_tuple__ = (0, 0, 0)
 
 import warnings
 
