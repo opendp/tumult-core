@@ -562,26 +562,6 @@ def prepare_release(session):
         session.error(f"VERSION {version} is not a valid version number.")
     session.debug(f"Preparing release {version}")
 
-    init_file=Path(PACKAGE_SOURCE_DIR).resolve() / "__init__.py"
-    with init_file.open("r", encoding="utf-8") as fp:
-        init_content = fp.readlines()
-        for i, content in enumerate(init_content):
-            if re.match("__version__", content):
-                # BEFORE
-                # __version__ = "0.8.3"
-
-                # AFTER
-                # __version__ = "0.8.4"
-                init_content[i] = f'__version__ = "{version}"\n'
-                break
-        else:
-            session.error(
-                "Updating version number in the __init__ file failed, "
-                "unable to find matching line."
-            )
-    with init_file.open("w", encoding="utf-8") as fp:
-        fp.writelines(init_content)
-
     # Replace "Unreleased" section header in changelog for non-prerelease
     # releases. Between the base version and prerelease number is the only place
     # a hyphen can appear in the version number, so just checking for that
@@ -589,10 +569,10 @@ def prepare_release(session):
     is_pre_release = "-" in version
     if not is_pre_release:
         session.log("Updating CHANGELOG.rst unreleased version...")
-        with Path("CHANGELOG.rst").open("r") as fp:
+        with Path("CHANGELOG.rst").open("r", encoding="utf-8") as fp:
             changelog_content = fp.readlines()
-        for i in range(len(changelog_content)):
-            if re.match("^Unreleased$", changelog_content[i]):
+        for i, content in enumerate(changelog_content):
+            if re.match("^Unreleased$", content):
                 # BEFORE
                 # Unreleased
                 # ----------
@@ -609,7 +589,7 @@ def prepare_release(session):
                 "Renaming unreleased section in changelog failed, "
                 "unable to find matching line"
             )
-        with Path("CHANGELOG.rst").open("w") as fp:
+        with Path("CHANGELOG.rst").open("w", encoding="utf-8") as fp:
             fp.writelines(changelog_content)
     else:
         session.log("Prerelease, skipping CHANGELOG.rst update...")
@@ -630,10 +610,10 @@ def post_release(session):
         r" - \d{4}-\d{2}-\d{2}$"
     )
     # Find the latest release
-    with Path("CHANGELOG.rst").open("r") as fp:
+    with Path("CHANGELOG.rst").open("r", encoding="utf-8") as fp:
         changelog_content = fp.readlines()
-        for i in range(len(changelog_content)):
-            if re.match(version_and_date_regex, changelog_content[i]):
+        for i, content in enumerate(changelog_content):
+            if re.match(version_and_date_regex, content):
                 # BEFORE
                 # 1.2.3 - 2020-01-01
                 # ------------------
@@ -650,7 +630,7 @@ def post_release(session):
                 break
         else:
             session.error("Unable to find latest release in CHANGELOG.rst")
-        with Path("CHANGELOG.rst").open("w") as fp:
+        with Path("CHANGELOG.rst").open("w", encoding="utf-8") as fp:
             fp.writelines(changelog_content)
 
 
