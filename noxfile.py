@@ -578,11 +578,15 @@ def prepare_release(session):
                 # ----------
 
                 # AFTER
+                # .. _v1.2.3:
+                #
                 # 1.2.3 - 2020-01-01
                 # ------------------
+                anchor = f".. _v{version}:\n\n"
+                subsection = f"{version_header}\n{'-' * len(version_header)}\n"
                 version_header = f"{version} - {datetime.date.today()}"
-                changelog_content[i] = version_header + "\n"
-                changelog_content[i + 1] = "-" * len(version_header) + "\n"
+                changelog_content[i] = anchor
+                changelog_content[i + 1] = subsection
                 break
         else:
             session.error(
@@ -605,22 +609,27 @@ def post_release(session):
     if is_pre_release:
         session.log("Prerelease, skipping CHANGELOG.rst update...")
         return
-    version_and_date_regex = (
-        r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc)\.(0|[1-9]\d*))?"
-        r" - \d{4}-\d{2}-\d{2}$"
+    anchor_regex = (
+        r"^\.\. _v"
+        r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc)\.(0|[1-9]\d*))?"
+        r" - \d{4}-\d{2}-\d{2}:$"
     )
     # Find the latest release
     with Path("CHANGELOG.rst").open("r", encoding="utf-8") as fp:
         changelog_content = fp.readlines()
         for i, content in enumerate(changelog_content):
-            if re.match(version_and_date_regex, content):
+            if re.match(anchor_regex, content):
                 # BEFORE
+                # .. _v1.2.3:
+                #
                 # 1.2.3 - 2020-01-01
                 # ------------------
 
                 # AFTER
                 # Unreleased
                 # ----------
+                #
+                # .. _v1.2.3:
                 #
                 # 1.2.3 - 2020-01-01
                 # ------------------

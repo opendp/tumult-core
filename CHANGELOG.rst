@@ -21,6 +21,8 @@ Fixed
 - :meth:`tmlt.core.domains.collections.DictDomain.validate` will no longer raise
   a ``TypeError`` when its dictionary keys cannot be sorted.
 
+.. _v0.12.0:
+
 0.12.0 - 2024-02-26
 -------------------
 
@@ -50,11 +52,15 @@ Fixed
   with very large budgets.
 
 
+.. _v0.11.6:
+
 0.11.6 - 2024-02-21
 -------------------
 
 0.11.6 was yanked. Those changes will be released in 0.12.0.
 
+
+.. _v0.11.5:
 
 0.11.5 - 2023-11-29
 -------------------
@@ -70,15 +76,21 @@ Fixed
 
 - Fixed a reference to an uninitialized variable that could cause :func:`~.arb_union` to crash the Python interpreter.
 
+.. _v0.11.4:
+
 0.11.4 - 2023-11-01
 -------------------
 
 Fixed a typo that prevented PyArrow from being installed on Python 3.8.
 
+.. _v0.11.3:
+
 0.11.3 - 2023-10-31
 -------------------
 
 Fixed a typo that prevented PySpark from being installed on Python 3.8.
+
+.. _v0.11.2:
 
 0.11.2 - 2023-10-27
 -------------------
@@ -87,12 +99,16 @@ Added
 ~~~~~
 - Added support for Python 3.11.
 
+.. _v0.11.1:
+
 0.11.1 - 2023-09-25
 -------------------
 
 Added
 ~~~~~
 - Added documentation for known vulnerabilities related to Parallel Composition and the use of SymPy.
+
+.. _v0.11.0:
 
 0.11.0 - 2023-08-15
 -------------------
@@ -104,6 +120,8 @@ Changed
   between two elements of :class:`~.SparkGroupedDataFrameDomain`\ s to be infinite when the two elements have different `group_keys`.
 - Updated maximum version for `pyspark` from 3.3.1 to 3.3.2.
 
+.. _v0.10.2:
+
 0.10.2 - 2023-07-18
 -------------------
 
@@ -111,6 +129,8 @@ Changed
 ~~~~~~~
 - Build wheels for macOS 11 instead of macOS 13.
 - Updated dependency version for `typing_extenstions` to 4.1.0
+
+.. _v0.10.1:
 
 0.10.1 - 2023-06-08
 -------------------
@@ -132,6 +152,8 @@ Changed
 ~~~~~~~
 - Restructured the repository to keep code under the `src` directory.
 
+.. _v0.10.0:
+
 0.10.0 - 2023-05-17
 -------------------
 
@@ -150,10 +172,14 @@ Fixed
 - :func:`~tmlt.core.utils.cleanup.cleanup` now emits a warning rather than an exception if it fails to get a Spark session.
   This should prevent unexpected exceptions in the ``atexit`` cleanup handler.
 
+.. _v0.9.2:
+
 0.9.2 - 2023-05-16
 ------------------
 
 0.9.2 was yanked, as it contained breaking changes. Those changes will be released in 0.10.0.
+
+.. _v0.9.1:
 
 0.9.1 - 2023-04-20
 ------------------
@@ -161,6 +187,8 @@ Fixed
 Added
 ~~~~~
 - Subclasses of :class:`~.Measure` now have equations defining the distance they represent.
+
+.. _v0.9.0:
 
 0.9.0 - 2023-04-14
 ------------------
@@ -183,6 +211,8 @@ Fixed
 - private join no longer drops Nulls on non-join columns when join_on_nulls=False
 - groupby average and variance no longer drops groups containing null values
 
+.. _v0.8.3:
+
 0.8.3 - 2023-03-08
 ------------------
 
@@ -190,6 +220,8 @@ Changed
 ~~~~~~~
 
 - Functions in :mod:`~.aggregations` now support :class:`~.ApproxDP`.
+
+.. _v0.8.2:
 
 0.8.2 - 2023-03-02
 ------------------
@@ -203,6 +235,8 @@ Changed
 - Updated `LimitKeysPerGroup` to require an output metric, and to support the
   `IfGroupedBy(grouping_column, SymmetricDifference())` output metric. Dropped the 'use_l2' parameter.
 
+.. _v0.8.1:
+
 0.8.1 - 2023-02-24
 ------------------
 
@@ -215,6 +249,8 @@ Changed
 ~~~~~~~
 
 - Faster implementation of discrete_gaussian_inverse_cmf.
+
+.. _v0.8.0:
 
 0.8.0 - 2023-02-14
 ------------------
@@ -233,6 +269,8 @@ Changed
   subclassing.
 
 
+.. _v0.7.0:
+
 0.7.0 - 2023-02-02
 ------------------
 
@@ -240,6 +278,8 @@ Added
 ~~~~~
 
 - Added measurement for adding Gaussian noise.
+
+.. _v0.6.3:
 
 0.6.3 - 2022-12-20
 ------------------
@@ -257,6 +297,8 @@ Fixed
 - Fixed a bug where PrivateJoin's privacy relation would only accept string keys in the d_in. It now accepts any type of key.
 
 
+.. _v0.6.2:
+
 0.6.2 - 2022-12-07
 ------------------
 
@@ -266,6 +308,8 @@ Fixed
 ~~~~~
 
 - :func:`~tmlt.core.utils.configuration.check_java11()` now has the correct behavior when Java is not installed.
+
+.. _v0.6.1:
 
 0.6.1 - 2022-12-05
 ------------------
@@ -282,6 +326,8 @@ Fixed
 -  Validation for ``SparkedGroupDataFrameDomain``\ s used to fail with a Spark ``AnalysisException`` in some environments.
    That should no longer happen.
 
+.. _v0.6.0:
+
 0.6.0 - 2022-11-14
 ------------------
 
@@ -291,6 +337,8 @@ Added
 -  Added new ``PrivateJoinOnKey`` transformation that works with ``AddRemoveKeys``.
 -  Added inverse CDF methods to noise mechanisms.
 
+.. _v0.5.1:
+
 0.5.1 - 2022-11-03
 ------------------
 
@@ -298,6 +346,8 @@ Fixed
 ~~~~~
 
 -  Domains and metrics make copies of mutable constructor arguments and return copies of mutable properties.
+
+.. _v0.5.0:
 
 0.5.0 - 2022-10-14
 ------------------
@@ -315,10 +365,14 @@ Fixed
    That should no longer happen.
 -  ``AddRemoveKeys`` now allows different names for the key column in each dataframe.
 
+.. _v0.4.3:
+
 0.4.3 - 2022-09-01
 ------------------
 
 -  Core now checks to see if the user is running Java 11 or higher. If they are, Core either sets the appropriate Spark options (if Spark is not yet running) or raises an informative exception (if Spark is running and configured incorrectly).
+
+.. _v0.4.2:
 
 0.4.2 - 2022-08-24
 ------------------
@@ -327,6 +381,8 @@ Changed
 ~~~~~~~
 
 -  Replaced uses of PySpark DataFrame’s ``intersect`` with inner joins. See https://issues.apache.org/jira/browse/SPARK-40181 for background.
+
+.. _v0.4.1:
 
 0.4.1 - 2022-07-25
 ------------------
@@ -345,6 +401,8 @@ Changed
 -  Fixed bug in ``ReplaceNulls`` to not allow replacing values for grouping column in ``IfGroupedBy``.
 -  Changed ``ReplaceNulls``, ``ReplaceNaNs``, and ``ReplaceInfs`` to only support specific ``IfGroupedBy`` metrics.
 
+.. _v0.3.2:
+
 0.3.2 - 2022-06-23
 ------------------
 
@@ -352,6 +410,8 @@ Changed
 ~~~~~~~
 
 -  Moved ``IMMUTABLE_TYPES`` from ``utils/testing.py`` to ``utils/type_utils.py`` to avoid importing nose when accessing ``IMMUTABLE_TYPES``.
+
+.. _v0.3.1:
 
 0.3.1 - 2022-06-23
 ------------------
@@ -362,6 +422,8 @@ Changed
 -  Fixed ``copy_if_mutable`` so that it works with containers that can’t be deep-copied.
 -  Reverted change from 0.3.0 “Add checks in ``ParallelComposition`` constructor to only permit L1/L2 over SymmetricDifference or AbsoluteDifference.”
 -  Temporarily disabled flaky statistical tests.
+
+.. _v0.3.0:
 
 0.3.0 - 2022-06-22
 ------------------
@@ -399,6 +461,8 @@ Removed
 -  Removed old examples from ``examples/``.
    Future examples will be added directly to the documentation.
 
+.. _v0.2.0:
+
 0.2.0 - 2022-04-12 (internal release)
 -------------------------------------
 
@@ -410,6 +474,8 @@ Added
 -  Future documentation will include any exceptions defined in this library.
 -  Added ``cleanup.remove_all_temp_tables()`` function, which will remove all temporary tables created by Core.
 -  Added new components ``DropNaNs``, ``DropNulls``, ``ReplaceNulls``, and ``ReplaceNaNs``.
+
+.. _v0.1.1:
 
 0.1.1 - 2022-02-24 (internal release)
 -------------------------------------
@@ -442,6 +508,8 @@ Removed
 -  Removed ``AddNoise``, ``AddLaplaceNoise``, ``AddGeometricNoise``, and ``AddDiscreteGaussianNoise`` from ``tmlt.core.measurements.pandas.series``.
 -  Removed ``SequentialComposition``, ``ParallelComposition`` and corresponding Queryables from ``tmlt.core.measurements.composition``.
 -  Removed ``tmlt.core.transformations.cache``.
+
+.. _v0.1.0:
 
 0.1.0 - 2022-02-14 (internal release)
 -------------------------------------
