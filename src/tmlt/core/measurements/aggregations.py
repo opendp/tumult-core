@@ -1353,13 +1353,21 @@ def create_variance_measurement(
             sod, sos, count = answers
             variance: Any
             if count <= 1:
-                variance = (
-                    midpoint_of_squared_measure_column - midpoint_of_measure_column**2
-                )
+                variance = np.nan
             else:
-                variance = (sos / count + midpoint_of_squared_measure_column) - (
-                    sod / count + midpoint_of_measure_column
-                ) ** 2
+                # The midpoint_of* variables are used to lower noise in the variance
+                # calculation. By normalizing the values based on the top and bottom of
+                # the measurement, the stability is reduced.
+
+                # This calculates sample variance, which is why all values are
+                # proportional to n-1 (ie. count - 1) instead of n.
+
+                variance = (
+                    sos / (count - 1)
+                    + (count / (count - 1)) * midpoint_of_squared_measure_column
+                ) - (sod / count + midpoint_of_measure_column) ** 2 * (
+                    count / (count - 1)
+                )
                 if variance < 0:
                     variance = 0
                 else:
@@ -1486,27 +1494,30 @@ def create_variance_measurement(
             variance_column,
             sf.when(
                 sf.col(count_column) <= 1,
-                sf.lit(midpoint_of_squared_measure_column)
-                - sf.lit(midpoint_of_measure_column) ** 2,
+                np.nan,
             ).otherwise(
                 sf.lit(
                     (
                         (
                             sf.col(sum_of_squared_deviations_column)
-                            / sf.col(count_column)
+                            / (sf.col(count_column) - 1)
                             + sf.lit(midpoint_of_squared_measure_column)
+                            * (sf.col(count_column) / (sf.col(count_column) - 1))
                         )
                         - (
                             sf.col(sum_of_deviations_column) / sf.col(count_column)
                             + sf.lit(midpoint_of_measure_column)
                         )
                         ** 2
+                        * (sf.col(count_column) / (sf.col(count_column) - 1))
                     )
                 )
             ),
         ).withColumn(
             variance_column,
-            sf.when(sf.col(variance_column) < 0.0, 0.0).otherwise(
+            sf.when(sf.col(variance_column) == np.nan, np.nan)
+            .when(sf.col(variance_column) < 0.0, 0.0)
+            .otherwise(
                 sf.least(
                     sf.col(variance_column),
                     sf.lit(
@@ -1520,6 +1531,7 @@ def create_variance_measurement(
                 )
             ),
         )
+
         if keep_intermediates:
             return df_with_all_columns
         return df_with_all_columns.drop(
