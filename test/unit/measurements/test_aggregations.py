@@ -3,13 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 import functools
+import random
 import unittest
-from typing import Any, Callable, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Generator, List, Optional, Tuple, Union, cast
 
+import numpy as np
+import pandas as pd
 import pytest
 import sympy as sp
 from parameterized import parameterized, parameterized_class
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import LongType, StringType, StructField, StructType
 
 from tmlt.core.domains.spark_domains import (
@@ -1530,3 +1533,182 @@ class TestBadDelta(unittest.TestCase):
         """Test error is raised for invalid deltas."""
         with self.assertRaises(ValueError):
             f(d_out=d_out)
+
+
+big_test_size = 1000
+datasets = [
+    pd.DataFrame({"A": ["x1"], "B": [2]}),
+    pd.DataFrame(
+        {
+            "A": random.choices(["x1", "x2", "x3"], k=big_test_size),
+            "B": random.sample(range(big_test_size * 10), k=big_test_size),
+        }
+    ),
+]
+
+
+# pylint: disable=redefined-outer-name
+
+
+# request is of class "FixtureRequest", which is imported from _pytest.fixtures
+# using type "Any" to avoid protected access.
+@pytest.fixture(
+    scope="module", params=datasets, ids=["One Row", f"{big_test_size} Rows"]
+)
+def spark_data(
+    request: Any,
+) -> Generator[Tuple[SparkSession, DataFrame, pd.DataFrame, Any], None, None]:
+    """This sets up a Spark session and dataset for testing each measurement to an
+    equivalent Pandas aggregation.
+
+    Args:
+        request: A Pandas DataFrame.
+    """
+    spark = SparkSession.builder.getOrCreate()
+    spark_df = spark.createDataFrame(request.param)
+    df_schema = StructType(
+        [
+            StructField("A", StringType(), nullable=False),
+            StructField("B", LongType(), nullable=False),
+        ]
+    )
+    yield spark, spark_df, request.param, df_schema
+
+
+def test_std(spark_data):
+    """Tests that the Pandas std equals Core's std measurement."""
+    _, spark_df, pd_df, df_schema = spark_data
+
+    input_domain = SparkDataFrameDomain.from_spark_schema(df_schema)
+    expected = pd_df["B"].std()
+
+    measurement_output = create_standard_deviation_measurement(
+        input_domain=input_domain,
+        input_metric=SymmetricDifference(),
+        measure_column="B",
+        upper=sp.Integer(big_test_size * 10),
+        lower=sp.Integer(0),
+        output_measure=PureDP(),
+        noise_mechanism=NoiseMechanism.LAPLACE,
+        d_in=sp.Integer(1),
+        d_out=ExactNumber.from_float(float("inf"), round_up=True),
+        keep_intermediates=False,
+    )(spark_df)
+
+    if expected > 0:
+        assert np.isclose(expected, measurement_output)
+    else:
+        # The std is null for a single data point.
+        assert np.isnan(measurement_output)
+
+
+def test_groupbystd(spark_data):
+    """Tests that the Pandas groupby std equals Core's groupby std measurement."""
+    spark, spark_df, pd_df, df_schema = spark_data
+
+    input_domain = SparkDataFrameDomain.from_spark_schema(df_schema)
+    expected = pd_df.groupby(["A"]).agg({"B": "std"})
+    df_keys = pd.DataFrame({"A": pd_df["A"].unique()})
+
+    group_keys = spark.createDataFrame(df_keys, schema=StructType([df_schema["A"]]))
+
+    measurement_output = create_standard_deviation_measurement(
+        input_domain=input_domain,
+        input_metric=SymmetricDifference(),
+        measure_column="B",
+        upper=sp.Integer(big_test_size * 10),
+        lower=sp.Integer(0),
+        output_measure=PureDP(),
+        noise_mechanism=NoiseMechanism.LAPLACE,
+        d_in=sp.Integer(1),
+        d_out=ExactNumber.from_float(float("inf"), round_up=True),
+        keep_intermediates=False,
+        groupby_transformation=GroupBy(
+            input_domain=input_domain,
+            input_metric=SymmetricDifference(),
+            use_l2=False,
+            group_keys=group_keys,
+        ),
+    )(spark_df)
+
+    expected_sorted = (
+        expected.reset_index().sort_values("A").rename(columns={"B": "std"})
+    )
+    output_sorted = (
+        measurement_output.withColumnRenamed("stddev(B)", "std")
+        .toPandas()
+        .sort_values("A")
+    )
+
+    pd.testing.assert_frame_equal(expected_sorted, output_sorted)
+
+
+def test_var(spark_data):
+    """Tests that the Pandas var equals Core's var measurement."""
+    _, spark_df, pd_df, df_schema = spark_data
+
+    input_domain = SparkDataFrameDomain.from_spark_schema(df_schema)
+    expected = pd_df["B"].var()
+
+    measurement_output = create_variance_measurement(
+        input_domain=input_domain,
+        input_metric=SymmetricDifference(),
+        measure_column="B",
+        upper=sp.Integer(big_test_size * 10),
+        lower=sp.Integer(0),
+        output_measure=PureDP(),
+        noise_mechanism=NoiseMechanism.LAPLACE,
+        d_in=sp.Integer(1),
+        d_out=ExactNumber.from_float(float("inf"), round_up=True),
+        keep_intermediates=False,
+    )(spark_df)
+
+    if expected > 0:
+        assert np.isclose(expected, measurement_output)
+    else:
+        # The variance is null for a single data point.
+        assert np.isnan(measurement_output)
+
+
+def test_groupbyvar(spark_data):
+    """Tests that the Pandas groupby var equals Core's groupby var measurement."""
+    spark, spark_df, pd_df, df_schema = spark_data
+
+    input_domain = SparkDataFrameDomain.from_spark_schema(df_schema)
+    expected = pd_df.groupby(["A"]).agg({"B": "var"})
+    df_keys = pd.DataFrame({"A": pd_df["A"].unique()})
+
+    group_keys = spark.createDataFrame(df_keys, schema=StructType([df_schema["A"]]))
+
+    measurement_output = create_variance_measurement(
+        input_domain=input_domain,
+        input_metric=SymmetricDifference(),
+        measure_column="B",
+        upper=sp.Integer(big_test_size * 10),
+        lower=sp.Integer(0),
+        output_measure=PureDP(),
+        noise_mechanism=NoiseMechanism.LAPLACE,
+        d_in=sp.Integer(1),
+        d_out=ExactNumber.from_float(float("inf"), round_up=True),
+        keep_intermediates=False,
+        groupby_transformation=GroupBy(
+            input_domain=input_domain,
+            input_metric=SymmetricDifference(),
+            use_l2=False,
+            group_keys=group_keys,
+        ),
+    )(spark_df)
+
+    expected_sorted = (
+        expected.reset_index().sort_values("A").rename(columns={"B": "var"})
+    )
+    output_sorted = (
+        measurement_output.withColumnRenamed("var(B)", "var")
+        .toPandas()
+        .sort_values("A")
+    )
+
+    pd.testing.assert_frame_equal(expected_sorted, output_sorted)
+
+
+# pylint: enable=redefined-outer-name

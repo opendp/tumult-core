@@ -12,6 +12,7 @@ Changed
   `d_in` and `d_out` are infinite.
 - Adjusted error messages related to spending privacy budgets in classes of type :class:`~.PrivacyBudget`.
 - Moved InsufficientBudgetError from :mod:`~.interactive_measurements` to :mod:`~.measures`.
+- Adjusted :meth:`tmlt.core.measurements.aggregations.create_variance_measurement` and :meth:`tmlt.core.measurements.aggregations.create_standard_deviation_measurement` to calculate sample variance and sample standard deviation instead of population variance and population standard deviation.
 - In :class:`~.GroupBy` and :class:`~.GroupedDataFrame` removed restriction on empty dataframes with non-empty columns.
 
 Fixed
