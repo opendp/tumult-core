@@ -1632,12 +1632,16 @@ def test_groupbystd(spark_data):
     )(spark_df)
 
     expected_sorted = (
-        expected.reset_index().sort_values("A").rename(columns={"B": "std"})
+        expected.reset_index()
+        .sort_values("A")
+        .rename(columns={"B": "std"})
+        .reset_index(drop=True)
     )
     output_sorted = (
         measurement_output.withColumnRenamed("stddev(B)", "std")
         .toPandas()
         .sort_values("A")
+        .reset_index(drop=True)
     )
 
     pd.testing.assert_frame_equal(expected_sorted, output_sorted)
@@ -1700,13 +1704,16 @@ def test_groupbyvar(spark_data):
     )(spark_df)
 
     expected_sorted = (
-        expected.reset_index().sort_values("A").rename(columns={"B": "var"})
+        expected.reset_index()
+        .sort_values("A")
+        .rename(columns={"B": "var"})
+        .reset_index(drop=True)
     )
     output_sorted = (
         measurement_output.withColumnRenamed("var(B)", "var")
         .toPandas()
         .sort_values("A")
-    )
+    ).reset_index(drop=True)
 
     pd.testing.assert_frame_equal(expected_sorted, output_sorted)
 
