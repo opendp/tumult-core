@@ -583,8 +583,8 @@ def prepare_release(session):
                 # 1.2.3 - 2020-01-01
                 # ------------------
                 anchor = f".. _v{version}:\n\n"
-                subsection = f"{version_header}\n{'-' * len(version_header)}\n"
                 version_header = f"{version} - {datetime.date.today()}"
+                subsection = f"{version_header}\n{'-' * len(version_header)}\n"
                 changelog_content[i] = anchor
                 changelog_content[i + 1] = subsection
                 break
