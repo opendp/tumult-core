@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+.. _v0.13.0:
+
+0.13.0 - 2024-04-03
+-------------------
+
 Changed
 ~~~~~~~
 - Updated :func:`~.calculate_noise_scale` to return a noise scale of 0 when both the
