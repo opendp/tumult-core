@@ -610,9 +610,8 @@ def post_release(session):
         session.log("Prerelease, skipping CHANGELOG.rst update...")
         return
     anchor_regex = (
-        r"^\.\. _v"
-        r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc)\.(0|[1-9]\d*))?"
-        r" - \d{4}-\d{2}-\d{2}:$"
+        r"^\.\. _v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+        r"(-(alpha|beta|rc)\.(0|[1-9]\d*))?:$"
     )
     # Find the latest release
     with Path("CHANGELOG.rst").open("r", encoding="utf-8") as fp:
