@@ -435,7 +435,7 @@ trigger_release:
         echo "Got unexpected HTTP status $http_status, exiting..."
         exit 1
       fi
-  timeout: 5m
+  timeout: 10m
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
