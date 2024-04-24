@@ -5,12 +5,16 @@
 
 import copy
 import re
+from threading import Lock
 from typing import Any, List, TypeVar
 
 import numpy as np
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, SparkSession
 
+from tmlt.core.utils.configuration import Config
 from tmlt.core.utils.type_utils import get_immutable_types
+
+_materialization_lock = Lock()
 
 
 class RNGWrapper:  # pylint: disable=too-few-public-methods
@@ -122,3 +126,26 @@ def escape_column_name(column_name: str) -> str:
         return f"`{column_name}`"
     else:
         return column_name
+
+
+def get_materialized_df(sdf: DataFrame, table_name: str) -> DataFrame:
+    """Returns a new DataFrame constructed after materializing.
+
+    Args:
+        sdf: DataFrame to be materialized.
+        table_name: Name to be used to refer to the table.
+            If a table with `table_name` already exists, an error is raised.
+    """
+    col_names = sdf.columns
+    # The following is necessary because saving in parquet format requires that column
+    # names do not contain any of these characters in " ,;{}()\\n\\t=".
+    sdf = sdf.toDF(*[str(i) for i in range(len(col_names))])
+    with _materialization_lock:
+        spark = SparkSession.builder.getOrCreate()
+        last_database = spark.catalog.currentDatabase()
+        spark.sql(f"CREATE DATABASE IF NOT EXISTS `{Config.temp_db_name()}`;")
+        spark.catalog.setCurrentDatabase(Config.temp_db_name())
+        sdf.write.saveAsTable(table_name)
+        materialized_df = spark.read.table(table_name).toDF(*col_names)
+        spark.catalog.setCurrentDatabase(last_database)
+        return materialized_df

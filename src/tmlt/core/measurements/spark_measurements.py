@@ -12,14 +12,13 @@ for more information.
 import uuid
 from abc import abstractmethod
 from itertools import accumulate
-from threading import Lock
 from typing import Any, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
 import sympy as sp
 from pyspark.ml.feature import Bucketizer
-from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import DataFrame, SparkSession  # pylint: disable=unused-import
 from pyspark.sql import functions as sf
 from typeguard import typechecked
 
@@ -45,16 +44,13 @@ from tmlt.core.measurements.pandas_measurements.dataframe import Aggregate
 from tmlt.core.measurements.pandas_measurements.series import AddNoiseToSeries
 from tmlt.core.measures import ApproxDP, PureDP
 from tmlt.core.metrics import OnColumn, RootSumOfSquared, SumOf, SymmetricDifference
-from tmlt.core.utils.configuration import Config
 from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
-from tmlt.core.utils.misc import get_nonconflicting_string
+from tmlt.core.utils.misc import get_materialized_df, get_nonconflicting_string
 from tmlt.core.utils.validation import validate_exact_number
 
 # pylint: disable=no-member
-
-_materialization_lock = Lock()
 
 
 class SparkMeasurement(Measurement):
@@ -846,33 +842,10 @@ def _get_sanitized_df(sdf: DataFrame) -> DataFrame:
     # of partitions of the output DataFrame is determined randomly.
     # for each row, its partition number (the partition index that the row is
     # distributed to) is determined as: `hash(partitioning_column) % num_partitions`
-    return _get_materialized_df(
+    return get_materialized_df(
         sdf.withColumn(partitioning_column, sf.rand())
         .repartition(partitioning_column)
         .drop(partitioning_column)
         .sortWithinPartitions(*sdf.columns),
         table_name=f"table_{uuid.uuid4().hex}",
     )
-
-
-def _get_materialized_df(sdf: DataFrame, table_name: str) -> DataFrame:
-    """Returns a new DataFrame constructed after materializing.
-
-    Args:
-        sdf: DataFrame to be materialized.
-        table_name: Name to be used to refer to the table.
-            If a table with `table_name` already exists, an error is raised.
-    """
-    col_names = sdf.columns
-    # The following is necessary because saving in parquet format requires that column
-    # names do not contain any of these characters in " ,;{}()\\n\\t=".
-    sdf = sdf.toDF(*[str(i) for i in range(len(col_names))])
-    with _materialization_lock:
-        spark = SparkSession.builder.getOrCreate()
-        last_database = spark.catalog.currentDatabase()
-        spark.sql(f"CREATE DATABASE IF NOT EXISTS `{Config.temp_db_name()}`;")
-        spark.catalog.setCurrentDatabase(Config.temp_db_name())
-        sdf.write.saveAsTable(table_name)
-        materialized_df = spark.read.table(table_name).toDF(*col_names)
-        spark.catalog.setCurrentDatabase(last_database)
-        return materialized_df
