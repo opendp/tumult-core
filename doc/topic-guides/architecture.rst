@@ -5,7 +5,7 @@ Tumult Core Architecture
 
 ..
     SPDX-License-Identifier: CC-BY-SA-4.0
-    Copyright Tumult Labs 2023
+    Copyright Tumult Labs 2024
 
 .. testsetup::
 

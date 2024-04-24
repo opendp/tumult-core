@@ -3,6 +3,10 @@
 Privacy Policy
 ==============
 
+..
+    SPDX-License-Identifier: CC-BY-SA-4.0
+    Copyright Tumult Labs 2024
+
 Effective Date: Aug 26th, 2022
 
 Welcome

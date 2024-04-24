@@ -106,7 +106,8 @@ in the input dictionary results in both "a" and "a,1" being removed in the outpu
 dictionary.
 """
 
-# <placeholder: boilerplate>
+# SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2024
 
 from typing import Any, Dict, List, Optional, Tuple, cast
 

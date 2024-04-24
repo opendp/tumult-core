@@ -10,32 +10,23 @@ environment (i.e. with nox's --no-venv option) or in a nox-managed virtualenv
 indicate this in their docstrings.
 """
 
-# TODO(#2140): Once support for is added to nox-poetry (see
-#   https://github.com/cjolowicz/nox-poetry/issues/663), some of the
-#   installation lists here can be rewritten in terms of dependency groups,
-#   making the pyproject file more of a single source for information about
-#   dependencies.
-
-import datetime
-import os
-import re
-import subprocess
-from functools import wraps
-from pathlib import Path
-from typing import Dict, List
-
-# The distinction between these two session types is that poetry_session
-# automatically limits installations to the version numbers in the Poetry lock
-# file, while nox_session does not. Otherwise, their interfaces should be
-# identical.
 import nox
+import os
+import subprocess
 from nox import session as nox_session
 from nox_poetry import session as poetry_session
-
-#### Project-specific settings ####
+from pathlib import Path
+from tmlt.nox_utils import SessionBuilder
+from tmlt.nox_utils.dependencies import install, show_installed
+from tmlt.nox_utils.environment import with_clean_workdir
 
 PACKAGE_NAME = "tmlt.core"
 """Name of the package."""
+PACKAGE_VERSION= (
+    subprocess.run(["poetry", "version", "-s"], capture_output=True, check=True)
+    .stdout.decode("utf-8")
+    .strip()
+)
 PACKAGE_SOURCE_DIR = "src/tmlt/core"
 """Relative path from the project root to its source code."""
 # TODO(#2177): Once we have a better way to self-test our code, use it here in
@@ -49,67 +40,182 @@ MIN_COVERAGE = 75
 """For test suites where we track coverage (i.e. the fast tests and the full
 test suite), fail if test coverage falls below this percentage."""
 
-DEPENDENCY_OVERRIDES: Dict[str, Dict] = {}
-"""Configuration for overriding dependency versions. If the top-level key is set
-as an environment variable, format the package key using package_params, then
-install the result with pip_extra_args set. See _install_overrides.
+DEPENDENCY_MATRIX = {
+    name: {
+        # The Python minor version to run with
+        "python": python,
+        # All other entries take PEP440 version specifiers for the package named in
+        # the key -- see https://peps.python.org/pep-0440/#version-specifiers
+        "pyspark[sql]": pyspark,
+        "sympy": sympy,
+        "pandas": pandas,
+        "numpy": numpy,
+        "scipy": scipy,
+        "randomgen": randomgen,
+        "pyarrow": pyarrow,
+    }
+    for (name, python, pyspark, sympy, pandas, numpy, scipy, randomgen, pyarrow) in [
+        # fmt: off
+          # name
+          # python      pyspark     sympy       pandas
+          # numpy       scipy       randomgen   pyarrow
+        (
+            "3.7-oldest",
+            "3.7",      "==3.0.0",  "==1.8",    "==1.2.0",
+            "==1.21.0", "==1.4.1",  "==1.19.0", "==6.0.1",
+        ),
+        (
+            "3.7-pyspark3.1",
+            "3.7",      "==3.1.1",  "==1.9",    "==1.3.5",
+            "==1.21.6", "==1.7.3",  "==1.23.1", "==12.0.1",
+        ),
+        (
+            "3.7-pyspark3.2",
+            "3.7",      "==3.2.0",  "==1.9",    "==1.3.5",
+            "==1.21.6", "==1.7.3",  "==1.23.1", "==6.0.1",
+        ),
+        (
+            "3.7-newest",
+            "3.7",      "==3.3.1",  "==1.9",    "==1.3.5",
+            "==1.21.6", "==1.7.3",  "==1.23.1", "==12.0.1",
+        ),
+        (
+            "3.8-oldest",
+            "3.8",      "==3.0.0",  "==1.8",    "==1.2.0",
+            "==1.22.0", "==1.6.0",  "==1.19.0", "==10.0.1",
+        ),
+        (
+            "3.8-newest",
+            "3.8",      "==3.5.0",  "==1.9",    "==1.5.3",
+            "==1.22.4", "==1.7.3",  "==1.26.0", "==13.0.0",
+        ),
+        (
+            "3.9-oldest",
+            "3.9",      "==3.0.0",  "==1.8",    "==1.2.0",
+            "==1.23.2", "==1.6.0",  "==1.20.0", "==10.0.1",
+        ),
+        (
+            "3.9-newest",
+            "3.9",      "==3.5.0",  "==1.9",    "==1.5.3",
+            "==1.26.1", "==1.11.3", "==1.26.0", "==13.0.0",
+        ),
+        (
+            "3.10-oldest",
+            "3.10",     "==3.0.0",  "==1.8",    "==1.4.0",
+            "==1.23.2", "==1.8.0",  "==1.23.0", "==10.0.1",
+        ),
+        (
+            "3.10-newest",
+            "3.10",     "==3.5.0",  "==1.9",    "==1.5.3",
+            "==1.26.1", "==1.11.3", "==1.26.0", "==13.0.0",
+        ),
+        (
+            "3.11-oldest",
+            "3.11",     "==3.4.0",  "==1.8",    "==1.5.0",
+            "==1.23.2", "==1.9.2",  "==1.26.0", "==10.0.1",
+        ),
+        (
+            "3.11-newest",
+            "3.11",     "==3.5.0",  "==1.9",    "==1.5.3",
+            "==1.26.1", "==1.11.3", "==1.26.0", "==13.0.0",
+        ),
+        # fmt: on
+    ]
+}
 
-Note that if the package is given as a URL with a username and password, that
-username and password may be printed in the nox output.
-"""
-# This note about credentials for dependency URLs is not currently relevant, but
-# if it becomes a problem _install_overrides can be modified to write
-# dependencies out to a requirements file and install from there.
+LICENSE_IGNORE_GLOBS = [
+    r".*\.ci.*",
+    r".*\.gitlab.*",
+    r".*\.ico",
+    r".*\.ipynb",
+    r".*\.json",
+    r".*\.png",
+    r".*\.svg",
+    r"ext\/.*"
+]
 
+LICENSE_IGNORE_FILES = [
+    r".gitignore",
+    r".gitlab-ci.yml",
+    r".pipeline_handlers",
+    r"CHANGELOG.rst",
+    r"CONTRIBUTING.md",
+    r"LICENSE",
+    r"LICENSE.docs",
+    r"Makefile",
+    r"NOTICE",
+    r"README.md",
+    r"changelog.rst",
+    r"class.rst",
+    r"module.rst",
+    r"noxfile.py",
+    r"poetry.lock",
+    r"py.typed",
+    r"pyproject.toml",
+    r"test_requirements.txt",
+]
 
-# To the greatest extent possible, avoid making project-specific modifications
-# to the rest of this file, except the project-specific sessions at the
-# end. Make sure any changes made there are propagated to other projects that
-# use this same file.
+LICENSE_KEYWORDS = ["Apache-2.0", "CC-BY-SA-4.0"]
 
-#### Additional settings ####
+ILLEGAL_WORDS_IGNORE_GLOBS = LICENSE_IGNORE_GLOBS
+ILLEGAL_WORDS_IGNORE_FILES = LICENSE_IGNORE_FILES
+ILLEGAL_WORDS = []
+
+AUDIT_VERSIONS = ["3.8", "3.9", "3.10", "3.11"]
+AUDIT_SUPPRESSIONS = [
+    "PYSEC-2023-228",
+    # Affects: pip<23.3
+    # Notice: Command Injection in pip when used with Mercurial
+    # Link: https://github.com/advisories/GHSA-mq26-g339-26xf
+    # Impact: None, we don't use Mercurial, and in any case we assume that users will
+    #         have their own pip installations -- it is not a dependency of Core.
+]
 
 CWD = Path(".").resolve()
-CODE_DIRS = [
-    str(p) for p in [Path(PACKAGE_SOURCE_DIR).resolve(), Path("test").resolve()]
-]
-IN_CI = bool(os.environ.get("CI"))
-PACKAGE_VERSION = (
-    subprocess.run(["poetry", "version", "-s"], capture_output=True)
-    .stdout.decode("utf-8")
-    .strip()
-)
-"""The current full package version, according to Poetry."""
 
-DEPENDENCY_ARG_NAMES = "python,pyspark,sympy,pandas,numpy,scipy,randomgen,pyarrow"
-DEPENDENCY_ARG_VALUES = [
-    ("3.7", "3.0.0", "1.8", "1.2.0", "1.21.0", "1.4.1", "1.19.0", "6.0.1"),
-    ("3.7", "3.1.1", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1", "12.0.1"),
-    ("3.7", "3.2.0", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1", "6.0.1"),
-    ("3.7", "3.3.1", "1.9", "1.3.5", "1.21.6", "1.7.3", "1.23.1", "12.0.1"),
-    ("3.8", "3.0.0", "1.8", "1.2.0", "1.22.0", "1.6.0", "1.19.0", "10.0.1"),
-    ("3.8", "3.5.0", "1.9", "1.5.3", "1.22.4", "1.7.3", "1.26.0", "13.0.0"),
-    ("3.9", "3.0.0", "1.8", "1.2.0", "1.23.2", "1.6.0", "1.20.0", "10.0.1"),
-    ("3.9", "3.5.0", "1.9", "1.5.3", "1.26.1", "1.11.3", "1.26.0", "13.0.0"),
-    ("3.10", "3.0.0", "1.8", "1.4.0", "1.23.2", "1.8.0", "1.23.0", "10.0.1"),
-    ("3.10", "3.5.0", "1.9", "1.5.3", "1.26.1", "1.11.3", "1.26.0", "13.0.0"),
-    ("3.11", "3.4.0", "1.8", "1.5.0", "1.23.2", "1.9.2", "1.26.0", "10.0.1"),
-    ("3.11", "3.5.0", "1.9", "1.5.3", "1.26.1", "1.11.3", "1.26.0", "13.0.0"),
-]
-DEPENDENCY_ARG_IDS = [
-    "3.7-oldest",
-    "3.7-pyspark3.1",
-    "3.7-pyspark3.2",
-    "3.7-newest",
-    "3.8-oldest",
-    "3.8-newest",
-    "3.9-oldest",
-    "3.9-newest",
-    "3.10-oldest",
-    "3.10-newest",
-    "3.11-oldest",
-    "3.11-newest",
-]
+def install_overrides(session):
+    """Custom logic run after installing the current package."""
+    # Install Core from dist/, if it exists there
+    if os.environ.get("CORE_WHEEL_DIR"):
+        core_path = Path(os.environ["CORE_WHEEL_DIR"]).resolve()
+        core_wheels = list(core_path.glob("*tmlt_core*-cp37*"))
+        if len(core_wheels) == 0:
+            raise AssertionError(
+                "Expected a core wheel since CORE_WHEEL_DIR was set "
+                f"(to {os.environ.get('CORE_WHEEL_DIR')}), but didn't find any. "
+                f"Instead, found these files in {str(core_path)}: "
+                "\n".join(list(core_path.glob("*")))
+            )
+        # Poetry is going to expect, and require, Core version X.Y.Z (ex. "0.6.2"),
+        # but the Gitlab-built Core will have a version number
+        # X.Y.Z-<some other stuff>-<git commit hash>
+        # (ex. "0.6.2-post11+ea346f3")
+        # This overrides Poetry's dependencies with our own
+        session.poetry.session.install(core_wheels[0])
+
+_builder = SessionBuilder(
+    PACKAGE_NAME,
+    Path(PACKAGE_SOURCE_DIR).resolve(),
+    options={
+        "code_dirs": [Path(PACKAGE_SOURCE_DIR).resolve(), Path("test").resolve()],
+        "install_overrides": install_overrides,
+        "smoketest_script": SMOKETEST_SCRIPT,
+        "dependency_matrix": DEPENDENCY_MATRIX,
+        "license_exclude_globs": LICENSE_IGNORE_GLOBS,
+        "license_exclude_files": LICENSE_IGNORE_FILES,
+        "license_keyword_patterns": LICENSE_KEYWORDS,
+        "check_copyright": True,
+        "illegal_words_exclude_globs": ILLEGAL_WORDS_IGNORE_GLOBS,
+        "illegal_words_exclude_files": ILLEGAL_WORDS_IGNORE_FILES,
+        "illegal_words": ILLEGAL_WORDS,
+        "audit_versions": AUDIT_VERSIONS,
+        "audit_suppressions": AUDIT_SUPPRESSIONS,
+        "minimum_coverage": MIN_COVERAGE,
+        "coverage_module": "tmlt.core",
+        "parallel_tests": False,
+    },
+)
+
 BENCHMARK_ARG_NAMES = "benchmark,timeout"
 BENCHMARK_ARG_VALUES = [
     ("private_join", 35),
@@ -121,288 +227,66 @@ BENCHMARK_ARG_VALUES = [
     ("public_join", 14),
 ]
 
-#### Utility functions ####
+_builder.black()
+_builder.isort()
+_builder.mypy()
+_builder.pylint()
+_builder.pydocstyle()
+_builder.license_check()
+_builder.illegal_words_check()
+_builder.audit()
 
+_builder.test()
+_builder.test_doctest()
+_builder.test_demos()
+_builder.test_smoketest()
+_builder.test_fast()
+_builder.test_slow()
+_builder.test_dependency_matrix()
 
-def _install_overrides(session):
-    """Handles overriding dependency versions, per DEPENDENCY_OVERRIDES."""
-    for dep in DEPENDENCY_OVERRIDES:
-        if os.environ.get(dep):
-            package_params = DEPENDENCY_OVERRIDES[dep]["package_params"]
-            package = DEPENDENCY_OVERRIDES[dep]["package"].format(**package_params)
-            session.install(package, *DEPENDENCY_OVERRIDES[dep]["pip_extra_args"])
+_builder.docs_linkcheck()
+_builder.docs_doctest()
+_builder.docs()
 
+_builder.release_test()
+_builder.release_smoketest()
 
-def install(*decorator_args, **decorator_kwargs):
-    """Install packages into the test virtual environment.
+_builder.prepare_release()
+_builder.post_release()
 
-    Installs one or more given packages, if the current environment supports
-    installing packages. Parameters to the decorator are passed directly to
-    nox's session.install, so anything valid there can be passed to the
-    decorator.
+ids = []
+dependency_pythons = []
+dependency_packages = []
+for config_id, config in DEPENDENCY_MATRIX.items():
+    ids.append(config_id)
+    try:
+        dependency_pythons.append(config.pop("python"))
+    except KeyError as e:
+        raise RuntimeError(
+            "Dependency matrix configurations must specify a Python minor "
+            "version"
+        ) from e
+    dependency_packages.append(config)
 
-    The difference between using this decorator and using a normal
-    session.install call is that this decorator will automatically skip
-    installation when nox is not running tests in a virtual environment, rather
-    than raising an error. This is helpful for writing sessions that can be used
-    either in sandboxed environments in the CI or directly in developers'
-    working environments.
+@poetry_session()
+@install("cibuildwheel")
+def build(session):
+    """Build packages for distribution.
+
+    Positional arguments given to nox are passed to the cibuildwheel command,
+    allowing it to be run outside of the CI if needed.
     """
-
-    def decorator(f):
-        @wraps(f)
-        def inner(session, *args, **kwargs):
-            if session.virtualenv.is_sandboxed:
-                session.install(*decorator_args, **decorator_kwargs)
-            else:
-                session.log("Skipping package installation, non-sandboxed environment")
-            return f(session, *args, **kwargs)
-
-        return inner
-
-    return decorator
-
-
-def install_package(f):
-    """Install the main package a dev wheel into the test virtual environment.
-
-    Installs the package from this repository and all its dependencies, if the
-    current environment supports installing packages. Assumes that wheels for
-    the current dev version (from `poetry version`) are already present in
-    `dist/`.
-
-    Similar to the @install() decorator, this decorator automatically skips
-    installation in non-sandboxed environments.
-    """
-
-    @wraps(f)
-    def inner(session, *args, **kwargs):
-        if session.virtualenv.is_sandboxed:
-            session.install(
-                f"{PACKAGE_NAME}=={PACKAGE_VERSION}",
-                "--find-links",
-                f"{CWD}/dist/",
-                "--only-binary",
-                PACKAGE_NAME,
-            )
-            _install_overrides(session)
-        else:
-            session.log("Skipping package installation, non-sandboxed environment")
-        return f(session, *args, **kwargs)
-
-    return inner
-
-
-def show_installed(f):
-    """Show a list of installed packages in the active environment for debugging.
-
-    By default, the package list is only shown when running in the CI, as that
-    is where it is most difficult to debug. However, the show_installed option
-    can be passed to any function with this decorator to force showing or not
-    showing it.
-    """
-
-    @wraps(f)
-    def inner(session, *args, show_installed: bool = None, **kwargs):
-        show_installed = show_installed if show_installed is not None else IN_CI
-        if show_installed:
-            session.run("pip", "freeze")
-        return f(session, *args, **kwargs)
-
-    return inner
-
-
-#### Linting ####
-
-# Some testing-related packages need to be installed for linting because they
-# are imported in the tests, and so are required for some of the linters to work
-# correctly.
-
-
-@poetry_session(tags=["lint"], python="3.7")
-@install_package
-@install("black")
-@show_installed
-def black(session):
-    """Run black. If the --check argument is given, only check, don't make changes."""
-    check_flags = ["--check", "--diff"] if "--check" in session.posargs else []
-    session.run("black", *check_flags, *CODE_DIRS)
-
-
-@poetry_session(tags=["lint"], python="3.7")
-@install_package
-@install("isort[pyproject]", "pytest", "parameterized")
-@show_installed
-def isort(session):
-    """Run isort. If the --check argument is given, only check, don't make changes."""
-    check_flags = ["--check-only", "--diff"] if "--check" in session.posargs else []
-    session.run("isort", *check_flags, *CODE_DIRS)
-
-
-@poetry_session(tags=["lint"], python="3.7")
-@install_package
-@install("mypy")
-@show_installed
-def mypy(session):
-    """Run mypy."""
-    session.run("mypy", "--package", PACKAGE_NAME, "--package", "test")
-
-
-@poetry_session(tags=["lint"], python="3.7")
-@install_package
-@install("pylint", "pytest", "parameterized")
-@show_installed
-def pylint(session):
-    """Run pylint."""
-    session.run("pylint", "--score=no", *CODE_DIRS)
-
-
-@poetry_session(tags=["lint"], python="3.7")
-@install_package
-@install("pydocstyle[toml]")
-@show_installed
-def pydocstyle(session):
-    """Run pydocstyle."""
-    session.run("pydocstyle", *CODE_DIRS)
-
-
-#### Tests ####
-
-
-@install_package
-@install("pytest", "parameterized", "pytest-cov")
-@show_installed
-def _test(
-    session,
-    test_dirs: List[str] = None,
-    min_coverage: int = MIN_COVERAGE,
-    extra_args: List[str] = None,
-):
-    test_paths = test_dirs or CODE_DIRS
-    extra_args = extra_args or []
-    # If the user passes args, pass them on to pytest. The main reason this is
-    # useful is for specifying a particular subset of tests to run, so clear
-    # test_paths to allow that use case.
-    if session.posargs:
-        test_paths = []
-        extra_args.extend(session.posargs)
-
-    test_options = [
-        "-r fEs",
-        "--verbose",
-        "--disable-warnings",
-        f"--junitxml={CWD}/junit.xml",
-        # Show runtimes of the 10 slowest tests, for later comparison if needed.
-        "--durations=10",
-        # Collect coverage data, enforce minimum, output reports
-        f"--cov={PACKAGE_NAME}",
-        f"--cov-fail-under={min_coverage}",
-        "--cov-report=term",
-        f"--cov-report=html:{CWD}/coverage/",
-        "--cov-report=xml:coverage.xml",
-        # Any extra args
-        *extra_args,
-        # The files to be tested
-        *[str(p) for p in test_paths],
-    ]
-    session.run("pytest", *test_options)
-
-
-@install_package
-@show_installed
-def _smoketest(session):
-    """Run a no-extra-dependencies smoketest on the package."""
-    session.run("python", "-c", SMOKETEST_SCRIPT)
-
-
-# Only this session, test_doctest, and test_examples one get the 'test' tag,
-# because the others are just subsets of this session so there's no need to run
-# them again.
-@poetry_session(tags=["test"], python="3.7")
-def test(session):
-    """Run all tests."""
-    _test(session)
-
-
-@poetry_session(python="3.7")
-def test_fast(session):
-    """Run tests without the slow attribute."""
-    _test(session, extra_args=["-m", "not slow"])
-
-
-@poetry_session(python="3.7")
-def test_slow(session):
-    """Run tests with the slow attribute."""
-    _test(session, extra_args=["-m", "slow"], min_coverage=0)
-
-
-@poetry_session(tags=["test"], python="3.7")
-def test_doctest(session):
-    """Run doctest on code examples in docstrings."""
-    _test(
-        session,
-        test_dirs=[Path(PACKAGE_SOURCE_DIR).resolve()],
-        min_coverage=0,
-        extra_args=["--doctest-modules"],
-    )
-
-
-@poetry_session(tags=["test"])
-def test_smoketest(session):
-    """Smoke test a wheel as it would be installed on a user's machine."""
-    _smoketest(session)
-
-
-@poetry_session(tags=["test"], python="3.7")
-@install_package
-@install("notebook", "nbconvert")
-@show_installed
-def test_examples(session):
-    """Run all examples."""
-    examples_path = CWD / "examples"
-    if not examples_path.exists():
-        session.error("No examples directory found, nothing to run")
-    examples_py = []
-    examples_ipynb = []
-    unknown = []
-    ignored = []
-    for f in examples_path.iterdir():
-        if f.is_file and f.suffix == ".py":
-            examples_py.append(f)
-        elif f.is_file and f.suffix == ".ipynb":
-            if ".nbconvert" not in f.suffixes:
-                examples_ipynb.append(f)
-            else:
-                ignored.append(f)
-        else:
-            unknown.append(f)
-    for py in examples_py:
-        session.run("python", str(py))
-    for nb in examples_ipynb:
-        session.run("jupyter", "nbconvert", "--to=notebook", "--execute", str(nb))
-    if ignored:
-        session.log(f"Ignored: {', '.join(str(f) for f in ignored)}")
-    if unknown:
-        session.warn(
-            f"Found unknown files in examples: {', '.join(str(f) for f in unknown)}"
-        )
-
-
-### Test various dependency configurations ###
-# Test each with oldest and newest allowable deps. Typeguard and typing-extensions
-# excluded because all of the allowed versions in pyproject.toml claim support
-# for all allowable python versions.
-
+    session.run("poetry", "build", "--format", "sdist", external=True)
+    session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
 
 @nox_session
-@install("pytest", "parameterized", "pytest-cov")
+@with_clean_workdir
 @nox.parametrize(
-    DEPENDENCY_ARG_NAMES,
-    DEPENDENCY_ARG_VALUES,
-    ids=DEPENDENCY_ARG_IDS,
+    "python,packages", zip(dependency_pythons, dependency_packages), ids=ids
 )
-def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen, pyarrow):
+def benchmark_multi_deps(session, packages):
     """Run tests using various dependencies."""
+    session.log(f"Session name: {session.name}")
     session.install(
         f"{PACKAGE_NAME}=={PACKAGE_VERSION}",
         "--find-links",
@@ -410,267 +294,21 @@ def test_multi_deps(session, pyspark, sympy, pandas, numpy, scipy, randomgen, py
         "--only-binary",
         PACKAGE_NAME,
     )
-    session.install(
-        f"pyspark[sql]=={pyspark}",
-        f"sympy=={sympy}",
-        f"pandas=={pandas}",
-        f"numpy=={numpy}",
-        f"scipy=={scipy}",
-        f"randomgen=={randomgen}",
-        f"pyarrow=={pyarrow}",
-    )
-    session.run("pip", "freeze")
-
-    test_paths = CODE_DIRS
-    extra_args = []
-    # If the user passes args, pass them on to pytest. The main reason this is
-    # useful is for specifying a particular subset of tests to run, so clear
-    # test_paths to allow that use case.
-    if session.posargs:
-        test_paths = []
-        extra_args.extend(session.posargs)
-
-    test_options = [
-        "-m",
-        "not slow",
-        "-r fEs",
-        "--verbose",
-        "--disable-warnings",
-        f"--junitxml={CWD}/junit.xml",
-        # Show runtimes of the 10 slowest tests, for later comparison if needed.
-        "--durations=10",
-        # Collect coverage data, enforce minimum, output reports
-        f"--cov={PACKAGE_NAME}",
-        "--cov-report=term",
-        f"--cov-report=html:{CWD}/coverage/",
-        "--cov-report=xml:coverage.xml",
-        # Any extra args
-        *extra_args,
-        # The files to be tested
-        *[str(p) for p in test_paths],
-    ]
-    session.run("pytest", *test_options)
-
-
-@nox_session
-@install("pytest")
-@nox.parametrize(
-    DEPENDENCY_ARG_NAMES,
-    DEPENDENCY_ARG_VALUES,
-    ids=DEPENDENCY_ARG_IDS,
-)
-def benchmark_multi_deps(
-    session, pyspark, sympy, pandas, numpy, scipy, randomgen, pyarrow
-):
-    """Run tests using various dependencies."""
-    session.install(
-        f"{PACKAGE_NAME}=={PACKAGE_VERSION}",
-        "--find-links",
-        f"{CWD}/dist/",
-        "--only-binary",
-        PACKAGE_NAME,
-    )
-    session.install(
-        f"pyspark[sql]=={pyspark}",
-        f"sympy=={sympy}",
-        f"pandas=={pandas}",
-        f"numpy=={numpy}",
-        f"scipy=={scipy}",
-        f"randomgen=={randomgen}",
-        f"pyarrow=={pyarrow}",
-    )
+    session.install(*[pkg + version for pkg, version in packages.items()])
     session.run("pip", "freeze")
 
     (CWD / "benchmark_output").mkdir(exist_ok=True)
     session.log("Exit code 124 indicates a timeout, others are script errors")
     # If we want to run benchmarks on non-Linux platforms this will probably
     # have to be reworked, but it's fine for now.
-    for benchmark, timeout in BENCHMARK_ARG_VALUES:
+    for script, timeout in BENCHMARK_ARG_VALUES:
         session.run(
             "timeout",
             f"{timeout}m",
             "python",
-            f"{CWD}/benchmark/benchmark_{benchmark}.py",
+            f"{CWD}/benchmark/benchmark_{script}.py",
             external=True,
         )
-
-
-#### Documentation ####
-
-
-@install_package
-@install(
-    "pandoc",
-    "pydata-sphinx-theme",
-    "scanpydoc",
-    "sphinx",
-    "sphinx-autoapi",
-    "sphinx-autodoc-typehints",
-    "sphinx-copybutton",
-    "sphinx-panels",
-    "sphinxcontrib-bibtex",
-    "sphinxcontrib-images",
-    # Needed to clear up some warnings when it is imported
-    "pytest",
-)
-@show_installed
-def _run_sphinx(session, builder: str):
-    sphinx_options = ["-n", "-W", "--keep-going"]
-    session.run("sphinx-build", "doc/", "public/", f"-b={builder}", *sphinx_options)
-
-
-@poetry_session(tags=["docs"], python="3.7")
-def docs_linkcheck(session):
-    """Run linkcheck on docs."""
-    _run_sphinx(session, "linkcheck")
-
-
-@poetry_session(tags=["docs"], python="3.7")
-@install("matplotlib", "seaborn")
-def docs_doctest(session):
-    """Run doctest on code examples in documentation."""
-    _run_sphinx(session, "doctest")
-
-
-@poetry_session(tags=["docs"], python="3.7")
-def docs(session):
-    """Generation HTML documentation."""
-    _run_sphinx(session, "html")
-
-
-#### Release management ####
-
-
-@nox_session(python=None)
-def prepare_release(session):
-    """Update files in preparation for a release.
-
-    The version number for the new release should be in the VERSION environment
-    variable.
-    """
-    version = os.environ.get("VERSION")
-    if not version:
-        session.error("VERSION not set, unable to prepare release")
-
-    # Check version number against our allowed version format. This matches a
-    # subset of semantic versions that closely matches PEP440 versions. Some
-    # examples include: 0.1.2, 1.2.3-alpha.2, 1.3.0-rc.1
-    version_regex = (
-        r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc)\.(0|[1-9]\d*))?$"
-    )
-    if not re.match(version_regex, version):
-        session.error(f"VERSION {version} is not a valid version number.")
-    session.debug(f"Preparing release {version}")
-
-    # Replace "Unreleased" section header in changelog for non-prerelease
-    # releases. Between the base version and prerelease number is the only place
-    # a hyphen can appear in the version number, so just checking for that
-    # indicates whether a version is a prerelease.
-    is_pre_release = "-" in version
-    if not is_pre_release:
-        session.log("Updating CHANGELOG.rst unreleased version...")
-        with Path("CHANGELOG.rst").open("r", encoding="utf-8") as fp:
-            changelog_content = fp.readlines()
-        for i, content in enumerate(changelog_content):
-            if re.match("^Unreleased$", content):
-                # BEFORE
-                # Unreleased
-                # ----------
-
-                # AFTER
-                # .. _v1.2.3:
-                #
-                # 1.2.3 - 2020-01-01
-                # ------------------
-                anchor = f".. _v{version}:\n\n"
-                version_header = f"{version} - {datetime.date.today()}"
-                subsection = f"{version_header}\n{'-' * len(version_header)}\n"
-                changelog_content[i] = anchor
-                changelog_content[i + 1] = subsection
-                break
-        else:
-            session.error(
-                "Renaming unreleased section in changelog failed, "
-                "unable to find matching line"
-            )
-        with Path("CHANGELOG.rst").open("w", encoding="utf-8") as fp:
-            fp.writelines(changelog_content)
-    else:
-        session.log("Prerelease, skipping CHANGELOG.rst update...")
-
-
-@nox_session(python=None)
-def post_release(session):
-    """Update files after a release."""
-    version = os.environ.get("VERSION")
-    if not version:
-        session.error("VERSION not set, unable to update files post release")
-    is_pre_release = "-" in version
-    if is_pre_release:
-        session.log("Prerelease, skipping CHANGELOG.rst update...")
-        return
-    anchor_regex = (
-        r"^\.\. _v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
-        r"(-(alpha|beta|rc)\.(0|[1-9]\d*))?:$"
-    )
-    # Find the latest release
-    with Path("CHANGELOG.rst").open("r", encoding="utf-8") as fp:
-        changelog_content = fp.readlines()
-        for i, content in enumerate(changelog_content):
-            if re.match(anchor_regex, content):
-                # BEFORE
-                # .. _v1.2.3:
-                #
-                # 1.2.3 - 2020-01-01
-                # ------------------
-
-                # AFTER
-                # Unreleased
-                # ----------
-                #
-                # .. _v1.2.3:
-                #
-                # 1.2.3 - 2020-01-01
-                # ------------------
-                new_lines = ["Unreleased\n", "----------\n", "\n"]
-                for new_line in reversed(new_lines):
-                    changelog_content.insert(i, new_line)
-                break
-        else:
-            session.error("Unable to find latest release in CHANGELOG.rst")
-        with Path("CHANGELOG.rst").open("w", encoding="utf-8") as fp:
-            fp.writelines(changelog_content)
-
-
-@nox_session()
-def release_smoketest(session):
-    """Smoke test a wheel as it would be installed on a user's machine.
-
-    This session installs a built wheel as the user would install it, without
-    Poetry, then runs a short test to ensure that the library plausibly works.
-
-    Note: This session doesn't do anything useful when run with the `--no-venv`
-          option, as it requires a clean environment to install things in.
-    """
-    _smoketest(session)
-
-
-@nox_session()
-def release_test(session):
-    """Test a wheel as it would be installed on a user's machine.
-
-    This session is used to verify that built wheels install correctly as a user
-    would install them, without Poetry. It installs a wheel given as a
-    positional argument, then runs the fast tests on it.
-
-    Note: This session doesn't do anything useful when run with the `--no-venv`
-          option, as it requires a clean environment to install things in.
-    """
-    _test(session, extra_args=["-m", "not slow"], show_installed=True)
-
-
-#### Project-specific sessions ####
-
 
 @poetry_session()
 def get_wheels_from_circleci(session):
@@ -680,11 +318,11 @@ def get_wheels_from_circleci(session):
     pipeline associated with the commit's sha and downloads the wheels into the `dist`
     directory.
     """
-    import requests
-    import polling2
+    import requests  # pylint: disable=import-outside-toplevel
+    import polling2  # pylint: disable=import-outside-toplevel
 
     commit_hash = (
-        subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True)
+        subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, check=True)
         .stdout.decode("ascii")
         .strip()
     )
@@ -701,6 +339,7 @@ def get_wheels_from_circleci(session):
     circle_org_slug = requests.get(
         f"https://circleci.com/api/v2/project/{PROJECT_SLUG}",
         headers=headers,
+        timeout=10,
     ).json()["organization_slug"]
     next_page_token = None
     while True:
@@ -708,6 +347,7 @@ def get_wheels_from_circleci(session):
             "https://circleci.com/api/v2/pipeline",
             params={"org-slug": circle_org_slug, "page-token": next_page_token},
             headers=headers,
+            timeout=10,
         ).json()
         commit_pipelines = [
             p
@@ -730,12 +370,13 @@ def get_wheels_from_circleci(session):
     workflows = requests.get(
         f"https://circleci.com/api/v2/pipeline/{pipeline_id}/workflow",
         headers=headers,
+        timeout=10,
     ).json()
     if "items" not in workflows or len(workflows["items"]) == 0:
         session.error("Unable to find CircleCI workflow for commit {commit_hash}")
     workflow_id = workflows["items"][0]["id"]
     polling2.poll(
-        lambda: requests.get(
+        lambda: requests.get(  # pylint: disable=missing-timeout
             f"https://circleci.com/api/v2/workflow/{workflow_id}",
             headers=headers,
         ),
@@ -746,6 +387,7 @@ def get_wheels_from_circleci(session):
     jobs = requests.get(
         f"https://circleci.com/api/v2/workflow/{workflow_id}/job",
         headers=headers,
+        timeout=10,
     ).json()
     if "items" not in jobs or len(jobs["items"]) == 0:
         session.error("Unable to find CircleCI job for commit {commit_hash}")
@@ -753,23 +395,12 @@ def get_wheels_from_circleci(session):
     artifacts = requests.get(
         f"https://circleci.com/api/v2/project/{PROJECT_SLUG}/{job_number}/artifacts",
         headers=headers,
+        timeout=10,
     ).json()
     Path("dist").mkdir(exist_ok=True)
     for artifact in artifacts["items"]:
         with open(artifact["path"], "wb") as f:
-            f.write(requests.get(artifact["url"], headers=headers).content)
-
-
-@poetry_session()
-@install("cibuildwheel")
-def build(session):
-    """Build packages for distribution.
-
-    Positional arguments given to nox are passed to the cibuildwheel command,
-    allowing it to be run outside of the CI if needed.
-    """
-    session.run("poetry", "build", "--format", "sdist", external=True)
-    session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
+            f.write(requests.get(artifact["url"], headers=headers, timeout=10).content)
 
 
 @poetry_session(tags=["benchmark"], python="3.7")
@@ -777,10 +408,10 @@ def build(session):
     BENCHMARK_ARG_NAMES,
     BENCHMARK_ARG_VALUES,
 )
-@install_package
+@_builder.install_package
 @install("pytest")
 @show_installed
-def benchmark(session, benchmark: str, timeout: int):
+def benchmark(session, script: str, timeout: int):
     """Run all benchmarks."""
     (CWD / "benchmark_output").mkdir(exist_ok=True)
     session.log("Exit code 124 indicates a timeout, others are script errors")
@@ -790,6 +421,6 @@ def benchmark(session, benchmark: str, timeout: int):
         "timeout",
         f"{timeout}m",
         "python",
-        f"{CWD}/benchmark/benchmark_{benchmark}.py",
+        f"{CWD}/benchmark/benchmark_{script}.py",
         external=True,
     )

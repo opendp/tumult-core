@@ -1,7 +1,7 @@
 # pylint: skip-file
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 
 import datetime
 import logging
@@ -14,7 +14,7 @@ _logger = logging.getLogger(__name__)
 
 project = "Tumult Core"
 author = "Tumult Labs"
-copyright = "Tumult Labs 2023"
+copyright = "Tumult Labs 2024"
 
 package_name = "tmlt.core"
 

@@ -1,6 +1,10 @@
 Tumult Core documentation
 =========================
 
+..
+    SPDX-License-Identifier: CC-BY-SA-4.0
+    Copyright Tumult Labs 2024
+
 .. toctree::
    :hidden:
    :maxdepth: 1

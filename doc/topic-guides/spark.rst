@@ -5,7 +5,7 @@ Spark
 
 ..
     SPDX-License-Identifier: CC-BY-SA-4.0
-    Copyright Tumult Labs 2023
+    Copyright Tumult Labs 2024
 
 Tumult Core uses Spark as its underlying data processing
 framework. This topic guide covers relevant information about Spark

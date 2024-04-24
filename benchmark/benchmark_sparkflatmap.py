@@ -1,7 +1,7 @@
 """Benchmarking script for Map."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023
+# Copyright Tumult Labs 2024
 
 import time
 from random import choice, randint

@@ -14,7 +14,6 @@ stages:
   - setup
   - lint
   - test
-  - test-dependency-matrix
   - docs
   - benchmark
   - test-release
@@ -39,7 +38,13 @@ variables:
     - poetry self show
     # Fail if the Poetry lock file is out of date.
     - poetry lock --check
-    - poetry install --no-root --only dev
+    # Set up SSH config so that the runner can `pip install` out of GitLab
+    # repositories.
+    - mkdir -p ~/.ssh/
+    - cp $GITLAB_SSH_KNOWN_HOSTS ~/.ssh/known_hosts
+    - chmod 600 "$CI_SSH_KEY"
+    - cp -pv "$CI_SSH_KEY" ~/.ssh/id_ed25519
+    - poetry install --no-root --only scripting
     - source .venv/bin/activate
   artifacts:
     when: always
@@ -53,6 +58,9 @@ variables:
       paths: [".cache/pip"]
   tags: [aws-small]
   interruptible: true
+  after_script:
+    # Just to be safe, remove the key after the job finishes
+    - rm -v ~/.ssh/id_ed25519
 
 .analytics_base:
   extends: .base
@@ -83,7 +91,7 @@ prevent_dev_interrupt:
   rules:
     - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"
 
-package_linux:
+package:
   extends: .base
   stage: setup
   needs: []
@@ -115,7 +123,6 @@ get_circleci_wheels:
     paths: ["dist/"]
     expire_in: 1 week
   script:
-    - pip install polling2 requests --constraint=<(poetry export --dev -f constraints.txt --without-hashes)
     - nox --no-venv -s get_wheels_from_circleci
   rules:
     # Start this job with a short delay to allow the CircleCI pipeline
@@ -131,33 +138,37 @@ get_circleci_wheels:
 lint:
   extends: .base
   stage: lint
-  needs: ["package_linux"]
+  needs: ["package"]
   script:
     - nox -t lint -- --check
   timeout: 20m
   rules:
     - if: "$CI_COMMIT_TAG"
       when: never
-    - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "trigger"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
     - when: on_success
+
+sanity_checks:
+  extends: lint
+  stage: lint
+  script:
+    - nox -t sanity-checks
 
 test:
   extends: .base
   stage: test
-  needs: ["package_linux"]
+  needs: ["package"]
   script:
-    # Run doctest before test_fast so that it doesn't overwrite the coverage
-    # report from test_fast.
-    - nox -s test_smoketest test_doctest test_fast
+    - nox -s test_smoketest test_fast
   coverage: '/^TOTAL.+?(\d+\%)$/'
   artifacts:
     paths: ["coverage/"]
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: coverage.xml
-      junit: junit.xml
+        path: "coverage.xml"
+      junit: "junit*.xml"
     expose_as: "Coverage"
   timeout: 1h
   rules:
@@ -169,41 +180,25 @@ test:
       allow_failure: true
   tags: [aws-c6a.xlarge]
 
-test_nightly:
+test_docs:
   extends: test
   script:
-    - nox -s test_slow release_smoketest release_test
+    - nox -s test_doctest
+
+test_slow:
+  extends: test
+  script:
+    - nox -s test_slow
   timeout: 23h
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
-    - if: "$CI_COMMIT_TAG"
-      when: never
     - when: manual
       allow_failure: true
 
-benchmark_nightly:
+test_dep_matrix:
   extends: .base
-  stage: benchmark
-  needs: ["package_linux"]
-  script:
-    - nox -s benchmark
-  artifacts:
-    paths:
-      - benchmark_output/
-    expose_as: "Benchmarks"
-  timeout: 3h
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-    - if: "$CI_COMMIT_TAG"
-      when: never
-    - when: manual
-      allow_failure: true
-  tags: [aws-c6a.xlarge]
-
-benchmark_dependency_matrix:
-  extends: .base
-  stage: benchmark
-  needs: ["package_linux"]
+  stage: test
+  needs: ["package"]
   parallel:
     matrix:
       - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11"]
@@ -211,19 +206,22 @@ benchmark_dependency_matrix:
       - PYTHON_VERSION: ["3.7"]
         TEST_TYPE: ["pyspark3.1", "pyspark3.2"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
-  script:
-    - nox -s "benchmark_multi_deps(${PYTHON_VERSION}-${TEST_TYPE})"
-  artifacts:
-    paths:
-      - benchmark_output/
-    expose_as: "Benchmarks"
-  timeout: 3h
-  rules: # Can only be triggered manually
-    - if: "$CI_COMMIT_TAG"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_COMMIT_TAG'
       when: never
     - when: manual
       allow_failure: true
+  script:
+    - nox -s "test_dependency_matrix(${PYTHON_VERSION}-${TEST_TYPE})"
+  cache:
+    - key:
+        prefix: "$PYTHON_VERSION-$TEST_TYPE"
+        files: ["poetry.lock"]
+      paths: [".cache/pip"]
+  timeout: 3h
   tags: [aws-c6a.xlarge]
+  interruptible: true
 
 .analytics_tests:
   extends: .analytics_base
@@ -231,9 +229,9 @@ benchmark_dependency_matrix:
     analytics_git: "git@gitlab.com:tumult-labs/analytics.git"
   stage: test
   needs:
-    - job: package_linux
+    - job: package
       artifacts: true
-    - job: test_nightly
+    - job: test_slow
       artifacts: false
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -258,9 +256,9 @@ test_analytics_docs:
     analytics_git: "git@gitlab.com:tumult-labs/analytics-ee.git"
   stage: test
   needs:
-    - job: package_linux
+    - job: package
       artifacts: true
-    - job: test_nightly
+    - job: test_slow
       artifacts: false
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -300,16 +298,16 @@ nightly_handler:
 docs:
   extends: .base
   stage: docs
-  needs: ["package_linux"]
+  needs: ["package"]
   script:
     - nox -t docs
   artifacts:
     paths:
       - public/
     expose_as: "Documentation"
-  timeout: 15m
+  timeout: 1h
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "trigger"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: "$CI_COMMIT_TAG"
@@ -320,7 +318,7 @@ docs:
 test_release_linux:
   extends: .base
   stage: test-release
-  needs: ["package_linux"]
+  needs: ["package"]
   parallel:
     matrix:
       - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11"]
@@ -332,49 +330,36 @@ test_release_linux:
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: coverage.xml
-      junit: junit.xml
+        path: "coverage.xml"
+      junit: "junit*.xml"
   timeout: 1h
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
     - if: "$CI_COMMIT_TAG"
-    - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "trigger"'
-      when: never
     - when: manual
       allow_failure: true
   tags: [aws-c6a.xlarge]
 
-test_dep_matrix:
+audit:
   extends: .base
-  stage: test-dependency-matrix
-  needs: ["package_linux"]
+  stage: test-release
+  needs: ["package"]
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11"]
-        TEST_TYPE: ["oldest", "newest"]
-      - PYTHON_VERSION: ["3.7"]
-        TEST_TYPE: ["pyspark3.1", "pyspark3.2"]
+      - PYTHON_VERSION: ["3.8", "3.9", "3.10", "3.11"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
+  script:
+    - nox -s "audit(python=\"${PYTHON_VERSION}\")"
+  timeout: 10m
   rules:
-    - if: '$CI_COMMIT_TAG || $CI_PIPELINE_SOURCE == "trigger"'
-      when: never
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: "$CI_COMMIT_TAG"
     - when: manual
       allow_failure: true
-  script:
-    - pip install -U pip setuptools
-    - nox -s "test_multi_deps(${PYTHON_VERSION}-${TEST_TYPE})"
-  cache:
-    - key:
-        prefix: "$PYTHON_VERSION-$TEST_TYPE"
-        files: ["poetry.lock"]
-      paths: [".cache/pip"]
-  timeout: 3h
-  tags: [aws-c6a.xlarge]
-  interruptible: true
 
 publish:
   stage: release
-  dependencies: [get_circleci_wheels, package_linux]
+  dependencies: [get_circleci_wheels, package]
   image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest
   script:
     - poetry publish -u __token__ -p "${RELEASE_PYPI_TOKEN}"
@@ -390,16 +375,12 @@ publish:
 # to push the protected `prod` branch.
 publish_docs:
   stage: release
-  image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest
   dependencies: [docs]
+  image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest
   variables:
     GIT_STRATEGY: none
   before_script:
-    - |
-      if [[ -z "$DOCS_TOKEN_USER" || -z "$DOCS_TOKEN" ]]; then
-        echo "Credentials for publishing to docs repo are not set"
-        exit 1
-      fi
+    - docs_credentials="_:${DOCS_TOKEN:?Token for publishing to docs repo is not set}"
     - |
       if [[ -z "$CI_COMMIT_TAG" ]]; then
         version="$CI_COMMIT_BRANCH"
@@ -416,7 +397,7 @@ publish_docs:
       fi
     - echo "Publishing version $version as $docs_version..."
   script:
-    - git clone https://$DOCS_TOKEN_USER:$DOCS_TOKEN@gitlab.com/tumult-labs/ops/docs.tmlt.dev.git
+    - git clone https://$docs_credentials@gitlab.com/tumult-labs/ops/docs.tmlt.dev.git
     # Remove old docs published as this version, if any
     - rm -rf docs.tmlt.dev/public/core/$docs_version
     - mv public/ docs.tmlt.dev/public/core/$docs_version
@@ -433,6 +414,69 @@ publish_docs:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: "$CI_COMMIT_TAG"
 
+benchmark_nightly:
+  extends: .base
+  stage: benchmark
+  needs: ["package"]
+  script:
+    - nox -s benchmark
+  artifacts:
+    paths:
+      - benchmark_output/
+    expose_as: "Benchmarks"
+  timeout: 3h
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: "$CI_COMMIT_TAG"
+      when: never
+    - when: manual
+      allow_failure: true
+  tags: [aws-c6a.xlarge]
+
+benchmark_dependency_matrix:
+  extends: .base
+  stage: benchmark
+  needs: ["package"]
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        TEST_TYPE: ["oldest", "newest"]
+      - PYTHON_VERSION: ["3.7"]
+        TEST_TYPE: ["pyspark3.1", "pyspark3.2"]
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
+  script:
+    - nox -s "benchmark_multi_deps(${PYTHON_VERSION}-${TEST_TYPE})"
+  artifacts:
+    paths:
+      - benchmark_output/
+    expose_as: "Benchmarks"
+  timeout: 3h
+  rules: # Can only be triggered manually
+    - if: "$CI_COMMIT_TAG"
+      when: never
+    - when: manual
+      allow_failure: true
+  tags: [aws-c6a.xlarge]
+
+# Requires the following CI variables to be set:
+# * NIGHTLY_HANDLER_TOKEN, a GitLab project access token with the read_api permission
+# * NIGHTLY_SLACK_WEBHOOK_URL, a Slack incoming webhook for posting to the appropriate
+#   channel
+nightly_handler:
+  stage: handler
+  image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest
+  script:
+    - poetry install --only ci-tools
+    - source .venv/bin/activate
+    - python .ci/pipeline-handler.py nightly
+  variables:
+    GIT_DEPTH: 1
+  timeout: 2m
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
+  interruptible: false
+
 # Requires the following CI variables to be set:
 # * VERSION, the semantic version number to be given to the release. This would
 #   typically be specified when launching the manual job.
@@ -442,15 +486,13 @@ publish_docs:
 trigger_release:
   extends: .base
   stage: handler
-  script:
-    - |
-      if [[ -z "$RELEASER_TOKEN_USERNAME" || -z "$RELEASER_TOKEN" ]]; then
-        echo "RELEASER_TOKEN and/or RELEASER_TOKEN_USERNAME is unset, exiting..."
-        exit 1
-      fi
-    - nox -s prepare_release
+  before_script:
+    - !reference [.base, before_script]
+    - releaser_credentials="_:${RELEASER_TOKEN?Token for releasing is not set}"
     - git config user.name "gitlab"
     - git config user.email "gitlab@tmlt.io"
+  script:
+    - nox -s prepare_release
     - git checkout -B "release/$VERSION"
     - git add -u
     - git diff --staged --stat
@@ -460,9 +502,7 @@ trigger_release:
     - git add -u
     - git diff --staged --stat
     - git commit -m "[auto] Post-release $VERSION" --author "$CI_COMMIT_AUTHOR" --allow-empty
-    - |
-      git remote add origin-https \
-          "https://$RELEASER_TOKEN_USERNAME:$RELEASER_TOKEN@gitlab.com/$CI_PROJECT_PATH.git"
+    - git remote add origin-https "https://$releaser_credentials@gitlab.com/$CI_PROJECT_PATH.git"
     - git push origin-https "release/$VERSION" --push-option ci.skip
     - git push origin-https "$VERSION"
     - |
@@ -491,7 +531,7 @@ trigger_release:
         echo "Got unexpected HTTP status $http_status, exiting..."
         exit 1
       fi
-  timeout: 10m
+  timeout: 5m
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
@@ -503,7 +543,7 @@ trigger_release:
 release_handler:
   stage: handler
   script:
-    - source .pipeline_handlers
+    - source .ci/pipeline-handlers.bash
     - release_handler
   timeout: 2m
   rules:
