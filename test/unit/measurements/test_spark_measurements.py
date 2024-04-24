@@ -41,13 +41,13 @@ from tmlt.core.measurements.spark_measurements import (
     ApplyInPandas,
     BoundSelection,
     GeometricPartitionSelection,
-    _get_materialized_df,
 )
 from tmlt.core.measures import ApproxDP, PureDP
 from tmlt.core.metrics import SumOf, SymmetricDifference
 from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
 from tmlt.core.utils.exact_number import ExactNumber
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+from tmlt.core.utils.misc import get_materialized_df
 from tmlt.core.utils.testing import (
     FakeAggregate,
     PySparkTest,
@@ -434,10 +434,10 @@ class TestSanitization(PySparkTest):
         ]
     )
     def test_get_materialized_df(self, df, table_name):
-        """Tests that _get_materialized_df works correctly."""
+        """Tests that get_materialized_df works correctly."""
         current_db = self.spark.catalog.currentDatabase()
         sdf = self.spark.createDataFrame(df)
-        materialized_df = _get_materialized_df(sdf, table_name)
+        materialized_df = get_materialized_df(sdf, table_name)
         self.assertEqual(current_db, self.spark.catalog.currentDatabase())
         self.assert_frame_equal_with_sort(materialized_df.toPandas(), df)
 
