@@ -1,7 +1,8 @@
 """Unit tests for :mod:`~tmlt.core.domains.pandas_domains`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2022
+# Copyright Tumult Labs 2024
+
 from contextlib import nullcontext as does_not_raise
 from itertools import combinations_with_replacement
 from test.unit.domains.abstract import DomainTests
