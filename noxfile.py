@@ -216,8 +216,7 @@ _builder = SessionBuilder(
     },
 )
 
-BENCHMARK_ARG_NAMES = "benchmark,timeout"
-BENCHMARK_ARG_VALUES = [
+BENCHMARK_VALUES = [
     ("private_join", 35),
     ("count_sum", 25),
     ("quantile", 84),
@@ -301,7 +300,7 @@ def benchmark_multi_deps(session, packages):
     session.log("Exit code 124 indicates a timeout, others are script errors")
     # If we want to run benchmarks on non-Linux platforms this will probably
     # have to be reworked, but it's fine for now.
-    for script, timeout in BENCHMARK_ARG_VALUES:
+    for script, timeout in BENCHMARK_VALUES:
         session.run(
             "timeout",
             f"{timeout}m",
@@ -404,10 +403,7 @@ def get_wheels_from_circleci(session):
 
 
 @poetry_session(tags=["benchmark"], python="3.7")
-@nox.parametrize(
-    BENCHMARK_ARG_NAMES,
-    BENCHMARK_ARG_VALUES,
-)
+@nox.parametrize("script,timeout", BENCHMARK_VALUES)
 @_builder.install_package
 @install("pytest")
 @show_installed
