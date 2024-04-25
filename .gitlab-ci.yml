@@ -466,7 +466,7 @@ nightly_handler:
   stage: handler
   image: registry.gitlab.com/tumult-labs/ops/ci/ci-full:latest
   script:
-    - poetry install --only ci-tools
+    - poetry install --no-root --only ci-tools
     - source .venv/bin/activate
     - python .ci/pipeline-handler.py nightly
   variables:
