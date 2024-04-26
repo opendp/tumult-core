@@ -78,6 +78,7 @@ variables:
     - cd ../analytics
     - poetry install --no-root --only scripting
     - source .venv/bin/activate
+    - nox -s build
 
 # "Fake" job to prevent dev pipelines from being interrupted on new commits.
 # See gitlab-org/gitlab#34221
