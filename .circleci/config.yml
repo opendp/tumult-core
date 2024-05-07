@@ -4,6 +4,9 @@ jobs:
   build-core:
     macos:
       xcode: 12.5.1
+      # TODO: Switch to this resource_class when it becomes available on the free tier.
+      # Needs to be fixed to cross compile to intel architecture on M1 macs.
+      # resource_class: macos.m1.medium.gen1
       resource_class: macos.x86.medium.gen2
     steps:
       - checkout
@@ -13,7 +16,10 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 - --version 1.4.2
           export PATH="/Users/distiller/.local/bin:/Users/distiller/Library/Python/3.9/bin:$PATH"
           poetry --version
-          python3 -m pip install --user nox nox-poetry cibuildwheel --constraint=<(poetry export --dev -f constraints.txt --without-hashes)
+          poetry install --no-root --only scripting
+          VENV_PATH=$(poetry env info -p)
+          source "$VENV_PATH/bin/activate"
+          pip install cibuildwheel
           nox --no-venv -s build
           rm -f dist/*.tar.gz
       - save_cache:
