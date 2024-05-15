@@ -10,19 +10,20 @@ environment (i.e. with nox's --no-venv option) or in a nox-managed virtualenv
 indicate this in their docstrings.
 """
 
-import nox
 import os
 import subprocess
+from pathlib import Path
+
+import nox
 from nox import session as nox_session
 from nox_poetry import session as poetry_session
-from pathlib import Path
 from tmlt.nox_utils import SessionBuilder
 from tmlt.nox_utils.dependencies import install, show_installed
 from tmlt.nox_utils.environment import with_clean_workdir
 
 PACKAGE_NAME = "tmlt.core"
 """Name of the package."""
-PACKAGE_VERSION= (
+PACKAGE_VERSION = (
     subprocess.run(["poetry", "version", "-s"], capture_output=True, check=True)
     .stdout.decode("utf-8")
     .strip()
@@ -61,13 +62,8 @@ DEPENDENCY_MATRIX = {
           # numpy       scipy       randomgen   pyarrow
         (
             "3.7-oldest",
-            "3.7",      "==3.0.0",  "==1.8",    "==1.2.0",
+            "3.7",      "==3.1.1",  "==1.8",    "==1.2.0",
             "==1.21.0", "==1.4.1",  "==1.19.0", "==6.0.1",
-        ),
-        (
-            "3.7-pyspark3.1",
-            "3.7",      "==3.1.1",  "==1.9",    "==1.3.5",
-            "==1.21.6", "==1.7.3",  "==1.23.1", "==12.0.1",
         ),
         (
             "3.7-pyspark3.2",
@@ -81,7 +77,7 @@ DEPENDENCY_MATRIX = {
         ),
         (
             "3.8-oldest",
-            "3.8",      "==3.0.0",  "==1.8",    "==1.2.0",
+            "3.8",      "==3.1.1",  "==1.8",    "==1.2.0",
             "==1.22.0", "==1.6.0",  "==1.19.0", "==10.0.1",
         ),
         (
@@ -91,7 +87,7 @@ DEPENDENCY_MATRIX = {
         ),
         (
             "3.9-oldest",
-            "3.9",      "==3.0.0",  "==1.8",    "==1.2.0",
+            "3.9",      "==3.1.1",  "==1.8",    "==1.2.0",
             "==1.23.2", "==1.6.0",  "==1.20.0", "==10.0.1",
         ),
         (
@@ -101,7 +97,7 @@ DEPENDENCY_MATRIX = {
         ),
         (
             "3.10-oldest",
-            "3.10",     "==3.0.0",  "==1.8",    "==1.4.0",
+            "3.10",     "==3.1.1",  "==1.8",    "==1.4.0",
             "==1.23.2", "==1.8.0",  "==1.23.0", "==10.0.1",
         ),
         (
@@ -131,7 +127,7 @@ LICENSE_IGNORE_GLOBS = [
     r".*\.json",
     r".*\.png",
     r".*\.svg",
-    r"ext\/.*"
+    r"ext\/.*",
 ]
 
 LICENSE_IGNORE_FILES = [
@@ -173,6 +169,7 @@ AUDIT_SUPPRESSIONS = [
 
 CWD = Path(".").resolve()
 
+
 def install_overrides(session):
     """Custom logic run after installing the current package."""
     # Install Core from dist/, if it exists there
@@ -192,6 +189,7 @@ def install_overrides(session):
         # (ex. "0.6.2-post11+ea346f3")
         # This overrides Poetry's dependencies with our own
         session.poetry.session.install(core_wheels[0])
+
 
 _builder = SessionBuilder(
     PACKAGE_NAME,
@@ -262,10 +260,10 @@ for config_id, config in DEPENDENCY_MATRIX.items():
         dependency_pythons.append(config.pop("python"))
     except KeyError as e:
         raise RuntimeError(
-            "Dependency matrix configurations must specify a Python minor "
-            "version"
+            "Dependency matrix configurations must specify a Python minor " "version"
         ) from e
     dependency_packages.append(config)
+
 
 @poetry_session()
 @install("cibuildwheel")
@@ -277,6 +275,7 @@ def build(session):
     """
     session.run("poetry", "build", "--format", "sdist", external=True)
     session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
+
 
 @nox_session
 @with_clean_workdir
@@ -309,6 +308,7 @@ def benchmark_multi_deps(session, packages):
             external=True,
         )
 
+
 @poetry_session()
 def get_wheels_from_circleci(session):
     """Get Core wheels for macOS x86 from CircleCI.
@@ -317,8 +317,8 @@ def get_wheels_from_circleci(session):
     pipeline associated with the commit's sha and downloads the wheels into the `dist`
     directory.
     """
-    import requests  # pylint: disable=import-outside-toplevel
     import polling2  # pylint: disable=import-outside-toplevel
+    import requests  # pylint: disable=import-outside-toplevel
 
     commit_hash = (
         subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, check=True)

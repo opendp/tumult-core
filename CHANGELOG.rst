@@ -10,6 +10,11 @@ Added
 ~~~~~~~
 - :meth:`tmlt.core.utils.misc.get_materialized_df`, a utility function that materializes a Spark DataFrame. This is a public version of a previously internal function.
 
+Fixed
+~~~~~~~
+- Stopped trying to set extra options for Java 11 and removed error when options are not set. Removed both ``check_java11()`` function and ``SparkConfigError`` exception.
+- Updated minimum supported Spark version to 3.1.1 to prevent Java 11 error.
+
 .. _v0.13.0:
 
 0.13.0 - 2024-04-03
@@ -317,7 +322,7 @@ This is a maintenance release which introduces a number of documentation improve
 Fixed
 ~~~~~
 
-- :func:`~tmlt.core.utils.configuration.check_java11()` now has the correct behavior when Java is not installed.
+- ``tmlt.core.utils.configuration.check_java11()`` now has the correct behavior when Java is not installed.
 
 .. _v0.6.1:
 
