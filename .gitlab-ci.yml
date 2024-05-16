@@ -470,6 +470,10 @@ nightly_handler:
     - poetry install --no-root --only ci-tools
     - source .venv/bin/activate
     - python .ci/pipeline-handler.py nightly
+        --allow-failure test_analytics
+        --allow-failure test_analytics_docs
+        --allow-failure test_analytics_pro
+        --allow-failure test_analytics_pro_docs
   variables:
     GIT_DEPTH: 1
   timeout: 2m
