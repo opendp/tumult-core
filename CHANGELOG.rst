@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+.. _v0.14.0:
+
+0.14.0 - 2024-05-16
+-------------------
+
 Added
 ~~~~~~~
 - :meth:`tmlt.core.utils.misc.get_materialized_df`, a utility function that materializes a Spark DataFrame. This is a public version of a previously internal function.
