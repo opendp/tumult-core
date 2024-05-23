@@ -6,13 +6,23 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+
+- Tumult Core now runs natively on Apple silicon, supporting Python 3.9 and above.
+
+Removed
+~~~~~~~
+
+- Provided binary wheels for macOS now support only macOS 12 (Monterey) and above.
+
 .. _v0.14.0:
 
 0.14.0 - 2024-05-16
 -------------------
 
 Added
-~~~~~~~
+~~~~~
 - :meth:`tmlt.core.utils.misc.get_materialized_df`, a utility function that materializes a Spark DataFrame. This is a public version of a previously internal function.
 
 Fixed

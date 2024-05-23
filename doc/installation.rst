@@ -13,14 +13,13 @@ Prerequisites
 ^^^^^^^^^^^^^
 
 Tumult Core is built in `Python <https://www.python.org/>`__, so a Python installation is required to use it.
-It is compatible with Python 3.7 through 3.11.
-Because Tumult Analytics uses PySpark for computation, it also `requires Java 8 or 11 <https://spark.apache.org/docs/3.0.0/index.html#downloading>`__.
+It is compatible with Python 3.7 through 3.11 (Python 3.9 and above on Apple silicon).
+Because Tumult Analytics uses PySpark for computation, it also `requires Java 8 or 11 <https://spark.apache.org/docs/3.1.1/index.html#downloading>`__, or Java 17 if PySpark 3.4 or later is used.
 
-Only the x86_64 processor architecture is officially supported at present.
-Apple silicon is supported through binary translation with `Rosetta 2 <https://support.apple.com/en-us/HT211861>`__.
+Tumult Core supports the ``x86_64`` processor architecture, as well as Apple silicon.
 
 Below are instructions for installing these prerequisites on several common platforms.
-If none of these apply to you, install Python 3 and Java from your OS package manager, or use the "Manual Installation" section to obtain installers or source distributions and build instructions for your platform.
+If none of these apply to you, install Python 3 and Java from your OS package manager.
 If you encounter any issues during the installation process, please `let us know <https://gitlab.com/tumult-labs/core/-/issues>`__!
 
 .. tabbed:: Linux (Debian-based)
@@ -59,10 +58,7 @@ If you encounter any issues during the installation process, please `let us know
     Note that despite the package name, this will install Java 8.
 
 
-.. tabbed:: macOS (Intel)
-
-    The below instructions assume the use of `Homebrew <https://brew.sh/>`__ for managing packages.
-    If you do not wish to use Homebrew for this, use the "Manual Installation" instructions instead.
+.. tabbed:: macOS
 
     If you do not already have Homebrew, it can be installed with:
 
@@ -74,46 +70,16 @@ If you encounter any issues during the installation process, please `let us know
 
     .. code-block:: bash
 
-        brew install python@3.7
+        brew install python@3.11
 
     And Java may be installed with:
 
     .. code-block:: bash
 
-        brew install openjdk@8
+        brew install openjdk@11
 
     You may need to explicitly add this OpenJDK installation to your ``PATH`` for it to be detected and usable by Spark.
     This can be done by, for example, adding ``export PATH="/usr/local/opt/openjdk/bin:$PATH"`` to ``.bashrc`` and then restarting your shell.
-
-
-.. tabbed:: macOS (Apple silicon)
-
-    Since Python 3.7 is not supported on the Apple silicon processor architecture, you will need to first install `Rosetta 2 <https://support.apple.com/en-us/HT211861>`__ and the x86_64 version of Homebrew.
-
-    If you do not already have Rosetta 2, it can be installed with:
-
-    .. code-block:: bash
-
-        softwareupdate --install-rosetta
-
-    The x86_64 version of Homebrew can be installed with:
-
-    .. code-block:: bash
-
-        arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-
-    Now, you can install Python 3.7 with:
-
-    .. code-block:: bash
-
-        arch -x86_64 /usr/local/bin/brew install python@3.7
-
-    And Java may be installed with:
-
-    .. code-block:: bash
-
-        arch -x86_64 /usr/local/bin/brew install openjdk@8
-
 
 .. tabbed:: Windows
 
