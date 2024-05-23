@@ -7,7 +7,7 @@ build_dir = Path(__file__).parent
 build_command = ["bash", str(build_dir / "build.sh")]
 
 SUPPORTED_PLATFORMS = ["Linux", "Darwin"]
-SUPPORTED_ARCHITECTURES = ["x86_64"]
+SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 
 
 def check_platform():
@@ -33,6 +33,7 @@ def check_platform():
         print("Here is more information about your system:")
         print(platform.uname())
         sys.exit(1)
+    print(f"Running on: {platform.system()} {platform.machine()}")
 
 
 check_platform()

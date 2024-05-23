@@ -372,7 +372,7 @@ def get_wheels_from_circleci(session):
         timeout=10,
     ).json()
     if "items" not in workflows or len(workflows["items"]) == 0:
-        session.error("Unable to find CircleCI workflow for commit {commit_hash}")
+        session.error(f"Unable to find CircleCI workflow for commit {commit_hash}")
     workflow_id = workflows["items"][0]["id"]
     polling2.poll(
         lambda: requests.get(  # pylint: disable=missing-timeout
@@ -389,17 +389,20 @@ def get_wheels_from_circleci(session):
         timeout=10,
     ).json()
     if "items" not in jobs or len(jobs["items"]) == 0:
-        session.error("Unable to find CircleCI job for commit {commit_hash}")
-    job_number = jobs["items"][0]["job_number"]
-    artifacts = requests.get(
-        f"https://circleci.com/api/v2/project/{PROJECT_SLUG}/{job_number}/artifacts",
-        headers=headers,
-        timeout=10,
-    ).json()
-    Path("dist").mkdir(exist_ok=True)
-    for artifact in artifacts["items"]:
-        with open(artifact["path"], "wb") as f:
-            f.write(requests.get(artifact["url"], headers=headers, timeout=10).content)
+        session.error(f"Unable to find CircleCI job for commit {commit_hash}")
+    for job in jobs["items"]:
+        job_no = job["job_number"]
+        artifacts = requests.get(
+            f"https://circleci.com/api/v2/project/{PROJECT_SLUG}/{job_no}/artifacts",
+            headers=headers,
+            timeout=10,
+        ).json()
+        Path("dist").mkdir(exist_ok=True)
+        for artifact in artifacts["items"]:
+            with open(artifact["path"], "wb") as f:
+                f.write(
+                    requests.get(artifact["url"], headers=headers, timeout=10).content
+                )
 
 
 @poetry_session(tags=["benchmark"], python="3.7")

@@ -121,8 +121,6 @@ sphinx-copybutton = "^0.4.0"
 sphinx-panels = "^0.6.0"
 sphinxcontrib-bibtex = "^1.0.0"
 
-cibuildwheel = "^2.10.0"
-
 # click 8.1.0 removes _unicodefun which breaks the CI; remove this after
 # upgrading Black.
 click = "8.0.4"
@@ -140,6 +138,9 @@ requests = "*"
 
 [tool.poetry.group.ci-tools.dependencies]
 requests = "^2.31.0"
+
+[tool.poetry.group.build.dependencies]
+cibuildwheel = "^2.10.0"
 
 [build-system]
 requires = ["poetry-core>=1.3.2", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]

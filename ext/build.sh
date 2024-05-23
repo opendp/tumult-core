@@ -36,18 +36,21 @@ if [[ "$(uname)" = "Linux" ]]; then
     fi
 fi
 
+ARCH=$(uname -m)
+if [[ ! -f $PREFIX/lib/ARCH || "$(cat $PREFIX/lib/ARCH)" != "$ARCH" ]]; then
+    rm -f $PREFIX/lib/GMPVER $PREFIX/lib/MPFRVER $PREFIX/lib/FLINTVER $PREFIX/lib/ARBVER
+    mkdir -p $PREFIX/lib
+    echo "$ARCH" > $PREFIX/lib/ARCH
+fi
+
 # GMP
 if [[ ! -f $PREFIX/lib/GMPVER || "$(cat $PREFIX/lib/GMPVER)" != "$GMPVER" ]]; then
-    configure_args="--prefix=$PREFIX --enable-fat --enable-shared=yes --enable-static=no"
-    if [[ "$(uname)" = "Darwin" ]]; then
-        configure_args="$configure_args --host=x86_64-apple-darwin"
-    fi
     curl -OLf https://gmplib.org/download/gmp/gmp-$GMPVER.tar.xz
     tar xf gmp-$GMPVER.tar.xz
     pushd gmp-$GMPVER
     # Show the output of configfsf.guess
-    ./configfsf.guess
-    ./configure $configure_args
+    bash configfsf.guess
+    ./configure --prefix=$PREFIX --enable-fat --enable-shared=yes --enable-static=no
     make -j $nproc
     make check
     make install

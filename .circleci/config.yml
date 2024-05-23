@@ -1,38 +1,75 @@
 version: 2.1
 
+commands:
+  compress_ext:
+    description: "Concatenate all files under ext. The checksum is then calculated on this file to cache the ext directory."
+    steps:
+      - run: find ext -type f -print | sort | xargs cat > ext_concat
+
 jobs:
-  build-core:
+  build-arm-core:
     macos:
-      xcode: 12.5.1
-      # TODO: Switch to this resource_class when it becomes available on the free tier.
-      # Needs to be fixed to cross compile to intel architecture on M1 macs.
-      # resource_class: macos.m1.medium.gen1
-      resource_class: macos.x86.medium.gen2
+      xcode: 13.4.1
+      resource_class: macos.m1.medium.gen1
+    environment:
+      CIBW_ENVIRONMENT: "MACOSX_DEPLOYMENT_TARGET=12"
+      CIBW_ARCHS: "arm64"
+      CIBW_BUILD: "cp39-* cp310-* cp311-*"
     steps:
       - checkout
+      - compress_ext
       - restore_cache:
-          key: ext-{{ checksum "ext/dependency_versions.sh"}}
+          key: ext-arm-{{ checksum "ext_concat" }}
       - run: |
-          curl -sSL https://install.python-poetry.org | python3 - --version 1.4.2
-          export PATH="/Users/distiller/.local/bin:/Users/distiller/Library/Python/3.9/bin:$PATH"
-          poetry --version
-          poetry install --no-root --only scripting
-          VENV_PATH=$(poetry env info -p)
-          source "$VENV_PATH/bin/activate"
-          pip install cibuildwheel
-          nox --no-venv -s build
-          rm -f dist/*.tar.gz
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          /opt/homebrew/bin/brew install python@3.9
+
+          .circleci/package_macos.bash
       - save_cache:
-          key: ext-{{ checksum "ext/dependency_versions.sh"}}
+          key: ext-arm-{{ checksum "ext_concat" }}
+          paths:
+            - src/tmlt/core/ext
+      - store_artifacts:
+          path: dist
+
+  build-intel-core:
+    macos:
+      xcode: 13.4.1
+      resource_class: macos.m1.medium.gen1
+    environment:
+      CIBW_ENVIRONMENT: "MACOSX_DEPLOYMENT_TARGET=12"
+      CIBW_ARCHS: "x86_64"
+      CIBW_BUILD: "cp37-* cp38-* cp39-* cp310-* cp311-*"
+    steps:
+      - checkout
+      - compress_ext
+      - restore_cache:
+          key: ext-intel-{{ checksum "ext_concat" }}
+      - run: |
+          softwareupdate --install-rosetta --agree-to-license
+          arch -x86_64 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          arch -x86_64 /usr/local/bin/brew install python@3.9
+
+          arch -x86_64 .circleci/package_macos.bash
+      - save_cache:
+          key: ext-intel-{{ checksum "ext_concat" }}
           paths:
             - src/tmlt/core/ext
       - store_artifacts:
           path: dist
 
 workflows:
-  build-core-mac-x86-wheels-workflow:
+  build-core-mac-wheels-workflow:
     jobs:
-      - build-core:
+      - build-arm-core:
           filters:
+            branches:
+              only: dev
+            tags:
+              only: /.*/
+      - build-intel-core:
+          filters:
+            branches:
+              only: dev
             tags:
               only: /.*/

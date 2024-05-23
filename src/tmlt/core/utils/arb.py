@@ -21,7 +21,7 @@ if platform.system() == "Windows":
         flintlib = ctypes.WinDLL(str(_flint_path))  # type: ignore
 elif platform.system() == "Linux":
     with importlib.resources.path(
-        "tmlt.core.ext.lib", "libgmp.so.10.4.1"
+        "tmlt.core.ext.lib", "libgmp.so.10.5.0"
     ) as _gmp_path, importlib.resources.path(
         "tmlt.core.ext.lib", "libmpfr.so.6.1.0"
     ) as _mpfr_path, importlib.resources.path(
