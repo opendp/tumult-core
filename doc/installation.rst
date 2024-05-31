@@ -78,8 +78,15 @@ If you encounter any issues during the installation process, please `let us know
 
         brew install openjdk@11
 
-    You may need to explicitly add this OpenJDK installation to your ``PATH`` for it to be detected and usable by Spark.
-    This can be done by, for example, adding ``export PATH="/usr/local/opt/openjdk/bin:$PATH"`` to ``.bashrc`` and then restarting your shell.
+    For the system Java wrappers to find this JDK you may need to symlink it by following the instructions that Homebrew provides upon installation.
+    The command will look similar to the following, but will differ depending on your CPU architecture:
+
+    .. code-block:: bash
+
+        sudo ln -sfn /opt/homebrew/opt/openjdk@11/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-11.jdk
+
+    If you have more than one Java version installed on your system, use Java 11 by setting ``JAVA_HOME`` to ``$(/usr/libexec/java_home -v11)``.
+    This can be done by, for example, adding ``export JAVA_HOME=$(/usr/libexec/java_home -v11)`` to ``.bashrc`` and then restarting your shell.
 
 .. tabbed:: Windows
 
