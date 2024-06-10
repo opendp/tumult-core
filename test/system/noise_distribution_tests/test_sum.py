@@ -67,10 +67,12 @@ def _get_sum_test_cases(noise_mechanism: NoiseMechanism):
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
             measure_column="B",
-            output_measure=PureDP()
-            if noise_mechanism
-            not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
-            else RhoZCDP(),
+            output_measure=(
+                PureDP()
+                if noise_mechanism
+                not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
+                else RhoZCDP()
+            ),
             lower=ExactNumber.from_float(min(group_values), round_up=False),
             upper=ExactNumber.from_float(max(group_values), round_up=True),
             noise_mechanism=noise_mechanism,

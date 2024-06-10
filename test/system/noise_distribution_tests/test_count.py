@@ -54,10 +54,12 @@ def _get_count_test_cases(noise_mechanism: NoiseMechanism):
         measurement = create_count_measurement(
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
-            output_measure=PureDP()
-            if noise_mechanism
-            not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
-            else RhoZCDP(),
+            output_measure=(
+                PureDP()
+                if noise_mechanism
+                not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
+                else RhoZCDP()
+            ),
             d_out=budget,
             noise_mechanism=noise_mechanism,
             groupby_transformation=dataset.groupby(noise_mechanism),

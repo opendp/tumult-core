@@ -65,10 +65,12 @@ def _get_average_test_cases(noise_mechanism: NoiseMechanism) -> List[Dict]:
         measurement = create_average_measurement(
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
-            output_measure=PureDP()
-            if noise_mechanism
-            not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
-            else RhoZCDP(),
+            output_measure=(
+                PureDP()
+                if noise_mechanism
+                not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
+                else RhoZCDP()
+            ),
             measure_column="B",
             lower=dataset.lower,
             upper=dataset.upper,

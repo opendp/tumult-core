@@ -91,10 +91,13 @@ def _get_quantile_probabilities(
     indexed_intervals = enumerate(zip(data[:-1], data[1:]))
     weights = np.array(
         [
-            -math.inf
-            if u == l
-            else (
-                np.log(u - l) + (epsilon * (-np.abs(k - target_rank))) / (2 * delta_u)
+            (
+                -math.inf
+                if u == l
+                else (
+                    np.log(u - l)
+                    + (epsilon * (-np.abs(k - target_rank))) / (2 * delta_u)
+                )
             )
             for k, (l, u) in indexed_intervals
         ]
