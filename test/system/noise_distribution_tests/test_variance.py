@@ -73,10 +73,12 @@ def _get_var_stddev_test_cases(
         measurement = create_measurement(
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
-            output_measure=PureDP()
-            if noise_mechanism
-            not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
-            else RhoZCDP(),
+            output_measure=(
+                PureDP()
+                if noise_mechanism
+                not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
+                else RhoZCDP()
+            ),
             measure_column="B",
             lower=dataset.lower,
             upper=dataset.upper,
