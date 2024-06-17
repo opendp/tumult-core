@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+
+- Added support for left public joins to :class:`~.PublicJoin`, previously only inner joins were supported.
+
 .. _v0.14.1:
 
 0.14.1 - 2024-06-04
