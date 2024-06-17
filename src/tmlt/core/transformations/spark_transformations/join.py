@@ -255,6 +255,7 @@ class PublicJoin(Transformation):
         public_df_domain: Optional[SparkDataFrameDomain] = None,
         join_cols: Optional[List[str]] = None,
         join_on_nulls: bool = False,
+        how: str = "inner",
     ):
         """Constructor.
 
@@ -271,6 +272,8 @@ class PublicJoin(Transformation):
                 performed.
             join_on_nulls: If True, null values on corresponding join columns of the
                 public and private DataFrames will be considered to be equal.
+            how: Type of join to perform. Defaults to "inner". Note that only "inner"
+                and "left" joins are supported.
         """
         if isinstance(metric, IfGroupedBy):
             if metric.inner_metric not in (
@@ -307,11 +310,13 @@ class PublicJoin(Transformation):
                 left_columns=list(input_domain.schema),
                 right_columns=list(public_df_domain.schema),
             )
+        if how not in ("inner", "left"):
+            raise ValueError("Only 'inner' and 'left' joins are supported.")
         output_domain = domain_after_join(
             left_domain=input_domain,
             right_domain=public_df_domain,
             on=join_cols,
-            how="inner",
+            how=how,
             nulls_are_equal=join_on_nulls,
         )
         if (
@@ -358,6 +363,7 @@ class PublicJoin(Transformation):
                 list(input_domain.schema), list(public_df_domain.schema)
             )
         )
+        self._how = how
 
     @property
     def join_on_nulls(self) -> bool:
@@ -373,6 +379,11 @@ class PublicJoin(Transformation):
     def public_df(self) -> DataFrame:
         """Returns Pandas DataFrame being joined with."""
         return self._public_df
+
+    @property
+    def how(self) -> str:
+        """Returns type of join to perform."""
+        return self._how
 
     @property
     def stability(self) -> int:
@@ -404,7 +415,7 @@ class PublicJoin(Transformation):
         return join(
             left=sdf,
             right=self.public_df,
-            how="inner",
+            how=self._how,
             on=self.join_cols,
             nulls_are_equal=self.join_on_nulls,
         )
