@@ -6,6 +6,16 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+
+- Added support for Python 3.12.
+
+Removed
+~~~~~~~
+
+- Removed support for Python 3.7.
+
 .. _v0.14.2:
 
 0.14.2 - 2024-06-17

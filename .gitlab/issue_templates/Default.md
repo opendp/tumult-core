@@ -7,7 +7,7 @@ Code snippets are encouraged here.
 
 **Core Version**: The version of Core on which you found this bug (e.g. 0.4.0).
 
-**Python version**: The version of Python on which you found this bug (e.g. 3.7).
+**Python version**: The version of Python on which you found this bug (e.g. 3.8).
 
 **Java version**: The version of Java on which you found this bug.
 

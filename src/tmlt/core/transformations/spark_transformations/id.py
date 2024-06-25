@@ -48,9 +48,9 @@ class AddUniqueColumn(Transformation):
         +----+----+
         |   A|   B|
         +----+----+
-        |null| NaN|
+        |NULL| NaN|
         |  a1| 0.1|
-        |  a2|null|
+        |  a2|NULL|
         +----+----+
         <BLANKLINE>
         >>> add_unique_column = AddUniqueColumn(
@@ -68,9 +68,9 @@ class AddUniqueColumn(Transformation):
         +----+----+--------------------------------+
         |A   |B   |ID                              |
         +----+----+--------------------------------+
-        |null|NaN |5B6E756C6C2C224E614E222C2231225D|
+        |NULL|NaN |5B6E756C6C2C224E614E222C2231225D|
         |a1  |0.1 |5B226131222C22302E31222C2231225D|
-        |a2  |null|5B226132222C6E756C6C2C2231225D  |
+        |a2  |NULL|5B226132222C6E756C6C2C2231225D  |
         +----+----+--------------------------------+
         <BLANKLINE>
 
