@@ -340,7 +340,7 @@ class TestCountGrouped(PySparkTest):
                 group_keys=group_keys,
             )
         ).toPandas()
-        expected_counts_df = pd.DataFrame({"C": [0]})
+        expected_counts_df = pd.DataFrame({"C": [0]}, dtype="int32")
         self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
 
     def test_empty_keys_but_nonempty_data(self):

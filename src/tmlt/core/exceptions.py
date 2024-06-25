@@ -9,7 +9,7 @@ import sympy as sp
 # Copyright Tumult Labs 2024
 
 # TYPE_CHECKING is True when MyPy analyzes this file, but False at runtime
-# (see: https://docs.python.org/3.7/library/typing.html )
+# (see: https://docs.python.org/3/library/typing.html)
 # This allows importing modules for type-checking only,
 # which prevents this file from creating circular imports.
 if TYPE_CHECKING:

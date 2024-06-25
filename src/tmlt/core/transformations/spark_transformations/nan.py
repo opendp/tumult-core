@@ -410,9 +410,9 @@ class DropNulls(Transformation):
         +----+----+
         |   A|   B|
         +----+----+
-        |null| NaN|
+        |NULL| NaN|
         |  a1| 0.1|
-        |  a2|null|
+        |  a2|NULL|
         +----+----+
         <BLANKLINE>
         >>> drop_b_nulls = DropNulls(
@@ -431,7 +431,7 @@ class DropNulls(Transformation):
         +----+---+
         |   A|  B|
         +----+---+
-        |null|NaN|
+        |NULL|NaN|
         |  a1|0.1|
         +----+---+
         <BLANKLINE>
@@ -580,9 +580,9 @@ class ReplaceInfs(Transformation):
         +----+---------+
         |   A|        B|
         +----+---------+
-        |null|      NaN|
+        |NULL|      NaN|
         |  a1| Infinity|
-        |  a2|     null|
+        |  a2|     NULL|
         |  a3|-Infinity|
         +----+---------+
         <BLANKLINE>
@@ -602,9 +602,9 @@ class ReplaceInfs(Transformation):
         +----+------+
         |   A|     B|
         +----+------+
-        |null|   NaN|
+        |NULL|   NaN|
         |  a1| 100.0|
-        |  a2|  null|
+        |  a2|  NULL|
         |  a3|-100.0|
         +----+------+
         <BLANKLINE>
@@ -777,9 +777,9 @@ class ReplaceNaNs(Transformation):
         +----+----+
         |   A|   B|
         +----+----+
-        |null| NaN|
+        |NULL| NaN|
         |  a1| 0.1|
-        |  a2|null|
+        |  a2|NULL|
         +----+----+
         <BLANKLINE>
         >>> replace_nans = ReplaceNaNs(
@@ -798,9 +798,9 @@ class ReplaceNaNs(Transformation):
         +----+----+
         |   A|   B|
         +----+----+
-        |null| 0.0|
+        |NULL| 0.0|
         |  a1| 0.1|
-        |  a2|null|
+        |  a2|NULL|
         +----+----+
         <BLANKLINE>
 
@@ -957,9 +957,9 @@ class ReplaceNulls(Transformation):
         +----+----+
         |   A|   B|
         +----+----+
-        |null| NaN|
+        |NULL| NaN|
         |  a1| 0.1|
-        |  a2|null|
+        |  a2|NULL|
         +----+----+
         <BLANKLINE>
         >>> replace_nulls = ReplaceNulls(

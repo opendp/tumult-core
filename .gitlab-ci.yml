@@ -32,7 +32,7 @@ variables:
   FF_USE_FASTZIP: "true"
 
 .base:
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.7
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.8
   before_script:
     - java -version
     - python --version
@@ -97,7 +97,7 @@ package:
   extends: .base
   stage: setup
   needs: []
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.7
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.8
   # make a docker daemon available for cibuildwheel to use
   services:
     - name: docker:dind
@@ -204,10 +204,10 @@ test_dep_matrix:
   needs: ["package"]
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+      - PYTHON_VERSION: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         TEST_TYPE: ["oldest", "newest"]
-      - PYTHON_VERSION: ["3.7"]
-        TEST_TYPE: ["pyspark3.2"]
+      - PYTHON_VERSION: ["3.8"]
+        TEST_TYPE: ["pyspark3.2", "pyspark3.3", "pyspark3.4"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
@@ -286,7 +286,7 @@ test_analytics_pro_docs:
 #   channel
 nightly_handler:
   stage: handler
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.7
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.8
   script:
     - source .pipeline_handlers
     - nightly_handler
@@ -324,7 +324,7 @@ test_release_linux_x86:
   needs: ["package"]
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+      - PYTHON_VERSION: ["3.8", "3.9", "3.10", "3.11", "3.12"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   script:
     - nox -s release_smoketest release_test
@@ -349,7 +349,7 @@ audit:
   needs: ["package"]
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.8", "3.9", "3.10", "3.11"]
+      - PYTHON_VERSION: ["3.8", "3.9", "3.10", "3.11", "3.12"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   script:
     - nox -s "audit(python=\"${PYTHON_VERSION}\")"
@@ -363,7 +363,7 @@ audit:
 publish:
   stage: release
   dependencies: [get_circleci_wheels, package]
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.7
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.8
   script:
     - poetry publish -u __token__ -p "${RELEASE_PYPI_TOKEN}"
   timeout: 3m
@@ -379,7 +379,7 @@ publish:
 publish_docs:
   stage: release
   dependencies: [docs]
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.7
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.8
   variables:
     GIT_STRATEGY: none
   before_script:
@@ -442,9 +442,9 @@ benchmark_dependency_matrix:
   needs: ["package"]
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+      - PYTHON_VERSION: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         TEST_TYPE: ["oldest", "newest"]
-      - PYTHON_VERSION: ["3.7"]
+      - PYTHON_VERSION: ["3.8"]
         TEST_TYPE: ["pyspark3.1", "pyspark3.2"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   script:
@@ -467,7 +467,7 @@ benchmark_dependency_matrix:
 #   channel
 nightly_handler:
   stage: handler
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.7
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.8
   script:
     - poetry install --no-root --only ci-tools
     - source .venv/bin/activate
