@@ -106,8 +106,8 @@ class BenchmarkSparkPublicJoin:
                     "Transform Time (s)": transform_time,
                     "Running Time (s)": running_time,
                 }
-                self.benchmark_result = self.benchmark_result.append(
-                    row, ignore_index=True
+                self.benchmark_result = pd.concat(
+                    [self.benchmark_result, pd.DataFrame([row])], ignore_index=True
                 )
 
         # various rows in private table.
@@ -147,8 +147,8 @@ class BenchmarkSparkPublicJoin:
                     "Transform Time (s)": transform_time,
                     "Running Time (s)": running_time,
                 }
-                self.benchmark_result = self.benchmark_result.append(
-                    row, ignore_index=True
+                self.benchmark_result = pd.concat(
+                    [self.benchmark_result, pd.DataFrame([row])], ignore_index=True
                 )
 
         # various columns in public table.
@@ -189,8 +189,8 @@ class BenchmarkSparkPublicJoin:
                     "Transform Time (s)": transform_time,
                     "Running Time (s)": running_time,
                 }
-                self.benchmark_result = self.benchmark_result.append(
-                    row, ignore_index=True
+                self.benchmark_result = pd.concat(
+                    [self.benchmark_result, pd.DataFrame([row])], ignore_index=True
                 )
 
         # various columns in private table.
@@ -232,8 +232,8 @@ class BenchmarkSparkPublicJoin:
                     "Transform Time (s)": transform_time,
                     "Running Time (s)": running_time,
                 }
-                self.benchmark_result = self.benchmark_result.append(
-                    row, ignore_index=True
+                self.benchmark_result = pd.concat(
+                    [self.benchmark_result, pd.DataFrame([row])], ignore_index=True
                 )
 
         # various join columns
@@ -272,8 +272,8 @@ class BenchmarkSparkPublicJoin:
                     "Transform Time (s)": transform_time,
                     "Running Time (s)": running_time,
                 }
-                self.benchmark_result = self.benchmark_result.append(
-                    row, ignore_index=True
+                self.benchmark_result = pd.concat(
+                    [self.benchmark_result, pd.DataFrame([row])], ignore_index=True
                 )
 
         # various domain sizes
@@ -310,8 +310,8 @@ class BenchmarkSparkPublicJoin:
                     "Transform Time (s)": transform_time,
                     "Running Time (s)": running_time,
                 }
-                self.benchmark_result = self.benchmark_result.append(
-                    row, ignore_index=True
+                self.benchmark_result = pd.concat(
+                    [self.benchmark_result, pd.DataFrame([row])], ignore_index=True
                 )
 
     @staticmethod

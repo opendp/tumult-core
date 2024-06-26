@@ -108,7 +108,7 @@ def main():
             "Max Num Rows": max_num_row,
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
         augment = True
         trans_func = lambda row: [
@@ -136,7 +136,7 @@ def main():
             "Max Num Rows": max_num_row,
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # various columns
     max_num_rows, rows = 10, 1000
@@ -167,7 +167,7 @@ def main():
             "Max Num Rows": max_num_rows,
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
         augment = True
         trans_func = lambda row: [
@@ -192,7 +192,7 @@ def main():
             "Max Num Rows": max_num_rows,
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # various output rows
     cols, rows = 100, 10000
@@ -223,7 +223,7 @@ def main():
             "Max Num Rows": max_num_rows,
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
         augment = True
         trans_func = lambda row: [
@@ -248,7 +248,7 @@ def main():
             "Max Num Rows": max_num_rows,
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # various transform functions
     for times in [10, 1000, 100000, 1000000]:
@@ -291,7 +291,7 @@ def main():
             "Max Num Rows": 5,
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     spark.stop()
     write_as_html(benchmark_result, "sparkflatmap.html")
