@@ -125,7 +125,7 @@ def benchmark_trunc():
     * There are approximately the same number of groups of each size.
     """
     truncations = {"TRUNCATE": truncate_large_groups, "DROP": drop_large_groups}
-    trunc_runtimes = []
+    trunc_runtimes = pd.DataFrame()
     group_counts = [10 ** i for i in (2, 4, 5)]
     group_sizes_tau = [
         ([1, 5, 10], [1, 7]),
@@ -154,7 +154,7 @@ def benchmark_trunc():
                     runtimes_record[
                         f"{truncation_mech} #rows output"
                     ] = truncated_df.count()
-                trunc_runtimes.append(runtimes_record)
+                trunc_runtimes = pd.concat([trunc_runtimes, pd.DataFrame([runtimes_record])], ignore_index=True)
     return pd.DataFrame.from_records(trunc_runtimes)
 
 

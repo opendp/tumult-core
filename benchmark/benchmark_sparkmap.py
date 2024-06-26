@@ -127,7 +127,7 @@ def main():
                 "Augment Flag": augment,
                 "Running Time (s)": running_time,
             }
-            benchmark_result = benchmark_result.append(row, ignore_index=True)
+            benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
         augment = True
         for flat_map in [True, False]:
@@ -150,7 +150,7 @@ def main():
                 "Augment Flag": augment,
                 "Running Time (s)": running_time,
             }
-            benchmark_result = benchmark_result.append(row, ignore_index=True)
+            benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # various columns
     for size in [100, 400, 800, 1600]:
@@ -193,7 +193,7 @@ def main():
                 "Augment Flag": augment,
                 "Running Time (s)": running_time,
             }
-            benchmark_result = benchmark_result.append(row, ignore_index=True)
+            benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
         augment = True
         for flat_map in [True, False]:
@@ -216,7 +216,7 @@ def main():
                 "Augment Flag": augment,
                 "Running Time (s)": running_time,
             }
-            benchmark_result = benchmark_result.append(row, ignore_index=True)
+            benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # various transform functions
     for times in [10, 1000, 100000, 1000000]:
@@ -262,7 +262,7 @@ def main():
                 "Augment Flag": augment,
                 "Running Time (s)": running_time,
             }
-            benchmark_result = benchmark_result.append(row, ignore_index=True)
+            benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     spark.stop()
     write_as_html(benchmark_result, "sparkmap.html")

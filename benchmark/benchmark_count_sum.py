@@ -109,7 +109,7 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # Single Groupby Column of varying domain sizes (1 row/group)
     for domain_size in [100, 400, 10000, 40000, 160000, 640000]:
@@ -136,7 +136,7 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # Single groupby column, group size = 1M
     for size in [100000, 900000, 10000000]:
@@ -167,7 +167,7 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # Group size = 10K
     for size in [10000, 100000, 1000000, 10000000]:
@@ -198,7 +198,7 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # Group size = 100
     for size in [10000, 40000, 160000, 640000, 2560000]:
@@ -225,7 +225,7 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # Multiple groupby columns
     domain_size = 2
@@ -277,7 +277,7 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     # various domain sizes and columns
     group_size = 100
@@ -329,7 +329,7 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     write_as_html(benchmark_result, "count_sum.html")
 

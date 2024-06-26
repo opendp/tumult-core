@@ -68,7 +68,7 @@ def main():
             "UDF": "AddGeometricNoise",
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     for size in [100, 400, 10000, 40000, 160000, 640000]:
         df = pd.DataFrame({"count": [0] * size})
@@ -86,7 +86,7 @@ def main():
             "UDF": "AddLaplaceNoise",
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     for size in [100, 400, 10000, 40000, 160000, 640000]:
         df = pd.DataFrame({"count": [0] * size})
@@ -102,7 +102,7 @@ def main():
             "UDF": "AddDiscreteGaussianNoise",
             "Running Time (s)": running_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     spark.stop()
     write_as_html(benchmark_result, "noise_mechanism.html")

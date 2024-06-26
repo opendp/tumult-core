@@ -146,7 +146,7 @@ def wrap_evaluation_multiple_group_counts(
             "quantile": quantile,
             "quantile_time (s)": quantile_time,
         }
-        benchmark_result = benchmark_result.append(row, ignore_index=True)
+        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     return benchmark_result
 
