@@ -132,7 +132,7 @@ def _nightly_handler(args):
         body_text = f"Trigger a release with <{trigger_release_url}|this job>"
 
         if allowed_failed_jobs:
-            job_links = [f"<{body['web_url']}|{j}>" for j, body in failed_jobs.items()]
+            job_links = [f"<{body['web_url']}|{j}>" for j, body in allowed_failed_jobs.items()]
             body_text += (
                 "\nSome jobs which are allowed to fail are failing: "
                 + ", ".join(job_links)
