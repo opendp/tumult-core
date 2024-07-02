@@ -2,12 +2,18 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
+from datetime import datetime
 from typing import Union
 
 import pandas as pd
 from parameterized import parameterized
+from pyspark.sql.types import LongType, StructField, StructType, TimestampType
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import (
+    SparkDataFrameDomain,
+    SparkIntegerColumnDescriptor,
+    SparkTimestampColumnDescriptor,
+)
 from tmlt.core.exceptions import DomainColumnError
 from tmlt.core.metrics import (
     HammingDistance,
@@ -72,6 +78,46 @@ class TestFilter(TestComponent):
         self.assertTrue(geq_1_filter.stability_relation(1, 1))
         actual_df = geq_1_filter(df).toPandas()
         self.assert_frame_equal_with_sort(actual_df, expected_df)
+
+    def test_empty_df_with_timestamp(self):
+        """Tests that filter works correctly when timestamp column is present.
+
+        Below Filter returns an empty dataframe and we need to ensure the timestamp
+        column is inferred properly.
+
+        This is a regression test for `ValueError: Passing in 'datetime64' dtype
+        with no precision is not allowed. Please pass in 'datetime64[ns]'` error seen
+        on pandas 2.x.x and pyspark 3.3/3.4.
+        """
+        df = self.spark.createDataFrame(
+            [
+                (0, datetime.fromisoformat("2022-01-01T12:30:00")),
+                (1, datetime.fromisoformat("2022-01-01T12:30:00")),
+            ],
+            schema=["A", "T"],
+        )
+        expected_df = pd.DataFrame(columns=["A", "T"])
+        schema = {
+            "A": SparkIntegerColumnDescriptor(),
+            "T": SparkTimestampColumnDescriptor(),
+        }
+        geq_2_filter = Filter(
+            domain=SparkDataFrameDomain(schema),
+            metric=SymmetricDifference(),
+            filter_expr="A >= 2",
+        )
+        self.assertEqual(geq_2_filter.stability_function(1), 1)
+        self.assertTrue(geq_2_filter.stability_relation(1, 1))
+        actual_df = geq_2_filter(df)
+        self.assert_frame_equal_with_sort(actual_df.toPandas(), expected_df)
+        expected_dtype = StructType(
+            [
+                StructField("A", LongType(), True),
+                StructField("T", TimestampType(), True),
+            ]
+        )
+        for column in expected_df.columns:
+            assert actual_df.schema[column] == expected_dtype[column]
 
     @parameterized.expand(["NONEXISTENT>1", "A+1"])
     def test_invalid_filter_exprs_rejected(self, filter_expr: str):
