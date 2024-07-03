@@ -6,12 +6,16 @@ Changelog
 Unreleased
 ----------
 
-0.15.0 was yanked and support for Pandas 2.0 has been reverted due to conflicts with PySpark. Python 3.12 support should be considered experimental; a version with official support will be released once PySpark 4.0 becomes available.
+This release replaces Tumult Core 0.15.0, which was yanked.
+Support for Pandas 2.0 has been reverted due to conflicts with PySpark.
+Python 3.12 support should be considered experimental; a version with official support will be released once PySpark 4.0 becomes available.
 
 .. _v0.15.0:
 
 0.15.0 - 2024-06-26
 -------------------
+
+.. note:: Tumult Core 0.15.0 was yanked due to conflicts between PySpark and Pandas 2.0.
 
 Added
 ~~~~~
