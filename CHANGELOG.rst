@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+.. _v0.15.1:
+
+0.15.1 - 2024-07-05
+-------------------
+
 This release replaces Tumult Core 0.15.0, which was yanked.
 Support for Pandas 2.0 has been reverted due to conflicts with PySpark.
 Python 3.12 support should be considered experimental; a version with official support will be released once PySpark 4.0 becomes available.
