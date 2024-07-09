@@ -63,7 +63,7 @@ def get_nonconflicting_string(strs: List[str]) -> str:
     non_conflicting = []
     for idx, name in enumerate(strs):
         char = name[min(idx, len(name) - 1)]  # Diagonalize
-        non_conflicting.append("A" if char != "A" else "B")
+        non_conflicting.append("A" if char.upper() != "A" else "B")
     return "".join(non_conflicting)
 
 
