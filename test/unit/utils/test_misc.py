@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, List
 
 import pandas as pd
 from parameterized import parameterized
 
-from tmlt.core.utils.misc import copy_if_mutable
+from tmlt.core.utils.misc import copy_if_mutable, get_nonconflicting_string
 from tmlt.core.utils.testing import PySparkTest
+
+from ...conftest import params
 
 
 class TestCopyIfMutable(PySparkTest):
@@ -67,3 +69,19 @@ class TestCopyIfMutable(PySparkTest):
         self.assertEqual(list(copied_item), ["key1"])
         self.assertEqual(list(original), ["key1", "key2"])
         self.assertEqual(list(reference_copy), ["key1"])
+
+
+@params(
+    {
+        "single_a": {"strings": ["a"]},
+        "single_b": {"strings": ["b"]},
+        "longer_string": {"strings": ["abcd"]},
+        "multiple_characters": {"strings": ["a", "b"]},
+        "multiple_strings": {"strings": ["ab", "cd"]},
+        "conflict_later": {"strings": ["b", "a"]},
+    }
+)
+def test_get_nonconflicting_string(strings: List[str]):
+    """Tests that get_nonconflicting_string works."""
+    non_conflicting_string = get_nonconflicting_string(strings)
+    assert non_conflicting_string.upper() not in [string.upper() for string in strings]

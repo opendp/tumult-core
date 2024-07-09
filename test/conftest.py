@@ -1,6 +1,5 @@
 """Creates a Spark Context to use for each testing session."""
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 # pylint: disable=unused-import
@@ -21,6 +20,28 @@ from tmlt.core.measures import Measure, PureDP
 from tmlt.core.metrics import AbsoluteDifference, Metric
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber
+
+
+def params(d):
+    """Allows parameterizing tests with dictionaries.
+
+    Examples:
+    @params(
+        {
+            "test_case_1": {
+                "arg1": value1,
+                "arg2": value2,
+            },
+        }
+    )
+    test_func(...)
+    """
+    argnames = sorted({k for v in d.values() for k in v.keys()})
+    return pytest.mark.parametrize(
+        argnames=argnames,
+        argvalues=[[v.get(k) for k in argnames] for v in d.values()],
+        ids=d.keys(),
+    )
 
 
 def quiet_py4j():
