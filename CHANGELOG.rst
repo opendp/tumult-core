@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+.. _v0.15.2:
+
+0.15.2 - 2024-07-15
+-------------------
+
 Fixed
 ~~~~~
 - Made :meth:`tmlt.core.utils.misc.get_nonconflicting_string` case-insensitive, since Spark is case insensitive by default.
