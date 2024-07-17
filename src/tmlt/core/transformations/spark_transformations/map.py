@@ -126,7 +126,7 @@ class RowToRowTransformation(Transformation):
                 :class:`~.RowToRowsTransformation` is not stable! Its
                 :meth:`~.stability_relation` always returns False, and its
                 :meth:`~.stability_function` always raises :class:`NotImplementedError`.
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -142,7 +142,7 @@ class RowToRowTransformation(Transformation):
             input_domain: Domain for the input row.
             output_domain: Domain for the output row.
             trusted_f: Transformation function to apply to input row.
-            augment: If True, the output of `trusted_f` will be augmented by the
+            augment: If True, the output of ``trusted_f`` will be augmented by the
                 existing values from the input row. Note that if the column already
                 exists, the original value is used.
         """
@@ -325,7 +325,7 @@ class RowToRowsTransformation(Transformation):
             input_domain: Domain for the input row.
             output_domain: Domain for the output rows.
             trusted_f: Transformation function to apply to input row.
-            augment: If True, the output of `trusted_f` will be augmented by the existing
+            augment: If True, the output of ``trusted_f`` will be augmented by the existing
                 values from the input row. Note that if the column already exists, the
                 original value is used.
         """
@@ -510,7 +510,7 @@ class FlatMap(Transformation):
             - IfGroupedBy(column, SumOf(SymmetricDifference()))
             - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
 
-            :class:`~.FlatMap`'s :meth:`~.stability_function` returns the `d_in`
+            :class:`~.FlatMap`'s :meth:`~.stability_function` returns the ``d_in``
             times :attr:`.max_num_rows`. If :attr:`.max_num_rows` is None, it returns infinity.
 
             >>> duplicate_flat_map.stability_function(1)
@@ -522,8 +522,8 @@ class FlatMap(Transformation):
 
             - IfGroupedBy(column, SymmetricDifference())
 
-            :class:`~.FlatMap`'s :meth:`~.stability_function` returns `d_in`.
-    """  # pylint: disable=line-too-long
+            :class:`~.FlatMap`'s :meth:`~.stability_function` returns ``d_in``.
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -537,7 +537,7 @@ class FlatMap(Transformation):
         Args:
             metric: Distance metric for input and output DataFrames.
             row_transformer: Transformation to apply to each row.
-            max_num_rows: The maximum number of rows to allow from `row_transformer`. If
+            max_num_rows: The maximum number of rows to allow from ``row_transformer``. If
                 more rows are output, the additional rows are suppressed. If this value
                 is None, the transformation will not impose a limit on the number of
                 rows. None is only allowed if the metric is
@@ -634,13 +634,13 @@ class GroupingFlatMap(Transformation):
     """Applies a :class:`~.RowToRowsTransformation` to each row and flattens the result.
 
     A :class:`~.GroupingFlatMap` is a special case of a :class:`~.FlatMap` that has
-    different input and output metrics (a `FlatMap`'s input and output metrics are
+    different input and output metrics (a ``FlatMap``'s input and output metrics are
     always identical) and allows for a tighter stability analysis.
 
-    Compared to a regular `FlatMap`, a `GroupingFlatMap` also requires that:
+    Compared to a regular ``FlatMap``, a ``GroupingFlatMap`` also requires that:
 
-    1. The `row_transformer` creates a single column that is augmented to the input
-    2. For each input row, the `row_transformer` creates no duplicate values in the
+    1. The ``row_transformer`` creates a single column that is augmented to the input
+    2. For each input row, the ``row_transformer`` creates no duplicate values in the
        created column (This is enforced by the implementation).
 
     .. note::
@@ -751,24 +751,24 @@ class GroupingFlatMap(Transformation):
             The meth:`~.stability_function` is different depending on the output
             metric:
 
-            If the inner metric is `SumOf(SymmetricDifference())`, `d_out` is
+            If the inner metric is ``SumOf(SymmetricDifference())``, ``d_out`` is
 
-                `d_in * self.max_num_rows`
+                ``d_in * self.max_num_rows``
 
-            If the inner metric is `RootSumOfSquares(SymmetricDifference())`, we
-            can use the added structure of the `row_transformer` to achieve a
+            If the inner metric is ``RootSumOfSquared(SymmetricDifference())``, we
+            can use the added structure of the ``row_transformer`` to achieve a
             tighter analysis. We know that for each input row, the function will
             produce at most one output row per value of the new column, so in total
-            we can produce up to `d_in` rows for each of up to `self.max_num_rows`
-            values of the new column. Therefore, under `RootSumOfSquares`, `d_out` is
+            we can produce up to ``d_in`` rows for each of up to ``self.max_num_rows``
+            values of the new column. Therefore, under ``RootSumOfSquared``, ``d_out`` is
 
-                `d_in * sqrt(self.max_num_rows)`
+                ``d_in * sqrt(self.max_num_rows)``
 
             >>> add_i_flat_map.stability_function(1)
             sqrt(3)
             >>> add_i_flat_map.stability_function(2)
             2*sqrt(3)
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -782,7 +782,7 @@ class GroupingFlatMap(Transformation):
         Args:
             output_metric: Inner metric for :class:`~.IfGroupedBy` output DataFrames.
             row_transformer: Transformation to apply to each row.
-            max_num_rows: The maximum number of rows to allow from `row_transformer`.
+            max_num_rows: The maximum number of rows to allow from ``row_transformer``.
         """
         if max_num_rows < 0:
             raise ValueError(f"max_num_rows ({max_num_rows}) must be nonnegative.")
@@ -970,13 +970,13 @@ class Map(Transformation):
         SymmetricDifference()
 
         Stability Guarantee:
-            :class:`~.Map`'s :meth:`~.stability_function` returns `d_in`.
+            :class:`~.Map`'s :meth:`~.stability_function` returns ``d_in``.
 
             >>> rename_b_to_c_map.stability_function(1)
             1
             >>> rename_b_to_c_map.stability_function(2)
             2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(

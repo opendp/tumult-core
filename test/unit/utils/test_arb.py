@@ -8,7 +8,10 @@ import math
 from unittest import TestCase
 
 from parameterized import parameterized
-from scipy.special import erf, erfc  # pylint: disable=no-name-in-module
+
+# pylint: disable=no-name-in-module,useless-suppression
+# This suppression is useless on Python 3.12 but does something on Python 3.8.
+from scipy.special import erf, erfc
 
 from tmlt.core.utils.arb import (
     Arb,
@@ -31,6 +34,8 @@ from tmlt.core.utils.arb import (
     arb_sum,
     arb_union,
 )
+
+# pylint: enable=no-name-in-module,useless-suppression
 
 
 class TestArb(TestCase):

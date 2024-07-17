@@ -21,7 +21,7 @@ class MeasurementTests(ABC):
 
     @abstractmethod
     @pytest.fixture
-    def measurement_type(self) -> Type[Measurement]:  # pylint: disable=no-self-use
+    def measurement_type(self) -> Type[Measurement]:
         """Returns the type of the measurement to be tested."""
         return Measurement
 

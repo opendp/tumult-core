@@ -53,10 +53,10 @@ class Queryable(ABC):
 
 @dataclass
 class MeasurementQuery:
-    """Contains a Measurement and the `d_out` it satisfies.
+    """Contains a Measurement and the ``d_out`` it satisfies.
 
     Note:
-        The `d_in` is known by the Queryable.
+        The ``d_in`` is known by the Queryable.
 
     Used by
 
@@ -83,10 +83,10 @@ class MeasurementQuery:
 
 @dataclass
 class TransformationQuery:
-    """Contains a Transformation and the `d_out` it satisfies.
+    """Contains a Transformation and the ``d_out`` it satisfies.
 
     Note:
-        The `d_in` is known by the Queryable.
+        The ``d_in`` is known by the Queryable.
 
     Used by
 
@@ -144,21 +144,20 @@ class RetirableQueryable(Queryable):
     RetirableQueryable accepts a special :class:`~.RetireQuery` query that retires
     itself and all descendant :class:`~.Queryable`\ s.
 
-    Submitting a query `q` to a RetirableQueryable `RQ` has the following behavior:
+    Submitting a query ``q`` to a RetirableQueryable ``RQ`` has the following behavior:
 
-        * | If `q` is a :class:`~.RetireQuery`, `RQ` submits a :class:`~.RetireQuery` to
-          | each child :class:`~.RetirableQueryable`, changes its state to "retired"
-          | and returns `None`.
-        * | If `q` is not a :class:`~.RetireQuery` and `RQ` is "active", it obtains
-          | an answer `A` by submitting `q` to its inner Queryable.
+        * If ``q`` is a :class:`~.RetireQuery`, ``RQ`` submits a :class:`~.RetireQuery`
+          to each child :class:`~.RetirableQueryable`, changes its state to "retired",
+          and returns ``None``.
+        * If ``q`` is not a :class:`~.RetireQuery` and ``RQ`` is "active", it obtains
+          an answer ``A`` by submitting ``q`` to its inner Queryable.
 
-            * If `A` is not a Queryable, `RQ` returns `A`.
-            * | Otherwise, `RQ` constructs and returns a new RetirableQueryable with
-              | :class:`~.Queryable` `A`.
+            * If ``A`` is not a Queryable, ``RQ`` returns ``A``.
+            * Otherwise, ``RQ`` constructs and returns a new RetirableQueryable with
+              :class:`~.Queryable` ``A``.
 
-        * | If `q` is not a :class:`~.RetireQuery` and `RQ` is "retired", an error is
-          | raised.
-
+        * If ``q`` is not a :class:`~.RetireQuery` and ``RQ`` is "retired", an error is
+          raised.
     """
 
     @typechecked
@@ -175,8 +174,8 @@ class RetirableQueryable(Queryable):
     def __call__(self, query: Any) -> Any:
         """Answers query.
 
-        If `query` is :class:`~.RetireQuery`, this queryable and all descendant
-        queryables are retired. Otherwise, the `query` is routed to the wrapped
+        If ``query`` is :class:`~.RetireQuery`, this queryable and all descendant
+        queryables are retired. Otherwise, the ``query`` is routed to the wrapped
         queryable.
         """
         if isinstance(query, RetireQuery):
@@ -219,7 +218,7 @@ class SequentialQueryable(Queryable):
 
         Args:
             input_domain: Domain of data being queried.
-            input_metric: Distance metric for `input_domain`.
+            input_metric: Distance metric for ``input_domain``.
             d_in: Input metric value for inputs.
             output_measure: Distance measure on output.
             privacy_budget: Total privacy budget across all queries.
@@ -379,10 +378,10 @@ class GetAnswerQueryable(Queryable):
 class DecoratedQueryable(Queryable):
     """Allows modifying the query to and the answer from a Queryable.
 
-    The privacy guarantee for :class:`~.DecoratedQueryable` depends on the passed
-    function `postprocess_answer` satisfying certain properties. In particular,
-    `postprocess_answer` should not use distinguishing pseudo-side channel information,
-    and should be well-defined on its abstract domain. See
+    The privacy guarantee for :class:`~.DecoratedQueryable` depends on the
+    passed function ``postprocess_answer`` satisfying certain properties. In
+    particular, ``postprocess_answer`` should not use distinguishing pseudo-side
+    channel information, and should be well-defined on its abstract domain. See
     :ref:`postprocessing-udf-assumptions`.
     """
 
@@ -689,7 +688,7 @@ class ParallelComposition(Measurement):
     def privacy_function(self, d_in: Any) -> PrivacyBudgetValue:
         """Returns the smallest d_out satisfied by the measurement.
 
-        Returns the largest `d_out` from the :meth:`~.Measurement.privacy_function` of
+        Returns the largest ``d_out`` from the :meth:`~.Measurement.privacy_function` of
         all of the composed measurements.
 
         Args:
@@ -826,7 +825,7 @@ class PrivacyAccountantState(Enum):
 
             * :meth:`~.PrivacyAccountant.retire` is called on it
             * :meth:`~.PrivacyAccountant.retire` is called on one of its ancestors with
-              `force` = True
+              ``force`` = True
             * :meth:`~.PrivacyAccountant.force_activate` is called on one of its
               succeeding siblings.
             * :meth:`~.PrivacyAccountant.force_activate` is called on one of its
@@ -840,9 +839,9 @@ class PrivacyAccountantState(Enum):
         A :class:`~.PrivacyAccountant` that is WAITING_FOR_CHILDREN will become RETIRED
         when
 
-            * :meth:`~.PrivacyAccountant.retire` is called on it with `force` = True
+            * :meth:`~.PrivacyAccountant.retire` is called on it with ``force`` = True
             * :meth:`~.PrivacyAccountant.retire` is called on its ancestor with
-              `force` = True
+              ``force`` = True
             * :meth:`~.PrivacyAccountant.force_activate` is called on one of its
               succeeding siblings.
             * :meth:`~.PrivacyAccountant.force_activate` is called on one of its
@@ -897,13 +896,13 @@ class PrivacyAccountant:
             :meth:`~.PrivacyAccountant.launch`. Do not use the constructor directly.
 
         Args:
-            queryable: A :class:`~.Queryable` to wrap. If `initial_state` is ACTIVE,
+            queryable: A :class:`~.Queryable` to wrap. If ``initial_state`` is ACTIVE,
                 this should not be None.
-            input_domain: The input domain for `queryable`.
-            input_metric: The input metric for `queryable`.
-            output_measure:  The output measure for `queryable`.
-            d_in: The input metric value for `queryable`.
-            privacy_budget: The privacy budget for the `queryable`.
+            input_domain: The input domain for ``queryable``.
+            input_metric: The input metric for ``queryable``.
+            output_measure:  The output measure for ``queryable``.
+            d_in: The input metric value for ``queryable``.
+            privacy_budget: The privacy budget for the ``queryable``.
             parent: The parent of this :class:`~.PrivacyAccountant`.
         """
         input_metric.validate(d_in)
@@ -1057,31 +1056,31 @@ class PrivacyAccountant:
 
         This method is an :ref:`action <action>`.
 
-        Requirements to apply `transformation`:
+        Requirements to apply ``transformation``:
 
         * this :class:`~.PrivacyAccountant`'s :attr:`~.state` must be ACTIVE
-        * `transformation`'s :attr:`~.Transformation.input_domain` must match this
+        * ``transformation``'s :attr:`~.Transformation.input_domain` must match this
           :class:`~.PrivacyAccountant`'s :attr:`~.input_domain`
-        * `transformation`'s :attr:`~.Transformation.input_metric` must match this
+        * ``transformation``'s :attr:`~.Transformation.input_metric` must match this
           :class:`~.PrivacyAccountant`'s :attr:`~.input_metric`
-        * if `d_out` is provided, `transformation`'s
+        * if ``d_out`` is provided, ``transformation``'s
           :meth:`~.Transformation.stability_relation` must hold for
-          :class:`~.PrivacyAccountant`'s :attr:`~.d_in` and `d_out`
+          :class:`~.PrivacyAccountant`'s :attr:`~.d_in` and ``d_out``
 
-        After applying `transformation`:
+        After applying ``transformation``:
 
         * this :class:`~.PrivacyAccountant`'s :attr:`~.input_domain` will become
-          `transformation`'s :attr:`~.Transformation.output_domain`
+          ``transformation``'s :attr:`~.Transformation.output_domain`
         * this :class:`~.PrivacyAccountant`'s :attr:`~.input_metric` will become
-          `transformation`'s :attr:`~.Transformation.output_metric`
+          ``transformation``'s :attr:`~.Transformation.output_metric`
         * this :class:`~.PrivacyAccountant`'s :attr:`~.d_in` will become
-          `transformation`'s d_out
+          ``transformation``'s d_out
 
-            - if `transformation` implements a
+            - if ``transformation`` implements a
               :meth:`~.Transformation.stability_function`, its d_out is the output of
               its stability function on this :class:`~.PrivacyAccountant`'s
               :attr:`~.d_in`
-            - otherwise it is the argument `d_out`
+            - otherwise it is the argument ``d_out``
 
         Example:
             ..
@@ -1131,8 +1130,8 @@ class PrivacyAccountant:
 
         Args:
             transformation: The transformation to apply.
-            d_out: An optional value for the output metric for `transformation`. It is
-                only used if `transformation` does not implement a
+            d_out: An optional value for the output metric for ``transformation``. It is
+                only used if ``transformation`` does not implement a
                 :meth:`~.Transformation.stability_function`.
 
         Raises:
@@ -1180,33 +1179,33 @@ class PrivacyAccountant:
     def measure(
         self, measurement: Measurement, d_out: Optional[PrivacyBudgetInput] = None
     ) -> Any:
-        """Returns the answer to `measurement`.
+        """Returns the answer to ``measurement``.
 
         This method is an :ref:`action <action>`.
 
-        Requirements to answer `measurement`:
+        Requirements to answer ``measurement``:
 
-        * `measurement`'s :attr:`~.Measurement.input_domain` must match this
+        * ``measurement``'s :attr:`~.Measurement.input_domain` must match this
           :class:`~.PrivacyAccountant`'s :attr:`~.input_domain`
-        * `measurement`'s :attr:`~.Measurement.input_metric` must match this
+        * ``measurement``'s :attr:`~.Measurement.input_metric` must match this
           :class:`~.PrivacyAccountant`'s :attr:`~.input_metric`
-        * `measurement`'s :attr:`~.Measurement.output_measure` must match this
+        * ``measurement``'s :attr:`~.Measurement.output_measure` must match this
           :class:`~.PrivacyAccountant`'s :attr:`~.output_measure`
-        * if `d_out` is provided, `measurement`'s
+        * if ``d_out`` is provided, ``measurement``'s
           :meth:`~.Measurement.privacy_relation` must hold for
-          :class:`~.PrivacyAccountant`'s :attr:`~.d_in` and `d_out`
+          :class:`~.PrivacyAccountant`'s :attr:`~.d_in` and ``d_out``
         * this :class:`~.PrivacyAccountant`'s :attr:`~.privacy_budget` must be greater
-          than or equal to the `measurement`'s d_out
+          than or equal to the ``measurement``'s d_out
 
-            - if `measurement` implements a :meth:`~.Measurement.privacy_function`, its
+            - if ``measurement`` implements a :meth:`~.Measurement.privacy_function`, its
               d_out is the output of its privacy function on this
               :class:`~.PrivacyAccountant`'s :attr:`~.d_in`
-            - otherwise it is the argument `d_out`
+            - otherwise it is the argument ``d_out``
 
-        After answering `measurement`:
+        After answering ``measurement``:
 
         * this :class:`~.PrivacyAccountant`'s :attr:`~.privacy_budget` will decrease by
-          `measurement`'s d_out
+          ``measurement``'s d_out
 
         Example:
             ..
@@ -1263,8 +1262,8 @@ class PrivacyAccountant:
 
         Args:
             measurement: A non-interactive measurement to answer.
-            d_out: An optional d_out for `measurement`. It is only used if
-                `measurement` does not implement a
+            d_out: An optional d_out for ``measurement``. It is only used if
+                ``measurement`` does not implement a
                 :meth:`~.Measurement.privacy_function`.
 
         Raises:
@@ -1336,9 +1335,9 @@ class PrivacyAccountant:
     ) -> List["PrivacyAccountant"]:
         r"""Returns new :class:`~.PrivacyAccountant`\ s from splitting the private data.
 
-        Uses `splitting_transformation` to split the private data into a list of new
+        Uses ``splitting_transformation`` to split the private data into a list of new
         datasets. A new :class:`~.PrivacyAccountant` is returned for each element in the
-        list created by `splitting_transformation`.
+        list created by ``splitting_transformation``.
 
         .. note::
             Unlike :meth:`~.transform_in_place`, this does *not* transform the private
@@ -1348,16 +1347,16 @@ class PrivacyAccountant:
 
         Requirements to split:
 
-        * `splitting_transformation`'s :attr:`~.Transformation.input_domain` must match
+        * ``splitting_transformation``'s :attr:`~.Transformation.input_domain` must match
           this :class:`~.PrivacyAccountant`'s :attr:`~.input_domain`
-        * `splitting_transformation`'s :attr:`~.Transformation.input_metric` must match
+        * ``splitting_transformation``'s :attr:`~.Transformation.input_metric` must match
           this :class:`~.PrivacyAccountant`'s :attr:`~.input_metric`
-        * if `d_out` is provided, `splitting_transformation`'s
+        * if ``d_out`` is provided, ``splitting_transformation``'s
           :meth:`~.Transformation.stability_relation` must hold for this
-          :class:`~.PrivacyAccountant`'s :attr:`~.d_in` and `d_out`
-        * `splitting_transformation`'s :attr:`~.Transformation.output_domain`
+          :class:`~.PrivacyAccountant`'s :attr:`~.d_in` and ``d_out``
+        * ``splitting_transformation``'s :attr:`~.Transformation.output_domain`
           must be a :class:`~.ListDomain` with a fixed :attr:`~.ListDomain.length`.
-        * `splitting_transformation`'s :attr:`~.Transformation.output_metric`
+        * ``splitting_transformation``'s :attr:`~.Transformation.output_metric`
           must be :class:`~.SumOf` if this :class:`~.PrivacyAccountant`'s
           :attr:`~.output_measure` is :class:`~.PureDP` or :class:`~.RootSumOfSquared`
           if this :class:`~.PrivacyAccountant`'s :attr:`~.output_measure` is
@@ -1366,27 +1365,27 @@ class PrivacyAccountant:
         After creating the new :class:`~.PrivacyAccountant`\ s:
 
         * this :class:`~.PrivacyAccountant`'s :attr:`~.privacy_budget` will decrease by
-          `privacy_budget`
+          ``privacy_budget``
         * this :class:`~.PrivacyAccountant`'s :attr:`~.children` will be a list with the new
           :class:`~.PrivacyAccountant`\ s
         * this :class:`~.PrivacyAccountant`'s :attr:`~.state` will become WAITING_FOR_CHILDREN
         * the new :class:`~.PrivacyAccountant`\ s' :attr:`~.input_domain` will be the
-          element domain of `splitting_transformation`'s :class:`~.ListDomain`
+          element domain of ``splitting_transformation``'s :class:`~.ListDomain`
         * the new :class:`~.PrivacyAccountant`\ s' :attr:`~.input_metric` will be the
-          inner metric of `splitting_transformation`'s :class:`~.SumOf` or
+          inner metric of ``splitting_transformation``'s :class:`~.SumOf` or
           :class:`~.RootSumOfSquared` metric
         * the new :class:`~.PrivacyAccountant`\ s' :attr:`~.output_measure` will be this
           :class:`~.PrivacyAccountant`\ s :attr:`~.output_measure`
         * the new :class:`~.PrivacyAccountant`\ s' :attr:`~.d_in` will be
-          `splitting_transformation`'s d_out
+          ``splitting_transformation``'s d_out
 
-            - if `splitting_transformation` implements a
+            - if ``splitting_transformation`` implements a
               :meth:`~.Transformation.stability_function`, its d_out is the output of
               its stability function on this :class:`~.PrivacyAccountant`'s
               :attr:`~.d_in`
-            - otherwise it is the argument `d_out`
+            - otherwise it is the argument ``d_out``
         * the new :class:`~.PrivacyAccountant`\ s' :attr:`~.privacy_budget` will be
-          `privacy_budget`
+          ``privacy_budget``
         * the first child :class:`~.PrivacyAccountant`\ 's :attr:`~.state` will be
           ACTIVE and all other child :class:`~.PrivacyAccountant`\ s' :attr:`~.state`
           will be WAITING_FOR_SIBLING.
@@ -1505,8 +1504,8 @@ class PrivacyAccountant:
             splitting_transformation: The transformation to apply.
             privacy_budget: The privacy budget to allocate to the new
                 :class:`~.PrivacyAccountant`\ s.
-            d_out: An optional value for the :attr:~.Transformation.output_metric` for
-               `splitting_transformation`. It is only used if `splitting_transformation`
+            d_out: An optional value for the :attr:`~.Transformation.output_metric` for
+               ``splitting_transformation``. It is only used if ``splitting_transformation``
                does not implement a :meth:`~.Transformation.stability_function`.
 
         Raises:
@@ -1661,8 +1660,8 @@ class PrivacyAccountant:
 
         Raises:
             RuntimeError: If this :class:`~.PrivacyAccountant` cannot be set to RETIRED.
-                If `force` is False, this :class:`~.PrivacyAccountant` cannot be
-                WAITING_FOR_CHILDREN. If `force` is True, :meth:`~.retire` can always
+                If ``force`` is False, this :class:`~.PrivacyAccountant` cannot be
+                WAITING_FOR_CHILDREN. If ``force`` is True, :meth:`~.retire` can always
                 be called.
             RuntimeWarning: If the :class:`~.PrivacyAccountant` is WAITING_FOR_SIBLING.
         """
@@ -1701,13 +1700,13 @@ class PrivacyAccountant:
         self, transformation: Transformation, d_out: Optional[Any] = None
     ) -> None:
         # pylint: disable=line-too-long
-        """Queue `transformation` to be executed when this :class:`~.PrivacyAccountant` becomes ACTIVE.
+        """Queue ``transformation`` to be executed when this :class:`~.PrivacyAccountant` becomes ACTIVE.
 
         If this :class:`~.PrivacyAccountant` is ACTIVE, this has
         the same behavior as :meth:`~.transform_in_place`.
 
         If this :class:`~.PrivacyAccountant` is WAITING_FOR_CHILDREN or
-        WAITING_FOR_SIBLING, `transformation` will be applied to the private data
+        WAITING_FOR_SIBLING, ``transformation`` will be applied to the private data
         when this :class:`~.PrivacyAccountant` becomes ACTIVE, but otherwise it
         has the same behavior as :meth:`~.transform_in_place`
         (:attr:`~.input_domain`, :attr:`~.input_metric`, and :attr:`~.d_in` are
@@ -1717,8 +1716,8 @@ class PrivacyAccountant:
 
         Args:
             transformation: The transformation to apply.
-            d_out: An optional value for the output metric for `transformation`. It is
-                only used if `transformation` does not implement a
+            d_out: An optional value for the output metric for ``transformation``. It is
+                only used if ``transformation`` does not implement a
                 :meth:`~.Transformation.stability_function`.
         """
         # pylint: enable=line-too-long
@@ -1810,7 +1809,7 @@ class PrivacyAccountant:
     def _activate_next(self, child: "PrivacyAccountant") -> None:
         r"""Activates next child or self.
 
-        If `child` is the last child of this :class:`~.PrivacyAccountant`, this
+        If ``child`` is the last child of this :class:`~.PrivacyAccountant`, this
         :class:`~.PrivacyAccountant`\ 's state is changed from WAITING_FOR_CHILDREN
         to ACTIVE. Otherwise, the next child of this :class:`~.PrivacyAccountant`
         becomes ACTIVE.
@@ -1864,7 +1863,7 @@ def create_adaptive_composition(
 
     Returned :class:`~.DecoratedQueryable` allows transforming the private data
     and answering non-interactive :class:`~.MeasurementQuery`\ s as long as the
-    cumulative privacy budget spent does not exceed `privacy_budget`.
+    cumulative privacy budget spent does not exceed ``privacy_budget``.
 
     Args:
         input_domain: Domain of input datasets.

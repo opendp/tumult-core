@@ -93,7 +93,7 @@ def square_root_gaussian_inverse_cdf(x: Arb, sigma: Arb, prec: int) -> Arb:
     r"""Inverse CDF for a special case of the generalized Gaussian distribution.
 
     In particular, this function returns the inverse CDF of the generalized Gaussian
-    distribution when the shape parameter is `1/2`:
+    distribution when the shape parameter is ``1/2``:
 
     .. math::
 
@@ -106,7 +106,7 @@ def square_root_gaussian_inverse_cdf(x: Arb, sigma: Arb, prec: int) -> Arb:
             \end{cases}
         \end{equation}
 
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
     if x == Arb.from_float(0.5):
         return Arb.from_int(0)
 
@@ -197,7 +197,7 @@ def exponential_polylogarithmic_inverse_cdf(
                 0 & x = \frac{1}{2}
             \end{cases}
 
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
     if x == Arb.from_float(0.5):
         return Arb.from_int(0)
 

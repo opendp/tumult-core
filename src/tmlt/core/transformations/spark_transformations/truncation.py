@@ -92,15 +92,15 @@ class LimitRowsPerGroup(Transformation):
         SymmetricDifference()
 
         Stability Guarantee:
-            :class:`~.LimitRowsPerGroup`'s :meth:`~.stability_function` returns
-            `threshold * d_in` if `output_metric` is `SymmetricDifference()` and `d_in`
+            :class:`~.LimitRowsPerGroup` 's :meth:`~.stability_function` returns
+            ``threshold * d_in`` if ``output_metric`` is ``SymmetricDifference()`` and ``d_in``
             otherwise.
 
             >>> truncate.stability_function(1)
             2
             >>> truncate.stability_function(2)
             4
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -115,8 +115,8 @@ class LimitRowsPerGroup(Transformation):
         Args:
             input_domain: Domain of input DataFrame.
             output_metric: Distance metric for output DataFrames. This should be
-                `SymmetricDifference()` or
-                `IfGroupedBy(grouping_column, SymmetricDifference())`.
+                ``SymmetricDifference()`` or
+                ``IfGroupedBy(grouping_column, SymmetricDifference())``.
             grouping_column: Name of column defining the groups to truncate.
             threshold: The maximum number of rows per group after truncation.
         """
@@ -258,11 +258,11 @@ class LimitKeysPerGroup(Transformation):
         IfGroupedBy(column='B', inner_metric=SumOf(inner_metric=IfGroupedBy(column='A', inner_metric=SymmetricDifference())))
 
         Stability Guarantee:
-            :class:`~.LimitKeysPerGroup`'s :meth:`~.stability_function` returns
-            `d_in` if `output_metric` is IfGroupedBy(grouping_column, SymmetricDifference()),
-            `sqrt(threshold) * d_in` if `output_metric` is
-            `IfGroupedBy(key_column, RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())))`,
-            and `threshold * d_in` otherwise.
+            :class:`~.LimitKeysPerGroup` 's :meth:`~.stability_function` returns
+            ``d_in`` if ``output_metric`` is ``IfGroupedBy(grouping_column, SymmetricDifference())``,
+            ``sqrt(threshold) * d_in`` if ``output_metric`` is
+            ``IfGroupedBy(key_column, RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())))``,
+            and ``threshold * d_in`` otherwise.
 
             >>> truncate.stability_function(1)
             2
@@ -284,9 +284,9 @@ class LimitKeysPerGroup(Transformation):
         Args:
             input_domain: Domain of input DataFrame.
             output_metric: Distance metric for output DataFrames. This should be
-                `IfGroupedBy(key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference())))` or
-                `IfGroupedBy(key_column, RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())))`
-                or `IfGroupedBy(grouping_column, SymmetricDifference())`.
+                ``IfGroupedBy(key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference())))`` or
+                ``IfGroupedBy(key_column, RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())))``
+                or ``IfGroupedBy(grouping_column, SymmetricDifference())``.
             grouping_column: Name of column defining the groups to truncate.
             key_column: Name of column defining the keys.
             threshold: The maximum number of keys per group after truncation.
@@ -460,9 +460,9 @@ class LimitRowsPerKeyPerGroup(Transformation):
         SymmetricDifference()
 
         Stability Guarantee:
-            :class:`~.LimitRowsPerKeyPerGroup`'s :meth:`~.stability_function` returns
-            `d_in` if `input_metric` is `IfGroupedBy(grouping_column, SymmetricDifference())`
-            and `threshold * d_in` otherwise.
+            :class:`~.LimitRowsPerKeyPerGroup` 's :meth:`~.stability_function` returns
+            ``d_in`` if ``input_metric`` is ``IfGroupedBy(grouping_column, SymmetricDifference())``
+            and ``threshold * d_in`` otherwise.
 
             >>> truncate.stability_function(1)
             2
@@ -484,9 +484,9 @@ class LimitRowsPerKeyPerGroup(Transformation):
         Args:
             input_domain: Domain of input DataFrame.
             input_metric: Distance metric for input DataFrames. This should be
-                `IfGroupedBy(key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference())))` or
-                `IfGroupedBy(key_column, RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())))`
-                or `IfGroupedBy(grouping_column, SymmetricDifference())`.
+                ``IfGroupedBy(key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference())))`` or
+                ``IfGroupedBy(key_column, RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())))``
+                or ``IfGroupedBy(grouping_column, SymmetricDifference())``.
             grouping_column: Name of column defining the groups to truncate.
             key_column: Name of column defining the keys.
             threshold: The maximum number of rows each unique (key, grouping column value) pair may appear in after truncation.

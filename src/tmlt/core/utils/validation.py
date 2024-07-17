@@ -63,7 +63,7 @@ def validate_exact_number(
     maximum: Optional[ExactNumberInput] = None,
     maximum_is_inclusive: bool = True,
 ) -> None:
-    """Raises a :class:`ValueError` if `value` fails the specified conditions.
+    """Raises a :class:`ValueError` if ``value`` fails the specified conditions.
 
     Examples:
         Verify that a number is integral
@@ -148,13 +148,13 @@ def validate_exact_number(
 
     Args:
         value: A :class:`sympy.Expr` to validate.
-        allow_nonintegral: If False, raises an error if `value` is not integral,
+        allow_nonintegral: If False, raises an error if ``value`` is not integral,
             unless it is infinity.
         minimum: An optional lower bound.
-        minimum_is_inclusive: If False, `value` is not allowed to be equal to
-            `minimum`. Defaults to True.
+        minimum_is_inclusive: If False, ``value`` is not allowed to be equal to
+            ``minimum``. Defaults to True.
         maximum: An optional upper bound.
-        maximum_is_inclusive: If False, `value` being equal to `maximum` is not
+        maximum_is_inclusive: If False, ``value`` being equal to ``maximum`` is not
             allowed. Defaults to True.
     """
     exact_value = ExactNumber(value)

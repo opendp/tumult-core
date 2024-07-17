@@ -88,7 +88,7 @@ Fixed
 Changed
 ~~~~~~~
 - Updated :func:`~.calculate_noise_scale` to return a noise scale of 0 when both the
-  `d_in` and `d_out` are infinite.
+  ``d_in`` and ``d_out`` are infinite.
 - Adjusted error messages related to spending privacy budgets in classes of type :class:`~.PrivacyBudget`.
 - Moved InsufficientBudgetError from :mod:`~.interactive_measurements` to :mod:`~.measures`.
 - Adjusted :meth:`tmlt.core.measurements.aggregations.create_variance_measurement` and :meth:`tmlt.core.measurements.aggregations.create_standard_deviation_measurement` to calculate sample variance and sample standard deviation instead of population variance and population standard deviation.
@@ -120,7 +120,7 @@ Changed
   use these functions.** In particular, :class:`~.PrivateJoin`,
   :class:`~.LimitRowsPerGroup`, :class:`~.LimitKeysPerGroup`, and
   :class:`~.LimitRowsPerKeyPerGroup`.
-- Expanded the explanation of `GroupingFlatMap`'s stability.
+- Expanded the explanation of :class:`~.GroupingFlatMap`'s stability.
 - Support all metrics for the flat map transformation.
 
 Fixed
@@ -198,7 +198,7 @@ Changed
 - Replaced the `group_keys` for constructing :class:`~.SparkGroupedDataFrameDomain`\ s with `groupby_columns`.
 - Modified :class:`~.SymmetricDifference` to define the distance
   between two elements of :class:`~.SparkGroupedDataFrameDomain`\ s to be infinite when the two elements have different `group_keys`.
-- Updated maximum version for `pyspark` from 3.3.1 to 3.3.2.
+- Updated maximum version for PySpark from 3.3.1 to 3.3.2.
 
 .. _v0.10.2:
 
@@ -208,7 +208,7 @@ Changed
 Changed
 ~~~~~~~
 - Build wheels for macOS 11 instead of macOS 13.
-- Updated dependency version for `typing_extenstions` to 4.1.0
+- Updated dependency version for ``typing_extensions`` to 4.1.0
 
 .. _v0.10.1:
 
@@ -230,7 +230,7 @@ Added
 
 Changed
 ~~~~~~~
-- Restructured the repository to keep code under the `src` directory.
+- Restructured the repository to keep code under the ``src/`` directory.
 
 .. _v0.10.0:
 
@@ -308,12 +308,12 @@ Changed
 
 Added
 ~~~~~
-- Added `LimitKeysPerGroupValue` transformation
+- Added :class:`~.LimitKeysPerGroupValue` transformation
 
 Changed
 ~~~~~~~
-- Updated `LimitKeysPerGroup` to require an output metric, and to support the
-  `IfGroupedBy(grouping_column, SymmetricDifference())` output metric. Dropped the 'use_l2' parameter.
+- Updated :class:`~.LimitKeysPerGroup` to require an output metric, and to support the
+  ``IfGroupedBy(grouping_column, SymmetricDifference())`` output metric. Dropped the ``use_l2`` parameter.
 
 .. _v0.8.1:
 
@@ -323,12 +323,12 @@ Changed
 Added
 ~~~~~
 
-- Added `LimitRowsPerKeyPerGroup` and `LimitRowsPerKeyPerGroupValue` transformations
+- Added :class:`~.LimitRowsPerKeyPerGroup` and :class:`~.LimitRowsPerKeyPerGroupValue` transformations
 
 Changed
 ~~~~~~~
 
-- Faster implementation of discrete_gaussian_inverse_cmf.
+- Faster implementation of :func:`~.discrete_gaussian_inverse_cmf`.
 
 .. _v0.8.0:
 
@@ -338,14 +338,14 @@ Changed
 Added
 ~~~~~
 
-- Added `LimitRowsPerGroupValue` transformation
+- Added :class:`~.LimitRowsPerGroupValue` transformation
 
 Changed
 ~~~~~~~
 
-- Updated `LimitRowsPerGroup` to require an output metric, and to support the
-  `IfGroupedBy(column, SymmetricDifference())` output metric.
-- Added a check so that `TransformValue` can no longer be instantiated without
+- Updated :class:`~.LimitRowsPerGroup` to require an output metric, and to support the
+  ``IfGroupedBy(column, SymmetricDifference())`` output metric.
+- Added a check so that :class:`~.TransformValue` can no longer be instantiated without
   subclassing.
 
 

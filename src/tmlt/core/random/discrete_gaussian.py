@@ -13,10 +13,9 @@
 import math
 import random
 from fractions import Fraction
-from typing import Optional, Union
+from typing import Optional, Protocol, Union, runtime_checkable
 
 from typeguard import typechecked
-from typing_extensions import Protocol, runtime_checkable
 
 
 @runtime_checkable

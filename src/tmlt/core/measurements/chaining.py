@@ -81,8 +81,8 @@ class ChainTM(Measurement):
 
         where:
 
-        * T is the transformation applied (:attr:`~ChainTM.transformation`")
-        * M is the measurement applied (:attr:`~ChainTM.measurement`")
+        * T is the transformation applied (:attr:`~ChainTM.transformation`)
+        * M is the measurement applied (:attr:`~ChainTM.measurement`)
 
         Args:
             d_in: Distance between inputs under input_metric.
@@ -109,8 +109,8 @@ class ChainTM(Measurement):
 
         where:
 
-        * T is the transformation applied (:attr:`~ChainTM.transformation`")
-        * M is the measurement applied (:attr:`~ChainTM.measurement`")
+        * T is the transformation applied (:attr:`~ChainTM.transformation`)
+        * M is the measurement applied (:attr:`~ChainTM.measurement`)
         * hint is the hint passed to the constructor.
 
         Args:

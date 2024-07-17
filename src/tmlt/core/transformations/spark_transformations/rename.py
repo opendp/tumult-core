@@ -97,13 +97,15 @@ class Rename(Transformation):
         SymmetricDifference()
 
         Stability Guarantee:
-            :class:`~.Rename`'s :meth:`~.stability_function` returns `d_in`.
+            :class:`~.Rename` 's :meth:`~.stability_function` returns ``d_in``.
 
             >>> rename_b_to_c.stability_function(1)
             1
             >>> rename_b_to_c.stability_function(2)
             2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
+
+    # pylint: enable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -189,9 +191,9 @@ class Rename(Transformation):
         """Renames columns."""
         return sdf.select(
             [
-                sf.col(c).alias(self._rename_mapping[c])  # pylint: disable=no-member
+                sf.col(c).alias(self._rename_mapping[c])
                 if c in self._rename_mapping
-                else sf.col(c)  # pylint: disable=no-member
+                else sf.col(c)
                 for c in sdf.columns
             ]
         )

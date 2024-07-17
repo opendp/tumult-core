@@ -11,8 +11,8 @@ The privacy guarantee of a Core :class:`~.Measurement`, :math:`\mathcal{M}` is
 the following. Let :math:`r` denote the privacy relation of :math:`\mathcal{M}`,
 :math:`I` denote the input domain, and :math:`d` denote the input metric, and
 let :math:`D` denote the output measure. Then, for any pair of elements
-:math:`x, y \in I` and for all distances :math:`\alpha` such that :math:`d(x,y)
-\le \alpha`, :math:`r(\alpha, \beta) = True` implies
+:math:`x, y \in I` and for all distances :math:`\alpha`
+such that :math:`d(x,y) \le \alpha`, :math:`r(\alpha, \beta) = True` implies
 :math:`D(\mathcal{M}(x), \mathcal{M}(y)) \le \beta`.
 
 This privacy guarantee generalizes :math:`\epsilon`-differential privacy, and we

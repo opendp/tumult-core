@@ -22,16 +22,14 @@ from tmlt.core.domains.spark_domains import (
 )
 from tmlt.core.utils.misc import escape_column_name, get_nonconflicting_string
 
-# pylint: disable=no-member
-
 
 def natural_join_columns(
     left_columns: List[str], right_columns: List[str]
 ) -> List[str]:
     """Returns the columns to join on to perform a natural join.
 
-    The columns to join on are the ones that are in both `left_columns` and
-    `right_columns`, in the order they appear in `left_columns`.
+    The columns to join on are the ones that are in both ``left_columns`` and
+    ``right_columns``, in the order they appear in ``left_columns``.
 
     .. note::
 
@@ -73,7 +71,7 @@ def columns_after_join(
           last in the input order. (excluding join columns)
 
     _left and _right are appended to output column names if they are in both
-    `left_columns` and `right_columns`, but are not joined on.
+    ``left_columns`` and ``right_columns``, but are not joined on.
 
     Also does input validation. Checks:
 
@@ -110,7 +108,7 @@ def columns_after_join(
         right_columns: Columns of the right dataframe.
         on: Columns to join on. If None, join on all columns with the same
             name.
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
     if on is None:
         on = natural_join_columns(left_columns, right_columns)
     if len(on) == 0:
@@ -172,7 +170,7 @@ def domain_after_join(
     Also does input validation. Checks:
 
         - All checks from :func:`~.columns_after_join`.
-        - `how` is one of "left", "right", "inner", or "outer".
+        - ``how`` is one of "left", "right", "inner", or "outer".
         - Join columns have the same data type.
         - Left and right domains are SparkDataFrameDomains.
 
@@ -219,14 +217,14 @@ def domain_after_join(
         if left_descriptor is None:
             assert right_descriptor is not None
             output_descriptors[output_column] = dataclasses.replace(  # type: ignore
-                right_descriptor,  # type: ignore
+                right_descriptor,
                 allow_null=right_descriptor.allow_null or how in ["left", "outer"],
             )
             continue
         if right_descriptor is None:
             assert left_descriptor is not None
             output_descriptors[output_column] = dataclasses.replace(  # type: ignore
-                left_descriptor,  # type: ignore
+                left_descriptor,
                 allow_null=left_descriptor.allow_null or how in ["right", "outer"],
             )
             continue
@@ -404,7 +402,7 @@ def _rename_columns(
             * Right dataframe with renamed columns.
             * Mapping from output column name to
               (left column name, right column name). See :func:`columns_after_join`.
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
     if on is None:
         on = natural_join_columns(
             left_columns=left.columns, right_columns=right.columns

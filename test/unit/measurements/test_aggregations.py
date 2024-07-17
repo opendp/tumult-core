@@ -159,7 +159,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         """Tests that create_count_measurement works correctly with groupby."""
         if (
             isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns  # type: ignore
+            and input_metric.column not in self.groupby_columns
         ):
             with pytest.raises(ValueError) as excinfo:
                 count_measurement = create_count_measurement(
@@ -253,7 +253,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         """Tests that create_count_distinct_measurement works correctly with groupby."""
         if (
             isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns  # type: ignore
+            and input_metric.column not in self.groupby_columns
         ):
             with pytest.raises(ValueError) as excinfo:
                 count_distinct_measurement = create_count_distinct_measurement(
@@ -348,7 +348,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         """Tests that create_sum_measurement works correctly with groupby."""
         if (
             isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns  # type: ignore
+            and input_metric.column not in self.groupby_columns
         ):
             with pytest.raises(ValueError) as excinfo:
                 sum_measurement = create_sum_measurement(
@@ -446,7 +446,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         """Tests that create_average_measurement works correctly with groupby."""
         if (
             isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns  # type: ignore
+            and input_metric.column not in self.groupby_columns
         ):
             with pytest.raises(ValueError) as excinfo:
                 average_measurement = create_average_measurement(
@@ -547,7 +547,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         """Tests that create_standard_deviation_measurement works correctly."""
         if (
             isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns  # type: ignore
+            and input_metric.column not in self.groupby_columns
         ):
             with pytest.raises(ValueError) as excinfo:
                 standard_deviation_measurement = create_standard_deviation_measurement(
@@ -655,7 +655,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         """Tests that create_variance_measurement works correctly with groupby."""
         if (
             isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns  # type: ignore
+            and input_metric.column not in self.groupby_columns
         ):
             with pytest.raises(ValueError) as excinfo:
                 variance_measurement = create_variance_measurement(
@@ -743,7 +743,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         """Tests that create_quantile_measurement works correctly with groupby."""
         if (
             isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns  # type: ignore
+            and input_metric.column not in self.groupby_columns
         ):
             with pytest.raises(ValueError) as excinfo:
                 quantile_measurement = create_quantile_measurement(

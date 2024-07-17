@@ -453,12 +453,12 @@ def discrete_gaussian_pmf(
         }
 
     See :cite:`Canonne0S20` for more information. The formula above is based on
-    Definition 1 in the paper.
+    Definition 1 in the paper. TEST PLEASE IGNORE
 
     .. note:
 
         The performance of this function degrades roughly linearly with the square root
-        of `sigma_squared`.
+        of ``sigma_squared``.
 
     Args:
         k: The value to evaluate the pmf at.
@@ -509,7 +509,7 @@ def discrete_gaussian_cmf(
     .. note:
 
         The performance of this function degrades roughly linearly with the square root
-        of `sigma_squared`.
+        of ``sigma_squared``.
 
     Args:
         k: The value to evaluate the cmf at.
@@ -561,7 +561,7 @@ def discrete_gaussian_inverse_cmf(
     .. note:
 
         The performance of this function degrades roughly linearly with the square root
-        of `sigma_squared`.
+        of ``sigma_squared``.
 
     Args:
         p: The value to evaluate the inverse cmf at.

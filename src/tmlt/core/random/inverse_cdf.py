@@ -12,7 +12,7 @@ from tmlt.core.utils import arb
 def construct_inverse_sampler(
     inverse_cdf: Callable[[arb.Arb, int], arb.Arb], step_size: int = 63
 ) -> Callable[[], float]:
-    """Returns a sampler for the distribution corresponding to `inverse_cdf`.
+    """Returns a sampler for the distribution corresponding to ``inverse_cdf``.
 
     Args:
        inverse_cdf: The inverse CDF for the distribution to sample from.
@@ -22,7 +22,7 @@ def construct_inverse_sampler(
         raise ValueError(f"`step_size` should be positive, not {step_size}")
 
     def sampler() -> float:
-        """Returns a sample from the `inverse_cdf` distribution."""
+        """Returns a sample from the ``inverse_cdf`` distribution."""
         n = 0  # used for both the argument to `inverse_cdf`, and the bits of precision
         random_bits = 0  # random bits stored as an integer
 

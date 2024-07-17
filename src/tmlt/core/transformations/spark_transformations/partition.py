@@ -161,13 +161,15 @@ class PartitionByKeys(Partition):
         SumOf(inner_metric=SymmetricDifference())
 
         Stability Guarantee:
-            :class:`~.PartitionByKeys`' :meth:`~.stability_function` returns `d_in`.
+            :class:`~.PartitionByKeys`' :meth:`~.stability_function` returns ``d_in``.
 
             >>> partition.stability_function(1)
             1
             >>> partition.stability_function(2)
             2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
+
+    # pylint: enable=line-too-long, useless-suppression
 
     @typechecked
     def __init__(
@@ -257,7 +259,6 @@ class PartitionByKeys(Partition):
             Args:
                 values: Tuple corresponding to a partition key.
             """
-            # pylint: disable=no-member
             exp = sf.lit(True)
             for column, value in zip(self._partition_keys, values):
                 exp = exp & sf.col(column).eqNullSafe(value)

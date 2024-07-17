@@ -60,9 +60,9 @@ class UnwrapIfGroupedBy(Transformation):
         r"""Returns the smallest d_out satisfied by the transformation.
 
         If the inner metric of the :class:`~.IfGroupedBy` input metric is a
-        :class:`~.SumOf`, returns `d_in`.
+        :class:`~.SumOf`, returns ``d_in``.
 
-        If the inner metric is :class:`~.RootSumOfSquared`, returns `d_in`\*\*2.
+        If the inner metric is :class:`~.RootSumOfSquared`, returns ``d_in``\*\*2.
 
         Args:
             d_in: Distance between inputs under input_metric.

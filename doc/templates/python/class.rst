@@ -15,6 +15,7 @@
    {% set is_exception = obj.type is equalto ("exception") %}
    {% set visible_classes = obj.classes|selectattr("is_private_member", "false")|selectattr("rendered")|list %}
    {% set visible_attributes = obj.attributes|selectattr("is_private_member", "false")|selectattr("rendered")|list %}
+   {% set visible_properties = obj.properties|selectattr("is_private_member", "false")|selectattr("rendered")|list %}
    {% set visible_methods = obj.methods|selectattr("is_private_member", "false")|selectattr("rendered")|list %}
    {% set num_visible_items = visible_classes|length + visible_attributes|length + visible_methods|length %}
 
@@ -38,6 +39,15 @@
       {% endfor %}
 
    {% endif %}
+   {% if visible_properties %}
+   .. list-table:: Properties
+
+      {% for property in visible_properties %}
+      * - :attr:`{{ property.name }}`
+        - {{ property.summary }}
+      {% endfor %}
+
+   {% endif %}
    {% if visible_methods %}
    .. list-table:: Methods
 
@@ -57,7 +67,11 @@
    {{ attribute.rendered|indent(3) }}
    {% endfor %}
 
-   {% if obj.methods | selectattr("short_name", "equalto", "__init__") | list %}
+   {% for property in visible_properties %}
+   {{ property.rendered|indent(3) }}
+   {% endfor %}
+
+   {% if obj.methods | selectattr("short_name", "equalto", "__init__") | reject("nodoc") | list %}
    .. automethod:: __init__
    {% endif %}
    {% for method in visible_methods %}

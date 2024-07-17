@@ -25,12 +25,12 @@ class TestListDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.collections.ListDomain`."""
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return ListDomain
 
     @pytest.fixture(scope="class")
-    def domain(self) -> ListDomain:  # pylint: disable=no-self-use
+    def domain(self) -> ListDomain:
         """Get a base ListDomain."""
         return ListDomain(NumpyIntegerDomain())
 
@@ -283,12 +283,12 @@ class TestDictDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.collections.DictDomain`."""
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return DictDomain
 
     @pytest.fixture(scope="class")
-    def domain(self) -> DictDomain:  # pylint: disable=no-self-use
+    def domain(self) -> DictDomain:
         """Get a base DictDomain."""
         return DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()})
 
@@ -604,7 +604,7 @@ class TestDictDomain(DomainTests):
         """
         super().test_validate(domain, candidate, expectation, exception_properties)
 
-    def test_validate_with_unsortable_types(self):  # pylint: disable=no-self-use
+    def test_validate_with_unsortable_types(self):
         """Test that DictDomain.validate works with keys that don't support sorting."""
 
         @dataclass(frozen=True)

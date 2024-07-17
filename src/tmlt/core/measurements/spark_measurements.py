@@ -50,8 +50,6 @@ from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.misc import get_materialized_df, get_nonconflicting_string
 from tmlt.core.utils.validation import validate_exact_number
 
-# pylint: disable=no-member
-
 
 class SparkMeasurement(Measurement):
     """Base class that materializes output DataFrames before returning."""
@@ -141,8 +139,8 @@ class AddNoiseToColumn(SparkMeasurement):
         * Input domain - :class:`~.SparkDataFrameDomain`
         * Output type - Spark DataFrame
         * Input metric - :class:`~.OnColumn` with metric
-          `SumOf(SymmetricDifference())` (for :class:`~.PureDP`) or
-          `RootSumOfSquared(SymmetricDifference())` (for :class:`~.RhoZCDP`) on each
+          ``SumOf(SymmetricDifference())`` (for :class:`~.PureDP`) or
+          ``RootSumOfSquared(SymmetricDifference())`` (for :class:`~.RhoZCDP`) on each
           column.
         * Output measure - :class:`~.PureDP` or :class:`~.RhoZCDP`
 
@@ -173,14 +171,14 @@ class AddNoiseToColumn(SparkMeasurement):
         Args:
             input_domain: Domain of input spark DataFrames.
             measurement: :class:`~.AddNoiseToSeries` measurement for adding noise to
-                `measure_column`.
+                ``measure_column``.
             measure_column: Name of column to add noise to.
 
         Note:
-            The input metric of this measurement is derived from the `measure_column`
-            and the input metric of the `measurement` to be applied. In particular, the
-            input metric of this measurement is `measurement.input_metric` on the
-            specified `measure_column`.
+            The input metric of this measurement is derived from the ``measure_column``
+            and the input metric of the ``measurement`` to be applied. In particular, the
+            input metric of this measurement is ``measurement.input_metric`` on the
+            specified ``measure_column``.
         """
         measure_column_domain = input_domain[measure_column].to_numpy_domain()
         if measure_column_domain != measurement.input_domain.element_domain:
@@ -260,7 +258,7 @@ class ApplyInPandas(SparkMeasurement):
             aggregation_function: An Aggregation measurement to be applied to each
                 group. The input domain of this measurement must be a
                 :class:`~.PandasDataFrameDomain` corresponding to a subset of the
-                non-grouping columns in the `input_domain`.
+                non-grouping columns in the ``input_domain``.
         """
         if input_metric.inner_metric != SymmetricDifference():
             raise UnsupportedMetricError(
@@ -452,7 +450,7 @@ class GeometricPartitionSelection(SparkMeasurement):
             2
             >>> delta.to_float(round_up=True)
             5.664238400088129e-21
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -836,7 +834,6 @@ def _get_sanitized_df(sdf: DataFrame) -> DataFrame:
     See :ref:`pseudo-side-channel-mitigations` for more details on the specific
     mitigations we apply here.
     """
-    # pylint: disable=no-name-in-module
     partitioning_column = get_nonconflicting_string(sdf.columns)
     # repartitioning by a column of random numbers ensures that the content
     # of partitions of the output DataFrame is determined randomly.

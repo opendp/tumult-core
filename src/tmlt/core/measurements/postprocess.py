@@ -14,10 +14,11 @@ from tmlt.core.measurements.base import Measurement
 class PostProcess(Measurement):
     """Component for postprocessing the result of a measurement.
 
-    The privacy guarantee for :class:`~.PostProcess` depends on the passed function `f`
-    satisfying certain properties. In particular, `f` should not use distinguishing
-    psuedo-side channel information, and should be well-defined on its abstract input
-    domain. See :ref:`postprocessing-udf-assumptions`.
+    The privacy guarantee for :class:`~.PostProcess` depends on the passed
+    function ``f`` satisfying certain properties.
+    In particular, ``f`` should not use distinguishing pseudo-side channel information,
+    and should be well-defined on its abstract input domain.
+    See :ref:`postprocessing-udf-assumptions`.
     """
 
     @typechecked
@@ -105,10 +106,10 @@ class NonInteractivePostProcess(Measurement):
     This measurement is not interactive, and must not return a queryable when run.
 
     The privacy guarantee of :class:`~.NonInteractivePostProcess` uses the following
-    model for the passed udf `f`: `f` simulates the interaction between the input
+    model for the passed udf ``f``: ``f`` simulates the interaction between the input
     queryable and some pure function :math:`g` (which takes as input a queryable answer,
     and produces the next query to be asked), the resulting transcript (the list of
-    queries and query answers) is then passed to some pure function :math:`h`, and `f`
+    queries and query answers) is then passed to some pure function :math:`h`, and ``f``
     returns the output of :math:`h`. We additionally assume that both :math:`g` and
     :math:`h` don't use distinguishing pseudo-side channel information, and are thus
     well-defined on their abstract domains (see :ref:`postprocessing-udf-assumptions`).

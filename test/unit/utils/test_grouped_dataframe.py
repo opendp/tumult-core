@@ -17,8 +17,6 @@ from tmlt.core.utils.testing import (
     get_all_props,
 )
 
-# pylint: disable=no-member
-
 
 class TestGroupedDataFrame(PySparkTest):
     """Tests for GroupedDataFrame."""

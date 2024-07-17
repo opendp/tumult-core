@@ -23,7 +23,7 @@ class OutOfDomainError(Exception):
     """Exception type that indicates a validation error in a Domain.
 
     Attributes:
-        domain: The `~tmlt.core.domains.base.Domain` on which the exception
+        domain: The :class:`~tmlt.core.domains.base.Domain` on which the exception
             was raised.
         value: The value that is not in the domain.
     """
@@ -45,7 +45,7 @@ class DomainMismatchError(ValueError):
     """Exception type raised when two or more domains should match, but don't.
 
     Attributes:
-        domains: An `Iterable` of all the  `~tmlt.core.domains.base.Domain`
+        domains: An ``Iterable`` of all the  :class:`~tmlt.core.domains.base.Domain`
             that should match, but do not.
     """
 
@@ -64,7 +64,7 @@ class UnsupportedDomainError(TypeError):
     """Exception type that indicates that a given domain is not supported.
 
     Attributes:
-        domain: The `~tmlt.core.domains.base.Domain` that is not supported.
+        domain: The :class:`~tmlt.core.domains.base.Domain` that is not supported.
     """
 
     def __init__(self, domain: "tmlt.core.domains.base.Domain", msg: str):
@@ -82,7 +82,8 @@ class DomainKeyError(Exception):
     """Exception type that indicates that a key is not in the given domain.
 
     Attributes:
-        domain: The `~tmlt.core.domains.base.Domain` on which this error was raised.
+        domain: The :class:`~tmlt.core.domains.base.Domain` on which
+            this error was raised.
         key: The key that was not in the domain, or a collection of keys that are
             not in the domain.
     """
@@ -187,7 +188,7 @@ class UnsupportedMeasureError(ValueError):
     """Error raised when a given measure is not supported.
 
     Attributes:
-        measure: The `~tmlt.core.measures.Measure` that is not supported.
+        measure: The :class:`~tmlt.core.measures.Measure` that is not supported.
     """
 
     def __init__(self, measure: "tmlt.core.measures.Measure", msg: str):
@@ -205,8 +206,8 @@ class MeasureMismatchError(ValueError):
     """Error raised when two or more measures should match, but don't.
 
     Attributes:
-        measures: An `~Iterable` with multiple `~tmlt.core.measures.Measure`
-            that should match, but don't.
+        measures: An :class:`~Iterable` with multiple
+            :class:`~tmlt.core.measures.Measure` that should match, but don't.
     """
 
     def __init__(self, measures: Iterable["tmlt.core.measures.Measure"], msg: str):
@@ -224,8 +225,9 @@ class UnsupportedNoiseMechanismError(ValueError):
     """Error raised when the given noise mechanism is not supported.
 
     Attributes:
-        noise_mechanism: The `~tmlt.core.measurements.aggregations.NoiseMechanism`
-            that is not supported.
+        noise_mechanism: The
+            :class:`~tmlt.core.measurements.aggregations.NoiseMechanism` that is
+            not supported.
     """
 
     def __init__(
@@ -247,7 +249,7 @@ class UnsupportedSympyExprError(ValueError):
     """Error raised when trying to use an unsupported Sympy expression.
 
     This error is raised when an
-    `~tmlt.core.utils.exact_number.ExactNumber` cannot be created from a given
+    :class:`~tmlt.core.utils.exact_number.ExactNumber` cannot be created from a given
     SymPy expression. This might be raised because the expression corresponds
     to an imaginary number, because the expression has a free variable, or
     because the expression is a kind of Sympy expression that ExactNumber

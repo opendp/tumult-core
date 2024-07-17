@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
-# pylint: disable=unused-import
 import logging
 from typing import Any, Optional, Sequence, Union
 from unittest.mock import Mock, create_autospec

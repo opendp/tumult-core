@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-# pylint: disable=no-self-use
+
 import re
 import unittest
 from typing import Any, Dict, List, Tuple, Union
@@ -945,7 +945,7 @@ class TestDerivedTransformations(unittest.TestCase):
     def test_create_transform_value(self):
         """create_transform_value has the expected behavior."""
         data = {"halve_me": np.int64(2), "ignore_me": "nothing to see here"}
-        transform_value = create_transform_value(  # pylint: disable=line-too-long
+        transform_value = create_transform_value(
             input_domain=DictDomain(
                 {"halve_me": NumpyIntegerDomain(), "ignore_me": NumpyIntegerDomain()}
             ),
@@ -1014,17 +1014,15 @@ class TestDerivedTransformations(unittest.TestCase):
     def test_create_transform_all_values(self):
         """create_transform_all_values has the expected behavior."""
         data = {"halve_me": np.int64(2), "triple_me": np.int64(2)}
-        transform_all_values = (
-            create_transform_all_values(  # pylint: disable=line-too-long
-                transformation_dict={
-                    "halve_me": self._halve,
-                    "triple_me": self._triple,
-                },
-                hint_dict={
-                    "halve_me": lambda d_in, _: d_in * 2,
-                    "triple_me": lambda d_in, _: d_in * 3,
-                },
-            )
+        transform_all_values = create_transform_all_values(
+            transformation_dict={
+                "halve_me": self._halve,
+                "triple_me": self._triple,
+            },
+            hint_dict={
+                "halve_me": lambda d_in, _: d_in * 2,
+                "triple_me": lambda d_in, _: d_in * 3,
+            },
         )
         self.assertEqual(
             transform_all_values.input_domain,

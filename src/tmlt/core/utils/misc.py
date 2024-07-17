@@ -17,7 +17,7 @@ from tmlt.core.utils.type_utils import get_immutable_types
 _materialization_lock = Lock()
 
 
-class RNGWrapper:  # pylint: disable=too-few-public-methods
+class RNGWrapper:
     """Mimics python random interface for discrete gaussian sampling."""
 
     def __init__(self, rng: np.random.Generator):
@@ -31,7 +31,7 @@ class RNGWrapper:  # pylint: disable=too-few-public-methods
         assert self._MAX_INT == 2**63 - 1
 
     def randrange(self, high: int) -> int:
-        """Returns a random integer between 0 (inclusive) and `high` (exclusive).
+        """Returns a random integer between 0 (inclusive) and ``high`` (exclusive).
 
         Args:
             high: upper bound for random integer range.
@@ -80,8 +80,7 @@ T = TypeVar("T")
 def copy_if_mutable(value: T) -> T:
     """Returns a deep copy of argument if it is mutable."""
     if isinstance(value, get_immutable_types()):
-        # NOTE: See https://github.com/python/mypy/issues/5720
-        return value  # type: ignore
+        return value
     if isinstance(value, list):
         return [copy_if_mutable(item) for item in value]  # type: ignore
     if isinstance(value, set):
@@ -134,7 +133,7 @@ def get_materialized_df(sdf: DataFrame, table_name: str) -> DataFrame:
     Args:
         sdf: DataFrame to be materialized.
         table_name: Name to be used to refer to the table.
-            If a table with `table_name` already exists, an error is raised.
+            If a table with ``table_name`` already exists, an error is raised.
     """
     col_names = sdf.columns
     # The following is necessary because saving in parquet format requires that column

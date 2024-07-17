@@ -180,9 +180,10 @@ class TransformValue(Transformation):
             input_domain: The Domain of the input dictionary of Spark DataFrames.
             input_metric: The input metric for the outer dictionary to dictionary
                 transformation.
-            transformation: The DataFrame to DataFrame transformation to apply. Input
-                and output metric must both be
-                `IfGroupedBy(column, SymmetricDifference())` using the same `column`.
+            transformation: The DataFrame to DataFrame transformation to
+                apply. Input and output metric must both be
+                ``IfGroupedBy(column, SymmetricDifference())`` using the same
+                ``column``.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
@@ -478,11 +479,12 @@ class PublicJoinValue(TransformValue):
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
             public_df: A Spark DataFrame to join with.
-            public_df_domain: Domain of public DataFrame to join with. If this domain
-                indicates that a float column does not allow nans (or infs), all rows
-                in `public_df` containing a nan (or an inf) in that column will be
-                dropped. If None, domain is inferred from the schema of `public_df` and
-                any float column will be marked as allowing inf and nan values.
+            public_df_domain: Domain of public DataFrame to join with. If this
+                domain indicates that a float column does not allow nans (or
+                infs), all rows in ``public_df`` containing a nan (or an inf) in
+                that column will be dropped. If None, domain is inferred from
+                the schema of ``public_df`` and any float column will be marked
+                as allowing inf and nan values.
             join_cols: Names of columns to join on. If None, a natural join is
                 performed.
             join_on_nulls: If True, null values on corresponding join columns of the
@@ -527,10 +529,10 @@ class FlatMapValue(TransformValue):
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
             row_transformer: Transformation to apply to each row.
-            max_num_rows: The maximum number of rows to allow from `row_transformer`. If
-                more rows are output, the additional rows are suppressed. If this value
-                is None, the transformation will not impose a limit on the number of
-                rows.
+            max_num_rows: The maximum number of rows to allow from ``row_transformer``.
+                If more rows are output, the additional rows are suppressed.
+                If this value is None, the transformation will not impose a limit
+                on the number of rows.
         """
         transformation = FlatMap(
             metric=IfGroupedBy(

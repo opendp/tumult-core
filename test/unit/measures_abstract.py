@@ -22,7 +22,7 @@ class MeasureTests(ABC):
 
     @abstractmethod
     @pytest.fixture
-    def measure_type(self) -> Type[Measure]:  # pylint: disable=no-self-use
+    def measure_type(self) -> Type[Measure]:
         """Returns the type of the measure to be tested."""
         return Measure
 

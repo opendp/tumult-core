@@ -187,7 +187,6 @@ class TestGroupBy(PySparkTest):
 
     def test_correctness(self):
         """Tests that GroupBy transformation works correctly."""
-        # pylint: disable=no-member
         groupby_transformation = GroupBy(
             input_domain=self.domain,
             input_metric=SymmetricDifference(),
@@ -206,7 +205,6 @@ class TestGroupBy(PySparkTest):
 
     def test_total(self):
         """Tests that GroupBy transformation works correctly with no group keys."""
-        # pylint: disable=no-member
         groupby_transformation = GroupBy(
             input_domain=self.domain,
             input_metric=SymmetricDifference(),
@@ -435,14 +433,14 @@ class TestSparkType(PySparkTest):
     )
     def test_spark_type(self, l: List[Any], expected: DataType) -> None:
         """Test _spark_type."""
-        actual = _spark_type(l)  # pylint: disable=protected-access
+        actual = _spark_type(l)
         self.assertEqual(actual, expected)
 
     def test_all_nones(self) -> None:
         """Test _spark_type raises an error when every list entry is None."""
         l = [None, None, None, None, None]
         with self.assertRaisesRegex(ValueError, "every entry is None"):
-            _spark_type(l)  # pylint: disable=protected-access
+            _spark_type(l)
 
     @parameterized.expand(
         [
@@ -462,4 +460,4 @@ class TestSparkType(PySparkTest):
         (Invalid types are those that cannot be used in a GroupBy.)
         """
         with self.assertRaisesRegex(ValueError, "Type .* is not supported"):
-            _spark_type(l)  # pylint: disable=protected-access
+            _spark_type(l)

@@ -10,16 +10,17 @@ import sys
 
 _logger = logging.getLogger(__name__)
 
-# Project information
+### Project information
 
 project = "Tumult Core"
 author = "Tumult Labs"
 copyright = "Tumult Labs 2024"
-
+# Note that this is the name of the module provided by the package, not
+# necessarily the name of the package as pip understands it.
 package_name = "tmlt.core"
 
 
-# Build information
+### Build information
 
 ci_tag = os.getenv("CI_COMMIT_TAG")
 ci_branch = os.getenv("CI_COMMIT_BRANCH")
@@ -28,39 +29,24 @@ version = ci_tag or ci_branch or "HEAD"
 commit_hash = os.getenv("CI_COMMIT_SHORT_SHA") or "unknown version"
 build_time = datetime.datetime.utcnow().isoformat(sep=" ", timespec="minutes")
 
-linkcheck_mode_url_prefix = os.getenv("BASE_URL_OVERRIDE")
-# Linkcheck fails to check anchors in Github
-# See https://github.com/sphinx-doc/sphinx/issues/9016 and also
-# https://sphinx-doc.org/en/master/usage/configuration.html
-
-# Sphinx configuration
+### Sphinx configuration
 
 extensions = [
     "autoapi.extension",
-    "scanpydoc.elegant_typehints",
     "sphinx_copybutton",
+    "sphinx_design",
     "sphinx.ext.autodoc",
-    "sphinx.ext.coverage",
+    # smart_resolver fixes cases where an object is documented under a name
+    # different from its qualname, e.g. due to importing it in an __init__.
+    "sphinx_automodapi.smart_resolver",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinxcontrib.bibtex",
     "sphinx_autodoc_typehints",
-    "sphinx_panels",
 ]
 
-# Prevent sphinx_panels from loading bootstrap a second time
-panels_add_bootstrap_css = False
-# Change colors & contrast to inactive tab labels so they pass WCAG AA; all
-# other colors are the same as the defaults:
-#   https://sphinx-panels.readthedocs.io/en/latest/#tabbed-content
-panels_css_variables = {
-    "tabs-color-label-active": "hsla(231, 99%, 66%, 1)",
-    "tabs-color-label-inactive": "rgba(135, 138, 150, 1)",
-    "tabs-color-overline": "rgb(207, 236, 238)",
-    "tabs-color-underline": "rgb(207, 236, 238)",
-    "tabs-size-label": "1rem",
-}
+bibtex_bibfiles = ["ref.bib"]
 
 # Napoleon settings
 napoleon_google_docstring = True
@@ -78,7 +64,6 @@ napoleon_use_rtype = True
 # Autoapi settings
 autoapi_root = "reference"
 autoapi_dirs = ["../src/tmlt/"]
-autoapi_keep_files = False
 autoapi_template_dir = "../doc/templates"
 autoapi_add_toctree_entry = False
 autoapi_python_use_implicit_namespaces = True  # This is important for intersphinx
@@ -94,8 +79,12 @@ add_module_names = False
 
 
 def autoapi_prepare_jinja_env(jinja_env):
+    # Set the package_name variable so it can be used in templates.
     jinja_env.globals["package_name"] = package_name
-
+    # Define a new test for filtering out objects with @nodoc in their
+    # docstring; this needs to be defined here because Jinja2 doesn't have a
+    # built-in "contains" or "match" test.
+    jinja_env.tests["nodoc"] = lambda obj: "@nodoc" in obj.docstring
 
 # Autodoc settings
 autodoc_typehints = "description"
@@ -109,32 +98,17 @@ exclude_patterns = ["templates"]
 # covers them).
 doctest_test_doctest_blocks = ""
 
-# scanpydoc overrides to resolve target
-qualname_overrides = {
-    "sympy.Expr": "sympy.core.expr.Expr",
-    "pyspark.sql.types.Row": "pyspark.sql.Row",
-    "pyspark.sql.dataframe.DataFrame": "pyspark.sql.DataFrame",
-    "numpy.random._generator.Generator": "numpy.random.Generator",
-}
-
 nitpick_ignore = [
     # Expr in __init__ is resolved fine but not in type hint
     ("py:class", "sympy.Expr"),
-    ("py:class", "ndarray}"),
-    # Type Alias not resolved in type hint
+    # Type aliases are not correctly resolved by Sphinx
     ("py:class", "ExactNumberInput"),
     ("py:class", "PrivacyBudgetInput"),
     ("py:class", "PrivacyBudgetValue"),
     ("py:class", "tmlt.core.measures.PrivacyBudgetInput"),
     ("py:class", "tmlt.core.measures.PrivacyBudgetValue"),
-    # Unable to resolve Base classes
-    ("py:class", "Transformation"),
-    ("py:class", "ClipType"),
-    ("py:class", "Row"),
     ("py:class", "SparkColumnsDescriptor"),
     ("py:class", "PandasColumnsDescriptor"),
-    ("py:class", "PrivacyBudget"),
-    ("py:class", "Aggregation"),
     ("py:class", "tmlt.core.utils.exact_number.ExactNumberInput"),
     # Numpy dtypes
     ("py:class", "numpy.str_"),
@@ -142,20 +116,9 @@ nitpick_ignore = [
     ("py:class", "numpy.int64"),
     ("py:class", "numpy.float32"),
     ("py:class", "numpy.float64"),
-    # Caused by a function in tmlt.core.utils.configuration returning a SparkConf
-    ("py:class", "pyspark.conf.SparkConf"),
-    # Caused by a function in tmlt.core.utils.configuration taking a RuntimeConf
-    # as an argument
-    ("py:class", "pyspark.sql.conf.RuntimeConfig"),
-    # Caused by pyspark.sql.dataframe.DataFrame in a dataclass (in spark_domains)
-    ("py:class", "pyspark.sql.dataframe.DataFrame"),
     # TypeVar support: https://github.com/agronholm/sphinx-autodoc-typehints/issues/39
     ("py:class", "Ellipsis"),
     ("py:class", "T"),
-]
-nitpick_ignore_regex = [
-    # No intersphinx_mapping for typing_extensions
-    (r"py:.*", r"typing_extensions.*")
 ]
 
 # Theme settings
@@ -183,9 +146,7 @@ html_js_files = ["js/version-banner.js"]
 html_logo = "_static/logo.png"
 html_favicon = "_static/favicon.ico"
 html_show_sourcelink = False
-html_sidebars = {
-    "**": ["package-name", "version-switcher", "search-field", "sidebar-nav-bs"]
-}
+html_sidebars = {"**": ["package-name", "version-switcher", "sidebar-nav-bs"]}
 
 # Intersphinx mapping
 
@@ -212,11 +173,14 @@ def skip_members(app, what, name, obj, skip, options):
         "__sizeof__",
         "__str__",
         "__subclasshook__",
+        "__init_subclass__",
     ]
     excluded_attributes = ["__slots__"]
     if what == "method" and name.split(".")[-1] in excluded_methods:
         return True
     if what == "attribute" and name.split(".")[-1] in excluded_attributes:
+        return True
+    if "@nodoc" in obj.docstring:
         return True
     return skip
 

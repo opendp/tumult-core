@@ -22,7 +22,7 @@ class BudgetTests(ABC):
 
     @abstractmethod
     @pytest.fixture
-    def budget_type(self) -> Type[PrivacyBudget]:  # pylint: disable=no-self-use
+    def budget_type(self) -> Type[PrivacyBudget]:
         """Returns the type of the budget to be tested."""
         return PrivacyBudget
 

@@ -23,11 +23,11 @@ def calculate_noise_scale(
 
     Let
         * :math:`\sigma` be the returned noise scale
-        * :math:`d_{in}` be the input argument `d_in`
+        * :math:`d_{in}` be the input argument ``d_in``
         * :math:`\epsilon` be the :class:`~.PureDP` guarantee
-          (`d_out` if `output_measure` is `PureDP`)
+          (``d_out`` if ``output_measure`` is ``PureDP``)
         * :math:`\rho` be the :class:`~.RhoZCDP` guarantee
-          (`d_out` if `output_measure` is `RhoZCDP`)
+          (``d_out`` if ``output_measure`` is ``RhoZCDP``)
 
     Calculations for Laplace or geometric noise
         formulas:
@@ -49,8 +49,8 @@ def calculate_noise_scale(
 
     .. note::
 
-        Make sure to square the returned value if you want to use it as `sigma_squared`
-        for discrete Gaussian noise.
+        Make sure to square the returned value if you want to use it as
+        ``sigma_squared`` for discrete Gaussian noise.
 
     Examples:
         >>> calculate_noise_scale(
@@ -111,6 +111,7 @@ def calculate_noise_scale(
     output_measure.validate(d_out)
     d_in = ExactNumber(d_in)
     d_out = ExactNumber(d_out)
+    epsilon: ExactNumber
     if d_out == 0:
         return ExactNumber(float("inf"))
     if d_out == float("inf"):
