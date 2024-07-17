@@ -66,7 +66,7 @@ class Measure(ABC):
 
     @abstractmethod
     def validate(self, value: Any) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
         Args:
             value: A distance between two probability distributions under this measure.
@@ -74,7 +74,7 @@ class Measure(ABC):
 
     @abstractmethod
     def compare(self, value1: Any, value2: Any) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
 
     def __repr__(self) -> str:
         """Returns string representation."""
@@ -98,9 +98,9 @@ class PureDP(Measure):
     """
 
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a nonnegative real or infinity
+        * ``value`` must be a nonnegative real or infinity
 
         Args:
             value: A distance between two probability distributions under this measure.
@@ -116,7 +116,7 @@ class PureDP(Measure):
             raise ValueError(f"Invalid PureDP measure value (epsilon): {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
         self.validate(value1)
         self.validate(value2)
         return ExactNumber(value1) <= ExactNumber(value2)
@@ -140,9 +140,9 @@ class ApproxDP(Measure):
     """
 
     def validate(self, value: Tuple[ExactNumberInput, ExactNumberInput]) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a tuple with two values: (epsilon, delta)
+        * ``value`` must be a tuple with two values: (epsilon, delta)
         * epsilon must be a nonnegative real or infinity
         * delta must be a real between 0 and 1 (inclusive)
 
@@ -176,7 +176,7 @@ class ApproxDP(Measure):
         value1: Tuple[ExactNumberInput, ExactNumberInput],
         value2: Tuple[ExactNumberInput, ExactNumberInput],
     ) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
         self.validate(value1)
         self.validate(value2)
         epsilon1 = ExactNumber(value1[0])
@@ -204,9 +204,9 @@ class RhoZCDP(Measure):
     """
 
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a nonnegative real or infinity
+        * ``value`` must be a nonnegative real or infinity
 
         Args:
             value: A distance between two probability distributions under this measure.
@@ -222,7 +222,7 @@ class RhoZCDP(Measure):
             raise ValueError(f"Invalid RhoZCDP measure value (rho): {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
         self.validate(value1)
         self.validate(value2)
         return ExactNumber(value1) <= ExactNumber(value2)
@@ -287,7 +287,7 @@ class PrivacyBudget(ABC):
 
     @abstractmethod
     def assert_can_spend_budget(self, other: PrivacyBudgetInput) -> None:
-        """Return true iff we can spend budget `other`. Otherwise, raise an error.
+        """Return true iff we can spend budget ``other``. Otherwise, raise an error.
 
         Args:
             other: The privacy budget we would like to spend.
@@ -295,7 +295,7 @@ class PrivacyBudget(ABC):
 
     @abstractmethod
     def subtract(self, other: PrivacyBudgetInput) -> "PrivacyBudget":
-        """Return a new budget after subtracting `other`.
+        """Return a new budget after subtracting ``other``.
 
         If the budget represented by this class is infinite, return the current budget.
 
@@ -307,7 +307,7 @@ class PrivacyBudget(ABC):
         """
 
     def __eq__(self, other: Any) -> bool:
-        """Check is this instance is equal to `other`.
+        """Check is this instance is equal to ``other``.
 
         Args:
             other: The other instance.
@@ -346,7 +346,7 @@ class PureDPBudget(PrivacyBudget):
         return self._epsilon.is_finite
 
     def assert_can_spend_budget(self, other: PrivacyBudgetInput) -> None:
-        """Return true iff we can spend budget `other`. Otherwise, raise an error.
+        """Return true iff we can spend budget ``other``. Otherwise, raise an error.
 
         Args:
             other: The privacy budget we would like to spend.
@@ -356,7 +356,7 @@ class PureDPBudget(PrivacyBudget):
             raise InsufficientBudgetError(self, validated_other)
 
     def subtract(self, other: PrivacyBudgetInput) -> "PureDPBudget":
-        """Return a new budget after subtracting `other`.
+        """Return a new budget after subtracting ``other``.
 
         If the budget represented by this class is infinite, return the current budget.
 
@@ -411,7 +411,7 @@ class ApproxDPBudget(PrivacyBudget):
         return self._epsilon.is_finite and self._delta < 1
 
     def assert_can_spend_budget(self, other: PrivacyBudgetInput) -> None:
-        """Return true iff we can spend budget `other`. Otherwise, raise an error.
+        """Return true iff we can spend budget ``other``. Otherwise, raise an error.
 
         Args:
             other: The privacy budget we would like to spend.
@@ -423,7 +423,7 @@ class ApproxDPBudget(PrivacyBudget):
             raise InsufficientBudgetError(self, validated_other)
 
     def subtract(self, other: PrivacyBudgetInput) -> "ApproxDPBudget":
-        """Return a new budget after subtracting `other`.
+        """Return a new budget after subtracting ``other``.
 
         If the budget represented by this class is infinite, return the current budget.
 
@@ -476,7 +476,7 @@ class RhoZCDPBudget(PrivacyBudget):
         return self._rho.is_finite
 
     def assert_can_spend_budget(self, other: PrivacyBudgetInput) -> None:
-        """Return true iff we can spend budget `other`. Otherwise, raise an error.
+        """Return true iff we can spend budget ``other``. Otherwise, raise an error.
 
         Args:
             other: The privacy budget we would like to spend.
@@ -486,7 +486,7 @@ class RhoZCDPBudget(PrivacyBudget):
             raise InsufficientBudgetError(self, validated_other)
 
     def subtract(self, other: PrivacyBudgetInput) -> "RhoZCDPBudget":
-        """Return a new budget after subtracting `other`.
+        """Return a new budget after subtracting ``other``.
 
         If the budget represented by this class is infinite, return the current budget.
 

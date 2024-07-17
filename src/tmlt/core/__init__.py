@@ -9,7 +9,7 @@ __version_tuple__ = (0, 0, 0)
 import warnings
 
 import pandas as pd
-import setuptools  # pylint: disable=unused-import #TODO(#3258)
+import setuptools  # TODO(#3258): This import provides a workaround for a bug in PySpark
 
 pd.DataFrame.iteritems = (
     pd.DataFrame.items

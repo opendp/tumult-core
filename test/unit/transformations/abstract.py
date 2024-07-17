@@ -26,7 +26,7 @@ class TransformationTests(ABC):
     @pytest.fixture
     def transformation_type(
         self,
-    ) -> Type[Transformation]:  # pylint: disable=no-self-use
+    ) -> Type[Transformation]:
         """Returns the type of the transformation to be tested."""
         return Transformation
 

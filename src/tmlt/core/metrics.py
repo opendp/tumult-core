@@ -3,14 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-# pylint: disable=no-member
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import Counter
 from functools import reduce
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
 
 import numpy as np  # pylint: disable=unused-import
 import pandas as pd
@@ -39,7 +37,7 @@ class Metric(ABC):
 
     @abstractmethod
     def validate(self, value: Any) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
         Args:
             value: A distance between two datasets under this metric.
@@ -47,7 +45,7 @@ class Metric(ABC):
 
     @abstractmethod
     def compare(self, value1: Any, value2: Any) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
 
     @abstractmethod
     def supports_domain(self, domain: Domain) -> bool:
@@ -95,7 +93,7 @@ class NullMetric(Metric):
     """Metric for use when distance is undefined."""
 
     def validate(self, value: Any) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
         This method is not implemented.
 
@@ -105,7 +103,7 @@ class NullMetric(Metric):
         raise NotImplementedError()
 
     def compare(self, value1: Any, value2: Any) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`.
+        """Returns True if ``value1`` is less than or equal to ``value2``.
 
         This method is not implemented.
 
@@ -164,9 +162,9 @@ class AbsoluteDifference(ExactNumberMetric):
     """
 
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a nonnegative real or infinite
+        * ``value`` must be a nonnegative real or infinite
 
         Args:
             value: A distance between two datasets under this metric.
@@ -182,7 +180,7 @@ class AbsoluteDifference(ExactNumberMetric):
             raise ValueError(f"Invalid value for metric AbsoluteDifference: {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
         self.validate(value1)
         self.validate(value2)
         return ExactNumber(value1) <= ExactNumber(value2)
@@ -273,9 +271,9 @@ class SymmetricDifference(ExactNumberMetric):
     """
 
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a nonnegative integer or infinity
+        * ``value`` must be a nonnegative integer or infinity
 
         Args:
             value: A distance between two datasets under this metric.
@@ -293,7 +291,7 @@ class SymmetricDifference(ExactNumberMetric):
             ) from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
         self.validate(value1)
         self.validate(value2)
         return ExactNumber(value1) <= ExactNumber(value2)
@@ -401,9 +399,9 @@ class HammingDistance(ExactNumberMetric):
     """
 
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a nonnegative and integer or infinity
+        * ``value`` must be a nonnegative and integer or infinity
 
         Args:
             value: A distance between two datasets under this metric.
@@ -419,7 +417,7 @@ class HammingDistance(ExactNumberMetric):
             raise ValueError(f"Invalid value for metric HammingDistance: {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
         self.validate(value1)
         self.validate(value2)
         return ExactNumber(value1) <= ExactNumber(value2)
@@ -471,10 +469,10 @@ class HammingDistance(ExactNumberMetric):
 class AggregationMetric(ExactNumberMetric):
     """Distances resulting from aggregating distances of its components.
 
-    Components may be elements of a series, groups of a grouped dataframe, or elements
-    of a list. This metric is parameterized by an `inner_metric` that is used to compute
-    the distances of the components. See :class:`SumOf` or :class`RootSumOfSquared` for
-    example usage.
+    Components may be elements of a series, groups of a grouped dataframe, or
+    elements of a list. This metric is parameterized by an ``inner_metric`` that
+    is used to compute the distances of the components. See :class:`SumOf` or
+    :class`RootSumOfSquared` for example usage.
 
     If the values are grouped dataframes, the groups must be the same for both values,
     or the distance is infinity.
@@ -505,7 +503,7 @@ class AggregationMetric(ExactNumberMetric):
         return self._inner_metric
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`.
+        """Returns True if ``value1`` is less than or equal to ``value2``.
 
         Args:
             value1: A distance between two datasets under this metric.
@@ -562,10 +560,6 @@ class AggregationMetric(ExactNumberMetric):
             # help mypy
             assert isinstance(value1, pd.Series)
             assert isinstance(value2, pd.Series)
-            # mypy refused to typecheck without introducing a new variable despite the
-            # fact that it knows domain is an instance of PandasSeriesDomain. This
-            # could be related to its use inside a lambda.
-            typed_domain = cast(PandasSeriesDomain, domain)
 
             if value1.size != value2.size:
                 return ExactNumber(sp.oo)
@@ -573,7 +567,7 @@ class AggregationMetric(ExactNumberMetric):
             distance = self._aggregate(
                 map(
                     lambda x: self.inner_metric.distance(
-                        x[0], x[1], typed_domain.element_domain
+                        x[0], x[1], domain.element_domain
                     ),
                     # Omitting to_numpy zips correctly but converts to python
                     # ints/floats instead of keeping numpy ints/floats.
@@ -586,10 +580,6 @@ class AggregationMetric(ExactNumberMetric):
             # help mypy
             assert isinstance(value1, list)
             assert isinstance(value2, list)
-            # mypy refused to typecheck without introducing a new variable despite the
-            # fact that it knows domain is a an instance of PandasSeriesDomain. This
-            # could be related to its use inside a lambda.
-            typed_domain2 = cast(ListDomain, domain)
 
             if len(value1) != len(value2):
                 return ExactNumber(sp.oo)
@@ -597,7 +587,7 @@ class AggregationMetric(ExactNumberMetric):
             distance = self._aggregate(
                 map(
                     lambda x: self.inner_metric.distance(
-                        x[0], x[1], typed_domain2.element_domain
+                        x[0], x[1], domain.element_domain
                     ),
                     zip(value1, value2),
                 )
@@ -623,7 +613,7 @@ class SumOf(AggregationMetric):
     """Distances resulting from summing distances of its components.
 
     These components may be elements of a series, groups of a grouped dataframe, or
-    elements of a list. This metric is parameterized by an `inner_metric` that is used
+    elements of a list. This metric is parameterized by an ``inner_metric`` that is used
     to compute the distances of the components.
 
     Example:
@@ -674,9 +664,9 @@ class SumOf(AggregationMetric):
     """
 
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a a valid distance for :attr:`~.inner_metric`
+        * ``value`` must be a a valid distance for :attr:`~.inner_metric`
 
         Args:
             value: A distance between two datasets under this metric.
@@ -699,7 +689,7 @@ class RootSumOfSquared(AggregationMetric):
     """The square root of the sum of the squares of component distances.
 
     These components may be elements of a series, groups of a grouped dataframe, or
-    elements of a list. This metric is parameterized by an `inner_metric` that is used
+    elements of a list. This metric is parameterized by an ``inner_metric`` that is used
     to compute the distances of the components.
 
     Example:
@@ -742,9 +732,9 @@ class RootSumOfSquared(AggregationMetric):
     """
 
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a nonnegative real or infinity
+        * ``value`` must be a nonnegative real or infinity
 
         Args:
             value: A distance between two datasets under this metric.
@@ -823,9 +813,9 @@ class OnColumn(ExactNumberMetric):
         return self._metric
 
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a a valid distance for :attr:`~.metric`
+        * ``value`` must be a valid distance for :attr:`~.metric`
 
         Args:
             value: A distance between two datasets under this metric.
@@ -838,7 +828,7 @@ class OnColumn(ExactNumberMetric):
             ) from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
         return self.metric.compare(value1, value2)
 
     def supports_domain(self, domain: Domain) -> bool:
@@ -931,9 +921,10 @@ class OnColumns(Metric):
         return self._on_columns
 
     def validate(self, value: Tuple[ExactNumberInput, ...]) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a tuple with one value for each metric in :attr:`~.on_columns`
+        * ``value`` must be a tuple with one value for each metric
+          in :attr:`~.on_columns`
         * each value must be a valid distance for the corresponding metric
 
         Args:
@@ -952,7 +943,7 @@ class OnColumns(Metric):
     def compare(
         self, value1: Tuple[ExactNumberInput, ...], value2: Tuple[ExactNumberInput, ...]
     ) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`.
+        """Returns True if ``value1`` is less than or equal to ``value2``.
 
         Args:
             value1: A distance between two datasets under this metric.
@@ -1075,9 +1066,9 @@ class IfGroupedBy(ExactNumberMetric):
         return self._inner_metric
 
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a a valid distance for :attr:`~.inner_metric`
+        * ``value`` must be a valid distance for :attr:`~.inner_metric`
 
         Args:
             value: A distance between two datasets under this metric.
@@ -1088,7 +1079,7 @@ class IfGroupedBy(ExactNumberMetric):
             raise ValueError(f"Invalid value for IfGroupedBy metric: {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`.
+        """Returns True if ``value1`` is less than or equal to ``value2``.
 
         Args:
             value1: A distance between two datasets under this metric.
@@ -1196,9 +1187,9 @@ class DictMetric(Metric):
         return self._key_to_metric.copy()
 
     def validate(self, value: Dict[Any, Any]) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a dictionary with the same keys as :attr:`~.key_to_metric`
+        * ``value`` must be a dictionary with the same keys as :attr:`~.key_to_metric`
         * each value in the dictionary must be a valid distance under the corresponding
           metric
 
@@ -1219,7 +1210,7 @@ class DictMetric(Metric):
                 raise ValueError(f"Invalid value for DictMetric: {e}") from e
 
     def compare(self, value1: Dict[Any, Any], value2: Dict[Any, Any]) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`.
+        """Returns True if ``value1`` is less than or equal to ``value2``.
 
         Args:
             value1: A distance between two datasets under this metric.
@@ -1291,16 +1282,16 @@ class AddRemoveKeys(Metric):
     metric :class:`~SymmetricDifference`, except it is applied to a dictionary of
     dataframes, instead of a single dataframe.
 
-    `AddRemoveKeys(X)` can be described in the following way:
+    ``AddRemoveKeys(X)`` can be described in the following way:
 
     Sum over each key that appears in the key column in either
-    neighbor, where the key column for dataframe df is given by `X[df]`.
+    neighbor, where the key column for dataframe df is given by ``X[df]``.
 
-    - 0 if both neighbors "match" for `X[df] = key`
-    - 1 if only one neighbor has records for `X[df] = key`
-    - 2 if both neighbor have records for `X[df] = key`, but they don't "match"
+    - 0 if both neighbors "match" for ``X[df] = key``
+    - 1 if only one neighbor has records for ``X[df] = key``
+    - 2 if both neighbor have records for ``X[df] = key``, but they don't "match"
 
-    The key column cannot containg floating point values, and all dataframes must have
+    The key column cannot contain floating point values, and all dataframes must have
     the same type for the key column. The key columns for the different dataframes may
     have different names.
 
@@ -1388,9 +1379,9 @@ class AddRemoveKeys(Metric):
 
     @typechecked
     def validate(self, value: ExactNumberInput) -> None:
-        """Raises an error if `value` not a valid distance.
+        """Raises an error if ``value`` not a valid distance.
 
-        * `value` must be a nonnegative real or infinite
+        * ``value`` must be a nonnegative real or infinite
 
         Args:
             value: A distance between two datasets under this metric.
@@ -1406,7 +1397,7 @@ class AddRemoveKeys(Metric):
             raise ValueError(f"Invalid value for metric AbsoluteDifference: {e}") from e
 
     def compare(self, value1: ExactNumberInput, value2: ExactNumberInput) -> bool:
-        """Returns True if `value1` is less than or equal to `value2`."""
+        """Returns True if ``value1`` is less than or equal to ``value2``."""
         self.validate(value1)
         self.validate(value2)
         return ExactNumber(value1) <= ExactNumber(value2)

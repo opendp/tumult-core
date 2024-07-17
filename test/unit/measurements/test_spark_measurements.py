@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-# pylint: disable=no-self-use
+
 from fractions import Fraction
 from typing import Dict, List
 
@@ -544,6 +544,8 @@ class TestBoundSelection(PySparkTest):
                 + [0]
                 + [2**i for i in range(column_type.size)]
             )
+        else:
+            raise ValueError(f"Unsupported column type {column_type}")
         self.assertEqual(measurement.splits, expected_splits)
 
     def test_empty(self):

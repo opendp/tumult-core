@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
+
 import numpy as np
 import pytest
 from scipy.stats import gennorm, ttest_ind
@@ -16,8 +17,6 @@ from tmlt.core.utils.prdp import (
     square_root_gaussian_mechanism,
     square_root_transformation_mechanism,
 )
-
-# pylint: disable=no-self-use
 
 NUM_SAMPLES = 200000
 

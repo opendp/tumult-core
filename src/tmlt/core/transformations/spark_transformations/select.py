@@ -95,13 +95,13 @@ class Select(Transformation):
         SymmetricDifference()
 
         Stability Guarantee:
-            :class:`~.Select`'s :meth:`~.stability_function` returns `d_in`.
+            :class:`~.Select`'s :meth:`~.stability_function` returns ``d_in``.
 
             >>> drop_b.stability_function(1)
             1
             >>> drop_b.stability_function(2)
             2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(

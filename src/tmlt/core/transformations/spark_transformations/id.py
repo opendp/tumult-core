@@ -90,13 +90,15 @@ class AddUniqueColumn(Transformation):
             IfGroupedBy(column='ID', inner_metric=SymmetricDifference())
 
             Stability Guarantee:
-                :class:`~.AddUniqueColumn`'s :meth:`~.stability_function` returns `d_in`.
+                :class:`~.AddUniqueColumn`'s :meth:`~.stability_function` returns ``d_in``.
 
                 >>> add_unique_column.stability_function(1)
                 1
                 >>> add_unique_column.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
+
+    # pylint: enable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(self, input_domain: SparkDataFrameDomain, column: str):
@@ -141,7 +143,6 @@ class AddUniqueColumn(Transformation):
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns DataFrame with ID column added."""
-        # pylint: disable=no-member
         shuffled_partitions = Window.partitionBy(*sdf.columns).orderBy(sdf.columns[0])
         rank_column = get_nonconflicting_string(sdf.columns)
 

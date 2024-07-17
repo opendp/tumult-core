@@ -23,8 +23,8 @@ Tumult Core Architecture
 
 Tumult Core is a collection of composable components for implementing
 algorithms to perform differentially private computations. The design of Tumult Core
-is based on the design proposed in the `OpenDP White Paper
-<https://projects.iq.harvard.edu/files/opendp/files/opendp_programming_framework_11may2020_1_01.pdf>`_.
+is based on the design proposed in the
+`OpenDP White Paper <https://projects.iq.harvard.edu/files/opendp/files/opendp_programming_framework_11may2020_1_01.pdf>`_.
 On this page, we give an overview of this design. Readers who want more
 information should refer to the linked white paper.
 
@@ -112,8 +112,8 @@ The measure defines a distance between distributions of outputs over the output
 domain of the measurement. For example, if :math:`P` and :math:`Q` denote two
 distributions over some output domain, the distance between :math:`P` and
 :math:`Q` in the :class:`~.PureDP` output measure is :math:`D_{\infty}(X \| Y)`,
-where :math:`D_{\infty}(P \| Q) = \sup _{x \in \operatorname{supp} (Q)} \log
-\frac{P(x)}{Q(x)}` is the Rényi divergence of infinite order.
+where :math:`D_{\infty}(P \| Q) = \sup _{x \in \operatorname{supp} (Q)} \log \frac{P(x)}{Q(x)}`
+is the Rényi divergence of infinite order.
 
 .. testcode::
 

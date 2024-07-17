@@ -102,7 +102,7 @@ def _mutate_list_and_check(
         component: Component to be checked.
         prop_name: Name of property to be checked.
         prop_val: Returned property associated with given list.
-        list_obj: List associated with `prop_val`. This is the object being
+        list_obj: List associated with ``prop_val``. This is the object being
             checked for mutability.
     """
     list_obj.append(1)
@@ -123,8 +123,8 @@ def _mutate_set_and_check(
         component: Component to be checked.
         prop_name: Name of property to be checked.
         prop_val: Returned property associated with given set.
-        set_obj: Set associated with `prop_val`. This function checks if modifying
-            this object changes the property associated with `prop_name`.
+        set_obj: Set associated with ``prop_val``. This function checks if modifying
+            this object changes the property associated with ``prop_name``.
     """
     if not set_obj:
         set_obj.add(1)
@@ -152,9 +152,9 @@ def _mutate_dict_and_check(
         component: Component to be checked.
         prop_name: Name of property to be checked.
         prop_val: Returned property associated with given dictionary.
-        dict_obj: Dictionary associated with `prop_val`. This function checks
+        dict_obj: Dictionary associated with ``prop_val``. This function checks
         if modifying this object changes the property associated with
-        `prop_name`.
+        ``prop_name``.
     """
     if not dict_obj:
         dict_obj[1] = 1
@@ -181,9 +181,9 @@ def _mutate_and_check_items(
     Args:
         component: Component containing the property associated with prop_name.
         prop_name: Name of property being checked for mutability.
-        prop_val: Returned value of the property `prop_name`.
-        items: List of items associated with `prop_val`. This function checks if
-            modifying any item in this collection mutates the `prop_name` property of
+        prop_val: Returned value of the property ``prop_name``.
+        items: List of items associated with ``prop_val``. This function checks if
+            modifying any item in this collection mutates the ``prop_name`` property of
             given component.
     """
     for item in items:
@@ -687,7 +687,7 @@ def run_test_using_ks_test(
     case: KSTestCase, p_threshold: float, noise_scale_fudge_factor: float
 ) -> None:
     """Runs given :class:`~.KSTestCase`."""
-    samples = case.sampler()  # type: ignore
+    samples = case.sampler()
     for sample_name, sample in samples.items():
         good_p, less_noise_p, more_noise_p = _run_ks_tests(
             sample=sample,
@@ -707,7 +707,7 @@ def run_test_using_chi_squared_test(
     case: ChiSquaredTestCase, p_threshold: float, noise_scale_fudge_factor: float
 ) -> None:
     """Runs given :class:`~.ChiSquaredTestCase`."""
-    samples = case.sampler()  # type: ignore
+    samples = case.sampler()
     for sample_name, sample in samples.items():
         good_p, less_noise_p, more_noise_p = _run_chi_squared_tests(
             sample=sample,

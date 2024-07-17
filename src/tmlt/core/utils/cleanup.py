@@ -27,7 +27,7 @@ def _cleanup_temp() -> None:
 def cleanup() -> None:
     """Cleanup Core's temporary table.
 
-    If you call `spark.stop()`, you should call this function first.
+    If you call ``spark.stop()``, you should call this function first.
     """
     _cleanup_temp()
 

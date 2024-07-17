@@ -65,7 +65,7 @@ class GroupedDataFrame:
         """Returns a new GroupedDataFrame object with specified subset of columns.
 
         Note:
-            `columns` must contain the groupby columns.
+            ``columns`` must contain the groupby columns.
 
         Args:
             columns: List of column names to keep. This must include the groupby
@@ -89,14 +89,13 @@ class GroupedDataFrame:
 
         The output DataFrame is guaranteed to have exactly one row for each group
         key. For group keys corresponding to empty groups, the output column will
-        contain the supplied `fill_value`. The output DataFrame is also sorted by
+        contain the supplied ``fill_value``. The output DataFrame is also sorted by
         the groupby columns.
 
         Args:
             func: Function to apply to each group.
             fill_value: Output value for empty groups.
         """
-        # pylint: disable=no-member
         if self._total_aggregation:
             result = self._dataframe.agg(func)
             assert len(result.columns) == 1
@@ -138,7 +137,7 @@ class GroupedDataFrame:
     ) -> DataFrame:
         """Returns DataFrame obtained by applying aggregation function to each group.
 
-        Each group is passed to the `aggregation_function` as a pandas DataFrame
+        Each group is passed to the ``aggregation_function`` as a pandas DataFrame
         and the returned pandas DataFrames are stacked into a single spark DataFrame.
 
         The output DataFrame is guaranteed to have exactly one row for each group
@@ -159,9 +158,7 @@ class GroupedDataFrame:
             )
 
         empty_indicator = get_nonconflicting_string(self._dataframe.columns)
-        sdf = self._dataframe.withColumn(
-            empty_indicator, sf.lit(0)  # pylint: disable=no-member
-        )
+        sdf = self._dataframe.withColumn(empty_indicator, sf.lit(0))
 
         sdf = join(
             left=self.group_keys,
@@ -190,7 +187,6 @@ class GroupedDataFrame:
 
     def get_groups(self) -> Dict[Row, DataFrame]:
         """Returns the groups as dictionary of DataFrames."""
-        # pylint: disable=no-member
         groups = {}
         non_grouping_columns = [
             column

@@ -111,12 +111,14 @@ class GroupBy(Transformation):
         SumOf(inner_metric=SymmetricDifference())
 
         Stability Guarantee:
-            :class:`~.GroupBy`'s :meth:`~stability_function` returns the `d_in` if the
-            `input_metric` is :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`, otherwise it returns `d_in` times `2`.
+            :class:`~.GroupBy`'s :meth:`~stability_function` returns the ``d_in`` if the
+            ``input_metric`` is :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`, otherwise it returns ``d_in`` times ``2``.
 
             >>> groupby_B.stability_function(1)
             1
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
+
+    # pylint: enable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -136,7 +138,7 @@ class GroupBy(Transformation):
             group_keys: DataFrame where rows correspond to group keys.
 
         Note:
-            `group_keys` must be public.
+            ``group_keys`` must be public.
         """
         output_metric: Union[SumOf, RootSumOfSquared] = (
             RootSumOfSquared(SymmetricDifference())
@@ -192,7 +194,7 @@ class GroupBy(Transformation):
         """Returns the smallest d_out satisfied by the transformation.
 
         Args:
-            d_in: Distance between inputs under `input_metric`.
+            d_in: Distance between inputs under ``input_metric``.
         """
         self.input_metric.validate(d_in)
         d_in = ExactNumber(d_in)
@@ -288,7 +290,7 @@ def create_groupby_from_column_domains(
         column_domains: Mapping from column name to list of distinct values.
 
     Note:
-        `column_domains` must be public.
+        ``column_domains`` must be public.
     """
     validate_groupby_domains(column_domains, input_domain)
     return GroupBy(
@@ -369,7 +371,7 @@ def create_groupby_from_list_of_keys(
         keys: List of distinct tuples corresponding to group keys.
 
     Note:
-        `keys` must be public list of tuples with no duplicates.
+        ``keys`` must be public list of tuples with no duplicates.
     """
     spark = SparkSession.builder.getOrCreate()
     return GroupBy(

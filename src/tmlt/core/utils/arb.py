@@ -57,7 +57,7 @@ else:
 
 
 class _PtrStruct(ctypes.Structure):
-    """Wrapper type for `mantissa_ptr_struct`.
+    """Wrapper type for ``mantissa_ptr_struct``.
 
     ... highlight :: c
     ... code-block :: c
@@ -74,7 +74,7 @@ class _PtrStruct(ctypes.Structure):
 
 
 class _NoPtrStruct(ctypes.Structure):
-    """Wrapper type for `mantissa_ptr_struct`.
+    """Wrapper type for ``mantissa_ptr_struct``.
 
     ... highlight :: c
     ... code-block :: c
@@ -91,7 +91,7 @@ class _NoPtrStruct(ctypes.Structure):
 
 
 class _MantissaStruct(ctypes.Union):
-    """Wrapper type for `mantissa_struct`.
+    """Wrapper type for ``mantissa_struct``.
 
     ... highlight :: c
     ... code-block :: c
@@ -109,7 +109,7 @@ class _MantissaStruct(ctypes.Union):
 
 
 class _MagStruct(ctypes.Structure):
-    """Wrapper type for `mag_struct`.
+    """Wrapper type for ``mag_struct``.
 
     This holds an unsigned floating point number with a fixed-precision (30 bits)
     mantissa and an arbitrary precision (integral) exponent.
@@ -129,7 +129,7 @@ class _MagStruct(ctypes.Structure):
 
 
 class _ArfStruct(ctypes.Structure):
-    """Wrapper type for `arf_struct`.
+    """Wrapper type for ``arf_struct``.
 
     This holds an arbitrary precision floating point number.
 
@@ -149,7 +149,7 @@ class _ArfStruct(ctypes.Structure):
 
 
 class _ArbStruct(ctypes.Structure):
-    """Wrapper type for `arb_struct`.
+    """Wrapper type for ``arb_struct``.
 
     ... highlight :: c
     ... code-block :: c
@@ -174,7 +174,7 @@ class Arb:
     def __init__(self, ptr):
         """Construct a ball represented exactly.
 
-        NOTE: Do not use directly. Use a `from_` constructor instead.
+        NOTE: Do not use directly. Use a ``from_`` constructor instead.
         """
         self._ptr = ptr
 
@@ -197,7 +197,7 @@ class Arb:
 
     @staticmethod
     def from_int(val: int) -> "Arb":
-        """Constructs an exact Arb with midpoint `val`."""
+        """Constructs an exact Arb with midpoint ``val``."""
         x = ctypes.pointer(_ArbStruct())
         arblib.arb_init(x)
         fmpz_pointer = _int_to_fmpz_t(val)
@@ -206,7 +206,7 @@ class Arb:
 
     @staticmethod
     def from_float(val: float) -> "Arb":
-        """Construct an exact Arb with midpoint `val`."""
+        """Construct an exact Arb with midpoint ``val``."""
         x = ctypes.pointer(_ArbStruct())
         arblib.arb_init(x)
         arblib.arb_set_d(x, ctypes.c_double(float(val)))
@@ -247,8 +247,8 @@ class Arb:
     def __lt__(self, other: Any) -> bool:
         """Returns True if self is less than other.
 
-        This returns True if each value in the interval represented by `self` is less
-        than every value in `other`.
+        This returns True if each value in the interval represented by ``self`` is less
+        than every value in ``other``.
 
         Note: If the midpoint is NaN, this returns False.
         """
@@ -259,8 +259,8 @@ class Arb:
     def __le__(self, other: Any) -> bool:
         """Returns True if self is less than or equal to other.
 
-        This returns True if each value in the interval represented by `self` is less
-        than or equal to every value in `other`.
+        This returns True if each value in the interval represented by ``self`` is less
+        than or equal to every value in ``other``.
 
         Note: If the midpoint is NaN, this returns False.
         """
@@ -271,8 +271,8 @@ class Arb:
     def __ne__(self, other: Any) -> bool:
         """Returns True if self is not equal to other.
 
-        This returns True if no value in the interval represented by `self` is equal
-        to a value in `other`.
+        This returns True if no value in the interval represented by ``self`` is equal
+        to a value in ``other``.
 
         Note: If the midpoint is NaN, this returns False.
         """
@@ -281,8 +281,8 @@ class Arb:
     def __gt__(self, other: Any) -> bool:
         """Returns True if self is greater than other.
 
-        This returns True if each value in the interval represented by `self` is
-        greater than every value in `other`.
+        This returns True if each value in the interval represented by ``self`` is
+        greater than every value in ``other``.
 
         Note: If the midpoint is NaN, this returns False.
         """
@@ -293,8 +293,8 @@ class Arb:
     def __ge__(self, other: Any) -> bool:
         """Returns True if self is greater than or equal to other.
 
-        This returns True if each value in the interval represented by `self` is
-        greater than or equal to every value in `other`.
+        This returns True if each value in the interval represented by ``self`` is
+        greater than or equal to every value in ``other``.
 
         Note: If the midpoint is NaN, this returns False.
         """
@@ -305,15 +305,15 @@ class Arb:
     def __eq__(self, other: Any) -> bool:
         """Returns True if self is equal to other.
 
-        This returns True if each value in the interval represented by `self` is
-        greater than every value in `other`. If midpoint is NaN, this returns False.
+        This returns True if each value in the interval represented by ``self`` is
+        greater than every value in ``other``. If midpoint is NaN, this returns False.
         """
         if other.__class__ != self.__class__:
             return NotImplemented
         return arblib.arb_eq(self._ptr, other._ptr) > 0
 
     def __neg__(self) -> "Arb":
-        """Returns -1 * self`."""
+        """Returns -1 * ``self``."""
         x = ctypes.pointer(_ArbStruct())
         arblib.arb_init(x)
         arblib.arb_neg(x, self._ptr)
@@ -332,15 +332,15 @@ class Arb:
         return bool(arblib.arf_is_nan(ctypes.byref(self._ptr.contents.mid)))
 
     def __float__(self) -> float:
-        """Returns a float approximating the midpoint of `self`."""
+        """Returns a float approximating the midpoint of ``self``."""
         arblib.arf_get_d.restype = ctypes.c_double
         # 4 below corresponds to ARB_RND_NEAR
         return arblib.arf_get_d(ctypes.byref(self._ptr.contents.mid), 4)
 
     def to_float(self, prec: int = 64) -> float:
-        """Returns the only floating point number contained in `self`.
+        """Returns the only floating point number contained in ``self``.
 
-        If more than one float lies in the interval represented by `self`,
+        If more than one float lies in the interval represented by ``self``,
         this raises an error.
         """
         if not self.is_nan() and self.is_finite():
@@ -359,7 +359,7 @@ class Arb:
     def man_exp(self) -> Tuple[int, int]:
         """Returns a pair (Mantissa, Exponent) if exact.
 
-        If `self` is not exact, this raises an error.
+        If ``self`` is not exact, this raises an error.
         """
         if not self.is_exact():
             raise ValueError("Arb must be exact to obtain (man, exp) representation.")
@@ -370,7 +370,7 @@ class Arb:
         return _fmpz_t_to_int(man_ptr), _fmpz_t_to_int(exp_ptr)
 
     def lower(self, prec: int) -> "Arb":
-        """Returns an exact Arb representing the smallest value in `self`."""
+        """Returns an exact Arb representing the smallest value in ``self``."""
         x = ctypes.pointer(_ArbStruct())
         mid = ctypes.pointer(_ArfStruct())
         arblib.arf_init(mid)
@@ -380,7 +380,7 @@ class Arb:
         return Arb(x)
 
     def upper(self, prec: int) -> "Arb":
-        """Returns an exact Arb representing the largest value in `self`."""
+        """Returns an exact Arb representing the largest value in ``self``."""
         x = ctypes.pointer(_ArbStruct())
         mid = ctypes.pointer(_ArfStruct())
         arblib.arf_init(mid)
@@ -390,21 +390,23 @@ class Arb:
         return Arb(x)
 
     def midpoint(self) -> "Arb":
-        """Returns the midpoint of `self`."""
+        """Returns the midpoint of ``self``."""
         x = ctypes.pointer(_ArbStruct())
         arblib.arb_init(x)
         arblib.arb_get_mid_arb(x, self._ptr)
         return Arb(x)
 
     def radius(self) -> "Arb":
-        """Returns the radius of `self`."""
+        """Returns the radius of ``self``."""
         x = ctypes.pointer(_ArbStruct())
         arblib.arb_init(x)
         arblib.arb_get_rad_arb(x, self._ptr)
         return Arb(x)
 
+    # pylint: disable=line-too-long
     def __contains__(self, value: Any) -> bool:
-        """Returns True if value is contained in the interval represented by `self`."""
+        """Returns True if value is contained in the interval represented by ``self``."""
+        # pylint: enable=line-too-long
         if isinstance(value, Arb):
             return arblib.arb_contains(self._ptr, value._ptr) != 0
         return False
@@ -425,7 +427,7 @@ class Arb:
 
 
 def arb_sub(x: Arb, y: Arb, prec: int) -> Arb:
-    """Returns `x - y`."""
+    """Returns ``x - y``."""
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
     arblib.arb_sub(z, x._ptr, y._ptr, prec)
@@ -433,7 +435,7 @@ def arb_sub(x: Arb, y: Arb, prec: int) -> Arb:
 
 
 def arb_add(x: Arb, y: Arb, prec: int) -> Arb:
-    """Returns sum of `x` and `y`."""
+    """Returns sum of ``x`` and ``y``."""
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
     arblib.arb_add(z, x._ptr, y._ptr, prec)
@@ -441,7 +443,7 @@ def arb_add(x: Arb, y: Arb, prec: int) -> Arb:
 
 
 def arb_mul(x: Arb, y: Arb, prec: int) -> Arb:
-    """Returns product of `x` and `y`."""
+    """Returns product of ``x`` and ``y``."""
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
     arblib.arb_mul(z, x._ptr, y._ptr, prec)
@@ -449,7 +451,7 @@ def arb_mul(x: Arb, y: Arb, prec: int) -> Arb:
 
 
 def arb_div(x: Arb, y: Arb, prec: int) -> Arb:
-    """Returns quotient of `x` divided by `y`."""
+    """Returns quotient of ``x`` divided by ``y``."""
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
     arblib.arb_div(z, x._ptr, y._ptr, prec)
@@ -457,7 +459,7 @@ def arb_div(x: Arb, y: Arb, prec: int) -> Arb:
 
 
 def arb_log(x: Arb, prec: int) -> Arb:
-    """Returns `log(x)`."""
+    """Returns ``log(x)``."""
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
     arblib.arb_log(z, x._ptr, prec)
@@ -465,10 +467,10 @@ def arb_log(x: Arb, prec: int) -> Arb:
 
 
 def arb_max(x: Arb, y: Arb, prec: int) -> Arb:
-    """Returns max of `x` and `y`.
+    """Returns max of ``x`` and ``y``.
 
-    If `x` and `y` represent intervals [x_l, x_u] and [y_l, y_u], this returns an
-    interval containing [max(x_l, y_l), max(x_u, y_u)].
+    If ``x`` and ``y`` represent intervals ``[x_l, x_u]`` and ``[y_l, y_u]``,
+    this returns an interval containing ``[max(x_l, y_l), max(x_u, y_u)]``.
     """
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
@@ -477,10 +479,10 @@ def arb_max(x: Arb, y: Arb, prec: int) -> Arb:
 
 
 def arb_exp(x: Arb, prec: int) -> Arb:
-    """Returns exp(x).
+    """Returns ``exp(x)``.
 
-    If `x` represents an interval [x_l, x_u], this returns an
-    interval containing [exp(x_l), exp(x_u)].
+    If ``x`` represents an interval ``[x_l, x_u]``, this returns an
+    interval containing ``[exp(x_l), exp(x_u)]``.
     """
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
@@ -489,7 +491,7 @@ def arb_exp(x: Arb, prec: int) -> Arb:
 
 
 def arb_pow(x: Arb, y: Arb, prec: int) -> Arb:
-    """Returns x^y."""
+    """Returns ``x^y``."""
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
     arblib.arb_pow(z, x._ptr, y._ptr, prec)
@@ -497,10 +499,10 @@ def arb_pow(x: Arb, y: Arb, prec: int) -> Arb:
 
 
 def arb_min(x: Arb, y: Arb, prec: int) -> Arb:
-    """Returns min of `x` and `y`.
+    """Returns min of ``x`` and ``y``.
 
-    If `x` and `y` represent intervals [x_l, x_u] and [y_l, y_u], this returns an
-    interval containing [min(x_l, y_l), min(x_u, y_u)].
+    If ``x`` and ``y`` represent intervals ``[x_l, x_u]`` and ``[y_l, y_u]``,
+    this returns an interval containing ``[min(x_l, y_l), min(x_u, y_u)]``.
     """
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
@@ -561,7 +563,7 @@ def arb_erfinv(x: Arb, prec: int) -> Arb:
 
 
 def arb_sqrt(x: Arb, prec: int) -> Arb:
-    """Returns square root of `x`."""
+    """Returns square root of ``x``."""
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
     arblib.arb_sqrt(z, x._ptr, prec)
@@ -577,10 +579,10 @@ def arb_const_pi(prec: int) -> Arb:
 
 
 def arb_union(x: Arb, y: Arb, prec: int) -> Arb:
-    """Returns union of `x` and `y`.
+    """Returns union of ``x`` and ``y``.
 
-    If `x` and `y` represent intervals [x_l, x_u] and [y_l, y_u], this returns an
-    interval containing [min(x_l, y_l), max(x_u, y_u)].
+    If ``x`` and ``y`` represent intervals ``[x_l, x_u]`` and ``[y_l, y_u]``,
+    this returns an interval containing ``[min(x_l, y_l), max(x_u, y_u)]``.
     """
     z = ctypes.pointer(_ArbStruct())
     arblib.arb_init(z)
@@ -635,7 +637,7 @@ def _fmpz_t_to_int(ptr: "ctypes._PointerLike") -> int:
 
 
 def _get_exact_arb(val: Union[int, float, Tuple[int, int]]) -> Arb:
-    """Returns an exact Arb with midpoint=`val`."""
+    """Returns an exact Arb with midpoint=``val``."""
     if isinstance(val, int):
         return Arb.from_int(val)
     if isinstance(val, float):

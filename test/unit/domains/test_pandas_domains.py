@@ -39,7 +39,7 @@ class TestPandasSeriesDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.pandas_domains.PandasSeriesDomain`."""
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return PandasSeriesDomain
 
@@ -294,7 +294,7 @@ class TestPandasSeriesDomain(DomainTests):
             # pylint: enable=line-too-long
         ],
     )
-    def test_from_numpy_type(  # pylint: disable=no-self-use
+    def test_from_numpy_type(
         self,
         domain_type: Type[PandasSeriesDomain],
         dtype: np.dtype,
@@ -318,12 +318,12 @@ class TestPandasDataFrameDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.pandas_domains.PandasDataFrameDomain`."""
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return PandasDataFrameDomain
 
     @pytest.fixture(scope="class")
-    def domain(self) -> PandasDataFrameDomain:  # pylint: disable=no-self-use
+    def domain(self) -> PandasDataFrameDomain:
         """Get a base PandasDataFrameDomain."""
         return PandasDataFrameDomain(
             schema={
@@ -683,7 +683,7 @@ class TestPandasDataFrameDomain(DomainTests):
             )
         ],
     )
-    def test_from_numpy_types(  # pylint: disable=no-self-use
+    def test_from_numpy_types(
         self,
         dtypes: Dict[str, np.dtype],
         expected: PandasDataFrameDomain,

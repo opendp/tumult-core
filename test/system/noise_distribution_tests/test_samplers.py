@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-# pylint: disable=no-member, no-self-use
 
 from test.system.noise_distribution_tests import P_THRESHOLD, SAMPLE_SIZE
 

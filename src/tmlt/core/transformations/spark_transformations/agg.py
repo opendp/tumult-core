@@ -105,12 +105,13 @@ class Count(Transformation):
         AbsoluteDifference()
 
         Stability Guarantee:
-            :class:`~.Count`'s :meth:`~.stability_function` returns `d_in` if input metric is
-            :class:`~.SymmetricDifference` and :math:`d_{in} * 2` if input metric is :class:`~.HammingDistance`.
+            :class:`~.Count`'s :meth:`~.stability_function` returns ``d_in`` if
+            input metric is :class:`~.SymmetricDifference` and :math:`d_{in} *
+            2` if input metric is :class:`~.HammingDistance`.
 
              >>> count_dataframe.stability_function(1)
              1
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -210,12 +211,12 @@ class CountDistinct(Transformation):
 
         Stability Guarantee:
             :class:`~CountDistinct`'s :meth:`~stability_function` returns
-            `d_in` if input metric is :class:`~.SymmetricDifference` and
+            ``d_in`` if input metric is :class:`~.SymmetricDifference` and
             :math:`d_{in} * 2` if input metric is :class:`~.HammingDistance`.
 
             >>> count_distinct_dataframe.stability_function(1)
             1
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -327,7 +328,8 @@ class CountGrouped(Transformation):
     Transformation Contract:
         * Input domain - :class:`~.SparkGroupedDataFrameDomain`
         * Output domain - :class:`~.SparkDataFrameDomain`
-        * Input metric - :class:`~.SumOf` or :class:`~.RootSumOfSquared` of :class:`~.SymmetricDifference`
+        * Input metric - :class:`~.SumOf` or :class:`~.RootSumOfSquared`
+          of :class:`~.SymmetricDifference`
         * Output metric - :class:`~.OnColumn`
 
         >>> count_by_A.input_domain
@@ -340,11 +342,11 @@ class CountGrouped(Transformation):
         OnColumn(column='count', metric=SumOf(inner_metric=AbsoluteDifference()))
 
         Stability Guarantee:
-            :class:`~.CountGrouped`'s :meth:`~.stability_function` returns `d_in`.
+            :class:`~.CountGrouped`'s :meth:`~.stability_function` returns ``d_in``.
 
             >>> count_by_A.stability_function(1)
             1
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -502,7 +504,8 @@ class CountDistinctGrouped(Transformation):
     Transformation Contract:
         * Input domain - :class:`~.SparkGroupedDataFrameDomain`
         * Output domain - :class:`~.SparkDataFrameDomain`
-        * Input metric - :class:`~.SumOf` or :class:`~.RootSumOfSquared` of :class:`~.SymmetricDifference`
+        * Input metric - :class:`~.SumOf` or :class:`~.RootSumOfSquared`
+          of :class:`~.SymmetricDifference`
         * Output metric - :class:`~.OnColumn`
 
         >>> count_distinct_by_A.input_domain
@@ -515,11 +518,11 @@ class CountDistinctGrouped(Transformation):
         OnColumn(column='count_distinct', metric=SumOf(inner_metric=AbsoluteDifference()))
 
         Stability Guarantee:
-            :class:`~.CountDistinctGrouped`'s :meth:`~.stability_function` returns `d_in`.
+            :class:`~.CountDistinctGrouped`'s :meth:`~.stability_function` returns ``d_in``.
 
             >>> count_distinct_by_A.stability_function(1)
             1
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -598,7 +601,6 @@ class CountDistinctGrouped(Transformation):
 
     def __call__(self, grouped_data: GroupedDataFrame) -> DataFrame:
         """Returns a DataFrame containing counts for each group."""
-        # pylint: disable=no-member
         # Note: This cannot use sf.count_distinct since it ignores rows with nulls.
         result = grouped_data.agg(
             sf.size(sf.collect_set(sf.struct("*"))).alias(self.count_column),
@@ -681,7 +683,7 @@ class Sum(Transformation):
         AbsoluteDifference()
 
         Stability Guarantee:
-            :class:`~.Sum`'s :meth:`~.stability_function` returns `d_in` times sensitivity of
+            :class:`~.Sum`'s :meth:`~.stability_function` returns ``d_in`` times sensitivity of
             the sum. (See below for more information).
 
             >>> sum_X.stability_function(1)
@@ -800,7 +802,6 @@ class Sum(Transformation):
 
     def __call__(self, df: DataFrame) -> Union[int, float]:
         """Returns the sum of specified column in the dataframe."""
-        # pylint: disable=no-member
         lower_ceil = self.lower.to_float(round_up=True)
         upper_floor = (
             lower_ceil
@@ -907,7 +908,7 @@ class SumGrouped(Transformation):
         OnColumn(column='sum(X)', metric=SumOf(inner_metric=AbsoluteDifference()))
 
         Stability Guarantee:
-            :class:`~.SumGrouped`'s :meth:`~.stability_function` returns `d_in` * sensitivity of the sum.
+            :class:`~.SumGrouped`'s :meth:`~.stability_function` returns ``d_in`` * sensitivity of the sum.
 
             >>> sum_X_by_A.stability_function(1)
             4
@@ -915,7 +916,7 @@ class SumGrouped(Transformation):
             The sensitivity of the sum is:
 
             * :math:`\max(|h|, |\ell|)`
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -1105,15 +1106,13 @@ def create_count_aggregation(
     input_domain: Union[SparkDataFrameDomain, SparkGroupedDataFrameDomain],
     input_metric: Union[SymmetricDifference, HammingDistance, SumOf, RootSumOfSquared],
     count_column: Optional[str] = None,
-) -> Union[
-    Count, CountGrouped
-]:  # pylint: disable=missing-type-doc, missing-return-type-doc
+) -> Union[Count, CountGrouped]:
     """Returns a :class:`~.Count` or :class:`~.CountGrouped` transformation.
 
     Args:
         input_domain: Domain of input DataFrames or GroupedDataFrames.
         input_metric: Distance metric on inputs.
-        count_column: If `input_domain` is a SparkGroupedDataFrameDomain, this is the
+        count_column: If ``input_domain`` is a SparkGroupedDataFrameDomain, this is the
             name of the output count column.
     """
     if isinstance(input_domain, SparkDataFrameDomain):
@@ -1165,7 +1164,7 @@ def create_count_distinct_aggregation(
     Args:
         input_domain: Domain of input DataFrames or GroupedDataFrames.
         input_metric: Distance metric on inputs.
-        count_column: If `input_domain` is a SparkGroupedDataFrameDomain, this is the
+        count_column: If ``input_domain`` is a SparkGroupedDataFrameDomain, this is the
             name of the output count column.
     """
     # pylint: enable=line-too-long
@@ -1230,7 +1229,7 @@ def create_sum_aggregation(
         measure_column: Column to be summed.
         lower: Lower clipping bound for measure column.
         upper: Upper clipping bound for measure column.
-        sum_column: If `input_domain` is a SparkGroupedDataFrameDomain, this is the
+        sum_column: If ``input_domain`` is a SparkGroupedDataFrameDomain, this is the
             column name to be used for sums in the DataFrame output by the
             measurement. If None, this column will be named “sum(<measure_column>)”.
     """

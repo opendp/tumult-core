@@ -172,7 +172,7 @@ class TestPureDPBudget(TestCase):
     """Test cases for PureDPBudget."""
 
     @parameterized.expand(to_singletons(VALID_PRIMARY_BUDGET_INPUTS))
-    def test_init_valid(self, value):  # pylint: disable=no-self-use
+    def test_init_valid(self, value):
         """Tests that the budget can be created with a valid budget input."""
         PureDPBudget(value)
 
@@ -357,7 +357,7 @@ class TestRhoZCDPBudget(TestCase):
     """Test cases for RhoZCDPBudget."""
 
     @parameterized.expand(to_singletons(VALID_PRIMARY_BUDGET_INPUTS))
-    def test_init_valid(self, value):  # pylint: disable=no-self-use
+    def test_init_valid(self, value):
         """Tests that the budget can be created with a valid budget input."""
         RhoZCDPBudget(value)
 

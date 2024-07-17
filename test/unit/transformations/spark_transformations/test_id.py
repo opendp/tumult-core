@@ -109,7 +109,6 @@ class TestAddUniqueColumn(PySparkTest):
         self, rows: List[Tuple], schema: Optional[SparkColumnsDescriptor] = None
     ):
         """AddUniqueColumn works correctly."""
-        # pylint: disable=no-member
         if not schema:
             schema = {
                 "A": SparkIntegerColumnDescriptor(allow_null=True),
@@ -148,7 +147,6 @@ class TestAddUniqueColumn(PySparkTest):
 
         This tests that the stability is in fact 1.
         """
-        # pylint: disable=no-member
         domain = SparkDataFrameDomain(
             {
                 "A": SparkIntegerColumnDescriptor(allow_null=True),

@@ -8,7 +8,7 @@ from tmlt.core.utils import arb
 
 
 def uniform_inverse_cdf(l: float, u: float, p: arb.Arb, prec: int) -> arb.Arb:
-    """Returns the value of inverse CDF of the uniform distribution from `l` to `u`.
+    """Returns the value of inverse CDF of the uniform distribution from ``l`` to ``u``.
 
     Args:
         l: Lower bound for the uniform distribution.
@@ -32,7 +32,7 @@ def uniform_inverse_cdf(l: float, u: float, p: arb.Arb, prec: int) -> arb.Arb:
 
 
 def uniform(lower: float, upper: float, step_size: int = 63) -> float:
-    """Returns a random floating point number between `lower` and `upper`.
+    """Returns a random floating point number between ``lower`` and ``upper``.
 
     Args:
         lower: Lower bound of interval to sample from.

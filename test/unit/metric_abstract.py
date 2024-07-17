@@ -23,7 +23,7 @@ class MetricTests(ABC):
 
     @abstractmethod
     @pytest.fixture
-    def metric_type(self) -> Type[Metric]:  # pylint: disable=no-self-use
+    def metric_type(self) -> Type[Metric]:
         """Returns the type of the metric to be tested."""
         return Metric
 

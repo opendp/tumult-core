@@ -71,7 +71,7 @@ class SparkColumnDescriptor(ABC):
 
     @abstractmethod
     def valid_py_value(self, val: Any) -> bool:
-        """Returns True if `val` is valid for described Spark column."""
+        """Returns True if ``val`` is valid for described Spark column."""
 
     @property
     @abstractmethod
@@ -194,9 +194,9 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
 
         In particular, this returns True only if one of the following is true:
 
-        - val is `float("nan")` and NaN is allowed.
-        - val is `float("inf")` or `float("-inf")`, and inf values are allowed.
-        - val is a float that can be represented in `size` bits.
+        - val is ``float("nan")`` and NaN is allowed.
+        - val is ``float("inf")`` or ``float("-inf")``, and inf values are allowed.
+        - val is a float that can be represented in ``size`` bits.
         - val is None and nulls are allowed in the domain.
         """
         if isinstance(val, float):
@@ -334,7 +334,7 @@ class SparkRowDomain(Domain):
         return OrderedDict(self.schema) == OrderedDict(other.schema)
 
     @property
-    def carrier_type(self) -> type:  # pylint: disable=no-self-use
+    def carrier_type(self) -> type:
         """Returns carrier types for members of SparkRowDomain."""
         return Row
 

@@ -91,7 +91,7 @@ def _hash_columns(df: DataFrame, columns: List[str]) -> Tuple[DataFrame, str]:
 def truncate_large_groups(
     df: DataFrame, grouping_columns: List[str], threshold: int
 ) -> DataFrame:
-    """Order rows by a hash function and keep at most `threshold` rows for each group.
+    """Order rows by a hash function and keep at most ``threshold`` rows for each group.
 
     Example:
         ..
@@ -155,7 +155,7 @@ def truncate_large_groups(
     return (
         df.withColumn(
             rank_column,
-            sf.row_number().over(shuffled_partitions),  # pylint: disable=no-member
+            sf.row_number().over(shuffled_partitions),
         )
         .filter(f"{rank_column}<={threshold}")
         .drop(rank_column, hash_column, row_index_column)
@@ -165,7 +165,7 @@ def truncate_large_groups(
 def drop_large_groups(
     df: DataFrame, grouping_columns: List[str], threshold: int
 ) -> DataFrame:
-    """Drop all rows for groups that have more than `threshold` rows.
+    """Drop all rows for groups that have more than ``threshold`` rows.
 
     Example:
         ..
@@ -210,7 +210,7 @@ def drop_large_groups(
     Args:
         df: DataFrame to truncate.
         grouping_columns: Columns defining the groups.
-        threshold: Threshold for dropping groups. If more than `threshold` rows belong
+        threshold: Threshold for dropping groups. If more than ``threshold`` rows belong
             to the same group, all rows in that group are dropped.
     """
     count_column = get_nonconflicting_string(df.columns)
@@ -218,7 +218,7 @@ def drop_large_groups(
     return (
         df.withColumn(
             count_column,
-            sf.count(sf.lit(1)).over(partitions),  # pylint: disable=no-member
+            sf.count(sf.lit(1)).over(partitions),
         )
         .filter(f"{count_column}<={threshold}")
         .drop(count_column)
@@ -228,12 +228,12 @@ def drop_large_groups(
 def limit_keys_per_group(
     df: DataFrame, grouping_columns: List[str], key_columns: List[str], threshold: int
 ) -> DataFrame:
-    """Order keys by a hash function and keep at most `threshold` keys for each group.
+    """Order keys by a hash function and keep at most ``threshold`` keys for each group.
 
     .. note::
 
         After truncation there may still be an unbounded number of rows per key, but
-        at most `threshold` keys per group
+        at most ``threshold`` keys per group
 
     Example:
         ..
@@ -306,7 +306,7 @@ def limit_keys_per_group(
     return (
         df.withColumn(
             rank_column,
-            sf.dense_rank().over(shuffled_partitions),  # pylint: disable=no-member
+            sf.dense_rank().over(shuffled_partitions),
         )
         .filter(f"{rank_column}<={threshold}")
         .drop(rank_column, hash_column)

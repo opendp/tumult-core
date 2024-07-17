@@ -21,7 +21,7 @@ class DomainTests(ABC):
 
     @abstractmethod
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return Domain
 

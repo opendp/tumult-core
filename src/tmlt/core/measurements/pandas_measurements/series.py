@@ -8,8 +8,7 @@
 
 import math
 from abc import abstractmethod
-from typing import Any  # pylint: disable=unused-import
-from typing import List, NamedTuple, Tuple, Union, cast
+from typing import Any, List, NamedTuple, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -196,7 +195,7 @@ class NoisyQuantile(Aggregate):
 
         where:
 
-        * :math:`d_{in}` is the input argument `d_in`
+        * :math:`d_{in}` is the input argument ``d_in``
         * :math:`\epsilon` is :attr:`~.epsilon`
 
         See :cite:`Cesar021` for the zCDP privacy analysis.
@@ -324,19 +323,19 @@ class _RankedInterval(NamedTuple):
 def _get_intervals_with_ranks(
     values: Union[List[float], "np.ndarray[Any, Any]"], lower: float, upper: float
 ) -> List[_RankedInterval]:
-    """Returns a list of intervals constructed from `values`.
+    """Returns a list of intervals constructed from ``values``.
 
     The list of intervals returned consist of three types of intervals:
 
-        - One interval between `lower` and the smallest number in `values`
-          strictly larger than `lower`.
-        - Non-empty intervals between consecutive numbers in `values` (sorted in
+        - One interval between ``lower`` and the smallest number in ``values``
+          strictly larger than ``lower``.
+        - Non-empty intervals between consecutive numbers in ``values`` (sorted in
           ascending order)
-        - One interval from the largest number in `values` strictly smaller than
-          `upper` and `upper`.
+        - One interval from the largest number in ``values`` strictly smaller than
+          ``upper`` and ``upper``.
 
     The rank associated with each interval is the rank of any number in the interval
-    w.r.t all numbers in `values`.
+    w.r.t all numbers in ``values``.
     """
     values = np.sort(values)
     lower_index, upper_index = np.searchsorted(values, [lower, upper], side="left")
@@ -377,7 +376,7 @@ def _select_quantile_interval(
     r"""Returns a privately selected interval (l, u) with the max noisy score.
 
     In particular, this function performs the following steps:
-        - Constructs a list of intervals by calling `_get_intervals_with_ranks`.
+        - Constructs a list of intervals by calling ``_get_intervals_with_ranks``.
         - Compute the target rank as: :math:`target = q * len(values)`.
         - Assigns each interval :math:`(rank, x_i, x_j)` a noisy score computed as:
             :math:`log(x_j - x_i) - |rank - target| * \frac{epsilon}{2 \cdot \Delta U} + G`
@@ -456,12 +455,15 @@ def _select_quantile_interval(
 
         # try to get a noisy score which is above most others
         approx_max = Arb.from_float(float("-inf"))
+        # pylint: disable=consider-using-max-builtin
+        # Unclear if max works correctly with Arb
         for noisy_score in noisy_scores:
             if noisy_score > approx_max:
                 # only if noisy_score.lower > approx_max.upper
                 approx_max = noisy_score
+        # pylint: enable=consider-using-max-builtin
 
-        # do another pass to elimate other intervals
+        # do another pass to eliminate other intervals
         new_gumbel_p_bits = []
         remaining_intervals: List[_RankedInterval] = []
         for i, noisy_score in enumerate(noisy_scores):

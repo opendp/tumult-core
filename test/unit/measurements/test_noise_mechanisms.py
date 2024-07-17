@@ -30,14 +30,12 @@ from tmlt.core.metrics import AbsoluteDifference
 from tmlt.core.utils.exact_number import ExactNumber
 from tmlt.core.utils.misc import get_fullname
 
-# pylint: disable=no-self-use
-
 
 class TestAddLaplaceNoise(MeasurementTests):
     """Tests for :class:`~tmlt.core.measurements.noise_mechanisms.AddLaplaceNoise`."""
 
     @pytest.fixture
-    def measurement_type(self) -> Type[Measurement]:  # pylint: disable=no-self-use
+    def measurement_type(self) -> Type[Measurement]:
         """Returns the type of the measurement to be tested."""
         return AddLaplaceNoise
 
@@ -547,7 +545,7 @@ class TestAddGeometricNoise(MeasurementTests):
     """Tests for :class:`~tmlt.core.measurements.noise_mechanisms.AddGeometricNoise`."""
 
     @pytest.fixture
-    def measurement_type(self) -> Type[Measurement]:  # pylint: disable=no-self-use
+    def measurement_type(self) -> Type[Measurement]:
         """Returns the type of the measurement to be tested."""
         return AddGeometricNoise
 
@@ -907,7 +905,7 @@ class TestAddGaussianNoise(MeasurementTests):
     """Tests for :class:`~tmlt.core.measurements.noise_mechanisms.AddGaussianNoise`."""
 
     @pytest.fixture
-    def measurement_type(self) -> Type[Measurement]:  # pylint: disable=no-self-use
+    def measurement_type(self) -> Type[Measurement]:
         """Returns the type of the measurement to be tested."""
         return AddGaussianNoise
 
@@ -1376,7 +1374,7 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
     """:class:`~tmlt.core.measurements.noise_mechanisms.AddDiscreteGaussianNoise`."""
 
     @pytest.fixture
-    def measurement_type(self) -> Type[Measurement]:  # pylint: disable=no-self-use
+    def measurement_type(self) -> Type[Measurement]:
         """Returns the type of the measurement to be tested."""
         return AddDiscreteGaussianNoise
 

@@ -138,10 +138,7 @@ class AggregateByColumn(Aggregate):
                     ),
                 )
             if input_metric is None:
-                input_metric = cast(
-                    Union[SymmetricDifference, HammingDistance],
-                    aggregation_function.input_metric,
-                )
+                input_metric = aggregation_function.input_metric
             elif aggregation_function.input_metric != input_metric:
                 raise MetricMismatchError(
                     (aggregation_function.input_metric, input_metric),
@@ -162,9 +159,7 @@ class AggregateByColumn(Aggregate):
                     ),
                 )
             if output_measure is None:
-                output_measure = cast(
-                    Union[PureDP, RhoZCDP], aggregation_function.output_measure
-                )
+                output_measure = aggregation_function.output_measure
             elif aggregation_function.output_measure != output_measure:
                 raise MeasureMismatchError(
                     (aggregation_function.output_measure, output_measure),
@@ -207,7 +202,7 @@ class AggregateByColumn(Aggregate):
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the measurement.
 
-        Returns the sum of the :meth:`~.Measurement.privacy_function`'s on `d_in` for
+        Returns the sum of the :meth:`~.Measurement.privacy_function`'s on ``d_in`` for
         all composed measurements.
 
         Args:
@@ -229,15 +224,15 @@ class AggregateByColumn(Aggregate):
     def privacy_relation(self, d_in: ExactNumberInput, d_out: ExactNumberInput) -> bool:
         """Returns True only if outputs are close under close inputs.
 
-        Let `d_outs` be the d_out from the :meth:`~.Measurement.privacy_function`'s of
+        Let ``d_outs`` be the d_out from the :meth:`~.Measurement.privacy_function`'s of
         all composed measurements or the d_outs from the hint if one of them raises
         :class:`NotImplementedError`.
 
-        And `total_d_out` to be the sum of `d_outs`.
+        And ``total_d_out`` to be the sum of ``d_outs``.
 
-        This returns True if `total_d_out` <= `d_out` (the input argument) and each
+        This returns True if ``total_d_out`` <= ``d_out`` (the input argument) and each
         composed measurement satisfies its :meth:`~.Measurement.privacy_relation` from
-        `d_in` to its d_out from `d_outs`.
+        ``d_in`` to its d_out from ``d_outs``.
 
         Args:
             d_in: Distance between inputs under input_metric.

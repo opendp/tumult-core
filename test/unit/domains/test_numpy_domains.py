@@ -33,7 +33,7 @@ class TestNumpyIntegerDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.numpy_domains.NumpyIntegerDomain`."""
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return NumpyIntegerDomain
 
@@ -249,7 +249,7 @@ class TestNumpyIntegerDomain(DomainTests):
             ),
         ],
     )
-    def test_from_np_type(  # pylint: disable=no-self-use
+    def test_from_np_type(
         self,
         domain_type: Type[NumpyIntegerDomain],
         dtype: np.dtype,
@@ -273,7 +273,7 @@ class TestNumpyFloatDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.numpy_domains.NumpyFloatDomain`."""
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return NumpyFloatDomain
 
@@ -625,7 +625,7 @@ class TestNumpyFloatDomain(DomainTests):
             ),
         ],
     )
-    def test_from_np_type(  # pylint: disable=no-self-use
+    def test_from_np_type(
         self,
         domain_type: Type[NumpyFloatDomain],
         dtype: np.dtype,
@@ -649,7 +649,7 @@ class TestNumpyStringDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.numpy_domains.NumpyStringDomain`."""
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return NumpyStringDomain
 
@@ -826,7 +826,7 @@ class TestNumpyStringDomain(DomainTests):
             ),
         ],
     )
-    def test_from_np_type(  # pylint: disable=no-self-use
+    def test_from_np_type(
         self,
         domain_type: Type[NumpyStringDomain],
         dtype: np.dtype,

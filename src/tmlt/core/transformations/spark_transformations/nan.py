@@ -98,7 +98,7 @@ class DropInfs(Transformation):
             SymmetricDifference()
 
             Stability Guarantee:
-                :class:`~.DropInfs`'s :meth:`~.stability_function` returns `d_in`.
+                :class:`~.DropInfs`'s :meth:`~.stability_function` returns ``d_in``.
 
                 >>> drop_b_infs.stability_function(1)
                 1
@@ -196,8 +196,7 @@ class DropInfs(Transformation):
         return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
-        """Drops rows containing +inf or -inf in `self.columns`."""
-        # pylint: disable=no-member
+        """Drops rows containing +inf or -inf in ``self.columns``."""
         return sdf.filter(
             reduce(
                 lambda exp, column: exp
@@ -209,7 +208,6 @@ class DropInfs(Transformation):
                 sf.lit(True),
             )
         )
-        # pylint: enable=no-member
 
 
 class DropNaNs(Transformation):
@@ -276,13 +274,13 @@ class DropNaNs(Transformation):
             SymmetricDifference()
 
             Stability Guarantee:
-                :class:`~.DropNaNs`'s :meth:`~.stability_function` returns `d_in`.
+                :class:`~.DropNaNs`'s :meth:`~.stability_function` returns ``d_in``.
 
                 >>> drop_b_nans.stability_function(1)
                 1
                 >>> drop_b_nans.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -376,7 +374,7 @@ class DropNaNs(Transformation):
         return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
-        """Drops rows containing NaNs in `self.columns`."""
+        """Drops rows containing NaNs in ``self.columns``."""
         # pylint: disable=no-member
         return sdf.filter(
             reduce(
@@ -452,13 +450,13 @@ class DropNulls(Transformation):
             SymmetricDifference()
 
             Stability Guarantee:
-                :class:`~.DropNulls`'s :meth:`~.stability_function` returns `d_in`.
+                :class:`~.DropNulls`'s :meth:`~.stability_function` returns ``d_in``.
 
                 >>> drop_b_nulls.stability_function(1)
                 1
                 >>> drop_b_nulls.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -545,8 +543,7 @@ class DropNulls(Transformation):
         return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
-        """Drops rows containing nulls in `self.columns`."""
-        # pylint: disable=no-member
+        """Drops rows containing nulls in ``self.columns``."""
         return sdf.filter(
             reduce(
                 lambda exp, column: exp & ~sf.isnull(sf.col(column)),
@@ -625,7 +622,7 @@ class ReplaceInfs(Transformation):
             SymmetricDifference()
 
             Stability Guarantee:
-                :class:`~.DropNulls`'s :meth:`~.stability_function` returns `d_in`.
+                :class:`~.DropNulls`'s :meth:`~.stability_function` returns ``d_in``.
 
                 >>> replace_infs.stability_function(1)
                 1
@@ -735,7 +732,6 @@ class ReplaceInfs(Transformation):
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns DataFrame with +inf and -inf replaced in specified columns."""
-        # pylint: disable=no-member
         for column, replacement in self.replace_map.items():
             replace_negative = replacement[0]
             replace_positive = replacement[1]
@@ -751,7 +747,6 @@ class ReplaceInfs(Transformation):
                 ).otherwise(sf.col(column)),
             )
         return sdf
-        # pylint: enable=no-member
 
 
 class ReplaceNaNs(Transformation):
@@ -820,13 +815,13 @@ class ReplaceNaNs(Transformation):
             SymmetricDifference()
 
             Stability Guarantee:
-                :class:`~.DropNulls`'s :meth:`~.stability_function` returns `d_in`.
+                :class:`~.DropNulls`'s :meth:`~.stability_function` returns ``d_in``.
 
                 >>> replace_nans.stability_function(1)
                 1
                 >>> replace_nans.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -1000,13 +995,13 @@ class ReplaceNulls(Transformation):
             HammingDistance()
 
             Stability Guarantee:
-                :class:`~.DropNulls`'s :meth:`~.stability_function` returns `d_in`.
+                :class:`~.DropNulls`'s :meth:`~.stability_function` returns ``d_in``.
 
                 >>> replace_nulls.stability_function(1)
                 1
                 >>> replace_nulls.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(

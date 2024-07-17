@@ -9,8 +9,8 @@ violations due to numerical imprecision, as well as more mundane user errors fro
 limitations of floating point arithmetic. See
 :ref:`Handling Real Numbers <real-numbers>` for more information.
 
-:data:`~.ExactNumberInput`'s are values which can be automatically converted into
-:class:`~.ExactNumber`'s. They can be any of the following:
+:data:`~.ExactNumberInput` 's are values which can be automatically converted into
+:class:`~.ExactNumber` 's. They can be any of the following:
 
 Any :class:`int` or :class:`fractions.Fraction`:
     >>> ExactNumber(5)
@@ -99,7 +99,7 @@ Any :class:`str` that can be:
     Traceback (most recent call last):
     core.exceptions.UnsupportedSympyExprError: x + 1 contains free symbols
 
-`float('inf')` and `-float('inf')` are allowed:
+``float('inf')`` and ``-float('inf')`` are allowed:
     >>> ExactNumber(float('inf'))
     oo
     >>> ExactNumber(-float('inf'))
@@ -130,7 +130,7 @@ Examples:
     -sqrt(2)
     >>> 2 / ExactNumber(6)
     1/3
-"""  # pylint: disable=line-too-long
+"""  # pylint: disable=line-too-long,useless-suppression
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
@@ -146,7 +146,7 @@ from tmlt.core.exceptions import UnsupportedSympyExprError
 
 @typechecked
 def _verify_expr_is_an_exact_number(expr: sp.Expr) -> None:
-    """Raises an error if `expr` is not an exact real number or +/- infinity."""
+    """Raises an error if ``expr`` is not an exact real number or +/- infinity."""
     if expr.free_symbols:
         raise UnsupportedSympyExprError(expr, f"{expr} contains free symbols")
     # is_number means no free symbols, and no undefined functions
@@ -208,7 +208,7 @@ def _to_sympy(value: "ExactNumberInput") -> sp.Expr:
     """Returns a :class:`sympy.Expr` representing the input value.
 
     Raises:
-        ValueError: If `value` cannot be converted to an :class:`sympy.Expr` or the
+        ValueError: If ``value`` cannot be converted to an :class:`sympy.Expr` or the
             resulting expression is not an exact real number or +/- infinity.
     """
     expr: sp.Expr
@@ -322,8 +322,8 @@ class ExactNumber:
 
         Args:
             value: A :class:`float` to convert to an :class:`~.ExactNumber`.
-            round_up: If True, returned value is greater than or equal to `value`.
-                Otherwise, it is less than or equal to `value`.
+            round_up: If True, returned value is greater than or equal to ``value``.
+                Otherwise, it is less than or equal to ``value``.
         """
         if float(value).is_integer():
             return ExactNumber(int(value))

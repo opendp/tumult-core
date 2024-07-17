@@ -39,7 +39,7 @@ script = "ext/build.py"
 generate-setup-file = false
 
 [tool.poetry.dependencies]
-python = "^3.8, <3.13"
+python = ">=3.8.0, <3.13"
 #TODO(#3258)
 setuptools = [
   { version = "^70.0.0", python = ">=3.8" },
@@ -80,12 +80,6 @@ scipy = [
 ]
 sympy = "^1.8,<1.10"
 typeguard = "^2.12.1,<2.13.0"
-# typing_extensions uses a mixture of 3-segment and 4-segment versions. When
-# specifying version numbers here (in particular using the ^ notation), only use
-# 3-segment version numbers as the minimum version -- using a 4-segment version
-# can cause some unexpected behaviors, like allowing 3-segment versions that
-# should be excluded.
-typing_extensions = "^4.1.0"
 parameterized = "^0.7.4"
 pytest = "^7.3.1"
 
@@ -104,31 +98,23 @@ source = ["src/tmlt/core", ".nox/**/site-packages/tmlt/core"]
 [tool.poetry.group.dev.dependencies]
 # Linters, formatters
 black = "^23"
-isort = { version = "^5.11", extras = ["pyproject"] }
-mypy = "^1.2"
-pydocstyle = { version = "^6.3", extras = ["toml"] }
-pylint = "2.13.9"
+isort = { version = "^5.13", extras = ["pyproject"] }
+mypy = "^1.10"
+pydocstyle = "^6.3.0"
+pylint = "^3.2.5"
 
 # Testing
-pytest_cov = "^4.0.0"
+pytest-cov = "^5.0"
 
 # Docs
-pydata-sphinx-theme = "0.9.0"
-scanpydoc = "0.7.3"                 # 0.7.4 doesn't work
-sphinx = "^4.3.0"
-sphinx-autoapi = "^1.7.0"
-sphinx-autodoc-typehints = "1.12.0" # 1.13.0 doesn't work https://gitlab.com/tumult-labs/tumult/-/issues/1565
-sphinx-copybutton = "^0.4.0"
-sphinx-panels = "^0.6.0"
-sphinxcontrib-bibtex = "^1.0.0"
-
-# click 8.1.0 removes _unicodefun which breaks the CI; remove this after
-# upgrading Black.
-click = "8.0.4"
-# dunamai 1.19.0 introduces a breaking change that some of our dev dependencies don't seem
-# to handle yet. If we ever update them (scanpydoc is a particular problem I think), try
-# removing this pin.
-dunamai = "<1.19.0"
+pydata-sphinx-theme = "^0.14.4"
+sphinx = "^7.1.0"
+sphinx-autoapi = "^3.1.1"
+sphinx-autodoc-typehints = "^2.0.1"
+sphinx-automodapi = "^0.17.0"
+sphinx-copybutton = "^0.5.2"
+sphinxcontrib-bibtex = "^2.6.2"
+sphinx-design = "^0.5.0"
 
 [tool.poetry.group.scripting.dependencies]
 nox = "2022.8.7"
@@ -155,6 +141,9 @@ fix-shallow-repository = true
 [tool.poetry-dynamic-versioning.substitution]
 files = ["src/tmlt/core/__init__.py"]
 
+[tool.black]
+force-exclude = "noxfile.py"
+
 [tool.isort]
 profile = "black"
 multi_line_output = 3
@@ -164,12 +153,16 @@ use_parentheses = true
 line_length = 88
 
 [tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
 explicit_package_bases = true
 follow_imports = "silent"
 ignore_missing_imports = true
 namespace_packages = true
 disallow_untyped_defs = true
-mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+warn_redundant_casts = true
+warn_unused_ignores = true
+# TODO: Re-enable this and fix the resulting warnings
+# warn_unreachable = true
 
 [[tool.mypy.overrides]]
 module = "test.*"
@@ -190,9 +183,14 @@ load-plugins = ['pylint.extensions.docparams']
 accept-no-param-doc = true
 
 [tool.pylint.'MESSAGES CONTROL']
+enable = [
+  # Note: there is a false positive on 'useless-suppression' when you
+  # use 'disable=line-too-long' at the end of a docstring.
+  # See: https://github.com/pylint-dev/pylint/issues/8301
+  'useless-suppression'
+]
 disable = [
   'arguments-differ',
-  'bad-continuation',
   'duplicate-code',
   'fixme',
   'invalid-name',
@@ -213,7 +211,12 @@ disable = [
   'too-many-return-statements',
   'too-many-statements',
   'unbalanced-tuple-unpacking',
+  'unnecessary-lambda-assignment',
   'unsubscriptable-object',
+  # There are a lot of false positives for unsupported-binary-operation
+  # on Python 3.8 and 3.9;
+  # see: https://github.com/pylint-dev/pylint/issues/7381
+  'unsupported-binary-operation',
   'wrong-import-order',
 ]
 

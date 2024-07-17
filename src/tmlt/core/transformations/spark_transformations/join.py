@@ -209,9 +209,9 @@ class PublicJoin(Transformation):
             - IfGroupedBy(column, SumOf(SymmetricDifference()))
             - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
 
-            :class:`~.PublicJoin`'s :meth:`~.stability_function` returns the `d_in`
+            :class:`~.PublicJoin`'s :meth:`~.stability_function` returns the ``d_in``
             times the maximum count of any combination of values in the join columns of
-            `public_df`.
+            ``public_df``.
 
             >>> # Both example transformations had a stability of 2
             >>> natural_join.join_cols
@@ -231,7 +231,7 @@ class PublicJoin(Transformation):
 
             - IfGroupedBy(column, SymmetricDifference())
 
-            :class:`~.PublicJoin`'s :meth:`~.stability_function` returns `d_in`
+            :class:`~.PublicJoin`'s :meth:`~.stability_function` returns ``d_in``
 
             >>> PublicJoin(
             ...     input_domain=SparkDataFrameDomain(
@@ -244,7 +244,9 @@ class PublicJoin(Transformation):
             ...     metric=IfGroupedBy("A", SymmetricDifference()),
             ... ).stability_function(2)
             2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
+
+    # pylint: enable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -265,8 +267,8 @@ class PublicJoin(Transformation):
             public_df: A Spark DataFrame to join with.
             public_df_domain: Domain of public DataFrame to join with. If this domain
                 indicates that a float column does not allow nans (or infs), all rows
-                in `public_df` containing a nan (or an inf) in that column will be
-                dropped. If None, domain is inferred from the schema of `public_df` and
+                in ``public_df`` containing a nan (or an inf) in that column will be
+                dropped. If None, domain is inferred from the schema of ``public_df`` and
                 any float column will be marked as allowing inf and nan values.
             join_cols: Names of columns to join on. If None, a natural join is
                 performed.
@@ -274,7 +276,7 @@ class PublicJoin(Transformation):
                 public and private DataFrames will be considered to be equal.
             how: Type of join to perform. Defaults to "inner". Note that only "inner"
                 and "left" joins are supported.
-        """
+        """  # pylint: disable=line-too-long,useless-suppression
         if isinstance(metric, IfGroupedBy):
             if metric.inner_metric not in (
                 SymmetricDifference(),
@@ -562,8 +564,8 @@ class PrivateJoin(Transformation):
 
             where:
 
-            * :math:`df_{r1} \Delta df_{r2}` is `d_in[self.right]`
-            * :math:`df_{l1} \Delta df_{l2}` is `d_in[self.left]`
+            * :math:`df_{r1} \Delta df_{r2}` is ``d_in[self.right]``
+            * :math:`df_{l1} \Delta df_{l2}` is ``d_in[self.left]``
 
             - TruncationStrategy.DROP has a stability equal to the truncation
               threshold (This is because adding a row can cause a number of rows equal
@@ -601,12 +603,12 @@ class PrivateJoin(Transformation):
 
         The following conditions are checked:
 
-            - `input_domain` is a DictDomain with 2
+            - ``input_domain`` is a DictDomain with 2
               :class:`~tmlt.core.domains.spark_domains.SparkDataFrameDomain`\ s.
-            - `left` and `right` are the two keys in the input domain.
-            - `join_cols` is not empty, when provided or computed (if None).
-            - Columns in `join_cols` are common to both tables.
-            - Columns in `join_cols` have matching column types in both tables.
+            - ``left`` and ``right`` are the two keys in the input domain.
+            - ``join_cols`` is not empty, when provided or computed (if None).
+            - Columns in ``join_cols`` are common to both tables.
+            - Columns in ``join_cols`` have matching column types in both tables.
 
         Args:
             input_domain: Domain of input dictionaries (with exactly two keys).
@@ -617,9 +619,9 @@ class PrivateJoin(Transformation):
             right_truncation_strategy:  :class:`~.TruncationStrategy` to use for
                 truncating the right DataFrame.
             left_truncation_threshold: The maximum number of rows to allow for each
-                combination of values of `join_cols` in the left DataFrame.
+                combination of values of ``join_cols`` in the left DataFrame.
             right_truncation_threshold: The maximum number of rows to allow for each
-                combination of values of `join_cols` in the right DataFrame.
+                combination of values of ``join_cols`` in the right DataFrame.
             join_cols: Columns to perform join on. If None, a natural join is
                 computed.
             join_on_nulls: If True, null values on corresponding join columns of
@@ -952,13 +954,14 @@ class PrivateJoinOnKey(Transformation):
     AddRemoveKeys(df_to_key_column={'left': 'B', 'right': 'B', 'ignored': 'B', 'joined': 'B'})
 
     Stability Guarantee:
-        :class:`~.PrivateJoinOnKey`'s :meth:`~.stability_function` returns `d_in`
+        :class:`~.PrivateJoinOnKey`'s :meth:`~.stability_function` returns ``d_in``
 
         >>> private_join.stability_function(1)
         1
         >>> private_join.stability_function(2)
         2
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
+    # pylint: enable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -974,8 +977,8 @@ class PrivateJoinOnKey(Transformation):
         """Constructor.
 
         Args:
-            input_domain: Domain of the input dictionaries. Must contain `left_key` and
-                `right_key`, but may also contain other keys.
+            input_domain: Domain of the input dictionaries. Must contain ``left_key``
+                and ``right_key``, but may also contain other keys.
             input_metric: AddRemoveKeys metric for the input dictionaries. The left and
                 right dataframes must use the same key column.
             left_key: Key for the left DataFrame.

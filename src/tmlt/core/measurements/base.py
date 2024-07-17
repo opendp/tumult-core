@@ -88,8 +88,8 @@ class Measurement(ABC):
         See the privacy and stability tutorial (add link?) for more information.
 
         Args:
-            d_in: Distance between inputs under `input_metric`.
-            d_out: Distance between outputs under `output_measure`.
+            d_in: Distance between inputs under ``input_metric``.
+            d_out: Distance between outputs under ``output_measure``.
         """
         return self.output_measure.compare(self.privacy_function(d_in), d_out)
 

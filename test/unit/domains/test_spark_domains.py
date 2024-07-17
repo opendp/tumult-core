@@ -66,12 +66,12 @@ class TestSparkDataFrameDomain(DomainTests):
     spark: SparkSession
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return SparkDataFrameDomain
 
     @pytest.fixture(scope="class")
-    def domain(self) -> SparkDataFrameDomain:  # pylint: disable=no-self-use
+    def domain(self) -> SparkDataFrameDomain:
         """Get a base SparkDataFrameDomain."""
         return SparkDataFrameDomain(
             schema={
@@ -488,7 +488,7 @@ class TestSparkDataFrameDomain(DomainTests):
             ),
         ],
     )
-    def test_from_spark_schema(  # pylint: disable=no-self-use
+    def test_from_spark_schema(
         self,
         spark_schema: StructType,
         expected: SparkDataFrameDomain,
@@ -542,7 +542,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
     spark: SparkSession
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return SparkGroupedDataFrameDomain
 
@@ -956,7 +956,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
     @pytest.mark.parametrize(
         "domain", [SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns)]
     )
-    def test_repr(self, domain: Domain):  # pylint: disable=no-self-use
+    def test_repr(self, domain: Domain):
         """Tests that __repr__ works correctly."""
         expected = (
             "SparkGroupedDataFrameDomain(schema={'A': SparkIntegerColumnDescriptor("
@@ -984,7 +984,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             )
         ],
     )
-    def test_get_group_domain(  # pylint: disable=no-self-use
+    def test_get_group_domain(
         self,
         domain: SparkGroupedDataFrameDomain,
         expected: SparkDataFrameDomain,
@@ -1005,12 +1005,12 @@ class TestSparkRowDomain(DomainTests):
     """Tests for :class:`~tmlt.core.domains.spark_domains.SparkRowDomain`."""
 
     @pytest.fixture
-    def domain_type(self) -> Type[Domain]:  # pylint: disable=no-self-use
+    def domain_type(self) -> Type[Domain]:
         """Returns the type of the domain to be tested."""
         return SparkRowDomain
 
     @pytest.fixture
-    def domain(self) -> SparkRowDomain:  # pylint: disable=no-self-use
+    def domain(self) -> SparkRowDomain:
         """Get a base SparkRowDomain."""
         return SparkRowDomain(
             schema={
@@ -1219,7 +1219,7 @@ class TestSparkRowDomain(DomainTests):
         """
         super().test_validate(domain, candidate, expectation, exception_properties)
 
-    def test_repr(self, domain: Domain):  # pylint: disable=no-self-use
+    def test_repr(self, domain: Domain):
         """Tests that __repr__ works correctly."""
         expected = (
             "SparkRowDomain(schema={'A': SparkIntegerColumnDescriptor(allow_null=False,"
@@ -1321,7 +1321,7 @@ class TestSparkColumnDescriptors:
             ),
         ],
     )
-    def test_to_numpy_domain(  # pylint: disable=no-self-use
+    def test_to_numpy_domain(
         self, descriptor: SparkColumnDescriptor, expected_domain: Domain
     ):
         """Tests that to_numpy_domain works correctly."""
@@ -1352,7 +1352,7 @@ class TestSparkColumnDescriptors:
             ),
         ],
     )
-    def test_to_numpy_domain_invalid(  # pylint: disable=no-self-use
+    def test_to_numpy_domain_invalid(
         self, descriptor: SparkColumnDescriptor, expectation: ContextManager[None]
     ):
         """Tests that to_numpy_domain raises appropriate exceptions."""
@@ -1380,7 +1380,7 @@ class TestSparkColumnDescriptors:
             )
         ],
     )
-    def test_validate_column(  # pylint: disable=no-self-use
+    def test_validate_column(
         self,
         test_df: DataFrame,
         descriptor: SparkColumnDescriptor,
@@ -1411,7 +1411,7 @@ class TestSparkColumnDescriptors:
             )
         ],
     )
-    def test_eq(  # pylint: disable=no-self-use
+    def test_eq(
         self,
         domain: SparkColumnDescriptor,
         other_domain: SparkColumnDescriptor,
@@ -1458,7 +1458,7 @@ class TestSparkUtilityFunctions:
             ),
         ],
     )
-    def test_convert_spark_schema(  # pylint: disable=no-self-use
+    def test_convert_spark_schema(
         self,
         spark_schema: StructType,
         expected: SparkColumnsDescriptor,
@@ -1502,7 +1502,7 @@ class TestSparkUtilityFunctions:
             ),
         ],
     )
-    def test_convert_pandas_domain(  # pylint: disable=no-self-use
+    def test_convert_pandas_domain(
         self,
         pandas_domain: PandasDataFrameDomain,
         expected: SparkColumnsDescriptor,
@@ -1546,7 +1546,7 @@ class TestSparkUtilityFunctions:
             ("Not a numpy domain", None, pytest.raises(NotImplementedError)),
         ],
     )
-    def test_convert_numpy_domain(  # pylint: disable=no-self-use
+    def test_convert_numpy_domain(
         self,
         numpy_domain: NumpyDomain,
         expected: SparkColumnDescriptor,

@@ -113,6 +113,6 @@ class NumpyStringDomain(NumpyDomain):
             raise OutOfDomainError(self, value, "Value is null.")
 
     @property
-    def carrier_type(self) -> type:  # pylint: disable=no-self-use
+    def carrier_type(self) -> type:
         """Returns carrier types for members of NumpyStringDomain."""
         return object
