@@ -23,7 +23,7 @@ from tmlt.core.domains.spark_domains import (
 from tmlt.core.measurements.aggregations import (
     NoiseMechanism,
     create_average_measurement,
-    create_bound_selection_measurement,
+    create_bounds_measurement,
     create_count_distinct_measurement,
     create_count_measurement,
     create_partition_selection_measurement,
@@ -33,7 +33,7 @@ from tmlt.core.measurements.aggregations import (
     create_variance_measurement,
 )
 from tmlt.core.measurements.converters import PureDPToApproxDP, PureDPToRhoZCDP
-from tmlt.core.measurements.spark_measurements import BoundSelection
+from tmlt.core.measurements.postprocess import PostProcess
 from tmlt.core.measures import (
     ApproxDP,
     ApproxDPBudget,
@@ -797,6 +797,88 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         df = answer.toPandas()
         self.assertTrue(((df["MEDIAN(C)"] <= 10) & (df["MEDIAN(C)"] >= 0)).all())
 
+    @parameterized.expand(
+        [
+            (input_metric, groupby_output_metric, d_out, output_measure)
+            for output_measure, d_out, groupby_output_metric in [
+                (PureDP(), sp.Integer(4), SumOf(SymmetricDifference())),
+                (RhoZCDP(), sp.Integer(4), RootSumOfSquared(SymmetricDifference())),
+                (
+                    ApproxDP(),
+                    (sp.Integer(4), sp.Integer(0)),
+                    SumOf(SymmetricDifference()),
+                ),
+            ]
+            for input_metric in [
+                SymmetricDifference(),
+                IfGroupedBy(
+                    "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
+                ),
+            ]
+        ]
+    )
+    @pytest.mark.slow
+    def test_create_bounds_measurement_with_groupby(
+        self,
+        input_metric: Union[IfGroupedBy, SymmetricDifference],
+        groupby_output_metric: Union[SumOf, RootSumOfSquared],
+        d_out: PrivacyBudgetInput,
+        output_measure: Union[PureDP, ApproxDP, RhoZCDP],
+    ):
+        """Tests that create_bounds_measurement works correctly with groupby."""
+        if (
+            isinstance(input_metric, IfGroupedBy)
+            and input_metric.column not in self.groupby_columns
+        ):
+            with pytest.raises(ValueError) as excinfo:
+                bounds_measurement = create_bounds_measurement(
+                    input_domain=self.input_domain,
+                    input_metric=input_metric,
+                    output_measure=output_measure,
+                    measure_column="C",
+                    threshold=0.9,
+                    d_in=sp.Integer(1),
+                    d_out=d_out,
+                    groupby_transformation=GroupBy(
+                        input_domain=self.input_domain,
+                        input_metric=input_metric,
+                        use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
+                        group_keys=self.group_keys,
+                    ),
+                )
+            assert excinfo.match(
+                "The input_metric column must match the "
+                "groupby_transformation group_keys columns."
+            )
+            return
+
+        bounds_measurement = create_bounds_measurement(
+            input_domain=self.input_domain,
+            input_metric=input_metric,
+            output_measure=output_measure,
+            measure_column="C",
+            threshold=0.9,
+            d_in=sp.Integer(1),
+            d_out=d_out,
+            groupby_transformation=GroupBy(
+                input_domain=self.input_domain,
+                input_metric=input_metric,
+                use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
+                group_keys=self.group_keys,
+            ),
+            upper_bound_column="upper",
+            lower_bound_column="lower",
+        )
+        self.assertEqual(bounds_measurement.input_domain, self.input_domain)
+        self.assertEqual(bounds_measurement.input_metric, input_metric)
+        self.assertEqual(bounds_measurement.output_measure, output_measure)
+        self.assertEqual(bounds_measurement.privacy_function(sp.Integer(1)), d_out)
+        answer = bounds_measurement(self.sdf)
+        self.assertIsInstance(answer, DataFrame)
+        self.assertEqual(
+            set(answer.columns), set(self.groupby_columns + ["lower", "upper"])
+        )
+
 
 class TestAggregationMeasurement(PySparkTest):
     """Tests for :mod:`tmlt.core.measurements.aggregations`."""
@@ -1372,53 +1454,52 @@ class TestAggregationMeasurement(PySparkTest):
     @parameterized.expand(
         [
             (PureDP(), 1, "B", 0.7, 1),
-            (RhoZCDP(), 1, "B", 0.7, 1),
-            (ApproxDP(), (1, 0), "B", 0.7, 1),
+            (RhoZCDP(), 1, "B", 0.8, 2),
+            (ApproxDP(), (1, 0), "B", 0.9, 1),
         ]
     )
-    def test_create_bound_selection_measurement(
+    def test_create_bound_measurement(
         self,
         output_measure: Union[PureDP, RhoZCDP, ApproxDP],
         d_out: PrivacyBudgetInput,
-        bound_column: str,
+        measure_column: str,
         threshold: float,
         d_in: ExactNumberInput = 1,
     ):
         """Test create_bound_selection_measurement works correctly."""
-        measurement = create_bound_selection_measurement(
+        measurement = create_bounds_measurement(
             input_domain=self.input_domain,
+            input_metric=SymmetricDifference(),
             output_measure=output_measure,
             d_out=d_out,
-            bound_column=bound_column,
+            measure_column=measure_column,
             threshold=threshold,
             d_in=d_in,
         )
         d_out = PrivacyBudget.cast(output_measure, d_out).value
         if isinstance(measurement, PureDPToRhoZCDP):
+            # help mypy
+            assert isinstance(measurement.pure_dp_measurement, PostProcess)
             measurement = measurement.pure_dp_measurement
             epsilon = sp.sqrt(ExactNumber(sp.Integer(2) * d_out).expr)
         elif isinstance(measurement, PureDPToApproxDP):
+            # help mypy
+            assert isinstance(measurement.pure_dp_measurement, PostProcess)
             measurement = measurement.pure_dp_measurement
             assert isinstance(d_out, tuple)
             epsilon = d_out[0]
         else:
             epsilon = d_out
-        # Appease mypy
-        if not isinstance(measurement, BoundSelection):
-            raise TypeError(
-                f"Expected measurement to be a BoundSelection, got {measurement}"
-            )
         d_in = ExactNumber(d_in)
         self.assertEqual(measurement.input_domain, self.input_domain)
         self.assertEqual(measurement.output_measure, PureDP())
         self.assertEqual(measurement.privacy_function(d_in), epsilon)
-        if d_out == float("inf"):
-            expected_alpha = ExactNumber(0)
-        else:
-            expected_alpha = (4 / epsilon) * d_in
-        self.assertEqual(measurement.alpha, expected_alpha)
-        self.assertEqual(measurement.bound_column, bound_column)
-        self.assertEqual(measurement.threshold, threshold)
+
+        answer = measurement(self.sdf)
+        self.assertIsInstance(answer, tuple)
+        self.assertIsInstance(answer[0], int)
+        self.assertIsInstance(answer[1], int)
+        self.assertEqual(answer[0], -answer[1])
 
 
 INPUT_DOMAIN = SparkDataFrameDomain(
@@ -1508,9 +1589,10 @@ class TestBadDelta(unittest.TestCase):
             ]
             for f in [
                 functools.partial(
-                    create_bound_selection_measurement,
+                    create_bounds_measurement,
                     input_domain=INPUT_DOMAIN,
-                    bound_column="B",
+                    input_metric=SymmetricDifference(),
+                    measure_column="B",
                     threshold=0.5,
                     output_measure=ApproxDP(),
                 ),

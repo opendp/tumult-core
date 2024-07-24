@@ -6,6 +6,14 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+- Added way to construct a bounds measurement per-group.
+
+Changed
+~~~~~~~
+- Refactored bounds measurement to use pandas udf.
+
 .. _v0.15.2:
 
 0.15.2 - 2024-07-15
@@ -239,7 +247,7 @@ Changed
 
 Added
 ~~~~~
-- Added the :class:`~.BoundSelection` spark measurement.
+- Added the `BoundSelection` spark measurement.
 
 Changed
 ~~~~~~~
