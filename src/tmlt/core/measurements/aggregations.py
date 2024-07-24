@@ -44,13 +44,13 @@ from tmlt.core.measurements.noise_mechanisms import (
 from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
 from tmlt.core.measurements.pandas_measurements.series import (
     AddNoiseToSeries,
+    NoisyBounds,
     NoisyQuantile,
 )
 from tmlt.core.measurements.postprocess import PostProcess
 from tmlt.core.measurements.spark_measurements import (
     AddNoiseToColumn,
     ApplyInPandas,
-    BoundSelection,
     GeometricPartitionSelection,
 )
 from tmlt.core.measures import (
@@ -2051,32 +2051,52 @@ def create_partition_selection_measurement(
 
 
 @typechecked
-def create_bound_selection_measurement(
+def create_bounds_measurement(
     input_domain: SparkDataFrameDomain,
+    input_metric: Union[SymmetricDifference, IfGroupedBy],
     output_measure: Union[PureDP, ApproxDP, RhoZCDP],
     d_out: PrivacyBudgetInput,
-    bound_column: str,
+    measure_column: str,
     threshold: float,
     d_in: ExactNumberInput = 1,
-) -> Measurement:
-    """Returns a bound selection measurement.
+    groupby_transformation: Optional[GroupBy] = None,
+    upper_bound_column: Optional[str] = None,
+    lower_bound_column: Optional[str] = None,
+) -> Union[PostProcess, PureDPToApproxDP, PureDPToRhoZCDP]:
+    """Returns a bounds measurement.
 
-    A bound selection measurement created by this function will have a
+    The bounds measurement returns either a tuple of `(lower bound, upper_bound)` if no
+    groupby transformation is provided, or a dataframe with one column for the lower
+    bound and one column for the upper bound if a groupby transformation is provided.
+
+    The bounds measurement created by this function will have a
     privacy guarantee such that
-    ``measurement.privacy_function(d_in) = epsilon``.
+    ``measurement.privacy_function(d_in) = d_out``.
 
     Args:
         input_domain: Domain of the input Spark DataFrames.
+        input_metric: Distance metric on input DataFrames.
         output_measure: Desired privacy guarantee.
         d_out: Desired distance between output distributions w.r.t. ``d_in``. This is
             interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
             is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
             :class:`~.ApproxDP`.
-        bound_column: Column name to calculate the bounds for. The column
+        measure_column: Column name to calculate the bounds for. The column
             must be an integer or floating point column.
         threshold: The threshold for the bound selection measurement.
         d_in: The given d_in such that
             ``measurement.privacy_function(d_in) = epsilon``.
+        groupby_transformation: If provided, this measurement returns a DataFrame with
+            noisy bounds for each group obtained by applying groupby.
+            If None, this measurement outputs a single tuple - the noisy bounds.
+        upper_bound_column: If a `groupby_transformation` is supplied, this is
+            the column name to be used for the upper bound in the DataFrame
+            output by the measurement. If None, this column will be named
+            "upper_bound(<measure_column>)".
+        lower_bound_column: If a `groupby_transformation` is supplied, this is
+            the column name to be used for the lower bound in the DataFrame
+            output by the measurement. If None, this column will be named
+            "lower_bound(<measure_column>)".
     """
     d_in = ExactNumber(d_in)
     alpha: ExactNumber
@@ -2089,13 +2109,17 @@ def create_bound_selection_measurement(
                 "Use RhoZCDP, ApproxDP with delta = 0, or PureDP."
             )
         return PureDPToApproxDP(
-            create_bound_selection_measurement(
+            create_bounds_measurement(
                 input_domain=input_domain,
+                input_metric=input_metric,
                 output_measure=PureDP(),
                 d_out=epsilon,
-                bound_column=bound_column,
+                measure_column=measure_column,
                 threshold=threshold,
                 d_in=d_in,
+                groupby_transformation=groupby_transformation,
+                upper_bound_column=upper_bound_column,
+                lower_bound_column=lower_bound_column,
             )
         )
 
@@ -2103,13 +2127,17 @@ def create_bound_selection_measurement(
         rho = RhoZCDPBudget(d_out).value
         epsilon = sp.sqrt(ExactNumber(sp.Integer(2) * rho).expr)
         return PureDPToRhoZCDP(
-            create_bound_selection_measurement(
+            create_bounds_measurement(
                 input_domain=input_domain,
+                input_metric=input_metric,
                 output_measure=PureDP(),
                 d_out=epsilon,
-                bound_column=bound_column,
+                measure_column=measure_column,
                 threshold=threshold,
                 d_in=d_in,
+                groupby_transformation=groupby_transformation,
+                upper_bound_column=upper_bound_column,
+                lower_bound_column=lower_bound_column,
             )
         )
 
@@ -2117,21 +2145,111 @@ def create_bound_selection_measurement(
         d_out = PrivacyBudget.cast(output_measure, d_out).value
     else:
         assert False
+
+    if not upper_bound_column:
+        upper_bound_column = f"upper_bound({measure_column})"
+    if not lower_bound_column:
+        lower_bound_column = f"lower_bound({measure_column})"
+
+    if groupby_transformation is None:
+        if isinstance(input_metric, IfGroupedBy):
+            raise UnsupportedMetricError(
+                input_metric,
+                (
+                    "IfGroupedBy must be accompanied by an appropriate groupby "
+                    "transformation."
+                ),
+            )
+        spark = SparkSession.builder.getOrCreate()
+        input_or_constructed_groupby_transformation = GroupBy(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            use_l2=False,
+            group_keys=spark.createDataFrame([], schema=StructType([])),
+        )
+    else:
+        input_or_constructed_groupby_transformation = groupby_transformation
+
+    if input_or_constructed_groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (input_or_constructed_groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({input_or_constructed_groupby_transformation.input_metric}), "
+                "actual: ({input_metric})"
+            ),
+        )
+    if input_or_constructed_groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (input_or_constructed_groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({input_or_constructed_groupby_transformation.input_domain}), "
+                f"actual: ({input_domain})"
+            ),
+        )
     if d_in < 1:
         raise NotImplementedError(
             "Creating a partition selection measurement with d_in < 1 is not yet"
             " supported."
         )
 
+    bounds_input_domain = PandasSeriesDomain(
+        input_domain[measure_column].to_numpy_domain()
+    )
+    d_mid = input_or_constructed_groupby_transformation.stability_function(d_in)
+
     # Special case for infinite privacy budget
     if d_out == float("inf"):
         alpha = ExactNumber(0)
     # Normal cases
     else:
-        alpha = (4 / d_out) * d_in
-    return BoundSelection(
-        input_domain=input_domain,
-        threshold=threshold,
+        alpha = (4 / d_out) * d_mid
+
+    noisy_bounds_measurement = NoisyBounds(
+        input_domain=bounds_input_domain,
+        threshold_fraction=threshold,
         alpha=alpha,
-        bound_column=bound_column,
     )
+
+    pandas_schema = {
+        measure_column: PandasSeriesDomain(
+            input_domain[measure_column].to_numpy_domain()
+        )
+    }
+    df_aggregation_function = AggregateByColumn(
+        input_domain=PandasDataFrameDomain(pandas_schema),
+        column_to_aggregation={measure_column: noisy_bounds_measurement},
+    )
+
+    # help mypy
+    assert isinstance(
+        input_or_constructed_groupby_transformation.output_domain,
+        SparkGroupedDataFrameDomain,
+    )
+    assert isinstance(
+        input_or_constructed_groupby_transformation.output_metric,
+        (SumOf, RootSumOfSquared),
+    )
+
+    apply_bounds_measurement = ApplyInPandas(
+        input_domain=input_or_constructed_groupby_transformation.output_domain,
+        input_metric=input_or_constructed_groupby_transformation.output_metric,
+        aggregation_function=df_aggregation_function,
+    )
+
+    postprocess = (
+        lambda df: ((upper := df.collect()[0][measure_column]), -upper)
+        if groupby_transformation is None
+        else lambda df: df.withColumnRenamed(
+            measure_column, upper_bound_column
+        ).withColumn(lower_bound_column, -sf.col(upper_bound_column))
+    )
+
+    bounds_measurement = PostProcess(
+        measurement=input_or_constructed_groupby_transformation
+        | apply_bounds_measurement,
+        f=postprocess,
+    )
+    assert bounds_measurement.privacy_function(d_in) == d_out
+    return bounds_measurement
