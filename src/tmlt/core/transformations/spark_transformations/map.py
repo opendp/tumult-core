@@ -39,10 +39,10 @@ class RowToRowTransformation(Transformation):
 
     .. note::
         The transformation function must not contain any objects that
-        directly or indirectly reference Spark DataFrames or Spark contexts.
-        If the function does contain an object that directly or indirectly
-        references a Spark DataFrame or a Spark context, an
-        error will occur when the RowToRowTransformation is called on a row.
+        directly or indirectly reference Spark DataFrames or Spark contexts.  If
+        the function does contain an object that directly or indirectly
+        references a Spark DataFrame or a Spark context, an error will occur
+        when the transformation is called on a row.
 
     Examples:
         ..
@@ -215,10 +215,10 @@ class RowToRowsTransformation(Transformation):
 
     .. note::
         The transformation function must not contain any objects that
-        directly or indirectly reference Spark DataFrames or Spark contexts.
-        If the function does contain an object that directly or indirectly
-        references a Spark DataFrame or a Spark context, an
-        error will occur when the RowToRowTransformation is called on a row
+        directly or indirectly reference Spark DataFrames or Spark contexts.  If
+        the function does contain an object that directly or indirectly
+        references a Spark DataFrame or a Spark context, an error will occur
+        when the transformation is called on a row.
 
     Examples:
         ..
@@ -292,7 +292,7 @@ class RowToRowsTransformation(Transformation):
 
         Transformation Contract:
             * Input domain - :class:`~.SparkRowDomain`
-            * Output domain - :class:`~.SparkRowDomain`
+            * Output domain - :class:`~.ListDomain` of :class:`~.SparkRowDomain`
             * Input metric - :class:`~.NullMetric`
             * Output metric - :class:`~.NullMetric`
 
@@ -403,6 +403,130 @@ class RowToRowsTransformation(Transformation):
                 augmented_row_dict.update(row.asDict())
                 augmented_rows.append(Row(**augmented_row_dict))
             return augmented_rows
+        return mapped_rows
+
+
+class RowsToRowsTransformation(Transformation):
+    """Transforms a set of rows into another set of rows using a user-defined function.
+
+    .. note::
+        The transformation function must not contain any objects that
+        directly or indirectly reference Spark DataFrames or Spark contexts.  If
+        the function does contain an object that directly or indirectly
+        references a Spark DataFrame or a Spark context, an error will occur
+        when the transformation is called on a group of rows.
+
+    Examples:
+        ..
+            >>> from tmlt.core.domains.spark_domains import (
+            ...     SparkRowDomain,
+            ...     SparkIntegerColumnDescriptor,
+            ...     SparkStringColumnDescriptor,
+            ... )
+            >>> input = [Row(A='a1', B='b1'), Row(A='a2', B='b2')]
+
+        >>> # Example input
+        >>> input
+        [Row(A='a1', B='b1'), Row(A='a2', B='b2')]
+        >>> # Create user defined function
+        >>> def merge(rows: List[Row]) -> List[Row]:
+        ...     return [Row(A=' '.join(r.A for r in rows), B=' '.join(r.B for r in rows))]
+        >>> # Create transformation
+        >>> merge_transformation = RowsToRowsTransformation(
+        ...     input_domain=ListDomain(SparkRowDomain({
+        ...         "A": SparkStringColumnDescriptor(),
+        ...         "B": SparkStringColumnDescriptor(),
+        ...     })),
+        ...     output_domain=ListDomain(SparkRowDomain({
+        ...         "A": SparkStringColumnDescriptor(),
+        ...         "B": SparkStringColumnDescriptor(),
+        ...     })),
+        ...     trusted_f=merge,
+        ... )
+        >>> transformed_rows = merge_transformation(input)
+        >>> transformed_rows
+        [Row(A='a1 a2', B='b1 b2')]
+
+        Transformation Contract:
+            * Input domain - :class:`~.ListDomain` of :class:`~.SparkRowDomain`
+            * Output domain - :class:`~.ListDomain` of :class:`~.SparkRowDomain`
+            * Input metric - :class:`~.NullMetric`
+            * Output metric - :class:`~.NullMetric`
+
+            >>> merge_transformation.input_domain
+            ListDomain(element_domain=SparkRowDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)}), length=None)
+            >>> merge_transformation.output_domain
+            ListDomain(element_domain=SparkRowDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)}), length=None)
+            >>> merge_transformation.input_metric
+            NullMetric()
+            >>> merge_transformation.output_metric
+            NullMetric()
+
+            Stability Guarantee:
+                :class:`~.RowsToRowsTransformation` is not stable! Its
+                :meth:`~.stability_relation` always returns False, and its
+                :meth:`~.stability_function` always raises :class:`NotImplementedError`.
+    """  # pylint: disable=line-too-long,useless-suppression
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: ListDomain,
+        output_domain: ListDomain,
+        trusted_f: Callable[[List[Row]], Union[List[Row], List[Dict[str, Any]]]],
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: Domain for the input rows.
+            output_domain: Domain for the output rows.
+            trusted_f: Transformation function to apply to a group of input rows.
+        """
+        if not isinstance(input_domain.element_domain, SparkRowDomain):
+            raise UnsupportedDomainError(
+                input_domain,
+                "Input domain must be a ListDomain with "
+                "a SparkRowDomain as the element domain.",
+            )
+        if not isinstance(output_domain.element_domain, SparkRowDomain):
+            raise UnsupportedDomainError(
+                output_domain,
+                "Output domain must be a ListDomain with "
+                "a SparkRowDomain as the element domain.",
+            )
+
+        super().__init__(
+            input_domain=input_domain,
+            input_metric=NullMetric(),
+            output_domain=output_domain,
+            output_metric=NullMetric(),
+        )
+        self._trusted_f = trusted_f
+
+    @property
+    def trusted_f(
+        self,
+    ) -> Callable[[List[Row]], Union[List[Row], List[Dict[str, Any]]]]:
+        """The function to be applied to each group of rows.
+
+        Note:
+            Returned function object should not be mutated.
+        """
+        return self._trusted_f
+
+    @typechecked
+    def stability_relation(self, _: Any, __: Any) -> bool:
+        """Returns False.
+
+        No values are valid for input/output metrics of this transformation.
+        """
+        return False
+
+    def __call__(self, rows: List[Row]) -> List[Row]:
+        """Map row."""
+        mapped = self._trusted_f(rows)
+        assert all(isinstance(r, (Row, dict)) for r in mapped)
+        mapped_rows = [r if isinstance(r, Row) else Row(**r) for r in mapped]
         return mapped_rows
 
 

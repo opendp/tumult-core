@@ -9,10 +9,11 @@ Unreleased
 Added
 ~~~~~
 - Added way to construct a bounds measurement per-group.
+- Added :class:`~tmlt.core.transformations.spark_transformations.map.RowsToRowsTransformation`, a transformation mapping a set of records to another set of records using a user-defined function.
 
 Changed
 ~~~~~~~
-- Refactored bounds measurement to use pandas udf.
+- Refactored bounds measurement to use a Pandas UDF.
 
 .. _v0.15.2:
 

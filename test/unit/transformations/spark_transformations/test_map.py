@@ -33,6 +33,7 @@ from tmlt.core.transformations.spark_transformations.map import (
     FlatMap,
     GroupingFlatMap,
     Map,
+    RowsToRowsTransformation,
     RowToRowsTransformation,
     RowToRowTransformation,
 )
@@ -126,6 +127,97 @@ class TestRowToRowsTransformer(TestComponent):
         row = Row(A=4.2, B="X")
         result_rows = transformer(row)
         self.assertEqual(result_rows, expected)
+
+
+class TestRowsToRowsTransformation(TestComponent):
+    """Tests for :class:`RowsToRowsTransformation`."""
+
+    @parameterized.expand(get_all_props(RowsToRowsTransformation))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        transformer = RowToRowsTransformation(
+            SparkRowDomain(self.schema_a),
+            ListDomain(SparkRowDomain(self.schema_a)),
+            lambda x: [x],
+            False,
+        )
+        assert_property_immutability(transformer, prop_name)
+
+    def test_properties(self):
+        """RowToRowsTransformation's properties have the expected values."""
+        input_domain = ListDomain(SparkRowDomain(self.schema_a))
+        transformer = RowsToRowsTransformation(input_domain, input_domain, lambda x: x)
+        self.assertEqual(transformer.input_domain, input_domain)
+        self.assertEqual(transformer.input_metric, NullMetric())
+        self.assertEqual(transformer.output_domain, input_domain)
+        self.assertEqual(transformer.output_metric, NullMetric())
+        self.assertEqual(transformer.trusted_f([Row(x=5)]), [Row(x=5)])
+
+    @parameterized.expand(
+        [
+            (
+                lambda rows: 2 * rows,
+                [Row(A=4.2, B="X"), Row(A=3.3, B="Y")],
+                [
+                    Row(A=4.2, B="X"),
+                    Row(A=3.3, B="Y"),
+                    Row(A=4.2, B="X"),
+                    Row(A=3.3, B="Y"),
+                ],
+                ListDomain(
+                    SparkRowDomain(
+                        {
+                            "A": SparkFloatColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                        }
+                    )
+                ),
+            ),
+            (
+                lambda rows: [Row(S=sum(r.A for r in rows))],
+                [Row(A=4.2, B="X"), Row(A=3.3, B="Y")],
+                [Row(S=7.5)],
+                ListDomain(SparkRowDomain({"S": SparkFloatColumnDescriptor()})),
+            ),
+            (
+                lambda rows: [],
+                [Row(A=4.2, B="X"), Row(A=3.3, B="Y")],
+                [],
+                ListDomain(
+                    SparkRowDomain(
+                        {
+                            "A": SparkFloatColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                        }
+                    )
+                ),
+            ),
+            (
+                lambda rows: [{}] * len(rows),
+                [Row(A=4.2, B="X"), Row(A=3.3, B="Y")],
+                [Row(), Row()],
+                ListDomain(SparkRowDomain({})),
+            ),
+        ]
+    )
+    def test_transformer_works_correctly(
+        self,
+        f: Callable,
+        input_rows: List,
+        expected_rows: List,
+        output_domain: ListDomain,
+    ):
+        """Tests that row transformer works correctly."""
+        transformer = RowsToRowsTransformation(
+            ListDomain(SparkRowDomain(self.schema_a)), output_domain, f
+        )
+
+        self.assertEqual(
+            transformer.input_domain, ListDomain(SparkRowDomain(self.schema_a))
+        )
+        self.assertEqual(transformer.output_domain, output_domain)
+        output = transformer(input_rows)
+        self.assertEqual(output, expected_rows)
 
 
 class TestMap(TestComponent):
