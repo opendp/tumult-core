@@ -127,7 +127,9 @@ from tmlt.core.transformations.spark_transformations.filter import Filter
 from tmlt.core.transformations.spark_transformations.join import PublicJoin
 from tmlt.core.transformations.spark_transformations.map import (
     FlatMap,
+    FlatMapByKey,
     Map,
+    RowsToRowsTransformation,
     RowToRowsTransformation,
     RowToRowTransformation,
 )
@@ -499,6 +501,41 @@ class PublicJoinValue(TransformValue):
             public_df_domain=public_df_domain,
             join_cols=join_cols,
             join_on_nulls=join_on_nulls,
+        )
+        super().__init__(input_domain, input_metric, transformation, key, new_key)
+
+
+class FlatMapByKeyValue(TransformValue):
+    """Applies a :class:`~.FlatMapByKey` to create a new element from specified value.
+
+    See :class:`~.TransformValue` and :class:`~.FlatMapByKey` for more information.
+    """
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
+        key: Any,
+        new_key: Any,
+        row_transformer: RowsToRowsTransformation,
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: The Domain of the input dictionary of Spark DataFrames.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
+            key: The key for the DataFrame to transform.
+            new_key: The key to put the transformed output in. The key must not already
+                be in the input domain.
+            row_transformer: Transformation to apply to each group of rows.
+        """
+        transformation = FlatMapByKey(
+            metric=IfGroupedBy(
+                input_metric.df_to_key_column[key], SymmetricDifference()
+            ),
+            row_transformer=row_transformer,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
 

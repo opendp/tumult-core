@@ -9,8 +9,10 @@ for more information on transformations.
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
+from collections import OrderedDict
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union, cast
 
+import pandas as pd
 import sympy as sp
 from pyspark.sql import DataFrame, Row, SparkSession
 from typeguard import typechecked
@@ -29,6 +31,7 @@ from tmlt.core.metrics import (
     RootSumOfSquared,
     SumOf,
     SymmetricDifference,
+    UnsupportedCombinationError,
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -538,7 +541,7 @@ class FlatMap(Transformation):
         directly or indirectly reference Spark DataFrames or Spark contexts.
         If the function does contain an object that directly or indirectly
         references a Spark DataFrame or a Spark context, an
-        error will occur when the RowToRowTransformation is called on a row
+        error will occur when the transformation is applied.
 
     Example:
         ..
@@ -715,18 +718,15 @@ class FlatMap(Transformation):
         """Returns transformation object used for mapping rows to lists of rows."""
         return self._row_transformer
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
-        """Returns the smallest d_out satisfied by the transformation.
+        """Returns the smallest ``d_out`` satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
-        for more information.
+        See :doc:`/topic-guides/architecture` for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         if isinstance(self.input_metric, IfGroupedBy) and isinstance(
             self.input_metric.inner_metric, SymmetricDifference
@@ -772,7 +772,7 @@ class GroupingFlatMap(Transformation):
         directly or indirectly reference Spark DataFrames or Spark contexts.
         If the function does contain an object that directly or indirectly
         references a Spark DataFrame or a Spark context, an
-        error will occur when the RowToRowTransformation is called on a row
+        error will occur when the transformation is applied.
 
     Example:
         ..
@@ -954,18 +954,15 @@ class GroupingFlatMap(Transformation):
         """Returns transformation object used for mapping rows to lists of rows."""
         return self._row_transformer
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
-        """Returns the smallest d_out satisfied by the transformation.
+        """Returns the smallest ``d_out`` satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
-        for more information.
+        See :doc:`/topic-guides/architecture` for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         if cast(IfGroupedBy, self.output_metric).inner_metric == SumOf(
             SymmetricDifference()
@@ -1146,18 +1143,15 @@ class Map(Transformation):
         """Returns the transformation object used for mapping rows."""
         return self._row_transformer
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
-        """Returns the smallest d_out satisfied by the transformation.
+        """Returns the smallest ``d_out`` satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
-        for more information on transformations.
+        See :doc:`/topic-guides/architecture` for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -1168,3 +1162,215 @@ class Map(Transformation):
         spark = SparkSession.builder.getOrCreate()
         mapped_sdf = spark.createDataFrame(mapped_rdd, self._output_domain.spark_schema)
         return mapped_sdf
+
+
+class FlatMapByKey(Transformation):
+    """Applies a :class:`~.RowsToRowsTransformation` to rows, grouped by key.
+
+    .. note::
+        The transformation function must not contain any objects that
+        directly or indirectly reference Spark DataFrames or Spark contexts.
+        If the function does contain an object that directly or indirectly
+        references a Spark DataFrame or a Spark context, an
+        error will occur when the transformation is applied.
+
+    Example:
+        ..
+            >>> import pandas as pd
+            >>> from tmlt.core.domains.spark_domains import (
+            ...     SparkRowDomain,
+            ...     SparkIntegerColumnDescriptor,
+            ...     SparkStringColumnDescriptor,
+            ... )
+            >>> # Need to import this so that the tmlt namespace is included, otherwise
+            >>> # the udf fails to pickle the RowsToRowsTransformation
+            >>> from tmlt.core.transformations.spark_transformations.map import (
+            ...     RowsToRowsTransformation,
+            ...     FlatMapByKey,
+            ... )
+            >>> from tmlt.core.utils.misc import print_sdf
+            >>> spark = SparkSession.builder.getOrCreate()
+            >>> spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "id": ["a", "b", "c", "c"],
+            ...             "v": [1, 2, 3, 4],
+            ...         }
+            ...     )
+            ... )
+            >>> def sum_v(rows: List[Row]) -> List[Row]:
+            ...     return [{"sum": sum(r["v"] for r in rows)}]
+            >>> sum_by_key_transformation = RowsToRowsTransformation(
+            ...     input_domain=ListDomain(SparkRowDomain({
+            ...         "id": SparkStringColumnDescriptor(),
+            ...         "v": SparkIntegerColumnDescriptor(),
+            ...     })),
+            ...     output_domain=ListDomain(
+            ...         SparkRowDomain({
+            ...             "sum": SparkIntegerColumnDescriptor(),
+            ...         })
+            ...     ),
+            ...     trusted_f=sum_v,
+            ... )
+
+        >>> # Example input
+        >>> print_sdf(spark_dataframe)
+          id  v
+        0  a  1
+        1  b  2
+        2  c  3
+        3  c  4
+        >>> # sum_by_key_transformation is a RowsToRowsTransformation that sums column v
+        >>> # for each ID group.
+        >>> sum_by_key = FlatMapByKey(
+        ...     metric=IfGroupedBy("id", SymmetricDifference()),
+        ...     row_transformer=sum_by_key_transformation,
+        ... )
+        >>> # Apply transformation to data
+        >>> transformed_spark_dataframe = sum_by_key(spark_dataframe)
+        >>> print_sdf(transformed_spark_dataframe)
+          id  sum
+        0  a    1
+        1  b    2
+        2  c    7
+
+    Transformation Contract:
+        * Input domain - :class:`~.SparkDataFrameDomain`
+        * Output domain - :class:`~.SparkDataFrameDomain`
+        * Input metric - :class:`~.IfGroupedBy` with
+          inner metric :class:`~.SymmetricDifference`
+        * Output metric - :class:`~.IfGroupedBy` (matches input metric)
+
+        >>> sum_by_key.input_domain
+        SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'v': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        >>> sum_by_key.output_domain
+        SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'sum': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        >>> sum_by_key.input_metric
+        IfGroupedBy(column='id', inner_metric=SymmetricDifference())
+        >>> sum_by_key.output_metric
+        IfGroupedBy(column='id', inner_metric=SymmetricDifference())
+
+        Stability Guarantee:
+            :class:`~.FlatMapByKey`'s :meth:`~.stability_function` returns ``d_in``.
+    """  # pylint: disable=line-too-long,useless-suppression
+
+    @typechecked
+    def __init__(
+        self,
+        metric: IfGroupedBy,
+        row_transformer: RowsToRowsTransformation,
+    ):
+        """Constructor.
+
+        Args:
+            metric: Distance metric for input and output DataFrames.
+            row_transformer: Transformation to apply to each group of rows. This
+                transformation should have the key column in its input domain,
+                but it must *not* include the key column in its output domain.
+        """
+        # NOTE: asserts are redundant but needed for mypy
+        assert isinstance(row_transformer.input_domain, ListDomain)
+        assert isinstance(row_transformer.input_domain.element_domain, SparkRowDomain)
+        assert isinstance(row_transformer.output_domain, ListDomain)
+        assert isinstance(row_transformer.output_domain.element_domain, SparkRowDomain)
+
+        if metric.inner_metric != SymmetricDifference():
+            raise UnsupportedMetricError(
+                metric, "Inner metric for IfGroupedBy must be SymmetricDifference()."
+            )
+
+        key_column = metric.column
+        output_schema = OrderedDict(row_transformer.output_domain.element_domain.schema)
+        if key_column in output_schema:
+            raise UnsupportedDomainError(
+                row_transformer.output_domain,
+                "Transformer output rows must not contain grouping column.",
+            )
+
+        input_domain = SparkDataFrameDomain(
+            row_transformer.input_domain.element_domain.schema
+        )
+
+        # Determining the output domain requires that the input domain is valid
+        # (in particular, that the key column exists in it), so do this check
+        # early to prevent that case.
+        if not metric.supports_domain(input_domain):
+            raise UnsupportedCombinationError(
+                (metric, input_domain),
+                (
+                    f"Input metric {metric} and input domain {input_domain} are "
+                    "not compatible."
+                ),
+            )
+
+        # Add the key column back to the schema, ensuring it is the first column.
+        output_schema[key_column] = row_transformer.input_domain.element_domain.schema[
+            key_column
+        ]
+        output_schema.move_to_end(key_column, last=False)
+
+        super().__init__(
+            input_domain=input_domain,
+            input_metric=metric,
+            output_domain=SparkDataFrameDomain(output_schema),
+            output_metric=metric,
+        )
+        self._row_transformer = row_transformer
+
+    @property
+    def row_transformer(self) -> RowsToRowsTransformation:
+        """Returns transformation object used for mapping rows to lists of rows."""
+        return self._row_transformer
+
+    @typechecked
+    def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
+        """Returns the smallest ``d_out`` satisfied by the transformation.
+
+        See :doc:`/topic-guides/architecture` for more information.
+
+        Args:
+            d_in: Distance between inputs under input_metric.
+        """
+        self.input_metric.validate(d_in)
+        return ExactNumber(d_in)
+
+    def __call__(self, sdf: DataFrame) -> DataFrame:
+        """Apply transformation."""
+        assert isinstance(self.input_metric, IfGroupedBy)
+        assert isinstance(self.output_domain, SparkDataFrameDomain)
+        assert isinstance(self.row_transformer.output_domain, ListDomain)
+        assert isinstance(
+            self.row_transformer.output_domain.element_domain, SparkRowDomain
+        )
+
+        key_col = self.input_metric.column
+        transformer_output_schema = (
+            self.row_transformer.output_domain.element_domain.schema
+        )
+
+        def apply_transformer_preserving_key(
+            key: Tuple[Any], df: pd.DataFrame
+        ) -> pd.DataFrame:
+            transformed_rows = self.row_transformer(df.to_dict(orient="records"))
+
+            # Spark and Pandas both don't handle records with no columns very
+            # well, so just make a column of the appropriate length in that case.
+            if len(transformer_output_schema) == 0:
+                return pd.Series(
+                    [key[0]] * len(transformed_rows), name=key_col
+                ).to_frame()
+
+            transformed_df = pd.DataFrame.from_records(
+                r.asDict() for r in transformed_rows
+            )
+            # Fill in the key column and reorder the resulting dataframe such
+            # that the key column is the first column (and the other columns
+            # remain in the same order).
+            columns = transformed_df.columns.tolist()
+            columns.insert(0, key_col)
+            transformed_df[key_col] = key[0]
+            return transformed_df[columns]
+
+        return sdf.groupby(key_col).applyInPandas(
+            apply_transformer_preserving_key, schema=self.output_domain.spark_schema
+        )

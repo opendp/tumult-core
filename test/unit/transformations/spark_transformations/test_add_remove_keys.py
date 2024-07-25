@@ -26,6 +26,7 @@ from tmlt.core.transformations.spark_transformations.add_remove_keys import (
     DropNaNsValue,
     DropNullsValue,
     FilterValue,
+    FlatMapByKeyValue,
     FlatMapValue,
     LimitKeysPerGroupValue,
     LimitRowsPerGroupValue,
@@ -44,6 +45,7 @@ from tmlt.core.transformations.spark_transformations.add_remove_keys import (
 )
 from tmlt.core.transformations.spark_transformations.filter import Filter
 from tmlt.core.transformations.spark_transformations.map import (
+    RowsToRowsTransformation,
     RowToRowsTransformation,
     RowToRowTransformation,
 )
@@ -114,6 +116,36 @@ from tmlt.core.utils.testing import (
                     augment=True,
                 ),
                 "max_num_rows": 2,
+            },
+            "pandas_to_spark_kwargs": {},
+        },
+        {
+            "subclass": FlatMapByKeyValue,
+            "extra_kwargs": {
+                "row_transformer": RowsToRowsTransformation(
+                    input_domain=ListDomain(
+                        SparkRowDomain(
+                            {
+                                "A": SparkStringColumnDescriptor(),
+                                "B": SparkFloatColumnDescriptor(
+                                    allow_nan=True, allow_inf=True, allow_null=True
+                                ),
+                                "C": SparkStringColumnDescriptor(),
+                            }
+                        )
+                    ),
+                    output_domain=ListDomain(
+                        SparkRowDomain(
+                            {
+                                "E": SparkStringColumnDescriptor(),
+                            }
+                        )
+                    ),
+                    trusted_f=lambda rs: [
+                        {"E": str(sum(r["B"] for r in rs))},
+                        {"E": str(sum(r["B"] for r in rs) * 2)},
+                    ],
+                ),
             },
             "pandas_to_spark_kwargs": {},
         },

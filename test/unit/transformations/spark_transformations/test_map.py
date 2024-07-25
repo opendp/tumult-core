@@ -4,7 +4,7 @@
 # Copyright Tumult Labs 2024
 
 
-from typing import Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Type, Union, cast
 
 import pandas as pd
 import sympy as sp
@@ -21,9 +21,15 @@ from tmlt.core.domains.spark_domains import (
     SparkRowDomain,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.exceptions import (
+    UnsupportedCombinationError,
+    UnsupportedDomainError,
+    UnsupportedMetricError,
+)
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
+    Metric,
     NullMetric,
     RootSumOfSquared,
     SumOf,
@@ -31,6 +37,7 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.transformations.spark_transformations.map import (
     FlatMap,
+    FlatMapByKey,
     GroupingFlatMap,
     Map,
     RowsToRowsTransformation,
@@ -807,4 +814,205 @@ class TestGroupingFlatMap(TestComponent):
                 output_metric=RootSumOfSquared(SymmetricDifference()),
                 row_transformer=transformer,
                 max_num_rows=1,
+            )
+
+
+class TestFlatMapByKey(TestComponent):
+    """Tests for :class:`~.spark_transformations.map.FlatMapByKey`."""
+
+    def setUp(self) -> None:
+        """Common data and transformers for tests."""
+        self.id_schema = {
+            "id": SparkIntegerColumnDescriptor(),
+            "v": SparkIntegerColumnDescriptor(),
+        }
+        self.id_df = self.spark.createDataFrame(
+            pd.DataFrame(
+                {
+                    "id": [1, 1, 2, 3, 3, 3, 4, 4],
+                    "v": [1, 2, 0, 4, 1, 2, 3, 5],
+                }
+            )
+        )
+        self.sum_transformer_output_schema = {
+            "sum": SparkIntegerColumnDescriptor(),
+        }
+        self.sum_transformer = RowsToRowsTransformation(
+            input_domain=ListDomain(SparkRowDomain(self.id_schema)),
+            output_domain=ListDomain(
+                SparkRowDomain(self.sum_transformer_output_schema)
+            ),
+            trusted_f=lambda rs: [{"sum": sum(r["v"] for r in rs)}],
+        )
+
+    @parameterized.expand(get_all_props(FlatMapByKey))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        t = FlatMapByKey(
+            metric=IfGroupedBy("id", SymmetricDifference()),
+            row_transformer=self.sum_transformer,
+        )
+        assert_property_immutability(t, prop_name)
+
+    def test_properties(self):
+        """FlatMap's properties have the expected values."""
+        transformation = FlatMapByKey(
+            metric=IfGroupedBy("id", SymmetricDifference()),
+            row_transformer=self.sum_transformer,
+        )
+        self.assertEqual(
+            transformation.input_domain, SparkDataFrameDomain(self.id_schema)
+        )
+        self.assertEqual(
+            transformation.input_metric, IfGroupedBy("id", SymmetricDifference())
+        )
+        self.assertEqual(
+            transformation.output_domain,
+            SparkDataFrameDomain(
+                {"id": self.id_schema["id"], **self.sum_transformer_output_schema}
+            ),
+        )
+        self.assertEqual(
+            transformation.output_metric, IfGroupedBy("id", SymmetricDifference())
+        )
+        self.assertEqual(transformation.row_transformer, self.sum_transformer)
+
+    @parameterized.expand(
+        [
+            (pd.DataFrame({"id": [], "v": []}), pd.DataFrame({"id": [], "sum": []})),
+            (
+                pd.DataFrame({"id": [1], "v": [2]}),
+                pd.DataFrame({"id": [1], "sum": [2]}),
+            ),
+            (
+                pd.DataFrame({"id": [1, 1, 1, 2], "v": [1, 3, 3, 4]}),
+                pd.DataFrame({"id": [1, 2], "sum": [7, 4]}),
+            ),
+            (
+                pd.DataFrame({"id": [1, 2, 3, 2, 4, 3], "v": [1, 3, 3, 4, 5, 5]}),
+                pd.DataFrame({"id": [1, 2, 3, 4], "sum": [1, 7, 8, 5]}),
+            ),
+        ]
+    )
+    def test_flat_map_by_key(self, input_df: pd.DataFrame, expected_df: pd.DataFrame):
+        """Transformation produces expected outputs when applied."""
+        transformation = FlatMapByKey(
+            metric=IfGroupedBy("id", SymmetricDifference()),
+            row_transformer=self.sum_transformer,
+        )
+        self.assertEqual(transformation.stability_function(1), 1)
+        self.assertTrue(transformation.stability_relation(1, 1))
+        actual_df = transformation(
+            self.spark.createDataFrame(
+                input_df, schema=SparkDataFrameDomain(self.id_schema).spark_schema
+            )
+        ).toPandas()
+        self.assert_frame_equal_with_sort(actual_df, expected_df)
+
+    @parameterized.expand(
+        [
+            (pd.DataFrame({"id": [], "v": []}), pd.DataFrame({"id": []})),
+            (
+                pd.DataFrame({"id": [1], "v": [2]}),
+                pd.DataFrame({"id": [1]}),
+            ),
+            (
+                pd.DataFrame({"id": [1, 1, 1], "v": [2, 3, 4]}),
+                pd.DataFrame({"id": [1, 1, 1]}),
+            ),
+            (
+                pd.DataFrame({"id": [1, 2, 1], "v": [2, 3, 4]}),
+                pd.DataFrame({"id": [1, 1, 2]}),
+            ),
+        ]
+    )
+    def test_empty_result_schema(
+        self, input_df: pd.DataFrame, expected_df: pd.DataFrame
+    ):
+        """Transformation works correctly when transformer produces no columns."""
+        transformer = RowsToRowsTransformation(
+            ListDomain(SparkRowDomain(self.id_schema)),
+            ListDomain(SparkRowDomain({})),
+            lambda rs: [cast(Dict[str, Any], {})] * len(rs),
+        )
+        transformation = FlatMapByKey(
+            metric=IfGroupedBy("id", SymmetricDifference()),
+            row_transformer=transformer,
+        )
+        self.assertEqual(transformation.stability_function(1), 1)
+        self.assertTrue(transformation.stability_relation(1, 1))
+        actual_df = transformation(
+            self.spark.createDataFrame(
+                input_df, schema=SparkDataFrameDomain(self.id_schema).spark_schema
+            )
+        ).toPandas()
+        self.assert_frame_equal_with_sort(actual_df, expected_df)
+
+    @parameterized.expand(
+        [
+            (  # Bad input_domain
+                SparkRowDomain({"id": SparkIntegerColumnDescriptor()}),
+                ListDomain(SparkRowDomain({})),
+                TypeError,
+            ),
+            (  # Bad input_domain.element_domain
+                ListDomain(
+                    SparkDataFrameDomain({"id": SparkIntegerColumnDescriptor()})
+                ),
+                ListDomain(SparkRowDomain({})),
+                UnsupportedDomainError,
+            ),
+            (  # Bad output_domain
+                ListDomain(SparkRowDomain({"id": SparkIntegerColumnDescriptor()})),
+                SparkDataFrameDomain({}),
+                TypeError,
+            ),
+            (  # Bad output_domain.element_domain
+                ListDomain(SparkRowDomain({"id": SparkIntegerColumnDescriptor()})),
+                ListDomain(SparkDataFrameDomain({})),
+                UnsupportedDomainError,
+            ),
+            (  # Input domain doesn't contain key column
+                ListDomain(SparkRowDomain({})),
+                ListDomain(SparkRowDomain({})),
+                UnsupportedCombinationError,
+            ),
+            (  # Output domain conflicts with existing key column
+                ListDomain(SparkRowDomain({"id": SparkIntegerColumnDescriptor()})),
+                ListDomain(SparkRowDomain({"id": SparkIntegerColumnDescriptor()})),
+                UnsupportedDomainError,
+            ),
+        ]
+    )
+    def test_invalid_transformer_domains(
+        self, input_domain: Domain, output_domain: Domain, exc_type: Type[Exception]
+    ):
+        """FlatMapByKey constructor rejects transformers with invalid domains.
+
+        RowsToRowsTransformation must meet the following conditions
+            - input_domain is a ListDomain of SparkRowDomain
+            - output_domain is a ListDomain of SparkRowDomain
+        """
+        with self.assertRaises(exc_type):
+            FlatMapByKey(
+                metric=IfGroupedBy("id", SymmetricDifference()),
+                row_transformer=RowsToRowsTransformation(
+                    input_domain,  # type: ignore
+                    output_domain,  # type: ignore
+                    lambda x: x,
+                ),
+            )
+
+    @parameterized.expand(
+        [
+            (SymmetricDifference(), TypeError),
+            (IfGroupedBy("id", SumOf(SymmetricDifference())), UnsupportedMetricError),
+        ]
+    )
+    def test_metrics(self, metric: Metric, exc_type: Type[Exception]):
+        """Tests that the constructor checks metrics correctly."""
+        with self.assertRaises(exc_type):
+            FlatMapByKey(
+                metric=metric,  # type: ignore
+                row_transformer=self.sum_transformer,
             )
