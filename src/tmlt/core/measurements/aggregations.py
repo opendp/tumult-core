@@ -2239,11 +2239,13 @@ def create_bounds_measurement(
     )
 
     postprocess = (
-        lambda df: ((upper := df.collect()[0][measure_column]), -upper)
+        (lambda df: ((upper := df.collect()[0][measure_column]), -upper))
         if groupby_transformation is None
-        else lambda df: df.withColumnRenamed(
-            measure_column, upper_bound_column
-        ).withColumn(lower_bound_column, -sf.col(upper_bound_column))
+        else (
+            lambda df: df.withColumnRenamed(
+                measure_column, upper_bound_column
+            ).withColumn(lower_bound_column, -sf.col(upper_bound_column))
+        )
     )
 
     bounds_measurement = PostProcess(
