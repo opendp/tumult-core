@@ -17,6 +17,10 @@ Changed
 ~~~~~~~
 - Refactored bounds measurement to use a Pandas UDF.
 
+Removed
+~~~~~~~
+- Removed support for Pandas 1.2 and 1.3 due to a known bug in Pandas versions below 1.4.
+
 .. _v0.15.2:
 
 0.15.2 - 2024-07-15
