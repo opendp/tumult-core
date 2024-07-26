@@ -7,6 +7,7 @@ import datetime
 import logging
 import os
 import sys
+from pathlib import Path
 
 _logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ _logger = logging.getLogger(__name__)
 
 project = "Tumult Core"
 author = "Tumult Labs"
-copyright = "Tumult Labs 2024"
+copyright = "2024 Tumult Labs"
 # Note that this is the name of the module provided by the package, not
 # necessarily the name of the package as pip understands it.
 package_name = "tmlt.core"
@@ -25,7 +26,17 @@ package_name = "tmlt.core"
 ci_tag = os.getenv("CI_COMMIT_TAG")
 ci_branch = os.getenv("CI_COMMIT_BRANCH")
 
-version = ci_tag or ci_branch or "HEAD"
+# For non-prerelease tags, make the version "vX.Y" to match how we show it in
+# the version switcher and the docs URLs. Sphinx's nomenclature around versions
+# can be a bit confusing -- "version" means sort of the documentation version
+# (for us, the minor release), while "release" is the full version number of the
+# package on which the docs were built.
+if ci_tag and "-" not in ci_tag:
+    release = ci_tag
+    version = "v" + ".".join(ci_tag.split(".")[:2])
+else:
+    release = version = ci_tag or ci_branch or "HEAD"
+
 commit_hash = os.getenv("CI_COMMIT_SHORT_SHA") or "unknown version"
 build_time = datetime.datetime.utcnow().isoformat(sep=" ", timespec="minutes")
 
@@ -33,6 +44,7 @@ build_time = datetime.datetime.utcnow().isoformat(sep=" ", timespec="minutes")
 
 extensions = [
     "autoapi.extension",
+    "sphinxcontrib.images",
     "sphinx_copybutton",
     "sphinx_design",
     "sphinx.ext.autodoc",
@@ -125,10 +137,12 @@ nitpick_ignore = [
 templates_path = ["_templates"]
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
+    "header_links_before_dropdown": 6,
     "collapse_navigation": True,
     "navigation_depth": 4,
     "navbar_end": ["navbar-icon-links"],
-    "footer_items": ["copyright", "build-info", "sphinx-version"],
+    "footer_start": ["copyright", "build-info"],
+    "footer_end": ["sphinx-version", "theme-version"],
     "switcher": {
         "json_url": "https://docs.tmlt.dev/core/versions.json",
         "version_match": version,
@@ -184,6 +198,10 @@ def skip_members(app, what, name, obj, skip, options):
         return True
     return skip
 
-
 def setup(sphinx):
     sphinx.connect("autoapi-skip-member", skip_members)
+    # Write out the version and release numbers (using Sphinx's definitions of
+    # them) for use by later automation.
+    outdir = Path(sphinx.outdir)
+    (outdir / "_version").write_text(version)
+    (outdir / "_release").write_text(release)
