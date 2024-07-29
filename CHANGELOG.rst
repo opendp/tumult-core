@@ -8,14 +8,15 @@ Unreleased
 
 Added
 ~~~~~
-- Added way to construct a bounds measurement per-group.
+- Added a way to construct a bounds measurement per-group using :func:`~tmlt.core.measurements.aggregations.create_bounds_measurement`. 
 - Added :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByKey`, a transformation for combining all records sharing a key under the ``IfGroupedBy("key", SymmetricDifference())`` metric into an arbitrary collection of other records with the same key using a user-defined function.
   In addition, added the :class:`~tmlt.core.transformations.spark_transformations.add_remove_keys.FlatMapByKeyValue` transformation, which performs this same operation on a table under an :class:`~tmlt.core.metrics.AddRemoveKeys` metric.
 - Added :class:`~tmlt.core.transformations.spark_transformations.map.RowsToRowsTransformation`, a transformation mapping a set of records to another set of records using a user-defined function.
 
 Changed
 ~~~~~~~
-- Refactored bounds measurement to use a Pandas UDF.
+- Refactored bounds measurement to use a Pandas UDF. ``BoundSelection`` measurement was removed and equivalent :class:`~tmlt.core.measurements.pandas_measurements.series.NoisyBounds` was added.
+- Renamed ``create_bound_selection_measurement`` to :func:`~tmlt.core.measurements.aggregations.create_bounds_measurement`. The ``bound_column`` parameter was renamed to ``measure_column``.
 
 Removed
 ~~~~~~~
