@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+.. _v0.16.0:
+
+0.16.0 - 2024-07-29
+-------------------
+
 Added
 ~~~~~
 - Added a way to construct a bounds measurement per-group using :func:`~tmlt.core.measurements.aggregations.create_bounds_measurement`. 
