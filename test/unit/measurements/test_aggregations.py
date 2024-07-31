@@ -817,7 +817,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             ]
         ]
     )
-    @pytest.mark.slow
     def test_create_bounds_measurement_with_groupby(
         self,
         input_metric: Union[IfGroupedBy, SymmetricDifference],
@@ -878,6 +877,9 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(
             set(answer.columns), set(self.groupby_columns + ["lower", "upper"])
         )
+        if not answer.isEmpty():
+            self.assertTrue(answer.select("lower").first()[0] < 0)
+            self.assertTrue(answer.select("upper").first()[0] > 0)
 
 
 class TestAggregationMeasurement(PySparkTest):
@@ -1500,6 +1502,7 @@ class TestAggregationMeasurement(PySparkTest):
         self.assertIsInstance(answer[0], int)
         self.assertIsInstance(answer[1], int)
         self.assertEqual(answer[0], -answer[1])
+        self.assertTrue(answer[0] < answer[1])
 
 
 INPUT_DOMAIN = SparkDataFrameDomain(
