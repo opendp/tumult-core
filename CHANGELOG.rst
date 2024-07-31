@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+Fixed
+~~~~~
+- Fixed bug in lower and upper bound tuple value ordering :func:`~tmlt.core.measurements.aggregations.create_bounds_measurement`. The lower bound is now the first element and the upper bound is the second element.
+
+
 .. _v0.16.0:
 
 0.16.0 - 2024-07-29
