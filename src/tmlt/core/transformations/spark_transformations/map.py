@@ -10,9 +10,9 @@ for more information on transformations.
 # Copyright Tumult Labs 2024
 
 from collections import OrderedDict
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
 
-import pandas as pd
+import pyspark.sql.functions as sf
 import sympy as sp
 from pyspark.sql import DataFrame, Row, SparkSession
 from typeguard import typechecked
@@ -1343,34 +1343,60 @@ class FlatMapByKey(Transformation):
             self.row_transformer.output_domain.element_domain, SparkRowDomain
         )
 
+        spark = SparkSession.builder.getOrCreate()
         key_col = self.input_metric.column
         transformer_output_schema = (
             self.row_transformer.output_domain.element_domain.schema
         )
 
-        def apply_transformer_preserving_key(
-            key: Tuple[Any], df: pd.DataFrame
-        ) -> pd.DataFrame:
-            transformed_rows = self.row_transformer(df.to_dict(orient="records"))
+        # The below logic doesn't work on empty dataframes, but we know that
+        # such dataframes produce empty results, so bypass everything in that
+        # case. The isEmpty method is only available in PySpark 3.3+, but it's
+        # preferable because it does not trigger computation.
+        try:
+            empty_input = sdf.isEmpty()
+        except AttributeError:
+            empty_input = sdf.count() == 0
+        if empty_input:
+            return spark.createDataFrame([], self.output_domain.spark_schema)
 
-            # Spark and Pandas both don't handle records with no columns very
-            # well, so just make a column of the appropriate length in that case.
+        # This implementation bears some explanation. The obvious way of
+        # performing an operation like this is using GroupedData.applyInPandas,
+        # which pretty much does exactly what we want. However, that approach
+        # introduces some subtle bugs when handling nulls/NaNs, as Pandas
+        # doesn't have a good way of distinguishing between the two and
+        # PySpark's translation to/from Pandas isn't flexible enough to work
+        # around that limitation.
+        #
+        # Instead, what's going on here is:
+        # * The rows of the input dataframe are converted to the following format:
+        #       Row(key=<id>, row=Row(<all of the fields in the original row>))
+        # * Then, this transformed dataframe is grouped by key and aggregated
+        #   using collect_list, which converts it into a dataframe with one row
+        #   for each key, and the "collect_list(row)" column containing an array
+        #   of all of the rows in the original dataframe that had that key.
+        # * From here, we call apply_udf to apply the row transformer to
+        #   "collect_list(row)", break out each of the original rows
+        #   into its own row again, and re-add the key column.
+        # There's probably a more efficient way of doing this that doesn't
+        # involve going back and forth between DataFrames and RDDs as many
+        # times, but this seems to work.
+
+        def apply_udf(grouped_rows: Row) -> List[Row]:
+            key = grouped_rows["key"]
+            rows = grouped_rows["collect_list(row)"]
+            transformed_rows = self.row_transformer(rows)
+            # PySpark doesn't handle empty rows very gracefully, so if the
+            # output rows are empty, don't bother looking at them.
             if len(transformer_output_schema) == 0:
-                return pd.Series(
-                    [key[0]] * len(transformed_rows), name=key_col
-                ).to_frame()
+                return [Row(**{key_col: key}) for _ in transformed_rows]
+            return [Row(**{key_col: key}, **r.asDict()) for r in transformed_rows]
 
-            transformed_df = pd.DataFrame.from_records(
-                r.asDict() for r in transformed_rows
-            )
-            # Fill in the key column and reorder the resulting dataframe such
-            # that the key column is the first column (and the other columns
-            # remain in the same order).
-            columns = transformed_df.columns.tolist()
-            columns.insert(0, key_col)
-            transformed_df[key_col] = key[0]
-            return transformed_df[columns]
-
-        return sdf.groupby(key_col).applyInPandas(
-            apply_transformer_preserving_key, schema=self.output_domain.spark_schema
+        grouped_df = (
+            spark.createDataFrame(sdf.rdd.keyBy(lambda r: r[key_col]), ["key", "row"])
+            .groupby("key")
+            .agg(sf.collect_list("row"))
+        )
+        return spark.createDataFrame(
+            grouped_df.rdd.flatMap(apply_udf), self.output_domain.spark_schema
         )
