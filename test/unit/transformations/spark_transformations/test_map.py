@@ -4,12 +4,32 @@
 # Copyright Tumult Labs 2024
 
 
+import math
 from typing import Any, Callable, Dict, List, Optional, Type, Union, cast
 
 import pandas as pd
 import sympy as sp
 from parameterized import parameterized
-from pyspark import Row
+from pyspark.sql import DataFrame, Row
+
+try:
+    from pyspark.testing import assertDataFrameEqual
+except ImportError:
+    from ....conftest import assert_frame_equal_with_sort
+
+    # assertDataFrameEqual is only available in PySpark 3.5+, but it correctly
+    # compares dataframes for equality without having to pass everything through
+    # Pandas (and thus lose appropriate checking of NaNs/nulls). This should
+    # allow the tests to work on previous versions of PySpark as well, even if
+    # it doesn't catch every NaN/null-related corner case.
+    def assertDataFrameEqual(actual: DataFrame, expected: DataFrame):  # type: ignore
+        """Assert that two Spark DataFrames are equal.
+
+        This version may have subtly incorrect behavior around nulls, but will
+        work on all supported PySpark versions, not just 3.5+.
+        """
+        assert_frame_equal_with_sort(actual.toPandas(), expected.toPandas())
+
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
@@ -908,6 +928,77 @@ class TestFlatMapByKey(TestComponent):
             )
         ).toPandas()
         self.assert_frame_equal_with_sort(actual_df, expected_df)
+
+    def test_null_nan_inf(self):
+        """Transformation handles null/NaN/inf inputs and output correctly."""
+
+        # Do not use Pandas in this test! Anything passing through a Pandas
+        # dataframe could silently modify the NaNs/nulls and invalidate the
+        # test. Even our usual test for dataframe equality is suspect.
+
+        def f(rows):
+            ret: List[Optional[float]] = []
+            for r in rows:
+                v = r["v"]
+                if v is None:
+                    ret.append(float("nan"))
+                elif math.isnan(v):
+                    ret.append(float("inf"))
+                elif math.isinf(v):
+                    ret.append(1.0)
+                else:
+                    ret.append(None)
+            return [{"v": v} for v in ret]
+
+        transformer = RowsToRowsTransformation(
+            ListDomain(
+                SparkRowDomain(
+                    {
+                        "id": SparkIntegerColumnDescriptor(),
+                        "v": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_nan=True, allow_inf=True
+                        ),
+                    }
+                )
+            ),
+            ListDomain(
+                SparkRowDomain(
+                    {
+                        "v": SparkFloatColumnDescriptor(
+                            allow_null=True, allow_nan=True, allow_inf=True
+                        )
+                    }
+                )
+            ),
+            f,
+        )
+        transformation = FlatMapByKey(
+            metric=IfGroupedBy("id", SymmetricDifference()),
+            row_transformer=transformer,
+        )
+
+        input_df = self.spark.createDataFrame(
+            [
+                (1, float("nan")),
+                (1, None),
+                (1, float("inf")),
+                (1, 1.0),
+                (2, float("-nan")),
+            ],
+            ["id", "v"],
+        )
+        actual_df = transformation(input_df)
+        expected_df = self.spark.createDataFrame(
+            [
+                (1, float("inf")),
+                (1, float("nan")),
+                (1, 1.0),
+                (1, None),
+                (2, float("inf")),
+            ],
+            ["id", "v"],
+        )
+        assertDataFrameEqual(actual_df, expected_df)
 
     @parameterized.expand(
         [
