@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+.. _v0.16.2:
+
+0.16.2 - 2024-08-14
+-------------------
+
 Fixed
 ~~~~~
 - The :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByKey` transformation was incorrectly turning some NaNs into nulls and vice versa when converting the input dataframe into the input for the user-defined transformer function and when converting the output of that function back into a dataframe.
