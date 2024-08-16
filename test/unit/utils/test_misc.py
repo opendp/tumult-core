@@ -9,9 +9,7 @@ import pandas as pd
 from parameterized import parameterized
 
 from tmlt.core.utils.misc import copy_if_mutable, get_nonconflicting_string
-from tmlt.core.utils.testing import PySparkTest
-
-from ...conftest import params
+from tmlt.core.utils.testing import Case, PySparkTest, parametrize
 
 
 class TestCopyIfMutable(PySparkTest):
@@ -71,15 +69,25 @@ class TestCopyIfMutable(PySparkTest):
         self.assertEqual(list(reference_copy), ["key1"])
 
 
-@params(
-    {
-        "single_a": {"strings": ["a"]},
-        "single_b": {"strings": ["b"]},
-        "longer_string": {"strings": ["abcd"]},
-        "multiple_characters": {"strings": ["a", "b"]},
-        "multiple_strings": {"strings": ["ab", "cd"]},
-        "conflict_later": {"strings": ["b", "a"]},
-    }
+@parametrize(
+    Case("single_a")(
+        strings=["a"],
+    ),
+    Case("single_b")(
+        strings=["b"],
+    ),
+    Case("longer_string")(
+        strings=["abcd"],
+    ),
+    Case("multiple_characters")(
+        strings=["a", "b"],
+    ),
+    Case("multiple_strings")(
+        strings=["ab", "cd"],
+    ),
+    Case("conflict_later")(
+        strings=["b", "a"],
+    ),
 )
 def test_get_nonconflicting_string(strings: List[str]):
     """Tests that get_nonconflicting_string works."""
