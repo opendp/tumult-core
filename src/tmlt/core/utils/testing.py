@@ -29,6 +29,12 @@ import pandas as pd
 import pytest
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
+
+try:
+    from pyspark.testing import assertDataFrameEqual
+except ImportError:
+    assertDataFrameEqual = None  # type: ignore
+
 from scipy.stats import chisquare, kstest, laplace, norm
 
 from tmlt.core.domains.base import Domain
@@ -60,6 +66,67 @@ from tmlt.core.utils.distributions import (
 )
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.type_utils import get_immutable_types
+
+
+def _assert_pd_dataframe_equal_with_sort(
+    actual: pd.DataFrame, expected: pd.DataFrame
+) -> None:
+    """Asserts that the two data frames are equal.
+
+    Wrapper around pandas test function. Both dataframes are sorted
+    since the ordering in Spark is not guaranteed.
+    """
+    if sorted(actual.columns) != sorted(expected.columns):
+        raise AssertionError(
+            "Dataframes must have matching columns. "
+            f"actual: {sorted(actual.columns)}. "
+            f"expected: {sorted(expected.columns)}."
+        )
+    if actual.empty and expected.empty:
+        return
+
+    sort_columns = list(actual.columns)
+    if sort_columns:
+        actual = actual.set_index(sort_columns).sort_index().reset_index()
+        expected = expected.set_index(sort_columns).sort_index().reset_index()
+    try:
+        pd.testing.assert_frame_equal(actual, expected)
+    except AssertionError as e:
+        raise AssertionError(
+            f"{e}\nActual dataframe:\n{actual}\nExpected dataframe:\n{expected}"
+        ) from e
+
+
+def assert_dataframe_equal(
+    actual: Union[DataFrame, pd.DataFrame], expected: Union[DataFrame, pd.DataFrame]
+) -> None:
+    """Assert that two dataframes are equal.
+
+    On PySpark 3.5 and above, if both inputs are Spark dataframes this method uses
+    :func:`pyspark.testing.assertDataFrameEqual` to compare them,
+    using its default options. In this case, the comparison is correct with
+    respect to NaNs and nulls as long as the input dataframes are Spark
+    dataframes. On older versions of Spark, this method falls back on comparing the
+    dataframes in Pandas in all cases, and null and NaN values may be considered
+    equal to one another.
+    """
+    # assertDataFrameEqual is supposed to support working with Pandas dataframes
+    # as well, but appears to have a bug that breaks the Pandas comparison code
+    # so we only use it if both inputs are Spark dataframes.
+    if (
+        assertDataFrameEqual is not None
+        and isinstance(actual, DataFrame)
+        and isinstance(expected, DataFrame)
+    ):
+        assertDataFrameEqual(actual, expected)
+        return
+
+    if isinstance(actual, DataFrame):
+        actual = actual.toPandas()
+    if isinstance(expected, DataFrame):
+        expected = expected.toPandas()
+
+    _assert_pd_dataframe_equal_with_sort(actual, expected)
 
 
 # TODO (#2762): We can refactor List[Tuple[str]] to List[str] after removing
