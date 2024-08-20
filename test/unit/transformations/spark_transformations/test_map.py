@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-
 import math
 from typing import Any, Callable, Dict, List, Optional, Type, Union, cast
 
@@ -11,9 +10,12 @@ import pandas as pd
 import sympy as sp
 from parameterized import parameterized
 from pyspark.sql import DataFrame, Row
+from typeguard import TypeCheckError
 
 try:
-    from pyspark.testing import assertDataFrameEqual
+    from pyspark.testing import (  # pylint: disable=ungrouped-imports
+        assertDataFrameEqual,
+    )
 except ImportError:
     from ....conftest import assert_frame_equal_with_sort
 
@@ -520,7 +522,7 @@ class TestFlatMap(TestComponent):
             - output_domain is a *ListDomain*
             - output_domain.element_domain is a *SparkRowDomain*
         """
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeError, TypeCheckError, ValueError)):
             FlatMap(
                 metric=SymmetricDifference(),
                 row_transformer=RowToRowsTransformation(
@@ -1044,7 +1046,7 @@ class TestFlatMapByKey(TestComponent):
             (  # Bad input_domain
                 SparkRowDomain({"id": SparkIntegerColumnDescriptor()}),
                 ListDomain(SparkRowDomain({})),
-                TypeError,
+                TypeCheckError,
             ),
             (  # Bad input_domain.element_domain
                 ListDomain(
@@ -1056,7 +1058,7 @@ class TestFlatMapByKey(TestComponent):
             (  # Bad output_domain
                 ListDomain(SparkRowDomain({"id": SparkIntegerColumnDescriptor()})),
                 SparkDataFrameDomain({}),
-                TypeError,
+                TypeCheckError,
             ),
             (  # Bad output_domain.element_domain
                 ListDomain(SparkRowDomain({"id": SparkIntegerColumnDescriptor()})),
@@ -1096,7 +1098,7 @@ class TestFlatMapByKey(TestComponent):
 
     @parameterized.expand(
         [
-            (SymmetricDifference(), TypeError),
+            (SymmetricDifference(), TypeCheckError),
             (IfGroupedBy("id", SumOf(SymmetricDifference())), UnsupportedMetricError),
         ]
     )

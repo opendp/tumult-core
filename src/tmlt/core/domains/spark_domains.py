@@ -103,8 +103,8 @@ class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
-        check_type("allow_null", self.allow_null, bool)
-        check_type("size", self.size, int)
+        check_type(self.allow_null, bool)
+        check_type(self.size, int)
         if self.size not in [32, 64]:
             raise ValueError(f"size must be 32 or 64, not {self.size}")
 
@@ -151,10 +151,10 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
-        check_type("allow_nan", self.allow_nan, bool)
-        check_type("allow_inf", self.allow_inf, bool)
-        check_type("allow_null", self.allow_null, bool)
-        check_type("size", self.size, int)
+        check_type(self.allow_nan, bool)
+        check_type(self.allow_inf, bool)
+        check_type(self.allow_null, bool)
+        check_type(self.size, int)
         if self.size not in [32, 64]:
             raise ValueError(f"size must be 32 or 64, not {self.size}")
 
@@ -222,7 +222,7 @@ class SparkStringColumnDescriptor(SparkColumnDescriptor):
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
-        check_type("allow_null", self.allow_null, bool)
+        check_type(self.allow_null, bool)
 
     def to_numpy_domain(self) -> NumpyStringDomain:
         """Returns corresponding NumPy domain."""
@@ -247,7 +247,7 @@ class SparkDateColumnDescriptor(SparkColumnDescriptor):
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
-        check_type("allow_null", self.allow_null, bool)
+        check_type(self.allow_null, bool)
 
     def to_numpy_domain(self) -> NumpyDomain:
         """Returns corresponding NumPy domain.
@@ -277,7 +277,7 @@ class SparkTimestampColumnDescriptor(SparkColumnDescriptor):
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
-        check_type("allow_null", self.allow_null, bool)
+        check_type(self.allow_null, bool)
 
     def to_numpy_domain(self) -> NumpyDomain:
         """Returns corresponding NumPy domain.

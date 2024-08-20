@@ -14,6 +14,7 @@ import pandas as pd
 import sympy as sp
 from parameterized import parameterized
 from pyspark.sql.session import SparkSession
+from typeguard import TypeCheckError
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import DictDomain, ListDomain
@@ -102,7 +103,7 @@ class TestAbsoluteDifference(TestCase):
     @parameterized.expand([(-1,), (2.0,), (sp.Float(2),), ("wat",), ({},)])
     def test_invalid(self, value: Any):
         """Only valid nonnegative ExactNumberInput's should be allowed."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             AbsoluteDifference().validate(value)
 
     @parameterized.expand(
@@ -192,7 +193,7 @@ class TestSymmetricDifference(PySparkTest):
     @parameterized.expand([(sp.Float(2),), ("wat",), ({},)])
     def test_invalid(self, value: Any):
         """Only valid nonnegative integral ExactNumberInput's should be allowed."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             SymmetricDifference().validate(value)
 
     @parameterized.expand(
@@ -417,7 +418,7 @@ class TestHammingDistance(PySparkTest):
     @parameterized.expand([("2.5",), (sp.Float(2),), ("wat",), ({},)])
     def test_invalid(self, value: Any):
         """Only valid nonnegative integral ExactNumberInput's should be allowed."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             HammingDistance().validate(value)
 
     @parameterized.expand(
@@ -599,8 +600,8 @@ class TestSumOf(PySparkTest):
         """Only valid values for inner_metric should be allowed."""
         try:
             inner_metric.validate(value)
-        except (ValueError, TypeError):
-            with self.assertRaises((ValueError, TypeError)):
+        except (ValueError, TypeCheckError):
+            with self.assertRaises((ValueError, TypeCheckError)):
                 SumOf(inner_metric).validate(value)
             return
         SumOf(inner_metric).validate(value)
@@ -937,7 +938,7 @@ class TestRootSumOfSquared(TestCase):
         inner_metric: Union[AbsoluteDifference, SymmetricDifference, HammingDistance],
     ):
         """Only valid nonnegative ExactNumberInput's should be allowed."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             RootSumOfSquared(inner_metric).validate(value)
 
     @parameterized.expand(
@@ -2145,7 +2146,7 @@ class TestAddRemoveKeys(PySparkTest):
     @parameterized.expand([(sp.Float(2),), ("wat",), ({},)])
     def test_invalid(self, value: Any):
         """Only valid nonnegative integral ExactNumberInput's should be allowed."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             AddRemoveKeys({"A": "B", "C": "D"}).validate(value)
 
     @parameterized.expand(

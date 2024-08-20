@@ -28,7 +28,7 @@ class PandasSeriesDomain(Domain):
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
-        check_type("element_domain", self.element_domain, NumpyDomain)
+        check_type(self.element_domain, NumpyDomain)
 
     @property
     def carrier_type(self) -> type:

@@ -181,7 +181,6 @@ class AggregateByColumn(Aggregate):
 
         self._column_to_aggregation = dict(column_to_aggregation)
         check_type(
-            "column_to_aggregation",
             self._column_to_aggregation,
             Dict[str, AggregateSeries],
         )

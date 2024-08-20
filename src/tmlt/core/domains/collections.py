@@ -25,8 +25,8 @@ class ListDomain(Domain):
 
     def __post_init__(self) -> None:
         """Check inputs to constructor."""
-        check_type("element_domain", self.element_domain, Domain)
-        check_type("length", self.length, Optional[int])
+        check_type(self.element_domain, Domain)
+        check_type(self.length, Optional[int])
         if self.length is not None and self.length < 0:
             raise ValueError("length must be non-negative")
 
