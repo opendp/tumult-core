@@ -150,7 +150,7 @@ class ApproxDP(Measure):
             value: A distance between two probability distributions under this measure.
         """
         try:
-            check_type("value", value, Tuple[ExactNumberInput, ExactNumberInput])
+            check_type(value, Tuple[ExactNumberInput, ExactNumberInput])
             validate_exact_number(
                 value=value[0],
                 allow_nonintegral=True,

@@ -76,7 +76,7 @@ class MeasurementQuery:
 
     def __post_init__(self) -> None:
         """Check inputs to constructor."""
-        check_type("measurement", self.measurement, Measurement)
+        check_type(self.measurement, Measurement)
         if self.d_out is not None:
             self.measurement.output_measure.validate(self.d_out)
 
@@ -105,7 +105,7 @@ class TransformationQuery:
 
     def __post_init__(self) -> None:
         """Check inputs to constructor."""
-        check_type("transformation", self.transformation, Transformation)
+        check_type(self.transformation, Transformation)
         if self.d_out is not None:
             self.transformation.output_metric.validate(self.d_out)
 
@@ -876,6 +876,7 @@ class PrivacyAccountant:
     interactions among the :class:`~.PrivacyAccountant` and its descendants. See
     :class:`~.PrivacyAccountantState` for more information.
     """
+
     # pylint: disable=protected-access
 
     @typechecked

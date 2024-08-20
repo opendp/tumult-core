@@ -5,7 +5,6 @@
 
 import copy
 import datetime
-from collections.abc import Mapping
 from contextlib import nullcontext as does_not_raise
 from itertools import combinations_with_replacement, product
 from test.conftest import assert_frame_equal_with_sort
@@ -29,6 +28,7 @@ from pyspark.sql.types import (
     StructType,
     TimestampType,
 )
+from typeguard import TypeCheckError
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.collections import DictDomain, ListDomain
@@ -86,11 +86,7 @@ class TestSparkDataFrameDomain(DomainTests):
         [
             (
                 {"schema": invalid_schema},
-                pytest.raises(
-                    TypeError,
-                    match=f'type of argument "schema" must be {get_fullname(Mapping)}; '
-                    f"got {get_fullname(invalid_schema)} instead",
-                ),
+                pytest.raises(TypeCheckError, match='"schema"'),
                 None,
             )
             for invalid_schema in [StringType, ListDomain(NumpyIntegerDomain())]
@@ -98,22 +94,12 @@ class TestSparkDataFrameDomain(DomainTests):
         + [
             (
                 {"schema": {"A": SparkStringColumnDescriptor(), "B": DictDomain({})}},
-                pytest.raises(
-                    TypeError,
-                    match=f"Expected domain for key 'B' to be a "
-                    f"{get_fullname(SparkColumnDescriptor)}; got "
-                    f"{get_fullname(DictDomain)} instead",
-                ),
+                pytest.raises(TypeCheckError, match="'B'"),
                 None,
             ),
             (
                 {"schema": {"A": "B"}},
-                pytest.raises(
-                    TypeError,
-                    match=f"Expected domain for key 'A' to be a "
-                    f"{get_fullname(SparkColumnDescriptor)}; got "
-                    f"{get_fullname(str)} instead",
-                ),
+                pytest.raises(TypeCheckError, match="'A'"),
                 None,
             ),
         ]
@@ -563,11 +549,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             # Invalid schema
             (
                 {"schema": "not a schema", "groupby_columns": ["C"]},
-                pytest.raises(
-                    TypeError,
-                    match=f'type of argument "schema" must be {get_fullname(Mapping)}; '
-                    f"got {get_fullname(str)} instead",
-                ),
+                pytest.raises(TypeCheckError, match='"schema"'),
                 None,
             ),
             # Invalid Column "C"
@@ -580,12 +562,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                     },
                     "groupby_columns": ["A"],
                 },
-                pytest.raises(
-                    TypeError,
-                    match=f"Expected domain for key 'C' to be a "
-                    f"{get_fullname(SparkColumnDescriptor)}; got "
-                    f"{get_fullname(ListDomain)} instead",
-                ),
+                pytest.raises(TypeCheckError, match="'C'"),
                 None,
             ),
         ],
@@ -1034,20 +1011,12 @@ class TestSparkRowDomain(DomainTests):
             ),
             (
                 {"schema": int},
-                pytest.raises(
-                    TypeError,
-                    match=f'type of argument "schema" must be {get_fullname(Mapping)}; '
-                    f"got {get_fullname(int)} instead",
-                ),
+                pytest.raises(TypeCheckError, match='"schema"'),
                 None,
             ),
             (
                 {"schema": StringType},
-                pytest.raises(
-                    TypeError,
-                    match=f'type of argument "schema" must be {get_fullname(Mapping)}; '
-                    f"got {get_fullname(StringType)} instead",
-                ),
+                pytest.raises(TypeCheckError, match='"schema"'),
                 None,
             ),
         ],
@@ -1365,14 +1334,16 @@ class TestSparkColumnDescriptors:
             (
                 _column_descriptors[col_type],
                 col_name,
-                does_not_raise()
-                if col_type == _col_name_to_type[col_name]
-                else pytest.raises(
-                    ValueError,
-                    match="Column must be "
-                    f"{get_fullname(_type_to_spark_type[col_type])}; got "
-                    f"{get_fullname(_type_to_spark_type[_col_name_to_type[col_name]])} "
-                    "instead",
+                (
+                    does_not_raise()
+                    if col_type == _col_name_to_type[col_name]
+                    else pytest.raises(
+                        ValueError,
+                        match="Column must be "
+                        f"{get_fullname(_type_to_spark_type[col_type])}; got "
+                        f"{get_fullname(_type_to_spark_type[_col_name_to_type[col_name]])} "  # pylint: disable=line-too-long
+                        "instead",
+                    )
                 ),
             )
             for col_name, col_type in product(

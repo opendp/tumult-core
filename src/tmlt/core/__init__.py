@@ -10,6 +10,11 @@ import warnings
 
 import pandas as pd
 import setuptools  # TODO(#3258): This import provides a workaround for a bug in PySpark
+import typeguard
+
+# By default, typeguard only checks the first element lists, but we want to
+# check the type of every list item.
+typeguard.config.collection_check_strategy = typeguard.CollectionCheckStrategy.ALL_ITEMS
 
 pd.DataFrame.iteritems = (
     pd.DataFrame.items

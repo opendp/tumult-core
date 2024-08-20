@@ -9,6 +9,7 @@ from unittest.case import TestCase
 
 import sympy as sp
 from parameterized import parameterized
+from typeguard import TypeCheckError
 
 from tmlt.core.measures import (
     ApproxDP,
@@ -80,7 +81,7 @@ class TestPureDP(TestCase):
     @parameterized.expand(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS))
     def test_invalid(self, val: Any):
         """Only valid ExactNumberInput's should be allowed."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             self.pureDP.validate(val)
 
 
@@ -128,7 +129,7 @@ class TestApproxDP(TestCase):
     @parameterized.expand(to_singletons(INVALID_APPROX_DP_INPUTS))
     def test_invalid(self, value: Any):
         """Only valid budgets should be allowed."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             self.approxDP.validate(value)
 
 
@@ -164,7 +165,7 @@ class TestRhoZCDP(TestCase):
     @parameterized.expand(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS))
     def test_invalid(self, val: Any):
         """Only valid budgets should be allowed."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             self.rhoZCDP.validate(val)
 
 
@@ -179,7 +180,7 @@ class TestPureDPBudget(TestCase):
     @parameterized.expand(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS))
     def test_init_invalid(self, value):
         """Throw an error when created with an invalid budget."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             PureDPBudget(value)
 
     @parameterized.expand(
@@ -217,7 +218,7 @@ class TestPureDPBudget(TestCase):
     @parameterized.expand(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS))
     def test_assert_can_spend_budget_invalid(self, value):
         """Test that assert_can_spend_budget raises an error for invalid values."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             PureDPBudget(1).assert_can_spend_budget(value)
 
     @parameterized.expand(
@@ -239,7 +240,7 @@ class TestPureDPBudget(TestCase):
     )
     def test_subtract_invalid(self, value):
         """Test that subtract raises an error when passed an invalid value."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             PureDPBudget(1).subtract(value)
 
 
@@ -254,7 +255,7 @@ class TestApproxDPBudget(TestCase):
     @parameterized.expand(to_singletons(INVALID_APPROX_DP_INPUTS))
     def test_init_invalid(self, value):
         """Throw an error when created with an invalid budget."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             ApproxDPBudget(value)
 
     @parameterized.expand(
@@ -305,7 +306,7 @@ class TestApproxDPBudget(TestCase):
     @parameterized.expand(to_singletons(INVALID_APPROX_DP_INPUTS))
     def test_assert_can_spend_budget_invalid(self, value):
         """Test that assert_can_spend_budget raises an error for invalid values."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             ApproxDPBudget((1, sp.Rational("0.1"))).assert_can_spend_budget(value)
 
     @parameterized.expand(
@@ -349,7 +350,7 @@ class TestApproxDPBudget(TestCase):
     )
     def test_subtract_invalid(self, value):
         """Test that subtract raises an error when passed an invalid value."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             ApproxDPBudget((1, sp.Rational("0.1"))).subtract(value)
 
 
@@ -364,7 +365,7 @@ class TestRhoZCDPBudget(TestCase):
     @parameterized.expand(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS))
     def test_init_invalid(self, value):
         """Throw an error when created with an invalid budget."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             RhoZCDPBudget(value)
 
     @parameterized.expand(
@@ -402,7 +403,7 @@ class TestRhoZCDPBudget(TestCase):
     @parameterized.expand(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS))
     def test_assert_can_spend_budget_invalid(self, value):
         """Test that assert_can_spend_budget raises an error for invalid values."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             RhoZCDPBudget(1).assert_can_spend_budget(value)
 
     @parameterized.expand(
@@ -426,7 +427,7 @@ class TestRhoZCDPBudget(TestCase):
     )
     def test_subtract_invalid(self, value):
         """Test that subtract raises an error when passed an invalid value."""
-        with self.assertRaises((TypeError, ValueError)):
+        with self.assertRaises((TypeCheckError, ValueError)):
             RhoZCDPBudget(1).subtract(value)
 
 

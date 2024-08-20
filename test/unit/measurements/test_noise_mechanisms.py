@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 import sympy as sp
 from pyspark.sql.types import DoubleType, LongType
+from typeguard import TypeCheckError
 
 from tmlt.core.domains.numpy_domains import (
     NumpyFloatDomain,
@@ -28,7 +29,6 @@ from tmlt.core.measurements.noise_mechanisms import (
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import AbsoluteDifference
 from tmlt.core.utils.exact_number import ExactNumber
-from tmlt.core.utils.misc import get_fullname
 
 
 class TestAddLaplaceNoise(MeasurementTests):
@@ -56,12 +56,8 @@ class TestAddLaplaceNoise(MeasurementTests):
             (
                 {"input_domain": NumpyStringDomain(), "scale": 1},
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "input_domain" must be one of '
-                        "(NumpyIntegerDomain, NumpyFloatDomain); got "
-                        f"{get_fullname(NumpyStringDomain)} instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"input_domain"'),
                 ),
             ),
             (
@@ -347,11 +343,8 @@ class TestAddLaplaceNoise(MeasurementTests):
                 1,
                 True,
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "d_in" must be one of (ExactNumber, float, '
-                        "int, str, Fraction, Expr); got tuple instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"d_in"'),
                 ),
             ),
             (
@@ -373,11 +366,8 @@ class TestAddLaplaceNoise(MeasurementTests):
                 {},
                 True,
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "value" must be one of (ExactNumber, float, '
-                        "int, str, Fraction, Expr); got dict instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"value"'),
                 ),
             ),
             (
@@ -728,11 +718,8 @@ class TestAddGeometricNoise(MeasurementTests):
                 1,
                 True,
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "d_in" must be one of (ExactNumber, float, '
-                        "int, str, Fraction, Expr); got tuple instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"d_in"'),
                 ),
             ),
             (
@@ -754,11 +741,8 @@ class TestAddGeometricNoise(MeasurementTests):
                 {},
                 True,
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "value" must be one of (ExactNumber, float, '
-                        "int, str, Fraction, Expr); got dict instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"value"'),
                 ),
             ),
             (AddGeometricNoise(alpha=0), 1, float("inf"), True, does_not_raise()),
@@ -929,12 +913,8 @@ class TestAddGaussianNoise(MeasurementTests):
             (
                 {"input_domain": NumpyStringDomain(), "sigma_squared": 1},
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "input_domain" must be one of ('
-                        "NumpyIntegerDomain, NumpyFloatDomain); got "
-                        f"{get_fullname(NumpyStringDomain)} instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"input_domain"'),
                 ),
             ),
             (
@@ -1236,11 +1216,8 @@ class TestAddGaussianNoise(MeasurementTests):
                 1,
                 True,
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "d_in" must be one of (ExactNumber, float, '
-                        "int, str, Fraction, Expr); got tuple instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"d_in"'),
                 ),
             ),
             (
@@ -1262,11 +1239,8 @@ class TestAddGaussianNoise(MeasurementTests):
                 {},
                 True,
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "value" must be one of (ExactNumber, float, '
-                        "int, str, Fraction, Expr); got dict instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"value"'),
                 ),
             ),
             (
@@ -1587,11 +1561,8 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
                 1,
                 True,
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "d_in" must be one of (ExactNumber, float, '
-                        "int, str, Fraction, Expr); got tuple instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"d_in"'),
                 ),
             ),
             (
@@ -1613,11 +1584,8 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
                 {},
                 True,
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        'type of argument "value" must be one of (ExactNumber, float, '
-                        "int, str, Fraction, Expr); got dict instead"
-                    ),
+                    TypeCheckError,
+                    match=re.escape('"value"'),
                 ),
             ),
             (

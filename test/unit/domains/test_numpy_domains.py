@@ -10,6 +10,7 @@ from typing import Any, Callable, ContextManager, Dict, Optional, Type
 
 import numpy as np
 import pytest
+from typeguard import TypeCheckError
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.collections import ListDomain
@@ -51,18 +52,14 @@ class TestNumpyIntegerDomain(DomainTests):
             (
                 {"size": 32.0},
                 pytest.raises(
-                    TypeError,
-                    match=f"type of size must be {get_fullname(int)}; got "
-                    f"{get_fullname(float)} instead",
+                    TypeCheckError,
                 ),
                 None,
             ),
             (
                 {"size": "32"},
                 pytest.raises(
-                    TypeError,
-                    match=f"type of size must be {get_fullname(int)}; got "
-                    f"{get_fullname(str)} instead",
+                    TypeCheckError,
                 ),
                 None,
             ),
@@ -294,45 +291,35 @@ class TestNumpyFloatDomain(DomainTests):
             (
                 {"allow_inf": True, "allow_nan": None},
                 pytest.raises(
-                    TypeError,
-                    match=f"type of allow_nan must be {get_fullname(bool)}; got "
-                    f"{get_fullname(None)} instead",
+                    TypeCheckError,
                 ),
                 None,
             ),
             (
                 {"allow_inf": "False", "allow_nan": True},
                 pytest.raises(
-                    TypeError,
-                    match=f"type of allow_inf must be {get_fullname(bool)}; got "
-                    f"{get_fullname(str)} instead",
+                    TypeCheckError,
                 ),
                 None,
             ),
             (
                 {"allow_inf": True, "allow_nan": 0.1},
                 pytest.raises(
-                    TypeError,
-                    match=f"type of allow_nan must be {get_fullname(bool)}; got "
-                    f"{get_fullname(float)} instead",
+                    TypeCheckError,
                 ),
                 None,
             ),
             (
                 {"allow_inf": True, "allow_nan": True, "size": "tom"},
                 pytest.raises(
-                    TypeError,
-                    match=f"type of size must be {get_fullname(int)}; got "
-                    f"{get_fullname(str)} instead",
+                    TypeCheckError,
                 ),
                 None,
             ),
             (
                 {"allow_inf": True, "allow_nan": True, "size": np.int64(32)},
                 pytest.raises(
-                    TypeError,
-                    match=f"type of size must be {get_fullname(int)}; got "
-                    f"{get_fullname(np.int64)} instead",
+                    TypeCheckError,
                 ),
                 None,
             ),
@@ -659,9 +646,7 @@ class TestNumpyStringDomain(DomainTests):
             (
                 {"allow_null": 23},
                 pytest.raises(
-                    TypeError,
-                    match=f"type of allow_null must be {get_fullname(bool)}; got "
-                    f"{get_fullname(int)} instead",
+                    TypeCheckError,
                 ),
                 None,
             )

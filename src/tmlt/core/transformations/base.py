@@ -116,7 +116,7 @@ class Transformation(ABC):
     def __or__(self, other: Any) -> Union[Measurement, Transformation]:
         """Return this transformation chained with another component."""
         # pylint: disable=import-outside-toplevel
-        check_type("other", other, Union[Measurement, Transformation])
+        check_type(other, Union[Measurement, Transformation])
         if isinstance(other, Measurement):
             from tmlt.core.measurements.chaining import ChainTM
 

@@ -40,7 +40,7 @@ class NumpyIntegerDomain(NumpyDomain):
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
-        check_type("size", self.size, int)
+        check_type(self.size, int)
         if self.size not in [32, 64]:
             raise ValueError(f"size must be 32 or 64, not {self.size}")
 
@@ -65,9 +65,9 @@ class NumpyFloatDomain(NumpyDomain):
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
-        check_type("allow_nan", self.allow_nan, bool)
-        check_type("allow_inf", self.allow_inf, bool)
-        check_type("size", self.size, int)
+        check_type(self.allow_nan, bool)
+        check_type(self.allow_inf, bool)
+        check_type(self.size, int)
         if self.size not in [32, 64]:
             raise ValueError(f"size must be 32 or 64, not {self.size}")
 
@@ -101,7 +101,7 @@ class NumpyStringDomain(NumpyDomain):
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
-        check_type("allow_null", self.allow_null, bool)
+        check_type(self.allow_null, bool)
 
     def validate(self, value: Any) -> None:
         """Raises error if value is not in domain."""

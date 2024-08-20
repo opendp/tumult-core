@@ -11,6 +11,7 @@ from typing import Any, Callable, ContextManager, Dict, Optional, Type
 import numpy as np
 import pandas as pd
 import pytest
+from typeguard import TypeCheckError
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.collections import ListDomain
@@ -49,11 +50,11 @@ class TestPandasSeriesDomain(DomainTests):
             ({"element_domain": NumpyIntegerDomain()}, does_not_raise(), None),
             (
                 {"element_domain": ListDomain(NumpyFloatDomain())},
-                pytest.raises(TypeError),
+                pytest.raises(TypeCheckError),
                 None,
             ),
             ({}, pytest.raises(TypeError), None),
-            ({"element_domain": "not a domain"}, pytest.raises(TypeError), None),
+            ({"element_domain": "not a domain"}, pytest.raises(TypeCheckError), None),
         ],
     )
     def test_construct_component(
@@ -336,7 +337,7 @@ class TestPandasDataFrameDomain(DomainTests):
     @pytest.mark.parametrize(
         "domain_args, expectation, exception_properties",
         [
-            ({"schema": invalid_schema}, pytest.raises(TypeError), None)
+            ({"schema": invalid_schema}, pytest.raises(TypeCheckError), None)
             for invalid_schema in [
                 {"A": "not a domain"},
                 {"A": NumpyIntegerDomain(), "B": "not a domain"},

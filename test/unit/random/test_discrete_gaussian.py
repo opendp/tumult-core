@@ -8,6 +8,7 @@ from typing import Union
 from unittest import TestCase
 
 from parameterized import parameterized
+from typeguard import TypeCheckError
 
 from tmlt.core.random.discrete_gaussian import sample_dgauss
 
@@ -31,5 +32,5 @@ class TestDiscreteGaussian(TestCase):
         class BadRNG:
             """Does not support randrange."""
 
-        with self.assertRaisesRegex(TypeError, 'type of argument "rng" must be'):
+        with self.assertRaisesRegex(TypeCheckError, '"rng"'):
             sample_dgauss(sigma_squared=1, rng=BadRNG())  # type: ignore

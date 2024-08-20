@@ -4,7 +4,6 @@
 # Copyright Tumult Labs 2024
 
 import re
-from collections.abc import Mapping
 from contextlib import nullcontext as does_not_raise
 from dataclasses import dataclass
 from itertools import combinations_with_replacement
@@ -14,6 +13,7 @@ from typing import Any, Callable, ContextManager, Dict, Optional, Type
 import numpy as np
 import pytest
 from pyspark.sql.types import StringType
+from typeguard import TypeCheckError
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.collections import DictDomain, ListDomain
@@ -40,9 +40,7 @@ class TestListDomain(DomainTests):
             (
                 {"element_domain": invalid_type},
                 pytest.raises(
-                    TypeError,
-                    match=f"type of element_domain must be {get_fullname(Domain)}; "
-                    f"got {get_fullname(invalid_type)} instead",
+                    TypeCheckError,
                 ),
                 None,
             )
@@ -57,11 +55,7 @@ class TestListDomain(DomainTests):
             (
                 {"element_domain": NumpyFloatDomain(), "length": 1.5},
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        f"type of length must be one of ({get_fullname(int)}, "
-                        f"{get_fullname(None)}); got {get_fullname(float)} instead"
-                    ),
+                    TypeCheckError,
                 ),
                 None,
             ),
@@ -73,11 +67,7 @@ class TestListDomain(DomainTests):
             (
                 {"element_domain": NumpyIntegerDomain(), "length": np.int64(5)},
                 pytest.raises(
-                    TypeError,
-                    match=re.escape(
-                        f"type of length must be one of ({get_fullname(int)}, "
-                        f"{get_fullname(None)}); got {get_fullname(np.int64)} instead"
-                    ),
+                    TypeCheckError,
                 ),
                 None,
             ),
@@ -298,46 +288,30 @@ class TestDictDomain(DomainTests):
             (
                 {"key_to_domain": []},
                 pytest.raises(
-                    TypeError,
-                    match='type of argument "key_to_domain" must be '
-                    f"{get_fullname(Mapping)}; got {get_fullname(list)} instead",
+                    TypeCheckError,
                 ),
                 None,
             ),
             (
                 {"key_to_domain": (1, 2, 3)},
                 pytest.raises(
-                    TypeError,
-                    match='type of argument "key_to_domain" must be '
-                    f"{get_fullname(Mapping)}; got {get_fullname(tuple)} instead",
+                    TypeCheckError,
                 ),
                 None,
             ),
             (
                 {"key_to_domain": "not a domain"},
-                pytest.raises(
-                    TypeError,
-                    match='type of argument "key_to_domain" must be '
-                    f"{get_fullname(Mapping)}; got {get_fullname(str)} instead",
-                ),
+                pytest.raises(TypeCheckError, match='"key_to_domain"'),
                 None,
             ),
             (
                 {"key_to_domain": {"A": np.int64(1)}},
-                pytest.raises(
-                    TypeError,
-                    match=f"Expected domain for key 'A' to be a {get_fullname(Domain)};"
-                    f" got {get_fullname(np.int64)} instead",
-                ),
+                pytest.raises(TypeCheckError, match="'A'"),
                 None,
             ),
             (
                 {"key_to_domain": {"A": 1}},
-                pytest.raises(
-                    TypeError,
-                    match=f"Expected domain for key 'A' to be a {get_fullname(Domain)};"
-                    f" got {get_fullname(int)} instead",
-                ),
+                pytest.raises(TypeCheckError, match="'A'"),
                 None,
             ),
             ({"key_to_domain": {1: NumpyIntegerDomain()}}, does_not_raise(), None),
