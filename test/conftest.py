@@ -21,28 +21,6 @@ from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber
 
 
-def params(d):
-    """Allows parameterizing tests with dictionaries.
-
-    Examples:
-    @params(
-        {
-            "test_case_1": {
-                "arg1": value1,
-                "arg2": value2,
-            },
-        }
-    )
-    test_func(...)
-    """
-    argnames = sorted({k for v in d.values() for k in v.keys()})
-    return pytest.mark.parametrize(
-        argnames=argnames,
-        argvalues=[[v.get(k) for k in argnames] for v in d.values()],
-        ids=d.keys(),
-    )
-
-
 def quiet_py4j():
     """Remove noise in the logs irrelevant to testing."""
     print("Calling PySparkTest:suppress_py4j_logging")
