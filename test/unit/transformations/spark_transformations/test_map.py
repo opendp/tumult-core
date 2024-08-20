@@ -7,31 +7,11 @@ import math
 from typing import Any, Callable, Dict, List, Optional, Type, Union, cast
 
 import pandas as pd
+import pytest
 import sympy as sp
 from parameterized import parameterized
-from pyspark.sql import DataFrame, Row
+from pyspark.sql import Row
 from typeguard import TypeCheckError
-
-try:
-    from pyspark.testing import (  # pylint: disable=ungrouped-imports
-        assertDataFrameEqual,
-    )
-except ImportError:
-    from ....conftest import assert_frame_equal_with_sort
-
-    # assertDataFrameEqual is only available in PySpark 3.5+, but it correctly
-    # compares dataframes for equality without having to pass everything through
-    # Pandas (and thus lose appropriate checking of NaNs/nulls). This should
-    # allow the tests to work on previous versions of PySpark as well, even if
-    # it doesn't catch every NaN/null-related corner case.
-    def assertDataFrameEqual(actual: DataFrame, expected: DataFrame):  # type: ignore
-        """Assert that two Spark DataFrames are equal.
-
-        This version may have subtly incorrect behavior around nulls, but will
-        work on all supported PySpark versions, not just 3.5+.
-        """
-        assert_frame_equal_with_sort(actual.toPandas(), expected.toPandas())
-
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.collections import ListDomain
@@ -68,6 +48,7 @@ from tmlt.core.transformations.spark_transformations.map import (
 )
 from tmlt.core.utils.testing import (
     TestComponent,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -99,12 +80,12 @@ class TestRowToRowsTransformer(TestComponent):
         transformer = RowToRowsTransformation(
             input_domain, ListDomain(input_domain), lambda x: [x], augment
         )
-        self.assertEqual(transformer.input_domain, input_domain)
-        self.assertEqual(transformer.input_metric, NullMetric())
-        self.assertEqual(transformer.output_domain, ListDomain(input_domain))
-        self.assertEqual(transformer.output_metric, NullMetric())
-        self.assertEqual(transformer.trusted_f(Row(x=5)), [Row(x=5)])
-        self.assertEqual(transformer.augment, augment)
+        assert transformer.input_domain == input_domain
+        assert transformer.input_metric == NullMetric()
+        assert transformer.output_domain == ListDomain(input_domain)
+        assert transformer.output_metric == NullMetric()
+        assert transformer.trusted_f(Row(x=5)) == [Row(x=5)]
+        assert transformer.augment == augment
 
     @parameterized.expand(
         [
@@ -151,11 +132,10 @@ class TestRowToRowsTransformer(TestComponent):
             SparkRowDomain(self.schema_a), output_domain, f, augment
         )
 
-        self.assertEqual(transformer.input_domain, SparkRowDomain(self.schema_a))
-        self.assertEqual(transformer.output_domain, output_domain)
+        assert transformer.input_domain == SparkRowDomain(self.schema_a)
+        assert transformer.output_domain == output_domain
         row = Row(A=4.2, B="X")
-        result_rows = transformer(row)
-        self.assertEqual(result_rows, expected)
+        assert transformer(row) == expected
 
 
 class TestRowsToRowsTransformation(TestComponent):
@@ -176,11 +156,11 @@ class TestRowsToRowsTransformation(TestComponent):
         """RowToRowsTransformation's properties have the expected values."""
         input_domain = ListDomain(SparkRowDomain(self.schema_a))
         transformer = RowsToRowsTransformation(input_domain, input_domain, lambda x: x)
-        self.assertEqual(transformer.input_domain, input_domain)
-        self.assertEqual(transformer.input_metric, NullMetric())
-        self.assertEqual(transformer.output_domain, input_domain)
-        self.assertEqual(transformer.output_metric, NullMetric())
-        self.assertEqual(transformer.trusted_f([Row(x=5)]), [Row(x=5)])
+        assert transformer.input_domain == input_domain
+        assert transformer.input_metric == NullMetric()
+        assert transformer.output_domain == input_domain
+        assert transformer.output_metric == NullMetric()
+        assert transformer.trusted_f([Row(x=5)]) == [Row(x=5)]
 
     @parameterized.expand(
         [
@@ -240,13 +220,9 @@ class TestRowsToRowsTransformation(TestComponent):
         transformer = RowsToRowsTransformation(
             ListDomain(SparkRowDomain(self.schema_a)), output_domain, f
         )
-
-        self.assertEqual(
-            transformer.input_domain, ListDomain(SparkRowDomain(self.schema_a))
-        )
-        self.assertEqual(transformer.output_domain, output_domain)
-        output = transformer(input_rows)
-        self.assertEqual(output, expected_rows)
+        assert transformer.input_domain == ListDomain(SparkRowDomain(self.schema_a))
+        assert transformer.output_domain == output_domain
+        assert transformer(input_rows) == expected_rows
 
 
 class TestMap(TestComponent):
@@ -278,15 +254,11 @@ class TestMap(TestComponent):
         transformation = Map(
             metric=SymmetricDifference(), row_transformer=row_transformer
         )
-        self.assertEqual(
-            transformation.input_domain, SparkDataFrameDomain(self.schema_a)
-        )
-        self.assertEqual(transformation.input_metric, SymmetricDifference())
-        self.assertEqual(
-            transformation.output_domain, SparkDataFrameDomain(self.schema_a)
-        )
-        self.assertEqual(transformation.output_metric, SymmetricDifference())
-        self.assertEqual(transformation.row_transformer, row_transformer)
+        assert transformation.input_domain == SparkDataFrameDomain(self.schema_a)
+        assert transformation.input_metric == SymmetricDifference()
+        assert transformation.output_domain == SparkDataFrameDomain(self.schema_a)
+        assert transformation.output_metric == SymmetricDifference()
+        assert transformation.row_transformer == row_transformer
 
     def test_map(self):
         """Tests that map transformation works correctly."""
@@ -300,11 +272,11 @@ class TestMap(TestComponent):
                 augment=False,
             ),
         )
-        self.assertEqual(times_two_transformation.stability_function(1), 1)
-        self.assertTrue(times_two_transformation.stability_relation(1, 1))
-        actual_df = times_two_transformation(self.df_a).toPandas()
+        assert times_two_transformation.stability_function(1) == 1
+        assert times_two_transformation.stability_relation(1, 1)
+        actual_df = times_two_transformation(self.df_a)
         expected_df = pd.DataFrame([[2.4, "X"]], columns=["A", "B"])
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        assert_dataframe_equal(actual_df, expected_df)
 
     def test_map_empty(self):
         """Tests that map transformation works correctly."""
@@ -321,9 +293,9 @@ class TestMap(TestComponent):
         empty_df = pd.DataFrame([], columns=["A", "B"])
         actual_df = times_two_transformation(
             self.spark.createDataFrame(empty_df, self.df_a.schema)
-        ).toPandas()
+        )
         expected_df = empty_df
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand(
         [
@@ -345,11 +317,10 @@ class TestMap(TestComponent):
                 augment=True,
             ),
         )
-        self.assertTrue(id_map.input_metric == metric == id_map.output_metric)
-        self.assertTrue(id_map.stability_function(1), 1)
-        self.assertTrue(id_map.stability_relation(1, 1))
-        actual = id_map(self.df_a).toPandas()
-        self.assert_frame_equal_with_sort(actual, self.df_a.toPandas())
+        assert id_map.input_metric == metric == id_map.output_metric
+        assert id_map.stability_function(1) == 1
+        assert id_map.stability_relation(1, 1)
+        assert_dataframe_equal(id_map(self.df_a), self.df_a)
 
     @parameterized.expand(
         [
@@ -381,7 +352,7 @@ class TestMap(TestComponent):
         error_msg: str,
     ):
         """Tests that Map raises appropriate error with invalid parameters."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with pytest.raises(ValueError, match=error_msg):
             Map(
                 metric=IfGroupedBy(groupby_column, inner_metric),
                 row_transformer=RowToRowTransformation(
@@ -423,16 +394,12 @@ class TestFlatMap(TestComponent):
             row_transformer=row_transformer,
             max_num_rows=2,
         )
-        self.assertEqual(
-            transformation.input_domain, SparkDataFrameDomain(self.schema_a)
-        )
-        self.assertEqual(transformation.input_metric, SymmetricDifference())
-        self.assertEqual(
-            transformation.output_domain, SparkDataFrameDomain(self.schema_a)
-        )
-        self.assertEqual(transformation.output_metric, SymmetricDifference())
-        self.assertEqual(transformation.row_transformer, row_transformer)
-        self.assertEqual(transformation.max_num_rows, 2)
+        assert transformation.input_domain == SparkDataFrameDomain(self.schema_a)
+        assert transformation.input_metric == SymmetricDifference()
+        assert transformation.output_domain == SparkDataFrameDomain(self.schema_a)
+        assert transformation.output_metric == SymmetricDifference()
+        assert transformation.row_transformer == row_transformer
+        assert transformation.max_num_rows == 2
 
     @parameterized.expand(
         [
@@ -449,10 +416,10 @@ class TestFlatMap(TestComponent):
             row_transformer=self.duplicate_transformer,
             max_num_rows=max_num_rows,
         )
-        self.assertEqual(flat_map_transformation.stability_function(1), max_num_rows)
-        self.assertTrue(flat_map_transformation.stability_relation(1, max_num_rows))
-        actual_df = flat_map_transformation(self.df_a).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        assert flat_map_transformation.stability_function(1) == max_num_rows
+        assert flat_map_transformation.stability_relation(1, max_num_rows)
+        actual_df = flat_map_transformation(self.df_a)
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand(
         [
@@ -490,16 +457,15 @@ class TestFlatMap(TestComponent):
         stability: int,
     ):
         """Tests that flat_map transformation works correctly on IfGroupedBy metrics."""
-
         flat_map_transformation = FlatMap(
             metric=metric,
             row_transformer=self.augmenting_duplicate_transformer,
             max_num_rows=max_num_rows,
         )
-        self.assertEqual(flat_map_transformation.stability_function(1), stability)
-        self.assertTrue(flat_map_transformation.stability_relation(1, stability))
-        actual_df = flat_map_transformation(self.df_a).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        assert flat_map_transformation.stability_function(1) == stability
+        assert flat_map_transformation.stability_relation(1, stability)
+        actual_df = flat_map_transformation(self.df_a)
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand(
         [
@@ -522,7 +488,7 @@ class TestFlatMap(TestComponent):
             - output_domain is a *ListDomain*
             - output_domain.element_domain is a *SparkRowDomain*
         """
-        with self.assertRaises((TypeError, TypeCheckError, ValueError)):
+        with pytest.raises((TypeError, TypeCheckError, ValueError)):
             FlatMap(
                 metric=SymmetricDifference(),
                 row_transformer=RowToRowsTransformation(
@@ -568,12 +534,12 @@ class TestFlatMap(TestComponent):
             ),
             max_num_rows=max_num_rows,
         )
-        self.assertTrue(split_map.input_metric == metric == split_map.output_metric)
-        self.assertTrue(split_map.stability_function(1), d_out)
-        self.assertTrue(split_map.stability_relation(1, d_out))
-        actual = split_map(self.df_a).toPandas()
+        assert split_map.input_metric == metric == split_map.output_metric
+        assert split_map.stability_function(1) == d_out
+        assert split_map.stability_relation(1, d_out)
+        actual = split_map(self.df_a)
         expected = pd.DataFrame({"A": [1.2, 1.2], "B": ["X", "X"], "C": [1, 2]})
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(actual, expected)
 
     @parameterized.expand(
         [
@@ -605,7 +571,7 @@ class TestFlatMap(TestComponent):
         inner_metric: Union[SymmetricDifference, HammingDistance],
     ):
         """Tests that Map raises appropriate error with invalid parameters."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with pytest.raises(ValueError, match=error_msg):
             FlatMap(
                 metric=IfGroupedBy(groupby_column, SumOf(inner_metric)),
                 row_transformer=RowToRowsTransformation(
@@ -636,8 +602,8 @@ class TestFlatMap(TestComponent):
             ),
             max_num_rows=None,
         )
-        self.assertTrue(flat_map_transformation.stability_function(1), float("inf"))
-        self.assertTrue(flat_map_transformation.stability_relation(1, float("inf")))
+        assert flat_map_transformation.stability_function(1) == float("inf")
+        assert flat_map_transformation.stability_relation(1, float("inf"))
 
 
 class TestGroupingFlatMap(TestComponent):
@@ -684,19 +650,14 @@ class TestGroupingFlatMap(TestComponent):
             row_transformer=row_transformer,
             max_num_rows=2,
         )
-        self.assertEqual(
-            transformation.input_domain, SparkDataFrameDomain(self.schema_a)
+        assert transformation.input_domain == SparkDataFrameDomain(self.schema_a)
+        assert transformation.input_metric == SymmetricDifference()
+        assert transformation.output_domain == SparkDataFrameDomain(output_schema)
+        assert transformation.output_metric == IfGroupedBy(
+            "G", RootSumOfSquared(SymmetricDifference())
         )
-        self.assertEqual(transformation.input_metric, SymmetricDifference())
-        self.assertEqual(
-            transformation.output_domain, SparkDataFrameDomain(output_schema)
-        )
-        self.assertEqual(
-            transformation.output_metric,
-            IfGroupedBy("G", RootSumOfSquared(SymmetricDifference())),
-        )
-        self.assertEqual(transformation.row_transformer, row_transformer)
-        self.assertEqual(transformation.max_num_rows, 2)
+        assert transformation.row_transformer == row_transformer
+        assert transformation.max_num_rows == 2
 
     @parameterized.expand(
         [
@@ -748,7 +709,7 @@ class TestGroupingFlatMap(TestComponent):
             ),
             max_num_rows=max_num_rows,
         )
-        self.assert_frame_equal_with_sort(transformation(df).toPandas(), expected_df)
+        assert_dataframe_equal(transformation(df), expected_df)
 
     @parameterized.expand([(1,), (2,), (4,), (9,)])
     def test_stability_function_and_relation(self, max_num_rows: int):
@@ -776,8 +737,8 @@ class TestGroupingFlatMap(TestComponent):
             ),
             max_num_rows=max_num_rows,
         )
-        self.assertEqual(transformation.stability_function(1), sp.sqrt(max_num_rows))
-        self.assertTrue(transformation.stability_relation(1, sp.sqrt(max_num_rows)))
+        assert transformation.stability_function(1) == sp.sqrt(max_num_rows)
+        assert transformation.stability_relation(1, sp.sqrt(max_num_rows))
 
     @parameterized.expand(
         [
@@ -831,7 +792,7 @@ class TestGroupingFlatMap(TestComponent):
         self, transformer: RowToRowsTransformation, error_msg: str
     ):
         """Tests that invalid (nonaugmenting, no extra, more than 1 extra)."""
-        with self.assertRaisesRegex(ValueError, error_msg):
+        with pytest.raises(ValueError, match=error_msg):
             GroupingFlatMap(
                 output_metric=RootSumOfSquared(SymmetricDifference()),
                 row_transformer=transformer,
@@ -882,22 +843,13 @@ class TestFlatMapByKey(TestComponent):
             metric=IfGroupedBy("id", SymmetricDifference()),
             row_transformer=self.sum_transformer,
         )
-        self.assertEqual(
-            transformation.input_domain, SparkDataFrameDomain(self.id_schema)
+        assert transformation.input_domain == SparkDataFrameDomain(self.id_schema)
+        assert transformation.input_metric == IfGroupedBy("id", SymmetricDifference())
+        assert transformation.output_domain == SparkDataFrameDomain(
+            {"id": self.id_schema["id"], **self.sum_transformer_output_schema}
         )
-        self.assertEqual(
-            transformation.input_metric, IfGroupedBy("id", SymmetricDifference())
-        )
-        self.assertEqual(
-            transformation.output_domain,
-            SparkDataFrameDomain(
-                {"id": self.id_schema["id"], **self.sum_transformer_output_schema}
-            ),
-        )
-        self.assertEqual(
-            transformation.output_metric, IfGroupedBy("id", SymmetricDifference())
-        )
-        self.assertEqual(transformation.row_transformer, self.sum_transformer)
+        assert transformation.output_metric == IfGroupedBy("id", SymmetricDifference())
+        assert transformation.row_transformer == self.sum_transformer
 
     @parameterized.expand(
         [
@@ -922,21 +874,21 @@ class TestFlatMapByKey(TestComponent):
             metric=IfGroupedBy("id", SymmetricDifference()),
             row_transformer=self.sum_transformer,
         )
-        self.assertEqual(transformation.stability_function(1), 1)
-        self.assertTrue(transformation.stability_relation(1, 1))
+        assert transformation.stability_function(1) == 1
+        assert transformation.stability_relation(1, 1)
         actual_df = transformation(
             self.spark.createDataFrame(
                 input_df, schema=SparkDataFrameDomain(self.id_schema).spark_schema
             )
-        ).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        )
+        assert_dataframe_equal(actual_df, expected_df)
 
     def test_null_nan_inf(self):
         """Transformation handles null/NaN/inf inputs and output correctly."""
 
         # Do not use Pandas in this test! Anything passing through a Pandas
         # dataframe could silently modify the NaNs/nulls and invalidate the
-        # test. Even our usual test for dataframe equality is suspect.
+        # test.
 
         def f(rows):
             ret: List[Optional[float]] = []
@@ -1000,7 +952,7 @@ class TestFlatMapByKey(TestComponent):
             ],
             ["id", "v"],
         )
-        assertDataFrameEqual(actual_df, expected_df)
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand(
         [
@@ -1032,14 +984,14 @@ class TestFlatMapByKey(TestComponent):
             metric=IfGroupedBy("id", SymmetricDifference()),
             row_transformer=transformer,
         )
-        self.assertEqual(transformation.stability_function(1), 1)
-        self.assertTrue(transformation.stability_relation(1, 1))
+        assert transformation.stability_function(1) == 1
+        assert transformation.stability_relation(1, 1)
         actual_df = transformation(
             self.spark.createDataFrame(
                 input_df, schema=SparkDataFrameDomain(self.id_schema).spark_schema
             )
-        ).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        )
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand(
         [
@@ -1086,7 +1038,7 @@ class TestFlatMapByKey(TestComponent):
             - input_domain is a ListDomain of SparkRowDomain
             - output_domain is a ListDomain of SparkRowDomain
         """
-        with self.assertRaises(exc_type):
+        with pytest.raises(exc_type):
             FlatMapByKey(
                 metric=IfGroupedBy("id", SymmetricDifference()),
                 row_transformer=RowsToRowsTransformation(
@@ -1104,7 +1056,7 @@ class TestFlatMapByKey(TestComponent):
     )
     def test_metrics(self, metric: Metric, exc_type: Type[Exception]):
         """Tests that the constructor checks metrics correctly."""
-        with self.assertRaises(exc_type):
+        with pytest.raises(exc_type):
             FlatMapByKey(
                 metric=metric,  # type: ignore
                 row_transformer=self.sum_transformer,
