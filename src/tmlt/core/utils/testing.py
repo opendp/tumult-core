@@ -575,7 +575,10 @@ class Case:
         return self
 
 
-def parametrize(*cases: Case, **kwargs: Any) -> Callable:
+_NestedCases = Iterable[Union[Case, "_NestedCases"]]
+
+
+def parametrize(*cases: Union[Case, _NestedCases], **kwargs: Any) -> Callable:
     r"""Parametrize a test using :class:`~tmlt.core.utils.testing.Case`.
 
     Provides a wrapper around ``pytest.mark.parametrize`` to allow passing a
@@ -610,16 +613,29 @@ def parametrize(*cases: Case, **kwargs: Any) -> Callable:
         cases: A collection of test cases.
         kwargs: Keyword arguments to be passed through to ``pytest.mark.parametrize``.
     """
+
+    def flatten(l: _NestedCases) -> List[Case]:
+        ret = []
+        for v in l:
+            if isinstance(v, Case):
+                ret.append(v)
+            else:
+                ret.extend(flatten(v))
+        return ret
+
+    flat_cases = flatten(cases)
+
     if "argnames" in kwargs or "argvalues" in kwargs or "ids" in kwargs:
         raise KeyError(
             "argnames, argvalues, and ids may not be used as keyword arguments"
         )
-    arg_names = sorted({a for c in cases for a in c.args})
+
+    arg_names = sorted({a for c in flat_cases for a in c.args})
     return pytest.mark.parametrize(
         argnames=arg_names,
         argvalues=[
             pytest.param(*(c.args.get(a) for a in arg_names), id=c.id, **c.kwargs)
-            for c in cases
+            for c in flat_cases
         ],
         **kwargs,
     )
