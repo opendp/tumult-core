@@ -5,6 +5,7 @@ Changelog
 
 Unreleased
 ----------
+This is a maintenance release that does not include user-visible changes.
 
 .. _v0.16.2:
 
