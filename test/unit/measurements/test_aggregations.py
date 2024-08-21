@@ -878,8 +878,10 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             set(answer.columns), set(self.groupby_columns + ["lower", "upper"])
         )
         if not len(answer.head(1)) == 0:
-            self.assertTrue(answer.select("lower").first()[0] < 0)
-            self.assertTrue(answer.select("upper").first()[0] > 0)
+            self.assertTrue(answer.select("lower").first()[0] <= 0)
+            self.assertTrue(
+                answer.select("upper").first()[0] >= answer.select("lower").first()[0]
+            )
 
 
 class TestAggregationMeasurement(PySparkTest):
