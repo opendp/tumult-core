@@ -3,8 +3,10 @@
 Changelog
 =========
 
-Unreleased
-----------
+.. _v0.16.3:
+
+0.16.3 - 2024-08-22
+-------------------
 This is a maintenance release that does not include user-visible changes.
 
 .. _v0.16.2:
