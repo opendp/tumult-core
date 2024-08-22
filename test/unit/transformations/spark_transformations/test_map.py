@@ -117,7 +117,7 @@ class TestRowToRowsTransformer(TestComponent):
                         {
                             "A": SparkFloatColumnDescriptor(),
                             "B": SparkStringColumnDescriptor(),
-                            "A2": SparkStringColumnDescriptor(),
+                            "A2": SparkFloatColumnDescriptor(),
                         }
                     )
                 ),

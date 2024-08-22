@@ -21,6 +21,7 @@ from tmlt.core.domains.collections import ListDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain, SparkRowDomain
 from tmlt.core.exceptions import (
     DomainMismatchError,
+    OutOfDomainError,
     UnsupportedDomainError,
     UnsupportedMetricError,
 )
@@ -35,6 +36,28 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+
+
+def _assert_row_matches_domain(row: Row, domain: SparkRowDomain) -> None:
+    # Row.asDict() doesn't work on empty rows
+    row_fields = set(row.asDict().keys()) if len(row) > 0 else set()
+    domain_fields = set(domain.schema.keys())
+    if row_fields != domain_fields:
+        raise OutOfDomainError(
+            domain,
+            row,
+            f"Transformation output row has wrong fields, got {sorted(row_fields)} "
+            f"but expected {sorted(domain_fields)}.",
+        )
+
+    for f in row_fields:
+        if not domain.schema[f].valid_py_value(row[f]):
+            raise OutOfDomainError(
+                domain,
+                row,
+                f"Invalid value in column '{f}' of transformation output, "
+                f"{row[f]} is not a valid value for {domain.schema[f]}.",
+            )
 
 
 class RowToRowTransformation(Transformation):
@@ -209,8 +232,13 @@ class RowToRowTransformation(Transformation):
         if self._augment:
             augmented_row_dict = {**row.asDict(), **mapped_row_dict}
             augmented_row_dict.update(row.asDict())
-            return Row(**augmented_row_dict)
-        return Row(**mapped_row_dict)
+            ret = Row(**augmented_row_dict)
+        else:
+            ret = Row(**mapped_row_dict)
+
+        assert isinstance(self.output_domain, SparkRowDomain)
+        _assert_row_matches_domain(ret, self.output_domain)
+        return ret
 
 
 class RowToRowsTransformation(Transformation):
@@ -405,8 +433,15 @@ class RowToRowsTransformation(Transformation):
                 augmented_row_dict = {**row.asDict(), **r_dict}
                 augmented_row_dict.update(row.asDict())
                 augmented_rows.append(Row(**augmented_row_dict))
-            return augmented_rows
-        return mapped_rows
+            ret = augmented_rows
+        else:
+            ret = mapped_rows
+
+        assert isinstance(self.output_domain, ListDomain)
+        assert isinstance(self.output_domain.element_domain, SparkRowDomain)
+        for r in ret:
+            _assert_row_matches_domain(r, self.output_domain.element_domain)
+        return ret
 
 
 class RowsToRowsTransformation(Transformation):
@@ -530,6 +565,11 @@ class RowsToRowsTransformation(Transformation):
         mapped = self._trusted_f(rows)
         assert all(isinstance(r, (Row, dict)) for r in mapped)
         mapped_rows = [r if isinstance(r, Row) else Row(**r) for r in mapped]
+
+        assert isinstance(self.output_domain, ListDomain)
+        assert isinstance(self.output_domain.element_domain, SparkRowDomain)
+        for r in mapped_rows:
+            _assert_row_matches_domain(r, self.output_domain.element_domain)
         return mapped_rows
 
 

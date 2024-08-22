@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+Fixed
+~~~~~
+- :class:`~.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` now all check that their outputs match their output domains, raising an exception if they do not.
+  This should not impact correct Tumult Core programs, but may catch a few incorrect ones that were previously missed, and will improve the error messages produced in these cases.
+
 .. _v0.16.5:
 
 0.16.5 - 2024-08-29
