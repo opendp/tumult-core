@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+Fixed
+~~~~~
+- Fixed an incorrect type declaration that caused typeguard errors.
+
 .. _v0.16.3:
 
 0.16.3 - 2024-08-22

@@ -10,7 +10,7 @@ derived transformations (such as :func:`create_copy_and_transform_value`) suppor
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-from typing import Any, Callable, Dict, List, Mapping, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Mapping, Union, cast
 
 from typeguard import typechecked
 
@@ -142,7 +142,7 @@ class AugmentDictTransformation(Transformation):
                 ),
             )
 
-        d: Dict[Union[str, Tuple], Domain] = {
+        d: Dict[Any, Domain] = {
             **transformation.input_domain.key_to_domain,
             **transformation.output_domain.key_to_domain,
         }
@@ -704,17 +704,21 @@ def create_transform_value(
     assert transform_value.input_metric == input_metric
     assert transform_value.output_domain == DictDomain(
         {
-            other_key: input_domain[other_key]
-            if other_key != key
-            else transformation.output_domain
+            other_key: (
+                input_domain[other_key]
+                if other_key != key
+                else transformation.output_domain
+            )
             for other_key in input_domain.key_to_domain
         }
     )
     assert transform_value.output_metric == DictMetric(
         {
-            other_key: input_metric[other_key]
-            if other_key != key
-            else transformation.output_metric
+            other_key: (
+                input_metric[other_key]
+                if other_key != key
+                else transformation.output_metric
+            )
             for other_key in input_metric.key_to_metric
         }
     )
