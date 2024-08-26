@@ -42,7 +42,7 @@ Spark's null-safe equality operator :code:`<=>` allows safely comparing potentia
         df1 = dataframe.filter("D = E")
         df2 = dataframe.filter(col(D) == col(E))
 
-    The null-safe equality operator :code:`<=>` corresponds to :code:`eqNullSafe` `method <https://spark.apache.org/docs/3.0.1/api/python/pyspark.sql.html#pyspark.sql.Column.eqNullSafe>`_ . Concretely, :code:`df3` and :code:`df4` are equivalent below:
+    The null-safe equality operator :code:`<=>` corresponds to :code:`eqNullSafe` `method <https://archive.apache.org/dist/spark/docs/3.1.1/api/python/reference/api/pyspark.sql.Column.eqNullSafe.html#pyspark.sql.Column.eqNullSafe>`_ . Concretely, :code:`df3` and :code:`df4` are equivalent below:
 
     .. code-block::
 
