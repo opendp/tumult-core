@@ -5,6 +5,7 @@ Changelog
 
 Unreleased
 ----------
+This release fixes a bug in 0.16.3.
 
 Fixed
 ~~~~~
@@ -14,6 +15,8 @@ Fixed
 
 0.16.3 - 2024-08-22
 -------------------
+0.16.3 was yanked. The changes have been incorporated into 0.16.4.
+
 This is a maintenance release that does not include user-visible changes.
 
 .. _v0.16.2:
