@@ -473,7 +473,6 @@ class PySparkTest(unittest.TestCase):
         print("Tearing down spark session")
         shutil.rmtree("/tmp/hive_tables", ignore_errors=True)
         cleanup()
-        cls._spark.stop()
 
     @classmethod
     def assert_frame_equal_with_sort(
