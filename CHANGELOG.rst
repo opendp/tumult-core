@@ -5,6 +5,11 @@ Changelog
 
 Unreleased
 ----------
+
+.. _v0.16.4:
+
+0.16.4 - 2024-08-27
+-------------------
 This release fixes a bug in 0.16.3.
 
 Fixed
