@@ -129,6 +129,42 @@ def assert_dataframe_equal(
     _assert_pd_dataframe_equal_with_sort(actual, expected)
 
 
+def pandas_to_spark_dataframe(
+    spark: SparkSession, df: pd.DataFrame, domain: Domain
+) -> DataFrame:
+    r"""Convert a Pandas dataframe into a Spark dataframe in a more general way.
+
+    This function avoids some edge cases that
+    ``spark.createDataFrame(pandas_df)`` doesn't handle correctly, mostly
+    surrounding dataframes with no rows or no columns. Note that ``domain`` must
+    be a ``SparkDataFrameDomain``; the less-restrictive type annotation makes it
+    easier to use based on the input/output domain taken from a transformation
+    that is known to only allow ``SparkDataFrameDomain``\ s.
+    """
+    # Because of the way this function is typically used, requiring the caller
+    # to do this check is inconvenient and doesn't .
+    assert isinstance(
+        domain, SparkDataFrameDomain
+    ), "Only SparkDataFrameDomains can be used to generate Spark dataframes."
+    if df.empty:
+        # Dataframe has no rows -- create an empty dataframe based on the
+        # domain, as otherwise Spark has no way of knowing the correct schema.
+        if len(df) == 0:
+            sdf = spark.createDataFrame([], domain.spark_schema)
+        # Dataframe has no columns -- createDataFrame doesn't have
+        # consistent/reasonable behavior on Pandas dataframes in this case (it
+        # either crashes or produces an empty dataframe depending on whether
+        # pyarrow is enabled), so directly create a dataframe in Spark with the
+        # appropriate number of rows.
+        else:
+            sdf = spark.createDataFrame([] for _ in range(len(df)))
+    else:
+        sdf = spark.createDataFrame(df)
+
+    domain.validate(sdf)
+    return sdf
+
+
 # TODO (#2762): We can refactor List[Tuple[str]] to List[str] after removing
 # parameterized
 def get_all_props(Component: type) -> List[Tuple[str]]:
