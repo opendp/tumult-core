@@ -3,8 +3,10 @@
 Changelog
 =========
 
-Unreleased
-----------
+.. _v0.16.5:
+
+0.16.5 - 2024-08-29
+-------------------
 This release fixes a bug in 0.16.3. CI problems meant 0.16.4 was unavailable.
 
 Fixed
