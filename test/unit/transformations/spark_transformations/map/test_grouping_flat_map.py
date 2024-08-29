@@ -113,24 +113,6 @@ def test_property_immutability(prop_name: str):
         input_df=pd.DataFrame({"a": [1, 2, 2]}),
         expected_df=pd.DataFrame({"a": [1, 1, 2, 2, 2, 2], "g": [0, 1, 0, 1, 0, 1]}),
     ),
-    Case("overlap")(
-        transformer=RowToRowsTransformation(
-            SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
-            ListDomain(
-                SparkRowDomain(
-                    {
-                        "a": SparkIntegerColumnDescriptor(),
-                        "g": SparkIntegerColumnDescriptor(),
-                    }
-                )
-            ),
-            lambda r: [{"a": 0, "g": 0}, {"a": 1, "g": 1}],
-            augment=True,
-        ),
-        max_num_rows=2,
-        input_df=pd.DataFrame({"a": [1, 2, 2]}),
-        expected_df=pd.DataFrame({"a": [1, 1, 2, 2, 2, 2], "g": [0, 1, 0, 1, 0, 1]}),
-    ),
     Case("duplicate-group-value")(
         transformer=RowToRowsTransformation(
             SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),

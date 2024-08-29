@@ -10,6 +10,7 @@ Fixed
 ~~~~~
 - :class:`~.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` now all check that their outputs match their output domains, raising an exception if they do not.
   This should not impact correct Tumult Core programs, but may catch a few incorrect ones that were previously missed, and will improve the error messages produced in these cases.
+- :class:`~.RowToRowTransformation` and :class:`~.RowToRowsTransformation` now disallow mapping functions that produce values for the input columns when augmenting.
 
 .. _v0.16.5:
 
@@ -25,7 +26,7 @@ Fixed
 
 0.16.3 - 2024-08-22
 -------------------
-0.16.3 was yanked. The changes have been incorporated into 0.16.4.
+0.16.3 was yanked. The changes have been incorporated into 0.16.5.
 
 This is a maintenance release that does not include user-visible changes.
 
@@ -46,7 +47,8 @@ Fixed
 
 Fixed
 ~~~~~
-- Fixed bug in lower and upper bound tuple value ordering :func:`~tmlt.core.measurements.aggregations.create_bounds_measurement`. The lower bound is now the first element and the upper bound is the second element.
+- Fixed bug in lower and upper bound tuple value ordering in :func:`~tmlt.core.measurements.aggregations.create_bounds_measurement`.
+  The lower bound is now the first element and the upper bound is the second element.
 
 
 .. _v0.16.0:

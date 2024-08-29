@@ -4,7 +4,7 @@
 # Copyright Tumult Labs 2024
 
 import math
-from typing import Optional
+from typing import Any, Dict, Optional, cast
 
 import pandas as pd
 import pytest
@@ -113,25 +113,6 @@ def test_property_immutability(prop_name: str):
                 )
             ),
             trusted_f=lambda r: [{"b": r["a"] + 1}],
-            augment=True,
-        ),
-        max_num_rows=1,
-        input_df=pd.DataFrame({"a": [1, 2, 3]}),
-        expected_df=pd.DataFrame({"a": [1, 2, 3], "b": [2, 3, 4]}),
-    ),
-    Case("augmenting-overlap")(
-        metric=SymmetricDifference(),
-        transformer=RowToRowsTransformation(
-            input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
-            output_domain=ListDomain(
-                SparkRowDomain(
-                    {
-                        "a": SparkIntegerColumnDescriptor(),
-                        "b": SparkIntegerColumnDescriptor(),
-                    }
-                )
-            ),
-            trusted_f=lambda r: [{"a": 5, "b": r["a"] + 1}],
             augment=True,
         ),
         max_num_rows=1,
@@ -361,7 +342,7 @@ def test_infinite_stability(spark, metric):
         row_transformer=RowToRowsTransformation(
             input_domain=SparkRowDomain(schema),
             output_domain=ListDomain(SparkRowDomain(schema)),
-            trusted_f=lambda r: [r],
+            trusted_f=lambda r: [cast(Dict[str, Any], {})],
             augment=True,
         ),
         max_num_rows=None,

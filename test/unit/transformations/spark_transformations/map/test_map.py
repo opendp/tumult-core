@@ -236,7 +236,7 @@ def test_metrics(
         row_transformer=RowToRowTransformation(
             input_domain=SparkRowDomain(schema),
             output_domain=SparkRowDomain(schema),
-            trusted_f=lambda row: row,
+            trusted_f=lambda row: {},
             augment=True,
         ),
     )

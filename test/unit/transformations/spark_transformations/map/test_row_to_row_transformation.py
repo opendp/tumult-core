@@ -105,19 +105,6 @@ def test_property_immutability(prop_name: str):
         input_row=Row(a=1),
         expected_row=Row(a=1, b=1),
     ),
-    Case("augmenting-overlap")(
-        input_schema={
-            "a": SparkIntegerColumnDescriptor(),
-        },
-        output_schema={
-            "a": SparkIntegerColumnDescriptor(),
-            "b": SparkIntegerColumnDescriptor(),
-        },
-        f=lambda r: {"a": 5, "b": r["a"]},
-        augment=True,
-        input_row=Row(a=1),
-        expected_row=Row(a=1, b=1),
-    ),
     Case("swap")(
         input_schema={
             "a": SparkStringColumnDescriptor(),
@@ -146,6 +133,20 @@ def test_transformer_correctness(
         SparkRowDomain(input_schema), SparkRowDomain(output_schema), f, augment
     )
     assert transformer(input_row) == expected_row
+
+
+def test_augment_overlap():
+    """RowToRowTransformation catches outputs that overwrite original columns."""
+    transformer = RowToRowTransformation(
+        SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
+        SparkRowDomain(
+            {"a": SparkIntegerColumnDescriptor(), "b": SparkIntegerColumnDescriptor()}
+        ),
+        lambda r: {"a": 1, "b": 2},
+        augment=True,
+    )
+    with pytest.raises(ValueError, match="must not output original columns"):
+        transformer(Row(a=0))
 
 
 @parametrize(
