@@ -21,6 +21,7 @@ from tmlt.core.domains.collections import ListDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain, SparkRowDomain
 from tmlt.core.exceptions import (
     DomainMismatchError,
+    OutOfDomainError,
     UnsupportedDomainError,
     UnsupportedMetricError,
 )
@@ -35,6 +36,28 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+
+
+def _assert_row_matches_domain(row: Row, domain: SparkRowDomain) -> None:
+    # Row.asDict() doesn't work on empty rows
+    row_fields = set(row.asDict().keys()) if len(row) > 0 else set()
+    domain_fields = set(domain.schema.keys())
+    if row_fields != domain_fields:
+        raise OutOfDomainError(
+            domain,
+            row,
+            f"Transformation output row has wrong fields, got {sorted(row_fields)} "
+            f"but expected {sorted(domain_fields)}.",
+        )
+
+    for f in row_fields:
+        if not domain.schema[f].valid_py_value(row[f]):
+            raise OutOfDomainError(
+                domain,
+                row,
+                f"Invalid value in column '{f}' of transformation output, "
+                f"{row[f]} is not a valid value for {domain.schema[f]}.",
+            )
 
 
 class RowToRowTransformation(Transformation):
@@ -146,8 +169,8 @@ class RowToRowTransformation(Transformation):
             output_domain: Domain for the output row.
             trusted_f: Transformation function to apply to input row.
             augment: If True, the output of ``trusted_f`` will be augmented by the
-                existing values from the input row. Note that if the column already
-                exists, the original value is used.
+                existing values from the input row. In that case, ``trusted_f`` must
+                not output values for any of the original columns.
         """
         if augment:
             if not set(input_domain.schema) <= set(output_domain.schema):
@@ -207,10 +230,21 @@ class RowToRowTransformation(Transformation):
             mapped_row.asDict() if isinstance(mapped_row, Row) else mapped_row
         )
         if self._augment:
+            overlapping_columns = set(row.asDict()) & set(mapped_row_dict)
+            if overlapping_columns:
+                raise ValueError(
+                    "Mapping function must not output original columns when "
+                    f"augmenting. Overlap: {sorted(overlapping_columns)}"
+                )
             augmented_row_dict = {**row.asDict(), **mapped_row_dict}
             augmented_row_dict.update(row.asDict())
-            return Row(**augmented_row_dict)
-        return Row(**mapped_row_dict)
+            ret = Row(**augmented_row_dict)
+        else:
+            ret = Row(**mapped_row_dict)
+
+        assert isinstance(self.output_domain, SparkRowDomain)
+        _assert_row_matches_domain(ret, self.output_domain)
+        return ret
 
 
 class RowToRowsTransformation(Transformation):
@@ -312,7 +346,7 @@ class RowToRowsTransformation(Transformation):
                 :class:`~.RowToRowsTransformation` is not stable! Its
                 :meth:`~.stability_relation` always returns False, and its
                 :meth:`~.stability_function` always raises :class:`NotImplementedError`.
-    """  # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long,useless-suppression
 
     @typechecked
     def __init__(
@@ -328,9 +362,9 @@ class RowToRowsTransformation(Transformation):
             input_domain: Domain for the input row.
             output_domain: Domain for the output rows.
             trusted_f: Transformation function to apply to input row.
-            augment: If True, the output of ``trusted_f`` will be augmented by the existing
-                values from the input row. Note that if the column already exists, the
-                original value is used.
+            augment: If True, the output of ``trusted_f`` will be augmented by the
+                existing values from the input row. In that case, ``trusted_f`` must
+                not output values for any of the original columns.
         """
         element_domain = output_domain.element_domain
         if not isinstance(element_domain, SparkRowDomain):
@@ -400,13 +434,26 @@ class RowToRowsTransformation(Transformation):
         if self._augment:
             augmented_rows: List[Row] = []
             for r in mapped_rows:
-                # NOTE: .asDict() doesn't work with empty row.
-                r_dict = r.asDict() if len(r) > 0 else {}
-                augmented_row_dict = {**row.asDict(), **r_dict}
+                # .asDict() doesn't work with empty row.
+                mapped_row_dict = r.asDict() if len(r) > 0 else {}
+                overlapping_columns = set(row.asDict()) & set(mapped_row_dict)
+                if overlapping_columns:
+                    raise ValueError(
+                        "Mapping function must not output original columns when "
+                        f"augmenting. Overlap: {sorted(overlapping_columns)}"
+                    )
+                augmented_row_dict = {**row.asDict(), **mapped_row_dict}
                 augmented_row_dict.update(row.asDict())
                 augmented_rows.append(Row(**augmented_row_dict))
-            return augmented_rows
-        return mapped_rows
+            ret = augmented_rows
+        else:
+            ret = mapped_rows
+
+        assert isinstance(self.output_domain, ListDomain)
+        assert isinstance(self.output_domain.element_domain, SparkRowDomain)
+        for r in ret:
+            _assert_row_matches_domain(r, self.output_domain.element_domain)
+        return ret
 
 
 class RowsToRowsTransformation(Transformation):
@@ -530,6 +577,11 @@ class RowsToRowsTransformation(Transformation):
         mapped = self._trusted_f(rows)
         assert all(isinstance(r, (Row, dict)) for r in mapped)
         mapped_rows = [r if isinstance(r, Row) else Row(**r) for r in mapped]
+
+        assert isinstance(self.output_domain, ListDomain)
+        assert isinstance(self.output_domain.element_domain, SparkRowDomain)
+        for r in mapped_rows:
+            _assert_row_matches_domain(r, self.output_domain.element_domain)
         return mapped_rows
 
 
@@ -668,7 +720,7 @@ class FlatMap(Transformation):
                 more rows are output, the additional rows are suppressed. If this value
                 is None, the transformation will not impose a limit on the number of
                 rows. None is only allowed if the metric is
-                IfGroupedBy(SymmetricDifference()).
+                ``IfGroupedBy(SymmetricDifference())``.
         """
         if max_num_rows is not None and max_num_rows < 0:
             raise ValueError(f"max_num_rows ({max_num_rows}) must be nonnegative.")
