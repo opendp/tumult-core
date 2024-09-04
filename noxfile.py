@@ -430,7 +430,8 @@ def benchmark(session, script: str, timeout: int):
     session.run(
         "timeout",
         f"{timeout}m",
-        "python",
-        f"{CWD}/benchmark/benchmark_{script}.py",
+        "bash",
+        "-c",
+        f"time python {CWD}/benchmark/benchmark_{script}.py",
         external=True,
     )
