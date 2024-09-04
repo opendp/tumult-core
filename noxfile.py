@@ -230,8 +230,8 @@ BENCHMARK_VALUES = [
     ("count_sum", 25),
     ("quantile", 84),
     ("noise_mechanism", 7),
-    ("sparkmap", 25),
-    ("sparkflatmap", 10),
+    ("sparkmap", 28),
+    ("sparkflatmap", 12),
     ("public_join", 14),
 ]
 
