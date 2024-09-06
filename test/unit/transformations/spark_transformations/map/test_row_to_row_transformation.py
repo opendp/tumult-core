@@ -145,7 +145,7 @@ def test_augment_overlap():
         lambda r: {"a": 1, "b": 2},
         augment=True,
     )
-    with pytest.raises(ValueError, match="must not output original columns"):
+    with pytest.raises(OutOfDomainError, match="output row has wrong fields"):
         transformer(Row(a=0))
 
 
