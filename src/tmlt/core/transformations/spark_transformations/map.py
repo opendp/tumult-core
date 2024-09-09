@@ -38,25 +38,23 @@ from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
-def _assert_row_matches_domain(row: Row, domain: SparkRowDomain) -> None:
-    # Row.asDict() doesn't work on empty rows
-    row_fields = set(row.asDict().keys()) if len(row) > 0 else set()
-    domain_fields = set(domain.schema.keys())
-    if row_fields != domain_fields:
+def _assert_row_matches_domain(row: Dict[str, Any], domain: SparkRowDomain) -> None:
+    schema = domain.schema
+    if row.keys() != schema.keys():
         raise OutOfDomainError(
             domain,
             row,
-            f"Transformation output row has wrong fields, got {sorted(row_fields)} "
-            f"but expected {sorted(domain_fields)}.",
+            f"Transformation output row has wrong fields, got {sorted(row.keys())} "
+            f"but expected {sorted(schema.keys())}.",
         )
 
-    for f in row_fields:
-        if not domain.schema[f].valid_py_value(row[f]):
+    for f in row.keys():
+        if not schema[f].valid_py_value(row[f]):
             raise OutOfDomainError(
                 domain,
                 row,
                 f"Invalid value in column '{f}' of transformation output, "
-                f"{row[f]} is not a valid value for {domain.schema[f]}.",
+                f"{row[f]} is not a valid value for {schema[f]}.",
             )
 
 
@@ -230,21 +228,17 @@ class RowToRowTransformation(Transformation):
             mapped_row.asDict() if isinstance(mapped_row, Row) else mapped_row
         )
         if self._augment:
-            overlapping_columns = set(row.asDict()) & set(mapped_row_dict)
-            if overlapping_columns:
-                raise ValueError(
-                    "Mapping function must not output original columns when "
-                    f"augmenting. Overlap: {sorted(overlapping_columns)}"
-                )
-            augmented_row_dict = {**row.asDict(), **mapped_row_dict}
-            augmented_row_dict.update(row.asDict())
-            ret = Row(**augmented_row_dict)
+            assert isinstance(self.output_domain, SparkRowDomain)
+            expected_map_output_domain = SparkRowDomain(
+                {k: v for k, v in self.output_domain.schema.items() if k not in row}
+            )
+            _assert_row_matches_domain(mapped_row_dict, expected_map_output_domain)
+            mapped_row_dict.update(row.asDict())
+            return Row(**{k: mapped_row_dict[k] for k in self.output_domain.schema})
         else:
-            ret = Row(**mapped_row_dict)
-
-        assert isinstance(self.output_domain, SparkRowDomain)
-        _assert_row_matches_domain(ret, self.output_domain)
-        return ret
+            assert isinstance(self.output_domain, SparkRowDomain)
+            _assert_row_matches_domain(mapped_row_dict, self.output_domain)
+            return Row(**mapped_row_dict)
 
 
 class RowToRowsTransformation(Transformation):
@@ -428,32 +422,36 @@ class RowToRowsTransformation(Transformation):
 
     def __call__(self, row: Row) -> List[Row]:
         """Map row."""
-        mapped = self._trusted_f(row)
-        assert all(isinstance(r, (Row, dict)) for r in mapped)
-        mapped_rows = [r if isinstance(r, Row) else Row(**r) for r in mapped]
-        if self._augment:
-            augmented_rows: List[Row] = []
-            for r in mapped_rows:
-                # .asDict() doesn't work with empty row.
-                mapped_row_dict = r.asDict() if len(r) > 0 else {}
-                overlapping_columns = set(row.asDict()) & set(mapped_row_dict)
-                if overlapping_columns:
-                    raise ValueError(
-                        "Mapping function must not output original columns when "
-                        f"augmenting. Overlap: {sorted(overlapping_columns)}"
-                    )
-                augmented_row_dict = {**row.asDict(), **mapped_row_dict}
-                augmented_row_dict.update(row.asDict())
-                augmented_rows.append(Row(**augmented_row_dict))
-            ret = augmented_rows
-        else:
-            ret = mapped_rows
-
         assert isinstance(self.output_domain, ListDomain)
         assert isinstance(self.output_domain.element_domain, SparkRowDomain)
-        for r in ret:
-            _assert_row_matches_domain(r, self.output_domain.element_domain)
-        return ret
+
+        mapped = self._trusted_f(row)
+        assert all(isinstance(r, (Row, dict)) for r in mapped)
+        mapped_rows = [
+            (r.asDict() if len(r) > 0 else {}) if isinstance(r, Row) else r
+            for r in mapped
+        ]
+        if self._augment:
+            augmented_rows: List[Row] = []
+            expected_map_output_domain = SparkRowDomain(
+                {
+                    k: v
+                    for k, v in self.output_domain.element_domain.schema.items()
+                    if k not in row
+                }
+            )
+            for r in mapped_rows:
+                _assert_row_matches_domain(r, expected_map_output_domain)
+                r.update(row.asDict())
+                augmented_rows.append(
+                    Row(**{k: r[k] for k in self.output_domain.element_domain.schema})
+                )
+
+            return augmented_rows
+        else:
+            for r in mapped_rows:
+                _assert_row_matches_domain(r, self.output_domain.element_domain)
+            return [Row(**r) for r in mapped_rows]
 
 
 class RowsToRowsTransformation(Transformation):
@@ -576,13 +574,19 @@ class RowsToRowsTransformation(Transformation):
         """Map row."""
         mapped = self._trusted_f(rows)
         assert all(isinstance(r, (Row, dict)) for r in mapped)
-        mapped_rows = [r if isinstance(r, Row) else Row(**r) for r in mapped]
+        mapped_rows = [
+            (r.asDict() if len(r) > 0 else {}) if isinstance(r, Row) else r
+            for r in mapped
+        ]
 
         assert isinstance(self.output_domain, ListDomain)
         assert isinstance(self.output_domain.element_domain, SparkRowDomain)
         for r in mapped_rows:
             _assert_row_matches_domain(r, self.output_domain.element_domain)
-        return mapped_rows
+        return [
+            Row(**{k: r[k] for k in self.output_domain.element_domain.schema})
+            for r in mapped_rows
+        ]
 
 
 class FlatMap(Transformation):
