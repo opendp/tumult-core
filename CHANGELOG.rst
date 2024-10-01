@@ -5,6 +5,12 @@ Changelog
 
 Unreleased
 ----------
+This release changes the behavior of :class:`~.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` (and thus :class:`~.Map`, :class:`~.FlatMap`, and :class:`~.FlatMapByKey`) so that they catch many function outputs that would be invalid under their output domains.
+
+.. note::
+
+   Tumult Core 0.17 will be the last minor version to support Python 3.8 and PySpark versions below 3.3.1.
+   If you are using Python 3.8 or one of these versions of PySpark, you will need to upgrade them in order to use Tumult Core 0.18.0.
 
 Fixed
 ~~~~~
