@@ -5,6 +5,11 @@ Changelog
 
 Unreleased
 ----------
+
+.. _v0.17.0:
+
+0.17.0 - 2024-10-02
+-------------------
 This release changes the behavior of :class:`~.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` (and thus :class:`~.Map`, :class:`~.FlatMap`, and :class:`~.FlatMapByKey`) so that they catch many function outputs that would be invalid under their output domains.
 
 .. note::
