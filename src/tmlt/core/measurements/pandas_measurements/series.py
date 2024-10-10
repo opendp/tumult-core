@@ -129,10 +129,10 @@ class NoisyBounds(Aggregate):
             )
         elif isinstance(element_type, NumpyIntegerDomain):
             splits = (
-                [-(2 ** (element_type.size - 1)) + 1]
-                + [-(2**i) for i in range(element_type.size - 2, -1, -1)]
+                [-(2**i) for i in range(element_type.size - 1, -1, -1)]
                 + [0]
-                + [2**i for i in range(element_type.size)]
+                + [2**i for i in range(element_type.size - 1)]
+                + [2 ** (element_type.size - 1) - 1]
             )
         else:
             raise ValueError(
