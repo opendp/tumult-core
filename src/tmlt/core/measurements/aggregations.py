@@ -2190,8 +2190,7 @@ def create_bounds_measurement(
         )
     if d_in < 1:
         raise NotImplementedError(
-            "Creating a partition selection measurement with d_in < 1 is not yet"
-            " supported."
+            "Creating a bounds measurement with d_in < 1 is not yet supported."
         )
 
     bounds_input_domain = PandasSeriesDomain(
