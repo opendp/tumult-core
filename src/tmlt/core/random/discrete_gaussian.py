@@ -11,109 +11,91 @@
 # repository at commit `cb190d2a990a78eff6e21159203bc888e095f01b`.
 
 import math
-import random
 from fractions import Fraction
-from typing import Optional, Protocol, Union, runtime_checkable
+from typing import Union
 
 from typeguard import typechecked
 
-
-@runtime_checkable
-class SupportsRandRange(Protocol):
-    """Protocol class defining randrange."""
-
-    def randrange(self, high: int) -> int:
-        """Returns an integer sampled uniformly from [0, high)."""
+from tmlt.core.random.rng import RNGWrapper, prng
 
 
-def _sample_uniform(m: int, rng: SupportsRandRange) -> int:
+def _sample_uniform(m: int) -> int:
     """Returns an integer sampled uniformly from [0, m).
 
     Args:
         m: Upper bound (exclusive) for sampling.
-        rng: Random Number Generator for sampling.
     """
     if m <= 0:
         raise ValueError(f"Expected a positive integer, not {m}.")
-    return rng.randrange(m)
+    return RNGWrapper(prng()).randrange(m)
 
 
-def _sample_bernoulli(p: Fraction, rng: SupportsRandRange) -> int:
+def _sample_bernoulli(p: Fraction) -> int:
     """Returns a sample from the Bernoulli(p) distribution.
 
     Args:
         p: Probability of obtaining 1.
-        rng: Random Number Generator for sampling.
     """
     if not 0 <= p <= 1:
         raise ValueError(f"Probability must be in [0, 1], not {p}")
-    m = _sample_uniform(p.denominator, rng)
+    m = _sample_uniform(p.denominator)
     if m < p.numerator:
         return 1
     else:
         return 0
 
 
-def _sample_bernoulli_exp1(x: Fraction, rng: SupportsRandRange) -> int:
+def _sample_bernoulli_exp1(x: Fraction) -> int:
     """Returns a sample from Bernoulli(exp(-x)) distribution.
 
     Args:
         x: Fraction satisfying 0 <= x <= 1.
-        rng: Random Number Generator for sampling.
     """
     if not 0 <= x <= 1:
         raise ValueError(f"Expected x in [0, 1], not {x}.")
     k = 1
-    while True:
-        if _sample_bernoulli(x / k, rng) == 1:
-            k = k + 1
-        else:
-            break
+    while _sample_bernoulli(x / k) == 1:
+        k = k + 1
     return k % 2
 
 
-def _sample_bernoulli_exp(x: Fraction, rng: SupportsRandRange) -> int:
+def _sample_bernoulli_exp(x: Fraction) -> int:
     """Returns a sample from a Bernoulli(exp(-x)) distribution.
 
     Args:
         x: Fraction satisfying x >= 0.
-        rng: Random Number Generator for sampling.
     """
     if not x >= 0:
         raise ValueError("x must be non-negative.")
     # Sample floor(x) independent Bernoulli(exp(-1))
     # If all are 1, return Bernoulli(exp(-(x-floor(x))))
     while x > 1:
-        if _sample_bernoulli_exp1(Fraction(1, 1), rng) == 1:
+        if _sample_bernoulli_exp1(Fraction(1, 1)) == 1:
             x = x - 1
         else:
             return 0
-    return _sample_bernoulli_exp1(x, rng)
+    return _sample_bernoulli_exp1(x)
 
 
-def _sample_geometric_exp_slow(x: Fraction, rng: SupportsRandRange) -> int:
+def _sample_geometric_exp_slow(x: Fraction) -> int:
     """Returns a sample from a geometric(1-exp(-x)) distribution.
 
     Args:
         x: Fraction satisfying x >= 0.
-        rng: Random Number Generator for sampling.
     """
     if not x >= 0:
         raise ValueError("x must be non-negative.")
     k = 0
-    while True:
-        if _sample_bernoulli_exp(x, rng) == 1:
-            k = k + 1
-        else:
-            return k
+    while _sample_bernoulli_exp(x) == 1:
+        k = k + 1
+    return k
 
 
-def _sample_geometric_exp_fast(x: Fraction, rng: SupportsRandRange) -> int:
+def _sample_geometric_exp_fast(x: Fraction) -> int:
     """Returns a sample from a geometric(1-exp(-x)) distribution.
 
     Args:
         x: Fraction satisfying x > 0.
-        rng: Random Number Generator for sampling.
     """
     if x == 0:
         return 0  # degenerate case
@@ -122,18 +104,16 @@ def _sample_geometric_exp_fast(x: Fraction, rng: SupportsRandRange) -> int:
 
     t = x.denominator
     while True:
-        u = _sample_uniform(t, rng)
-        b = _sample_bernoulli_exp(Fraction(u, t), rng)
+        u = _sample_uniform(t)
+        b = _sample_bernoulli_exp(Fraction(u, t))
         if b == 1:
             break
-    v = _sample_geometric_exp_slow(Fraction(1, 1), rng)
+    v = _sample_geometric_exp_slow(Fraction(1, 1))
     value = v * t + u
     return value // x.numerator
 
 
-def _sample_dlaplace(
-    scale: Union[float, Fraction], rng: Optional[SupportsRandRange] = None
-) -> int:
+def _sample_dlaplace(scale: Union[float, Fraction]) -> int:
     r"""Returns a sample from a discrete Laplace distribution.
 
     In particular, this returns an integer :math:`x` with
@@ -142,16 +122,13 @@ def _sample_dlaplace(
 
     Args:
         scale: Desired noise scale (>=0).
-        rng: Random Number Generator for sampling.
     """
-    if rng is None:
-        rng = random.SystemRandom()
     scale_fraction = Fraction(scale)
     if scale_fraction < 0:
         raise ValueError("scale must be nonnegative.")
     while True:
-        sign = _sample_bernoulli(Fraction(1, 2), rng)
-        magnitude = _sample_geometric_exp_fast(1 / scale_fraction, rng)
+        sign = _sample_bernoulli(Fraction(1, 2))
+        magnitude = _sample_geometric_exp_fast(1 / scale_fraction)
         if sign == 1 and magnitude == 0:
             continue
         return magnitude * (1 - 2 * sign)
@@ -176,9 +153,7 @@ def _floorsqrt(x: Union[float, int, Fraction]) -> int:
 
 
 @typechecked
-def sample_dgauss(
-    sigma_squared: Union[float, Fraction, int], rng: Optional[SupportsRandRange] = None
-) -> int:
+def sample_dgauss(sigma_squared: Union[float, Fraction, int]) -> int:
     r"""Returns a sample from a discrete Gaussian distribution.
 
     In particular, this returns a sample from discrete Gaussian
@@ -186,10 +161,7 @@ def sample_dgauss(
 
     Args:
         sigma_squared: Variance of discrete Gaussian distribution to sample from.
-        rng: Random Number Generator for sampling.
     """
-    if rng is None:
-        rng = random.SystemRandom()
     if math.isnan(sigma_squared) or math.isinf(sigma_squared):
         raise ValueError(f"sigma_squared must be positive, not {sigma_squared}.")
     sigma_squared_fraction = Fraction(sigma_squared)
@@ -199,11 +171,11 @@ def sample_dgauss(
         raise ValueError("sigma_squared must be positive.")
     t = _floorsqrt(sigma_squared_fraction) + 1
     while True:
-        candidate = _sample_dlaplace(t, rng=rng)
+        candidate = _sample_dlaplace(t)
         bias = ((abs(candidate) - sigma_squared_fraction / t) ** 2) / (
             2 * sigma_squared_fraction
         )
-        if _sample_bernoulli_exp(bias, rng) == 1:
+        if _sample_bernoulli_exp(bias) == 1:
             return candidate
 
 
