@@ -6,6 +6,12 @@ Changelog
 Unreleased
 ----------
 
+Changed
+~~~~~~~
+- The ``rng`` parameter to :func:`~tmlt.core.random.discrete_gaussian.sample_dgauss` has been removed, and it now always uses :func:`tmlt.core.random.rng.prng` as its random number generator.
+- :class:`~tmlt.core.random.rng.RNGWrapper` has been moved into :mod:`tmlt.core.random.rng`.
+- The parameter to :meth:`.RNGWrapper.randrange` has renamed from ``high`` to ``stop`` for consistency with the single-parameter version of :func:`random.randrange`.
+
 Fixed
 ~~~~~
 - Fixed a bug in :class:`~tmlt.core.measurements.pandas_measurements.series.NoisyBounds` that would try to select an upper bound larger than the maximum 64-bit integer, leading to an overflow.

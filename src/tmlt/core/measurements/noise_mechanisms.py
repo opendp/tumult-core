@@ -27,13 +27,11 @@ from tmlt.core.random.discrete_gaussian import (
     sample_dgauss,
 )
 from tmlt.core.random.laplace import laplace
-from tmlt.core.random.rng import prng
 from tmlt.core.utils.distributions import (
     discrete_gaussian_inverse_cmf,
     double_sided_geometric_inverse_cmf,
 )
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
-from tmlt.core.utils.misc import RNGWrapper
 from tmlt.core.utils.validation import validate_exact_number
 
 
@@ -273,14 +271,12 @@ class AddGeometricNoise(Measurement):
         # and _sample_dlaplace performs better for larger noise scales
         if float_scale < 10:
             x = 1 / Fraction(float_scale)
-            noise = _sample_geometric_exp_slow(
-                x, RNGWrapper(prng())
-            ) - _sample_geometric_exp_slow(x, RNGWrapper(prng()))
+            noise = _sample_geometric_exp_slow(x) - _sample_geometric_exp_slow(x)
         # for very large noise scales, _sample_geometric_exp_slow is *very* slow
         else:
             # _sample_dlaplace produces a noise distribution that
             # matches the equation above.
-            noise = _sample_dlaplace(float_scale, RNGWrapper(prng()))
+            noise = _sample_dlaplace(float_scale)
         return int(value + noise)
 
     @classmethod
@@ -410,7 +406,7 @@ class AddDiscreteGaussianNoise(Measurement):
         Definition 1.
         """
         float_scale = self.sigma_squared.to_float(round_up=True)
-        return int(value + sample_dgauss(float_scale, RNGWrapper(prng())))
+        return int(value + sample_dgauss(float_scale))
 
     @classmethod
     def inverse_cdf(cls, sigma_squared: float, probability: float) -> float:
