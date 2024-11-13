@@ -113,6 +113,7 @@ sphinx-autodoc-typehints = "^2.0.1"
 sphinx-automodapi = "^0.17.0"
 sphinx-copybutton = "^0.5.2"
 sphinxcontrib-bibtex = "^2.6.2"
+sphinxcontrib-images = "^0.9.4"
 sphinx-design = "^0.5.0"
 
 [tool.poetry.group.scripting.dependencies]
