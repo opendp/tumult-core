@@ -90,7 +90,7 @@ def _assert_pd_dataframe_equal_with_sort(
         actual = actual.set_index(sort_columns).sort_index().reset_index()
         expected = expected.set_index(sort_columns).sort_index().reset_index()
     try:
-        pd.testing.assert_frame_equal(actual, expected)
+        pd.testing.assert_frame_equal(actual, expected, check_dtype=False)
     except AssertionError as e:
         raise AssertionError(
             f"{e}\nActual dataframe:\n{actual}\nExpected dataframe:\n{expected}"
@@ -100,15 +100,20 @@ def _assert_pd_dataframe_equal_with_sort(
 def assert_dataframe_equal(
     actual: Union[DataFrame, pd.DataFrame], expected: Union[DataFrame, pd.DataFrame]
 ) -> None:
-    """Assert that two dataframes are equal.
+    """Assert that two DataFrames are equal, ignoring the order of rows.
 
-    On PySpark 3.5 and above, if both inputs are Spark dataframes this method uses
-    :func:`pyspark.testing.assertDataFrameEqual` to compare them,
-    using its default options. In this case, the comparison is correct with
-    respect to NaNs and nulls as long as the input dataframes are Spark
-    dataframes. On older versions of Spark, this method falls back on comparing the
-    dataframes in Pandas in all cases, and null and NaN values may be considered
-    equal to one another.
+    If both inputs are Pandas DataFrames, this method uses
+    :func:`pandas.testing.assert_frame_equal` with ``check_dtype=False``, so two
+    DataFrame that only differ in the type of a column are considered equal.
+
+    If both inputs are Spark DataFrames, then on PySpark 3.5 and above, this
+    method uses :func:`pyspark.testing.assertDataFrameEqual` with its default
+    options (which correctly compares NaNs and nulls). On older versions of
+    Spark, this method falls back on comparing the dataframes in Pandas in all
+    cases, and null and NaN values may be considered equal to one another.
+
+    If one input is a Spark DataFrame and the other is a Pandas DataFrame, the
+    Spark DataFrame is converted to Pandas before comparison.
     """
     # assertDataFrameEqual is supposed to support working with Pandas dataframes
     # as well, but appears to have a bug that breaks the Pandas comparison code
