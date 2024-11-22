@@ -12,6 +12,10 @@ Changed
 - :class:`~tmlt.core.random.rng.RNGWrapper` has been moved into :mod:`tmlt.core.random.rng`.
 - The parameter to :meth:`.RNGWrapper.randrange` has renamed from ``high`` to ``stop`` for consistency with the single-parameter version of :func:`random.randrange`.
 
+Removed
+~~~~~~~
+- Python 3.8 and PySpark versions earlier than 3.3.1 are no longer supported.
+
 Fixed
 ~~~~~
 - Fixed a bug in :class:`~tmlt.core.measurements.pandas_measurements.series.NoisyBounds` that would try to select an upper bound larger than the maximum 64-bit integer, leading to an overflow.
