@@ -11,6 +11,11 @@ from typing import Any, List, Tuple, Union
 
 # pylint: disable=protected-access
 
+# importlib.resources.path was deprecated in Python 3.11, and then un-deprecated
+# in 3.13, so there's not actually a problem here. It's possible this code will
+# need to be tweaked slightly for 3.13 support, as there were some changes to
+# the API, but they don't obviously affect this code.
+# pylint: disable=deprecated-method
 if platform.system() == "Windows":
     with importlib.resources.path(
         "tmlt.core.ext.lib", "libarb.dll"
@@ -54,6 +59,7 @@ else:
         "Unrecognized platform. Expected platform.system() to be one of"
         f" 'Windows', 'Linux', or 'Darwin' not ({platform.system()})."
     )
+# pylint: enable=deprecated-method
 
 
 class _PtrStruct(ctypes.Structure):

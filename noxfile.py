@@ -61,34 +61,14 @@ DEPENDENCY_MATRIX = {
           # python      pyspark     sympy       pandas
           # numpy       scipy       randomgen   pyarrow
         (
-            "3.8-oldest",
-            "3.8",      "==3.1.1",  "==1.8",    "==1.4.0",
-            "==1.22.0", "==1.6.0",  "==1.19.0", "==14.0.1",
-        ),
-        (
-            "3.8-pyspark3.2",
-            "3.8",      "==3.2.0",  "==1.9",    "==1.5.3",
-            "==1.24.4", "==1.10.1",  "==1.26.0", "==14.0.1",
-        ),
-        (
-            "3.8-pyspark3.3",
-            "3.8",      "==3.3.1",  "==1.9",    "==1.5.3",
-            "==1.24.4", "==1.10.1",  "==1.26.0", "==14.0.1",
-        ),
-        (
-            "3.8-pyspark3.4",
-            "3.8",      "==3.4.0",  "==1.9",    "==1.5.3",
-            "==1.24.4", "==1.10.1",  "==1.26.0", "==14.0.1",
-        ),
-        (
-            "3.8-newest",
-            "3.8",      "==3.5.1",  "==1.9",    "==1.5.3",
-            "==1.24.4", "==1.10.1",  "==1.26.0", "==16.1.0",
-        ),
-        (
             "3.9-oldest",
-            "3.9",      "==3.1.1",  "==1.8",    "==1.4.0",
+            "3.9",      "==3.3.1",  "==1.8",    "==1.4.0",
             "==1.23.2", "==1.6.0",  "==1.20.0", "==14.0.1",
+        ),
+        (
+            "3.9-pyspark3.4",
+            "3.9",      "==3.4.0",  "==1.9",    "==1.5.3",
+            "==1.26.4", "==1.13.1", "==1.26.0", "==16.1.0",
         ),
         (
             "3.9-newest",
@@ -103,7 +83,7 @@ DEPENDENCY_MATRIX = {
         (
             "3.10-newest",
             "3.10",     "==3.5.1",  "==1.9",    "==1.5.3",
-            "==1.26.4", "==1.13.1", "==1.26.0", "==16.1.0",
+            "==1.26.4", "==1.14.1", "==1.26.0", "==16.1.0",
         ),
         (
             "3.11-oldest",
@@ -113,7 +93,7 @@ DEPENDENCY_MATRIX = {
         (
             "3.11-newest",
             "3.11",     "==3.5.1",  "==1.9",    "==1.5.3",
-            "==1.26.4", "==1.13.1", "==1.26.1", "==16.1.0",
+            "==1.26.4", "==1.14.1", "==1.26.1", "==16.1.0",
         ),
         (
             "3.12-oldest",
@@ -124,7 +104,7 @@ DEPENDENCY_MATRIX = {
         (
             "3.12-newest",
             "3.12",     "==3.5.1",  "==1.9",    "==2.2.2",
-            "==1.26.4", "==1.13.1", "==1.26.1", "==16.1.0",
+            "==1.26.4", "==1.14.1", "==1.26.1", "==16.1.0",
         ),
         # fmt: on
     ]
@@ -186,7 +166,7 @@ def install_overrides(session):
     # Install Core from dist/, if it exists there
     if os.environ.get("CORE_WHEEL_DIR"):
         core_path = Path(os.environ["CORE_WHEEL_DIR"]).resolve()
-        core_wheels = list(core_path.glob("*tmlt_core*-cp38*"))
+        core_wheels = list(core_path.glob("*tmlt_core*-cp39*"))
         if len(core_wheels) == 0:
             raise AssertionError(
                 "Expected a core wheel since CORE_WHEEL_DIR was set "
@@ -208,6 +188,7 @@ _builder = SessionBuilder(
     options={
         "code_dirs": [Path(PACKAGE_SOURCE_DIR).resolve(), Path("test").resolve()],
         "install_overrides": install_overrides,
+        "default_python_version": "3.9",
         "smoketest_script": SMOKETEST_SCRIPT,
         "dependency_matrix": DEPENDENCY_MATRIX,
         "license_exclude_globs": LICENSE_IGNORE_GLOBS,
