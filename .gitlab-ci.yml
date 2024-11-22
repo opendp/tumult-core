@@ -37,6 +37,13 @@ variables:
     - java -version
     - python --version
     - poetry self show
+    # Force git to use 8 characters as the short-hash length. This avoids an
+    # issue[0] with poetry-dynamic-versioning where it doesn't generate a
+    # consistent name for the package generated in the CI, using either 7 or 8
+    # characters across different jobs depending on how much of the repository
+    # is pulled down onto the CI runner for each job.
+    # [0] https://github.com/mtkennerly/dunamai/issues/89
+    - git config core.abbrev 8
     # Fail if the Poetry lock file is out of date.
     - poetry lock --check
     # Set up SSH config so that the runner can `pip install` out of GitLab
