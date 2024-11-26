@@ -397,7 +397,7 @@ def get_wheels_from_circleci(session):
                 )
 
 
-@poetry_session(tags=["benchmark"], python="3.8")
+@poetry_session(tags=["benchmark"])
 @nox.parametrize("script,timeout", BENCHMARK_VALUES)
 @_builder.install_package
 @install("pytest")
