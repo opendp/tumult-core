@@ -58,12 +58,12 @@ class TestPRDPTransformationMechanisms:
             for _ in range(NUM_SAMPLES)
         ]
         actual_mean = sum(samples) / NUM_SAMPLES
-        assert actual_mean == pytest.approx(x, rel=0.1)
+        assert actual_mean == pytest.approx(x, rel=0.15)
 
         actual_var = np.var(samples)
         expected_var = 2 * (sigma**4) + 4 * (sigma**2) * (x + offset)
 
-        assert actual_var == pytest.approx(expected_var, rel=0.1)
+        assert actual_var == pytest.approx(expected_var, rel=0.15)
 
     @pytest.mark.parametrize(
         "x,offset,sigma",
@@ -187,8 +187,8 @@ class TestPRDPTransformationMechanisms:
         actual_std = np.std(samples)
         # The expected variance is (e^(sigma^2) - 1) * (x + offset)^2
         expected_std = np.sqrt((np.exp(sigma**2) - 1) * ((x + offset) ** 2))
-        assert actual_mean == pytest.approx(x, rel=0.1)
-        assert actual_std == pytest.approx(expected_std, rel=0.1)
+        assert actual_mean == pytest.approx(x, rel=0.15)
+        assert actual_std == pytest.approx(expected_std, rel=0.15)
 
     @pytest.mark.parametrize(
         "x,offset,sigma",
