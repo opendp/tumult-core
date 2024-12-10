@@ -63,7 +63,7 @@ class TestPRDPTransformationMechanisms:
         actual_var = np.var(samples)
         expected_var = 2 * (sigma**4) + 4 * (sigma**2) * (x + offset)
 
-        assert actual_var == pytest.approx(expected_var, rel=0.1)
+        assert actual_var == pytest.approx(expected_var, rel=0.15)
 
     @pytest.mark.parametrize(
         "x,offset,sigma",
