@@ -226,6 +226,8 @@ class AddNoiseToColumn(SparkMeasurement):
         """Applies measurement to measure column."""
         # TODO(#2107): Fix typing once pd.Series is a usable type
         sdf = val
+        if self.measurement.noise_measurement.adds_no_noise:
+            return sdf
         udf = sf.pandas_udf(  # type: ignore
             self.measurement, self.measurement.output_type, sf.PandasUDFType.SCALAR
         ).asNondeterministic()

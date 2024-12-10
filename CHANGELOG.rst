@@ -10,6 +10,10 @@ Fixed
 ~~~~~
 - Fixed a bug in :class:`~tmlt.core.measurements.pandas_measurements.series.NoisyBounds` that would try to select an upper bound larger than the maximum 64-bit integer, leading to an overflow.
 
+Changed
+~~~~~~~
+- Improved performance of noise addition mechanisms under infinite budgets.
+
 .. _v0.17.0:
 
 0.17.0 - 2024-10-02
