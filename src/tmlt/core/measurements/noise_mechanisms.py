@@ -88,6 +88,11 @@ class AddLaplaceNoise(Measurement):
         """Return the output data type after being used as a UDF."""
         return self._output_type
 
+    @property
+    def adds_no_noise(self) -> bool:
+        """Returns True if this measurement adds no noise."""
+        return self.scale == 0
+
     @typechecked
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         r"""Returns the smallest d_out satisfied by the measurement.
@@ -130,6 +135,8 @@ class AddLaplaceNoise(Measurement):
         """
         if not self.scale.is_finite:
             return random.choice([float("inf"), -float("inf")])
+        if self.scale == 0:
+            return float(val)
         float_scale = self.scale.to_float(round_up=True)
         return laplace(u=float(val), b=float_scale)
 
@@ -208,6 +215,11 @@ class AddGeometricNoise(Measurement):
     def alpha(self) -> ExactNumber:
         """Returns the noise scale."""
         return self._alpha
+
+    @property
+    def adds_no_noise(self) -> bool:
+        """Returns True if this measurement adds no noise."""
+        return self.alpha == 0
 
     @typechecked
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
@@ -357,6 +369,11 @@ class AddDiscreteGaussianNoise(Measurement):
         """Returns the noise scale."""
         return self._sigma_squared
 
+    @property
+    def adds_no_noise(self) -> bool:
+        """Returns True if this measurement adds no noise."""
+        return self.sigma_squared == 0
+
     @typechecked
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         r"""Returns the smallest d_out satisfied by the measurement.
@@ -405,6 +422,8 @@ class AddDiscreteGaussianNoise(Measurement):
         See :cite:`Canonne0S20` for more information. The formula above is based on
         Definition 1.
         """
+        if self.sigma_squared == 0:
+            return int(value)
         float_scale = self.sigma_squared.to_float(round_up=True)
         return int(value + sample_dgauss(float_scale))
 
@@ -497,6 +516,11 @@ class AddGaussianNoise(Measurement):
         """Returns the noise scale."""
         return self._sigma_squared
 
+    @property
+    def adds_no_noise(self) -> bool:
+        """Returns True if this measurement adds no noise."""
+        return self.sigma_squared == 0
+
     @typechecked
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         r"""Returns the smallest d_out satisfied by the measurement.
@@ -541,6 +565,8 @@ class AddGaussianNoise(Measurement):
         """
         if not self.sigma_squared.is_finite:
             return random.choice([float("inf"), -float("inf")])
+        if self.sigma_squared == 0:
+            return float(value)
 
         float_scale = self.sigma_squared.to_float(round_up=True)
         return float(value + gaussian(u=0, sigma_squared=float_scale))
