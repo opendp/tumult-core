@@ -372,7 +372,7 @@ def get_wheels_from_circleci(session):
             headers=headers,
         ),
         step=10,
-        timeout=20 * 60,
+        timeout=60 * 60,
         check_success=lambda response: response.json()["status"] == "success",
     )
     jobs = requests.get(
