@@ -156,6 +156,49 @@ def test_property_immutability(prop_name: str):
         input_df=pd.DataFrame({"k": [], "a": []}),
         expected_df=pd.DataFrame({"k": [], "a": []}),
     ),
+    Case("empty-output-rows")(
+        transformer=RowsToRowsTransformation(
+            ListDomain(
+                SparkRowDomain(
+                    {
+                        "k": SparkIntegerColumnDescriptor(),
+                        "a": SparkIntegerColumnDescriptor(),
+                    }
+                )
+            ),
+            ListDomain(
+                SparkRowDomain(
+                    {
+                        "a": SparkFloatColumnDescriptor(),
+                    }
+                )
+            ),
+            lambda rs: [],
+        ),
+        input_df=pd.DataFrame({"k": [1, 2], "a": [3, 4]}),
+        expected_df=pd.DataFrame({"k": [], "a": []}),
+    ),
+    Case("all-null-output-rows")(
+        transformer=RowsToRowsTransformation(
+            ListDomain(
+                SparkRowDomain(
+                    {
+                        "k": SparkIntegerColumnDescriptor(),
+                    }
+                )
+            ),
+            ListDomain(
+                SparkRowDomain(
+                    {
+                        "a": SparkFloatColumnDescriptor(allow_null=True),
+                    }
+                )
+            ),
+            lambda rs: [{"a": None}],
+        ),
+        input_df=pd.DataFrame({"k": [1, 2]}),
+        expected_df=pd.DataFrame({"k": [1, 2], "a": [None, None]}),
+    ),
     Case("empty-output-columns")(
         transformer=RowsToRowsTransformation(
             ListDomain(
