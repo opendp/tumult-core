@@ -5,6 +5,7 @@
 import functools
 import random
 import unittest
+from test.conftest import assert_frame_equal_with_sort
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union, cast
 
 import numpy as np
@@ -16,7 +17,9 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import LongType, StringType, StructField, StructType
 
 from tmlt.core.domains.spark_domains import (
+    SparkColumnDescriptor,
     SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
@@ -1804,3 +1807,239 @@ def test_groupbyvar(spark_data):
 
 
 # pylint: enable=redefined-outer-name
+
+
+class TestBounds:
+    """Correctness tests for class :func:`~.create_bounds_measurement`."""
+
+    @pytest.mark.parametrize(
+        "measure_domain,pandas_df,threshold,expected_bound",
+        [
+            (
+                SparkIntegerColumnDescriptor(),
+                pd.DataFrame({"X": [1, 2, 2, 3, 3, 8]}),
+                0.8,
+                4,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame({"X": [1.0, 2.0, 2.0, 3.0, 3.0, 8.0]}),
+                0.8,
+                4.0,
+            ),
+            (
+                SparkIntegerColumnDescriptor(),
+                pd.DataFrame({"X": [1, 2, 2, 3, 3, 8]}),
+                1.0,
+                8,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame({"X": [1.0, 2.0, 2.0, 3.0, 3.0, 8.0]}),
+                1.0,
+                8.0,
+            ),
+            (
+                SparkIntegerColumnDescriptor(),
+                pd.DataFrame({"X": [16] * 10}),
+                0.95,
+                16,
+            ),
+            (
+                SparkIntegerColumnDescriptor(),
+                pd.DataFrame({"X": [-50, -30, 0, 10, 30, 30, 30, 50, 60, 70]}),
+                0.9,
+                64,
+            ),
+            (
+                SparkIntegerColumnDescriptor(),
+                pd.DataFrame({"X": [16] * 15 + [500] * 5}),
+                0.95,
+                512,
+            ),
+            (
+                SparkIntegerColumnDescriptor(),
+                pd.DataFrame({"X": [-777] * 10}),
+                0.95,
+                1024,
+            ),
+            (
+                SparkIntegerColumnDescriptor(),
+                pd.DataFrame({"X": [-1] * 2 + [0] * 16 + [1] * 2}),
+                0.8,
+                1,
+            ),
+            (
+                SparkIntegerColumnDescriptor(),
+                pd.DataFrame({"X": [-1] * 3 + [0] * 4 + [1] * 3}),
+                0.95,
+                1,
+            ),
+            (
+                SparkIntegerColumnDescriptor(),
+                pd.DataFrame({"X": []}),
+                0.95,
+                1.0,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame({"X": [16.0] * 10}),
+                0.95,
+                16.0,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame(
+                    {"X": [-50.0, -30.0, 0.0, 10.0, 30.0, 30.0, 30.0, 50.0, 60.0, 70.0]}
+                ),
+                0.9,
+                64.0,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame({"X": [16.0] * 15 + [500.0] * 5}),
+                0.95,
+                512.0,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame({"X": [-777.0] * 10}),
+                0.95,
+                1024.0,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame({"X": [-(2**-150)] * 2 + [0.0] * 16 + [2**-150] * 2}),
+                0.8,
+                2**-100,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame(
+                    {"X": [-(2**-99.5)] * 8 + [0.0] * 10 + [2**-99.5] * 8}
+                ),
+                0.95,
+                2**-99,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame({"X": []}),
+                0.95,
+                2**-100,
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                pd.DataFrame({"X": [2.0**101] * 10}),
+                0.95,
+                2**100,
+            ),
+        ],
+    )
+    @pytest.mark.slow
+    def test_create_bounds_no_noise(
+        self,
+        spark,
+        measure_domain: SparkColumnDescriptor,
+        pandas_df: pd.DataFrame,
+        threshold: float,
+        expected_bound: Union[int, float],
+    ):
+        """Tests that create_bounds_measurement is correct when no noise is added."""
+        domain = SparkDataFrameDomain(
+            {
+                "X": measure_domain,
+            }
+        )
+        spark_df = spark.createDataFrame(pandas_df, schema=domain.spark_schema)
+
+        measurement = create_bounds_measurement(
+            input_domain=domain,
+            input_metric=SymmetricDifference(),
+            output_measure=PureDP(),
+            d_out=float("inf"),
+            measure_column="X",
+            threshold=threshold,
+            d_in=1,
+        )
+        output = measurement(spark_df)
+
+        assert output[1] == expected_bound
+        assert measurement.privacy_function(1) == sp.oo
+
+    @pytest.mark.parametrize(
+        (
+            "measure_domain,input_metric,pandas_df,"
+            "threshold,lower_column,upper_column,expected_df"
+        ),
+        [
+            (
+                SparkIntegerColumnDescriptor(),
+                SymmetricDifference(),
+                pd.DataFrame({"A": ["1"] * 6 + ["2"] * 6, "X": [1, 2, 2, 3, 3, 8] * 2}),
+                0.8,
+                "lower",
+                "upper",
+                pd.DataFrame({"A": ["1", "2"], "lower": [-4, -4], "upper": [4, 4]}),
+            ),
+            (
+                SparkFloatColumnDescriptor(),
+                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                pd.DataFrame(
+                    {"A": ["1"] * 10 + ["2"] * 10, "X": [16.0] * 10 + [1024.0] * 10}
+                ),
+                0.95,
+                None,
+                None,
+                pd.DataFrame(
+                    {
+                        "A": ["1", "2", "3"],
+                        "lower_bound(X)": [-16.0, -1024.0, -(2.0**-100)],
+                        "upper_bound(X)": [16.0, 1024.0, 2.0**-100],
+                    }
+                ),
+            ),
+        ],
+    )
+    @pytest.mark.slow
+    def test_create_bounds_with_groupby_no_noise(
+        self,
+        spark,
+        measure_domain: SparkColumnDescriptor,
+        input_metric: Union[SymmetricDifference, IfGroupedBy],
+        pandas_df: pd.DataFrame,
+        threshold: float,
+        lower_column: Optional[str],
+        upper_column: Optional[str],
+        expected_df: pd.DataFrame,
+    ):
+        """Tests that create_bounds_measurement is correct when no noise is added."""
+        domain = SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(),
+                "X": measure_domain,
+            }
+        )
+        spark_df = spark.createDataFrame(pandas_df, schema=domain.spark_schema)
+        group_keys = spark.createDataFrame(expected_df).select("A")
+
+        measurement = create_bounds_measurement(
+            input_domain=domain,
+            input_metric=input_metric,
+            output_measure=PureDP(),
+            d_out=float("inf"),
+            measure_column="X",
+            threshold=threshold,
+            d_in=1,
+            groupby_transformation=GroupBy(
+                input_domain=domain,
+                input_metric=input_metric,
+                use_l2=False,
+                group_keys=group_keys,
+            ),
+            lower_bound_column=lower_column,
+            upper_bound_column=upper_column,
+        )
+        output = measurement(spark_df)
+
+        assert_frame_equal_with_sort(output.toPandas(), expected_df)
+        assert measurement.privacy_function(1) == sp.oo

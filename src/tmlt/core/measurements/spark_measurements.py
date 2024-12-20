@@ -11,11 +11,12 @@ for more information.
 
 import uuid
 from abc import abstractmethod
-from typing import Any, Optional, Tuple, Union, cast
+from typing import Any, List, Optional, Tuple, Union, cast
 
 import sympy as sp
-from pyspark.sql import DataFrame, SparkSession  # pylint: disable=unused-import
+from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as sf
+from pyspark.sql.types import IntegerType
 from typeguard import typechecked
 
 # cleanup is imported just so its cleanup function runs at exit
@@ -29,6 +30,7 @@ from tmlt.core.domains.spark_domains import (
     convert_pandas_domain,
 )
 from tmlt.core.exceptions import (
+    DomainColumnError,
     DomainMismatchError,
     UnsupportedDomainError,
     UnsupportedMetricError,
@@ -37,11 +39,18 @@ from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise
 from tmlt.core.measurements.pandas_measurements.dataframe import Aggregate
 from tmlt.core.measurements.pandas_measurements.series import AddNoiseToSeries
-from tmlt.core.measures import ApproxDP
-from tmlt.core.metrics import OnColumn, RootSumOfSquared, SumOf, SymmetricDifference
+from tmlt.core.measures import ApproxDP, PureDP
+from tmlt.core.metrics import (
+    AbsoluteDifference,
+    OnColumn,
+    RootSumOfSquared,
+    SumOf,
+    SymmetricDifference,
+)
 from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+from tmlt.core.utils.join import join
 from tmlt.core.utils.misc import get_materialized_df, get_nonconflicting_string
 from tmlt.core.utils.validation import validate_exact_number
 
@@ -73,6 +82,7 @@ class AddNoiseToColumn(SparkMeasurement):
     Example:
         ..
             >>> import pandas as pd
+            >>> from pyspark.sql import SparkSession
             >>> from tmlt.core.measurements.noise_mechanisms import (
             ...     AddLaplaceNoise,
             ... )
@@ -123,7 +133,7 @@ class AddNoiseToColumn(SparkMeasurement):
         ... )
         >>> # Apply measurement to data
         >>> noisy_spark_dataframe = add_laplace_noise_to_column(spark_dataframe)
-        >>> print_sdf(noisy_spark_dataframe) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+        >>> print_sdf(noisy_spark_dataframe)  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
             A   B   count
         0  a1  b1 ...
         1  a1  b2 ...
@@ -287,8 +297,14 @@ class ApplyInPandas(SparkMeasurement):
         aggregation_function_domain = SparkDataFrameDomain(
             convert_pandas_domain(aggregation_function.input_domain)
         )
+        # needed_columns can't be substituted for
+        # aggregation_function.input_domain.schema because it is a set, which can change
+        # the order of columns. Order is important when checking that the domains match.
         input_domain_as_spark = SparkDataFrameDomain(
-            {column: input_domain[column] for column in needed_columns}
+            {
+                column: input_domain[column]
+                for column in aggregation_function.input_domain.schema
+            }
         )
         if aggregation_function_domain != input_domain_as_spark:
             raise DomainMismatchError(
@@ -354,6 +370,7 @@ class GeometricPartitionSelection(SparkMeasurement):
     Example:
         ..
             >>> import pandas as pd
+            >>> from pyspark.sql import SparkSession
             >>> from tmlt.core.utils.misc import print_sdf
             >>> spark = SparkSession.builder.getOrCreate()
             >>> spark_dataframe = spark.createDataFrame(
@@ -400,7 +417,7 @@ class GeometricPartitionSelection(SparkMeasurement):
         ...     threshold=50,
         ...     alpha=1,
         ... )
-        >>> noisy_spark_dataframe = measurement(spark_dataframe) # doctest: +SKIP
+        >>> noisy_spark_dataframe = measurement(spark_dataframe)  # doctest: +SKIP
         >>> print_sdf(noisy_spark_dataframe)  # doctest: +NORMALIZE_WHITESPACE
             A   B  count
         0  a2  b2    106
@@ -568,6 +585,293 @@ class GeometricPartitionSelection(SparkMeasurement):
         )
         noisy_count_df = internal_measurement(count_df)
         return noisy_count_df.filter(sf.col(self.count_column) >= self.threshold)
+
+
+class SparseVectorPrefixSums(SparkMeasurement):
+    r"""Find the rank of the row causing the prefix sum to exceed the threshold.
+
+    Example:
+        ..
+            >>> import pandas as pd
+            >>> from pyspark.sql import SparkSession
+            >>> from tmlt.core.utils.misc import print_sdf
+            >>> spark = SparkSession.builder.getOrCreate()
+            >>> spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "grouping": ["A"] * 10 + ["B"] * 10,
+            ...             "rank": list(range(10)) + list(range(-5, 5)),
+            ...             "count": [1] * 10 + [2] * 4 + [1000] + [2] * 5,
+            ...         }
+            ...     )
+            ... )
+            >>> noisy_spark_dataframe = spark.createDataFrame(
+            ...     pd.DataFrame(
+            ...         {
+            ...             "grouping": ["A", "B"],
+            ...             "rank": [8, -1],
+            ...         }
+            ...     )
+            ... )
+
+        >>> # Example input
+        >>> print_sdf(spark_dataframe)
+           grouping  rank  count
+        0         A     0      1
+        1         A     1      1
+        2         A     2      1
+        3         A     3      1
+        4         A     4      1
+        5         A     5      1
+        6         A     6      1
+        7         A     7      1
+        8         A     8      1
+        9         A     9      1
+        10        B    -5      2
+        11        B    -4      2
+        12        B    -3      2
+        13        B    -2      2
+        14        B    -1   1000
+        15        B     0      2
+        16        B     1      2
+        17        B     2      2
+        18        B     3      2
+        19        B     4      2
+
+        >>> measurement = SparseVectorPrefixSums(
+        ...     input_domain=SparkDataFrameDomain(
+        ...         schema={
+        ...             "grouping": SparkStringColumnDescriptor(),
+        ...             "rank": SparkIntegerColumnDescriptor(),
+        ...             "count": SparkIntegerColumnDescriptor(),
+        ...         },
+        ...     ),
+        ...     count_column="count",
+        ...     rank_column="rank",
+        ...     alpha=1,
+        ...     grouping_columns=["grouping"],
+        ...     threshold_fraction=0.90,
+        ... )
+        >>> noisy_spark_dataframe = measurement(spark_dataframe)  # doctest: +SKIP
+        >>> print_sdf(noisy_spark_dataframe)  # doctest: +NORMALIZE_WHITESPACE
+          grouping  rank
+        0        A     8
+        1        B    -1
+
+    Measurement Contract:
+        * Input domain - :class:`~.SparkDataFrameDomain`
+        * Output type - Spark DataFrame
+        * Input metric - :class:`~.OnColumn` (with inner metric
+            ``SumOf(AbsoluteDifference())``) on the ``count_column``).
+        * Output measure - :class:`~.PureDP`
+
+        >>> measurement.input_domain
+        SparkDataFrameDomain(schema={'grouping': SparkStringColumnDescriptor(allow_null=False), 'rank': SparkIntegerColumnDescriptor(allow_null=False, size=64), 'count': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        >>> measurement.input_metric
+        OnColumn(column='count', metric=SumOf(inner_metric=AbsoluteDifference()))
+        >>> measurement.output_measure
+        PureDP()
+
+        Privacy Guarantee:
+            For :math:`d_{in} = 0`, returns :math:`0`
+
+            For :math:`d_{in} \ge 1`, returns
+            :math:`(4 / \alpha) \cdot d_{in}`
+
+            where:
+
+            * :math:`\alpha` is :attr:`~.alpha`
+
+            >>> measurement.privacy_function(1)
+            4
+            >>> measurement.privacy_function(2)
+            8
+    """  # pylint: disable=line-too-long,useless-suppression
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: SparkDataFrameDomain,
+        count_column: str,
+        rank_column: str,
+        alpha: ExactNumberInput,
+        grouping_columns: Optional[List[str]] = None,
+        threshold_fraction: float = 0.95,
+    ):
+        r"""Constructor.
+
+        Args:
+            input_domain: Dataframe containing bin counts.
+            count_column: Column name for the column containing the counts.
+            rank_column: Column name for the column defining the ranking on rows to
+                compute prefix sums.
+            alpha: The noise scale parameter for Geometric noise that will be added to
+                each prefix sum.  Noise with scale of :math:`\alpha / 2` will be added
+                when computing the threshold.
+                See :class:`~.AddGeometricNoise` for more information.
+            grouping_columns: Optional list of column names defining the groups. The
+                output dataframe will contain one row per group. If None, the entire
+                input dataframe is treated as a single group.
+            threshold_fraction: The fraction of the total count to use as the threshold.
+                This value should be between (0, 1]. By default it is set to 0.95.
+        """
+        if grouping_columns is None:
+            grouping_columns = []
+
+        if count_column not in input_domain.schema:
+            raise DomainColumnError(
+                input_domain,
+                count_column,
+                f"Column '{count_column}' is not in the input schema.",
+            )
+        if rank_column not in input_domain.schema:
+            raise DomainColumnError(
+                input_domain,
+                rank_column,
+                f"Column '{rank_column}' is not in the input schema.",
+            )
+        for column in grouping_columns:
+            if column not in input_domain.schema:
+                raise DomainColumnError(
+                    input_domain,
+                    column,
+                    f"Column '{column}' is not in the input schema.",
+                )
+            if column in (count_column, rank_column):
+                raise ValueError(
+                    "Grouping columns cannot contain the count or rank columns."
+                )
+
+        self._count_column = count_column
+        self._rank_column = rank_column
+        self.grouping_columns = grouping_columns
+
+        try:
+            validate_exact_number(
+                value=alpha,
+                allow_nonintegral=True,
+                minimum=0,
+                minimum_is_inclusive=True,
+            )
+        except ValueError as e:
+            raise ValueError(f"Invalid noise scale: {e}") from e
+        if not 0 < threshold_fraction <= 1:
+            raise ValueError(
+                f"Invalid threshold fraction: {threshold_fraction}. Must be in (0, 1]."
+            )
+        self._alpha = ExactNumber(alpha)
+        self._threshold_fraction = threshold_fraction
+        super().__init__(
+            input_domain=input_domain,
+            input_metric=OnColumn(count_column, SumOf(AbsoluteDifference())),
+            output_measure=PureDP(),
+            is_interactive=False,
+        )
+
+    @property
+    def alpha(self) -> ExactNumber:
+        """Returns the alpha."""
+        return self._alpha
+
+    @property
+    def threshold_fraction(self) -> float:
+        """Returns the threshold."""
+        return self._threshold_fraction
+
+    @property
+    def count_column(self) -> str:
+        """Returns the count column."""
+        return self._count_column
+
+    @property
+    def rank_column(self) -> str:
+        """Returns the rank column."""
+        return self._rank_column
+
+    @typechecked
+    def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
+        """Returns the smallest d_out satisfied by the measurement.
+
+        See `the architecture guide
+        <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_ for more
+        information.
+
+        Args:
+            d_in: Distance between inputs under input_metric.
+        """
+        self.input_metric.validate(d_in)
+        d_in = ExactNumber(d_in)
+        if d_in == 0:
+            return ExactNumber(0)
+        if self.alpha == 0:
+            return ExactNumber(float("inf"))
+        if d_in < 1:
+            raise NotImplementedError()
+        return (4 / self.alpha) * d_in
+
+    def call(self, val: DataFrame) -> DataFrame:
+        """Return row causing prefix sum to exceed the threshold."""
+        df = val
+        threshold_column = get_nonconflicting_string(df.columns)
+
+        window_spec = Window.partitionBy(*self.grouping_columns).orderBy(
+            self.rank_column
+        )
+        df = df.withColumn(
+            self.count_column, sf.sum(self.count_column).over(window_spec)
+        )
+
+        add_threshold_noise = sf.pandas_udf(
+            AddNoiseToSeries(AddGeometricNoise(self.alpha / 2)),
+            IntegerType(),
+            sf.PandasUDFType.SCALAR,
+        ).asNondeterministic()
+        thresholds = (
+            df.groupBy(*self.grouping_columns)
+            .agg(sf.max(self.count_column).alias("total_count"))
+            .withColumn(
+                threshold_column,
+                add_threshold_noise(
+                    (sf.col("total_count") * sf.lit(self.threshold_fraction)).cast(
+                        "int"
+                    )
+                ),
+            )
+            .drop("total_count")
+        )
+
+        add_bin_noise = sf.pandas_udf(
+            AddNoiseToSeries(AddGeometricNoise(self.alpha)),
+            IntegerType(),
+            sf.PandasUDFType.SCALAR,
+        ).asNondeterministic()
+        df = df.withColumn(self.count_column, add_bin_noise(sf.col(self.count_column)))
+
+        if len(self.grouping_columns) == 0:
+            df = df.crossJoin(thresholds)
+        else:
+            df = join(df, thresholds, self.grouping_columns, nulls_are_equal=True)
+
+        max_rank_column = get_nonconflicting_string(df.columns)
+        df = df.withColumn(
+            max_rank_column,
+            sf.max(self.rank_column).over(Window.partitionBy(*self.grouping_columns)),
+        )
+
+        row_number = get_nonconflicting_string(df.columns)
+        df = (
+            df.filter(
+                (sf.col(self.count_column) >= sf.col(threshold_column))
+                | (sf.col(max_rank_column) == sf.col(self.rank_column)),
+            )
+            .withColumn(
+                row_number,
+                sf.row_number().over(window_spec),
+            )
+            .filter(sf.col(row_number) == 1)
+        )
+
+        return df.select(self.grouping_columns + [self.rank_column])
 
 
 def _get_sanitized_df(sdf: DataFrame) -> DataFrame:

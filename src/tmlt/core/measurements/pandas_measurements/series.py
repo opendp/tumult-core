@@ -9,19 +9,14 @@
 
 import math
 from abc import abstractmethod
-from itertools import accumulate
 from typing import Any, List, NamedTuple, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
-from pyspark.sql.types import DataType, DoubleType, LongType
+from pyspark.sql.types import DataType, DoubleType
 from typeguard import typechecked
 
-from tmlt.core.domains.numpy_domains import (
-    NumpyDomain,
-    NumpyFloatDomain,
-    NumpyIntegerDomain,
-)
+from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasSeriesDomain
 from tmlt.core.exceptions import UnsupportedDomainError
 from tmlt.core.measurements.base import Measurement
@@ -52,7 +47,6 @@ from tmlt.core.utils.arb import (
     arb_sub,
 )
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
-from tmlt.core.utils.validation import validate_exact_number
 
 
 class Aggregate(Measurement):
@@ -91,164 +85,6 @@ class Aggregate(Measurement):
     @abstractmethod
     def __call__(self, data: pd.Series) -> Union[float, int]:
         """Perform measurement."""
-
-
-class NoisyBounds(Aggregate):
-    """Estimates the bounds of a Pandas series."""
-
-    @typechecked
-    def __init__(
-        self,
-        input_domain: PandasSeriesDomain,
-        alpha: ExactNumberInput,
-        threshold_fraction: float = 0.95,
-    ):
-        r"""Constructor.
-
-        Args:
-            input_domain: PandasSeriesDomain or either integers or floats.
-            alpha: The noise scale parameter for Geometric noise that will be added
-                to true number of values falling between the tested bounds on each
-                round of the algorithm.
-                Noise with scale of :math:`\alpha / 2` will be added
-                to compute the threshold.
-                See :class:`~.AddGeometricNoise` for more information.
-            threshold_fraction: The fraction of the total count to use as the threshold.
-                This value should be between (0, 1]. By default it is set to 0.95.
-        """
-        element_type = input_domain.element_domain
-        if isinstance(element_type, NumpyFloatDomain):
-            if element_type.allow_nan:
-                raise UnsupportedDomainError(
-                    input_domain, "Input domain must disallow NaNs."
-                )
-            splits = (
-                [-(2**i) * 2**-100 for i in range(200, -1, -1)]
-                + [0]
-                + [2**i * 2**-100 for i in range(201)]
-            )
-        elif isinstance(element_type, NumpyIntegerDomain):
-            splits = (
-                [-(2**i) for i in range(element_type.size - 1, -1, -1)]
-                + [0]
-                + [2**i for i in range(element_type.size - 1)]
-                + [2 ** (element_type.size - 1) - 1]
-            )
-        else:
-            raise ValueError(
-                "Invalid element type, expected [NumpyFloatDomain, "
-                f"NumpyIntegerDomain], got {element_type}."
-            )
-        self._splits = splits
-        self._element_type = element_type
-
-        try:
-            validate_exact_number(
-                value=alpha,
-                allow_nonintegral=True,
-                minimum=0,
-                minimum_is_inclusive=True,
-            )
-        except ValueError as e:
-            raise ValueError(f"Invalid noise scale: {e}") from e
-        if not 0 < threshold_fraction <= 1:
-            raise ValueError(
-                f"Invalid threshold fraction: {threshold_fraction}. Must be in (0, 1]."
-            )
-        self._alpha = ExactNumber(alpha)
-        self._threshold_fraction = threshold_fraction
-        super().__init__(
-            input_domain=input_domain,
-            input_metric=SymmetricDifference(),
-            output_measure=PureDP(),
-            output_spark_type=self.output_spark_type,
-        )
-
-    @property
-    def alpha(self) -> ExactNumber:
-        """Returns the alpha."""
-        return self._alpha
-
-    @property
-    def threshold_fraction(self) -> float:
-        """Returns the threshold."""
-        return self._threshold_fraction
-
-    @property
-    def splits(self) -> Union[List[float], List[int]]:
-        """Returns the splits."""
-        return self._splits.copy()
-
-    @property
-    def element_type(self) -> NumpyDomain:
-        """Returns the element type of the series."""
-        return self._element_type
-
-    @property
-    def output_spark_type(self) -> DataType:
-        """Returns the output Spark type after being used as a UDF."""
-        return (
-            DoubleType()
-            if isinstance(self.element_type, NumpyFloatDomain)
-            else LongType()
-        )
-
-    @typechecked
-    def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
-        """Returns the smallest d_out satisfied by the measurement.
-
-        See `the architecture guide
-        <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_ for more
-        information.
-
-        Args:
-            d_in: Distance between inputs under input_metric.
-        """
-        self.input_metric.validate(d_in)
-        d_in = ExactNumber(d_in)
-        if d_in == 0:
-            return ExactNumber(0)
-        if self.alpha == 0:
-            return ExactNumber(float("inf"))
-        if d_in < 1:
-            raise NotImplementedError()
-        return (4 / self.alpha) * d_in
-
-    def __call__(self, data: pd.Series) -> Union[float, int]:
-        """Returns the bounds for the given column."""
-        # Creates a series mapping bin index to count of values in that bin. Indices are
-        # such that 6 bins will result in indices -3, -2, -1, 1, 2, 3, to make matching
-        # corresponding positive and negative bins easier.  This includes zeros for bins
-        # with no values. If any values do not fall in bin (floats larger than 2^100 or
-        # smaller than -2^100), they are dropped.
-        num_bins = len(self._splits) - 1
-        bin_counts = pd.cut(
-            data,
-            bins=self._splits,
-            include_lowest=True,
-            labels=list(range(-num_bins // 2, 0)) + list(range(1, num_bins // 2 + 1)),
-        ).value_counts()
-
-        cumulative_counts = list(
-            accumulate(
-                bin_counts[i] + bin_counts[-i] for i in range(1, num_bins // 2 + 1)
-            )
-        )
-
-        add_threshold_noise = AddGeometricNoise(self._alpha / 2)
-        noisy_threshold = add_threshold_noise(
-            np.int64(self.threshold_fraction * cumulative_counts[-1])
-        )
-
-        # Finding the bin that contains enough counts above the threshold
-        add_bin_noise = AddGeometricNoise(self.alpha)
-        bin_upper_limits = self._splits[len(self._splits) // 2 + 1 :]
-
-        for i, bin_count in enumerate(cumulative_counts):
-            noisy_count = add_bin_noise(np.int64(bin_count))
-            if noisy_count >= noisy_threshold:
-                return bin_upper_limits[i]
-        return bin_upper_limits[-1]
 
 
 class NoisyQuantile(Aggregate):
