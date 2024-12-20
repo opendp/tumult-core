@@ -5,7 +5,6 @@
 
 
 import re
-from fractions import Fraction
 from typing import Any, Dict, Tuple, Union
 from unittest.case import TestCase
 from unittest.mock import Mock, call, patch
@@ -17,7 +16,6 @@ from parameterized import parameterized
 from pyspark.sql.types import DoubleType
 
 from tmlt.core.domains.numpy_domains import (
-    NumpyDomain,
     NumpyFloatDomain,
     NumpyIntegerDomain,
     NumpyStringDomain,
@@ -31,7 +29,6 @@ from tmlt.core.measurements.noise_mechanisms import (
 )
 from tmlt.core.measurements.pandas_measurements.series import (
     AddNoiseToSeries,
-    NoisyBounds,
     NoisyQuantile,
 )
 from tmlt.core.measures import PureDP, RhoZCDP
@@ -41,140 +38,7 @@ from tmlt.core.metrics import (
     SumOf,
     SymmetricDifference,
 )
-from tmlt.core.utils.exact_number import ExactNumber
 from tmlt.core.utils.testing import assert_property_immutability, get_all_props
-
-
-class TestNoisyBounds(TestCase):
-    """Tests for class :class:`~.NoisyBounds`."""
-
-    @parameterized.expand(get_all_props(NoisyBounds))
-    def test_property_immutability(self, prop_name: str):
-        """Tests that given property is immutable."""
-        measurement = NoisyBounds(
-            input_domain=PandasSeriesDomain(NumpyIntegerDomain()),
-            alpha=1,
-        )
-        assert_property_immutability(measurement, prop_name)
-
-    def test_properties(self):
-        """NoisyBounds's properties have the expected values."""
-        measurement = NoisyBounds(
-            input_domain=PandasSeriesDomain(NumpyFloatDomain()),
-            alpha=1,
-        )
-        self.assertEqual(
-            measurement.input_domain, PandasSeriesDomain(NumpyFloatDomain())
-        )
-        self.assertEqual(measurement.input_metric, SymmetricDifference())
-        self.assertEqual(measurement.output_measure, PureDP())
-        self.assertEqual(measurement.is_interactive, False)
-        self.assertEqual(measurement.output_spark_type, DoubleType())
-        self.assertEqual(measurement.alpha, 1)
-
-    @parameterized.expand(
-        [
-            (NumpyIntegerDomain(), pd.Series([1, 2, 2, 3, 3, 8]), 0.8, 4),
-            (NumpyFloatDomain(), pd.Series([1.0, 2.0, 2.0, 3.0, 3.0, 8.0]), 0.8, 4.0),
-            (NumpyIntegerDomain(), pd.Series([1, 2, 2, 3, 3, 8]), 1.0, 8),
-            (NumpyFloatDomain(), pd.Series([1.0, 2.0, 2.0, 3.0, 3.0, 8.0]), 1.0, 8.0),
-            (NumpyIntegerDomain(), pd.Series([16] * 10), 0.95, 16),
-            (
-                NumpyIntegerDomain(),
-                pd.Series([-50, -30, 0, 10, 30, 30, 30, 50, 60, 70]),
-                0.9,
-                64,
-            ),
-            (NumpyIntegerDomain(), pd.Series([16] * 15 + [500] * 5), 0.95, 512),
-            (NumpyIntegerDomain(), pd.Series([-777] * 10), 0.95, 1024),
-            (NumpyIntegerDomain(), pd.Series([-1] * 2 + [0] * 16 + [1] * 2), 0.8, 1),
-            (NumpyIntegerDomain(), pd.Series([-1] * 3 + [0] * 4 + [1] * 3), 0.95, 2),
-            (NumpyIntegerDomain(), pd.Series([]), 0.95, 1.0),
-            (NumpyFloatDomain(), pd.Series([16.0] * 10), 0.95, 16.0),
-            (
-                NumpyFloatDomain(),
-                pd.Series(
-                    [-50.0, -30.0, 0.0, 10.0, 30.0, 30.0, 30.0, 50.0, 60.0, 70.0]
-                ),
-                0.9,
-                64.0,
-            ),
-            (NumpyFloatDomain(), pd.Series([16.0] * 15 + [500.0] * 5), 0.95, 512.0),
-            (NumpyFloatDomain(), pd.Series([-777.0] * 10), 0.95, 1024.0),
-            (
-                NumpyFloatDomain(),
-                pd.Series([-(2**-150)] * 2 + [0.0] * 16 + [2**-150] * 2),
-                0.8,
-                2**-100,
-            ),
-            (
-                NumpyFloatDomain(),
-                pd.Series([-(2**-99.5)] * 8 + [0.0] * 10 + [2**-99.5] * 8),
-                0.95,
-                2**-99,
-            ),
-            (NumpyFloatDomain(), pd.Series([]), 0.95, 2**-100),
-            (NumpyFloatDomain(), pd.Series([2**101] * 10), 0.95, 2**-100),
-        ]
-    )
-    def test_correctness(
-        self,
-        domain: NumpyDomain,
-        data: pd.Series,
-        threshold: float,
-        expected_bound: Union[int, float],
-    ):
-        """Tests that the noisy bounds is correct when no noise is added."""
-        measurement = NoisyBounds(
-            input_domain=PandasSeriesDomain(domain),
-            threshold_fraction=threshold,
-            alpha=0,
-        )
-        output = measurement(data)
-
-        self.assertEqual(output, expected_bound)
-        self.assertEqual(measurement.privacy_function(1), sp.oo)
-
-    @parameterized.expand(
-        [
-            ({"alpha": -1}, "Invalid noise scale"),
-            ({"threshold_fraction": -1}, "Invalid threshold"),
-            ({"threshold_fraction": 0}, "Invalid threshold"),
-            ({"threshold_fraction": 1.1}, "Invalid threshold"),
-            (
-                {"input_domain": PandasSeriesDomain(NumpyStringDomain())},
-                "Invalid element type",
-            ),
-            (
-                {"input_domain": PandasSeriesDomain(NumpyFloatDomain(allow_nan=True))},
-                "Input domain must disallow NaNs",
-            ),
-        ]
-    )
-    def test_bad_inputs(self, bad_kwargs: Dict[str, Any], message: str):
-        """Tests that bad inputs are rejected."""
-        kwargs = {
-            "input_domain": PandasSeriesDomain(NumpyIntegerDomain()),
-            "alpha": 1,
-        }
-        kwargs.update(bad_kwargs)
-        with self.assertRaisesRegex(
-            (ValueError, UnsupportedDomainError), re.escape(message)
-        ):
-            NoisyBounds(**kwargs)  # type: ignore
-
-    def test_privacy_function(self):
-        """Test that NoisyBounds's privacy function is correct."""
-        alpha = ExactNumber(3)
-        threshold = 1
-        measurement = NoisyBounds(
-            input_domain=PandasSeriesDomain(NumpyIntegerDomain()),
-            alpha=alpha,
-            threshold_fraction=threshold,
-        )
-        self.assertEqual(measurement.privacy_function(0), 0)
-        self.assertEqual(measurement.privacy_function(1), ExactNumber(Fraction(4, 3)))
-        self.assertEqual(measurement.privacy_function(3), 4)
 
 
 class TestNoisyQuantile(TestCase):

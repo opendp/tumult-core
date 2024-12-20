@@ -3,25 +3,27 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-
 from enum import Enum
+from math import ceil, log2
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import sympy as sp
 from numpy.typing import ArrayLike
-from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql import functions as sf
-from pyspark.sql.types import StructType
+from pyspark.sql.types import IntegerType, StructField, StructType
 from typeguard import typechecked
 
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
     SparkIntegerColumnDescriptor,
     SparkRowDomain,
+    convert_spark_schema,
 )
 from tmlt.core.exceptions import (
     DomainMismatchError,
@@ -44,7 +46,6 @@ from tmlt.core.measurements.noise_mechanisms import (
 from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
 from tmlt.core.measurements.pandas_measurements.series import (
     AddNoiseToSeries,
-    NoisyBounds,
     NoisyQuantile,
 )
 from tmlt.core.measurements.postprocess import PostProcess
@@ -52,6 +53,7 @@ from tmlt.core.measurements.spark_measurements import (
     AddNoiseToColumn,
     ApplyInPandas,
     GeometricPartitionSelection,
+    SparseVectorPrefixSums,
 )
 from tmlt.core.measures import (
     ApproxDP,
@@ -70,7 +72,10 @@ from tmlt.core.metrics import (
     SymmetricDifference,
 )
 from tmlt.core.transformations.base import Transformation
+from tmlt.core.transformations.converters import UnwrapIfGroupedBy
+from tmlt.core.transformations.identity import Identity
 from tmlt.core.transformations.spark_transformations.agg import (
+    CountGrouped,
     create_count_aggregation,
     create_count_distinct_aggregation,
     create_sum_aggregation,
@@ -1012,7 +1017,7 @@ def create_average_measurement(
         )
 
         def postprocess_sod_and_count(
-            answers: List[Union[np.int64, np.float64]]
+            answers: List[Union[np.int64, np.float64]],
         ) -> Union[
             np.int64,
             np.float64,
@@ -1341,7 +1346,7 @@ def create_variance_measurement(
         )
 
         def postprocess_sums_and_count(
-            answers: List[Union[np.int64, np.float64]]
+            answers: List[Union[np.int64, np.float64]],
         ) -> Union[
             np.int64,
             np.float64,
@@ -1705,7 +1710,7 @@ def create_standard_deviation_measurement(
     if groupby_transformation is None:
 
         def postprocess_variance(
-            answer: Union[Dict[str, ArrayLike], ArrayLike]
+            answer: Union[Dict[str, ArrayLike], ArrayLike],
         ) -> Union[Dict[str, ArrayLike], ArrayLike]:
             """Computes variance from noisy standard deviation."""
             if isinstance(answer, dict):
@@ -2151,6 +2156,7 @@ def create_bounds_measurement(
     if not lower_bound_column:
         lower_bound_column = f"lower_bound({measure_column})"
 
+    spark = SparkSession.builder.getOrCreate()
     if groupby_transformation is None:
         if isinstance(input_metric, IfGroupedBy):
             raise UnsupportedMetricError(
@@ -2160,7 +2166,6 @@ def create_bounds_measurement(
                     "transformation."
                 ),
             )
-        spark = SparkSession.builder.getOrCreate()
         input_or_constructed_groupby_transformation = GroupBy(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -2193,63 +2198,134 @@ def create_bounds_measurement(
             "Creating a bounds measurement with d_in < 1 is not yet supported."
         )
 
-    bounds_input_domain = PandasSeriesDomain(
-        input_domain[measure_column].to_numpy_domain()
-    )
-    d_mid = input_or_constructed_groupby_transformation.stability_function(d_in)
+    # Create map transformation.
+    rank_column = get_nonconflicting_string(list(input_domain.schema))
+    count_column = get_nonconflicting_string(list(input_domain.schema) + [rank_column])
+    element_type = input_domain[measure_column]
 
-    # Special case for infinite privacy budget
-    if d_out == float("inf"):
-        alpha = ExactNumber(0)
-    # Normal cases
-    else:
-        alpha = (4 / d_out) * d_mid
-
-    noisy_bounds_measurement = NoisyBounds(
-        input_domain=bounds_input_domain,
-        threshold_fraction=threshold,
-        alpha=alpha,
+    bucket_group_keys = spark.createDataFrame(
+        [(i,) for i in range(element_type.size - 1)]
+        if isinstance(element_type, SparkIntegerColumnDescriptor)
+        else [(i,) for i in range(-100, 101)],
+        schema=StructType([StructField(rank_column, IntegerType(), False)]),
     )
 
-    pandas_schema = {
-        measure_column: PandasSeriesDomain(
-            input_domain[measure_column].to_numpy_domain()
-        )
-    }
-    df_aggregation_function = AggregateByColumn(
-        input_domain=PandasDataFrameDomain(pandas_schema),
-        column_to_aggregation={measure_column: noisy_bounds_measurement},
+    def _add_bucket_index(row: Row) -> Union[Dict[str, int], Dict[str, float]]:
+        def clamp(x, lower, upper):  # type: ignore
+            return max(min(x, upper), lower)
+
+        return {
+            rank_column: clamp(
+                -100
+                if row[measure_column] == 0
+                else ceil(log2(abs(row[measure_column]))),
+                -100 if isinstance(element_type, SparkFloatColumnDescriptor) else 0,
+                100,
+            )
+        }
+
+    add_bucket_index = Map(
+        metric=input_metric,
+        row_transformer=RowToRowTransformation(
+            input_domain=SparkRowDomain(input_domain.schema),
+            output_domain=SparkRowDomain(
+                {
+                    **input_domain.schema,
+                    rank_column: convert_spark_schema(bucket_group_keys.schema)[
+                        rank_column
+                    ],
+                }
+            ),
+            trusted_f=_add_bucket_index,
+            augment=True,
+        ),
     )
 
     # help mypy
-    assert isinstance(
-        input_or_constructed_groupby_transformation.output_domain,
-        SparkGroupedDataFrameDomain,
-    )
-    assert isinstance(
-        input_or_constructed_groupby_transformation.output_metric,
-        (SumOf, RootSumOfSquared),
-    )
-
-    apply_bounds_measurement = ApplyInPandas(
-        input_domain=input_or_constructed_groupby_transformation.output_domain,
-        input_metric=input_or_constructed_groupby_transformation.output_metric,
-        aggregation_function=df_aggregation_function,
-    )
-
-    postprocess = (
-        (lambda df: ((lower := -df.collect()[0][measure_column]), -lower))
-        if groupby_transformation is None
-        else (
-            lambda df: df.withColumnRenamed(
-                measure_column, upper_bound_column
-            ).withColumn(lower_bound_column, -sf.col(upper_bound_column))
+    assert isinstance(add_bucket_index.output_domain, SparkDataFrameDomain)
+    # Unwrap IfGroupedBy if necessary
+    maybe_unwrap = (
+        UnwrapIfGroupedBy(
+            domain=add_bucket_index.output_domain,
+            input_metric=add_bucket_index.output_metric,
+        )
+        if isinstance(add_bucket_index.output_metric, IfGroupedBy)
+        else Identity(
+            domain=add_bucket_index.output_domain,
+            metric=add_bucket_index.output_metric,
         )
     )
 
+    # help mypy
+    assert isinstance(maybe_unwrap.output_domain, SparkDataFrameDomain)
+    assert isinstance(maybe_unwrap.output_metric, SymmetricDifference)
+    # Redefine groupby transformation to include the bucket.
+    augmented_groupby = GroupBy(
+        input_domain=maybe_unwrap.output_domain,
+        input_metric=maybe_unwrap.output_metric,
+        use_l2=False,
+        group_keys=input_or_constructed_groupby_transformation.group_keys.join(
+            bucket_group_keys, how="outer"
+        ),
+    )
+
+    # Define count transformation.
+    # help mypy
+    assert isinstance(augmented_groupby.output_domain, SparkGroupedDataFrameDomain)
+    assert isinstance(augmented_groupby.output_metric, SumOf)
+    count_transformation = CountGrouped(
+        input_domain=augmented_groupby.output_domain,
+        input_metric=augmented_groupby.output_metric,
+        count_column=count_column,
+    )
+
+    prefix_transformation = (
+        add_bucket_index | maybe_unwrap | augmented_groupby | count_transformation
+    )
+    d_mid = prefix_transformation.stability_function(d_in)
+
+    if d_out == float("inf"):
+        alpha = ExactNumber(0)
+    else:
+        alpha = (4 / d_out) * d_mid
+
+    # help mypy
+    assert isinstance(prefix_transformation.output_domain, SparkDataFrameDomain)
+    apply_bounds_measurement = SparseVectorPrefixSums(
+        input_domain=prefix_transformation.output_domain,
+        count_column=count_column,
+        rank_column=rank_column,
+        alpha=alpha,
+        grouping_columns=input_or_constructed_groupby_transformation.groupby_columns,
+        threshold_fraction=threshold,
+    )
+
+    if upper_bound_column is None:
+        upper_bound_column = f"upper_bound({measure_column})"
+    if lower_bound_column is None:
+        lower_bound_column = f"lower_bound({measure_column})"
+
+    def postprocess(df: DataFrame) -> Union[DataFrame, Tuple]:
+        """Postprocess by computing bounds from index."""
+        # help mypy
+        assert upper_bound_column is not None
+        assert lower_bound_column is not None
+        if groupby_transformation is None:
+            bound = 2 ** df.collect()[0][rank_column]
+            return (-bound, bound)
+        else:
+            return (
+                df.withColumn(
+                    upper_bound_column,
+                    (2 ** sf.col(rank_column)).cast(element_type.data_type),
+                )
+                .withColumn(lower_bound_column, -sf.col(upper_bound_column))
+                .drop(rank_column)
+                .drop(count_column)
+            )
+
     bounds_measurement = PostProcess(
-        measurement=input_or_constructed_groupby_transformation
-        | apply_bounds_measurement,
+        measurement=prefix_transformation | apply_bounds_measurement,
         f=postprocess,
     )
     assert bounds_measurement.privacy_function(d_in) == d_out

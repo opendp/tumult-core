@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2024
 
-
+from fractions import Fraction
 from typing import Dict, List
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -23,6 +24,7 @@ from tmlt.core.domains.spark_domains import (
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.exceptions import DomainColumnError
 from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise, AddLaplaceNoise
 from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
 from tmlt.core.measurements.pandas_measurements.series import (
@@ -33,9 +35,10 @@ from tmlt.core.measurements.spark_measurements import (
     AddNoiseToColumn,
     ApplyInPandas,
     GeometricPartitionSelection,
+    SparseVectorPrefixSums,
 )
 from tmlt.core.measures import ApproxDP, PureDP
-from tmlt.core.metrics import SumOf, SymmetricDifference
+from tmlt.core.metrics import AbsoluteDifference, OnColumn, SumOf, SymmetricDifference
 from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
 from tmlt.core.utils.exact_number import ExactNumber
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
@@ -399,6 +402,336 @@ class TestGeometricPartitionSelection(PySparkTest):
                 3 * ExactNumber(sp.E) ** (3 * base_epsilon) * base_delta,
             ),
         )
+
+
+class TestSparseVectorPrefixSums(PySparkTest):
+    """Tests for SparseVectorPrefixSums."""
+
+    def setUp(self):
+        """Test Setup."""
+        self.input_domain = SparkDataFrameDomain(
+            {
+                "grouping": SparkStringColumnDescriptor(),
+                "rank": SparkIntegerColumnDescriptor(),
+                "count": SparkIntegerColumnDescriptor(),
+            }
+        )
+        self.alpha = ExactNumber(1)
+        self.measurement = SparseVectorPrefixSums(
+            input_domain=self.input_domain,
+            count_column="count",
+            rank_column="rank",
+            alpha=self.alpha,
+            grouping_columns=["grouping"],
+            threshold_fraction=0.9,
+        )
+
+    @parameterized.expand(get_all_props(SparseVectorPrefixSums))
+    def test_property_immutability(self, prop_name: str):
+        """Tests that given property is immutable."""
+        assert_property_immutability(self.measurement, prop_name)
+
+    def test_properties(self):
+        """SparseVectorPrefixSums has the expected properties."""
+        self.assertEqual(self.measurement.input_domain, self.input_domain)
+        self.assertEqual(
+            self.measurement.input_metric,
+            OnColumn("count", SumOf(AbsoluteDifference())),
+        )
+        self.assertEqual(self.measurement.output_measure, PureDP())
+        self.assertEqual(self.measurement.alpha, self.alpha)
+        self.assertEqual(self.measurement.count_column, "count")
+        self.assertEqual(self.measurement.rank_column, "rank")
+        self.assertEqual(self.measurement.grouping_columns, ["grouping"])
+        self.assertEqual(self.measurement.threshold_fraction, 0.9)
+
+    @parameterized.expand(
+        [
+            (
+                "missing_count_column",
+                {
+                    "rank_column": "rank",
+                    "alpha": 1,
+                    "count_column": "missing_column",
+                    "error": "Column 'missing_column' is not in the input schema.",
+                    "error_type": DomainColumnError,
+                },
+            ),
+            (
+                "missing_rank_column",
+                {
+                    "count_column": "count",
+                    "alpha": 1,
+                    "rank_column": "missing_column",
+                    "error": "Column 'missing_column' is not in the input schema.",
+                    "error_type": DomainColumnError,
+                },
+            ),
+            (
+                "invalid_grouping_column",
+                {
+                    "count_column": "count",
+                    "rank_column": "rank",
+                    "alpha": 1,
+                    "grouping_columns": ["missing_column"],
+                    "error": "Column 'missing_column' is not in the input schema.",
+                    "error_type": DomainColumnError,
+                },
+            ),
+            (
+                "grouping_equals_count",
+                {
+                    "count_column": "count",
+                    "rank_column": "rank",
+                    "alpha": 1,
+                    "grouping_columns": ["count"],
+                    "error": (
+                        "Grouping columns cannot contain the count or rank columns."
+                    ),
+                    "error_type": ValueError,
+                },
+            ),
+            (
+                "grouping_equals_rank",
+                {
+                    "count_column": "count",
+                    "rank_column": "rank",
+                    "alpha": 1,
+                    "grouping_columns": ["rank"],
+                    "error": (
+                        "Grouping columns cannot contain the count or rank columns."
+                    ),
+                    "error_type": ValueError,
+                },
+            ),
+            (
+                "invalid_alpha",
+                {
+                    "count_column": "count",
+                    "rank_column": "rank",
+                    "alpha": -1,
+                    "error": (
+                        "Invalid noise scale: -1 is not greater than or equal to 0"
+                    ),
+                    "error_type": ValueError,
+                },
+            ),
+            (
+                "invalid_threshold",
+                {
+                    "count_column": "count",
+                    "rank_column": "rank",
+                    "alpha": 1,
+                    "threshold_fraction": 0,
+                    "error": r"Invalid threshold fraction: 0. Must be in \(0, 1].",
+                    "error_type": ValueError,
+                },
+            ),
+        ]
+    )
+    def test_init(self, _, test_params):
+        """Test init function error handling."""
+        with self.assertRaisesRegex(test_params["error_type"], test_params["error"]):
+            SparseVectorPrefixSums(
+                input_domain=self.input_domain,
+                count_column=test_params.get("count_column", "count"),
+                rank_column=test_params.get("rank_column", "rank"),
+                alpha=test_params.get("alpha", 1),
+                grouping_columns=test_params.get("grouping_columns", []),
+                threshold_fraction=test_params.get("threshold_fraction", 0.9),
+            )
+
+    @parameterized.expand(
+        [
+            # Basic case with single group
+            (
+                pd.DataFrame(
+                    {
+                        "grouping1": ["A"] * 5,
+                        "grouping2": ["X"] * 5,
+                        "rank": [1, 2, 3, 4, 5],
+                        "count": [1, 2, 10, 3, 4],
+                    }
+                ),
+                0.5,
+                None,
+                pd.DataFrame(
+                    {
+                        "rank": [3],
+                    }
+                ),
+            ),
+            # Multiple groups, multiple grouping columns
+            (
+                pd.DataFrame(
+                    {
+                        "grouping1": ["A", "A", "A", "A", "A", "A"],
+                        "grouping2": ["X", "X", "X", "Y", "Y", "Y"],
+                        "rank": [1, 2, 3, 1, 2, 3],
+                        "count": [1, 2, 3, 5, 10, 5],
+                    }
+                ),
+                0.7,
+                ["grouping1", "grouping2"],
+                pd.DataFrame(
+                    {"grouping1": "A", "grouping2": ["X", "Y"], "rank": [3, 2]}
+                ),
+            ),
+            # Empty input
+            (
+                pd.DataFrame(
+                    {"grouping1": [], "grouping2": [], "rank": [], "count": []}
+                ),
+                0.9,
+                ["grouping1"],
+                pd.DataFrame(
+                    {
+                        "grouping1": pd.Series(dtype=str),
+                        "rank": pd.Series(dtype=int),
+                    }
+                ),
+            ),
+            # Single row per group
+            (
+                pd.DataFrame(
+                    {
+                        "grouping1": ["A", "B"],
+                        "grouping2": ["X", "Y"],
+                        "rank": [1, 1],
+                        "count": [100, 200],
+                    }
+                ),
+                0.5,
+                ["grouping1"],
+                pd.DataFrame({"grouping1": ["A", "B"], "rank": [1, 1]}),
+            ),
+            # Negative ranks
+            (
+                pd.DataFrame(
+                    {
+                        "grouping1": ["A"] * 4,
+                        "grouping2": ["X"] * 4,
+                        "rank": [-2, -1, 0, 1],
+                        "count": [1, 5, 2, 2],
+                    }
+                ),
+                0.5,
+                None,
+                pd.DataFrame({"rank": [-1]}),
+            ),
+            # zero counts
+            (
+                pd.DataFrame(
+                    {
+                        "grouping1": ["A"] * 3,
+                        "grouping2": ["X"] * 3,
+                        "rank": [1, 2, 3],
+                        "count": [0, 0, 0],
+                    }
+                ),
+                0.9,
+                ["grouping1"],
+                pd.DataFrame(
+                    {
+                        "grouping1": ["A"],
+                        "rank": [1],
+                    }
+                ),
+            ),
+            # test that Nulls work correctly
+            (
+                pd.DataFrame(
+                    {
+                        "grouping1": [None] * 5,
+                        "grouping2": ["X"] * 5,
+                        "rank": [1, 2, 3, 4, 5],
+                        "count": [1, 2, 10, 3, 4],
+                    }
+                ),
+                0.5,
+                ["grouping1", "grouping2"],
+                pd.DataFrame(
+                    {
+                        "grouping1": [None],
+                        "grouping2": ["X"],
+                        "rank": [3],
+                    }
+                ),
+            ),
+        ]
+    )
+    def test_correctness(
+        self, input_df, threshold_fraction, grouping_columns, expected
+    ):
+        """Tests that SparseVectorPrefixSums works correctly for various inputs."""
+
+        domain = SparkDataFrameDomain(
+            {
+                "grouping1": SparkStringColumnDescriptor(allow_null=True),
+                "grouping2": SparkStringColumnDescriptor(),
+                "rank": SparkIntegerColumnDescriptor(),
+                "count": SparkIntegerColumnDescriptor(),
+            }
+        )
+        measurement = SparseVectorPrefixSums(
+            input_domain=domain,
+            count_column="count",
+            rank_column="rank",
+            alpha=0,
+            grouping_columns=grouping_columns,
+            threshold_fraction=threshold_fraction,
+        )
+
+        sdf = self.spark.createDataFrame(input_df, schema=domain.spark_schema)
+        result = measurement(sdf).toPandas()
+
+        self.assert_frame_equal_with_sort(result, expected)
+
+    @patch.object(SparseVectorPrefixSums, "threshold_fraction", new=1.5)
+    def test_correctness_high_threshold(self):
+        """Tests that SparseVectorPrefixSums works correctly for high threshold.
+
+        Although the threshold fraction cannot be >1, we simulate the case where the
+        noise added to the threshold causes it to be larger than any of the prefix
+        counts.
+        """
+        domain = SparkDataFrameDomain(
+            {
+                "grouping1": SparkStringColumnDescriptor(),
+                "rank": SparkIntegerColumnDescriptor(),
+                "count": SparkIntegerColumnDescriptor(),
+            }
+        )
+        input_df = pd.DataFrame(
+            {
+                "grouping1": ["A", "A", "A", "B", "B", "B"],
+                "rank": [1, 2, 3, 1, 2, 3],
+                "count": [1, 2, 3, 5, 10, 5],
+            }
+        )
+        expected = pd.DataFrame({"grouping1": ["A", "B"], "rank": [3, 3]})
+
+        measurement = SparseVectorPrefixSums(
+            input_domain=domain,
+            count_column="count",
+            rank_column="rank",
+            alpha=0,
+            grouping_columns=["grouping1"],
+            threshold_fraction=0.1,
+        )
+
+        sdf = self.spark.createDataFrame(input_df, schema=domain.spark_schema)
+        result = measurement(sdf).toPandas()
+
+        self.assert_frame_equal_with_sort(result, expected)
+
+    def test_privacy_function(self):
+        """SparseVectorPrefixSums's privacy function is correct."""
+        self.assertEqual(self.measurement.privacy_function(0), ExactNumber(0))
+        self.assertEqual(self.measurement.privacy_function(1), ExactNumber(4))
+        self.assertEqual(self.measurement.privacy_function(2), ExactNumber(8))
+        with self.assertRaises(NotImplementedError):
+            self.measurement.privacy_function(Fraction(1, 2))
 
 
 class TestSanitization(PySparkTest):

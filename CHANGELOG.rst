@@ -11,6 +11,7 @@ Changed
 - The ``rng`` parameter to :func:`~tmlt.core.random.discrete_gaussian.sample_dgauss` has been removed, and it now always uses :func:`tmlt.core.random.rng.prng` as its random number generator.
 - :class:`~tmlt.core.random.rng.RNGWrapper` has been moved into :mod:`tmlt.core.random.rng`.
 - The parameter to :meth:`.RNGWrapper.randrange` has renamed from ``high`` to ``stop`` for consistency with the single-parameter version of :func:`random.randrange`.
+- Refactor ``NoisyBounds`` to be more scalable. The new measurement is :class:`~.SparseVectorPrefixSums`, which is used in :func:`~.create_bounds_measurement` to construct the bounds measurement.
 
 Removed
 ~~~~~~~
@@ -18,7 +19,7 @@ Removed
 
 Fixed
 ~~~~~
-- Fixed a bug in :class:`~tmlt.core.measurements.pandas_measurements.series.NoisyBounds` that would try to select an upper bound larger than the maximum 64-bit integer, leading to an overflow.
+- Fixed a bug in ``NoisyBounds``, now :class:`~.SparseVectorPrefixSums`, that would try to select an upper bound larger than the maximum 64-bit integer, leading to an overflow.
 
 Changed
 ~~~~~~~
@@ -94,7 +95,7 @@ Added
 
 Changed
 ~~~~~~~
-- Refactored bounds measurement to use a Pandas UDF. ``BoundSelection`` measurement was removed and equivalent :class:`~tmlt.core.measurements.pandas_measurements.series.NoisyBounds` was added.
+- Refactored bounds measurement to use a Pandas UDF. ``BoundSelection`` measurement was removed and equivalent ``NoisyBounds`` was added.
 - Renamed ``create_bound_selection_measurement`` to :func:`~tmlt.core.measurements.aggregations.create_bounds_measurement`. The ``bound_column`` parameter was renamed to ``measure_column``.
 
 Removed
