@@ -981,7 +981,8 @@ class TestPrivateJoin(PySparkTest):
                 "df2",
                 TruncationStrategy.TRUNCATE,
                 ["A"],
-                "Name collision, 'B_right' would appear more than once in the output.",
+                "Name collision, ['B_right'] would appear more than once in the "
+                "output.",
             ),
             (  # Invalid threshold for NO_TRUNCATION strategy
                 DictDomain(
