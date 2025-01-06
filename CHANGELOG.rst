@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+Added
+~~~~~
+- :func:`~tmlt.core.utils.join.join` now supports ``left_anti`` joins. Note that the Core join transformations still do not support ``left_anti`` joins.
+
 Changed
 ~~~~~~~
 - The ``rng`` parameter to :func:`~tmlt.core.random.discrete_gaussian.sample_dgauss` has been removed, and it now always uses :func:`tmlt.core.random.rng.prng` as its random number generator.

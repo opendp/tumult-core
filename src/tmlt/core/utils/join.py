@@ -13,6 +13,7 @@ from typeguard import typechecked
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.spark_domains import (
     SparkColumnDescriptor,
+    SparkColumnsDescriptor,
     SparkDataFrameDomain,
     SparkDateColumnDescriptor,
     SparkFloatColumnDescriptor,
@@ -50,7 +51,10 @@ def natural_join_columns(
 
 @typechecked
 def columns_after_join(
-    left_columns: List[str], right_columns: List[str], on: Optional[List[str]] = None
+    left_columns: List[str],
+    right_columns: List[str],
+    on: Optional[List[str]] = None,
+    how: str = "inner",
 ) -> Dict[str, Union[Tuple[str, str], Tuple[str, None], Tuple[None, str]]]:
     """Return the expected output columns and their origin from joining two dataframes.
 
@@ -73,34 +77,11 @@ def columns_after_join(
     _left and _right are appended to output column names if they are in both
     ``left_columns`` and ``right_columns``, but are not joined on.
 
-    Also does input validation. Checks:
-
-        - The join involves at least one column.
-        - Join columns are in both tables.
-        - None of the column names are duplicated in any of the inputs.
-        - No name collisions when adding _left or _right to a column name.
-
     Examples:
         >>> columns_after_join(["a", "b", "c"], ["b", "c", "d"])
         {'b': ('b', 'b'), 'c': ('c', 'c'), 'a': ('a', None), 'd': (None, 'd')}
         >>> columns_after_join(["a", "b", "c"], ["b", "c", "d"], ["b"])
         {'b': ('b', 'b'), 'a': ('a', None), 'c_left': ('c', None), 'c_right': (None, 'c'), 'd': (None, 'd')}
-        >>> columns_after_join(["a", "b", "c"], ["d", "e", "f"])
-        Traceback (most recent call last):
-        ...
-        ValueError: Join must involve at least one column.
-        >>> columns_after_join(["a", "b", "c"], ["a", "b", "c"], ["d"])
-        Traceback (most recent call last):
-        ...
-        ValueError: Join column 'd' not in the left table.
-        >>> columns_after_join(["a", "b", "c"], ["a", "b", "c"], ["a", "a"])
-        Traceback (most recent call last):
-        ...
-        ValueError: Join columns (`on`) contain duplicates.
-        >>> columns_after_join(["a", "b"], ["a", "b", "b_right"], ["a"])
-        Traceback (most recent call last):
-        ...
-        ValueError: Name collision, 'b_right' would appear more than once in the output.
 
 
     Args:
@@ -108,9 +89,63 @@ def columns_after_join(
         right_columns: Columns of the right dataframe.
         on: Columns to join on. If None, join on all columns with the same
             name.
+        how: Join type. Must be one of "left", "right", "inner", "outer", "left_anti".
+            This defaults to "inner".
     """  # pylint: disable=line-too-long,useless-suppression
     if on is None:
         on = natural_join_columns(left_columns, right_columns)
+
+    if how == "left_anti":
+        result: Dict[
+            str, Union[Tuple[str, str], Tuple[str, None], Tuple[None, str]]
+        ] = {column: (column, None) for column in on}
+        result.update(
+            {column: (column, None) for column in left_columns if column not in on}
+        )
+        return result
+
+    output_columns: Dict[
+        str, Union[Tuple[str, str], Tuple[str, None], Tuple[None, str]]
+    ] = {column: (column, column) for column in on}
+    for column in left_columns:
+        if column in on:
+            continue
+        if column in right_columns:
+            new_column = f"{column}_left"
+        else:
+            new_column = column
+        output_columns[new_column] = (column, None)
+    for column in right_columns:
+        if column in on:
+            continue
+        if column in left_columns:
+            new_column = f"{column}_right"
+        else:
+            new_column = column
+        output_columns[new_column] = (None, column)
+    return output_columns
+
+
+@typechecked
+def _validate_join(
+    left_schema: SparkColumnsDescriptor,
+    right_schema: SparkColumnsDescriptor,
+    on: Optional[List[str]],
+    how: str,
+) -> None:
+    """Check for any problems in the join.
+
+    Checks:
+
+        - The join involves at least one column.
+        - Join columns are in both tables.
+        - None of the column names are duplicated in any of the inputs.
+        - No name collisions when adding _left or _right to a column name.
+    """
+    left_columns = left_schema.keys()
+    right_columns = right_schema.keys()
+    if on is None:
+        on = natural_join_columns(list(left_columns), list(right_columns))
     if len(on) == 0:
         raise ValueError("Join must involve at least one column.")
     for column in on:
@@ -125,36 +160,45 @@ def columns_after_join(
     if len(set(right_columns)) != len(right_columns):
         raise ValueError("Right columns contain duplicates.")
 
-    output_columns: Dict[
-        str, Union[Tuple[str, str], Tuple[str, None], Tuple[None, str]]
-    ] = {column: (column, column) for column in on}
-    for column in left_columns:
-        if column in on:
-            continue
-        if column in right_columns:
-            new_column = f"{column}_left"
-        else:
-            new_column = column
-        if new_column in output_columns:
+    if how not in {"left", "right", "inner", "outer", "left_anti"}:
+        raise ValueError(
+            "Join type (`how`) must be one of 'left', 'right', 'inner', 'outer', or "
+            f"'left_anti', not '{how}'."
+        )
+
+    if how != "left_anti":
+        columns_from_left_names = [
+            column + "_left" if column in right_columns else column
+            for column in left_columns
+            if column not in on
+        ]
+        columns_from_right_names = [
+            column + "_right" if column in left_columns else column
+            for column in right_columns
+            if column not in on
+        ]
+        seen_columns = set()
+        duplicate_columns = []
+        for column in columns_from_left_names + columns_from_right_names:
+            if column not in seen_columns:
+                seen_columns.add(column)
+            else:
+                duplicate_columns.append(column)
+        if duplicate_columns:
             raise ValueError(
-                f"Name collision, '{new_column}' would appear more than once in the"
-                " output."
+                f"Name collision, {duplicate_columns} would appear more than once in "
+                "the output."
             )
-        output_columns[new_column] = (column, None)
-    for column in right_columns:
-        if column in on:
-            continue
-        if column in left_columns:
-            new_column = f"{column}_right"
-        else:
-            new_column = column
-        if new_column in output_columns:
+
+    for column in on:
+        left_dtype = left_schema[column].data_type
+        right_dtype = right_schema[column].data_type
+        if left_dtype != right_dtype:
             raise ValueError(
-                f"Name collision, '{new_column}' would appear more than once in the"
-                " output."
+                f"'{column}' has different data types in left "
+                f"({str(left_dtype).replace('()', '')}) and right "
+                f"({str(right_dtype).replace('()', '')}) domains."
             )
-        output_columns[new_column] = (None, column)
-    return output_columns
 
 
 @typechecked
@@ -205,6 +249,7 @@ def domain_after_join(
             "Join type (`how`) must be one of 'left', 'right', 'inner', or 'outer', not"
             f" '{how}'."
         )
+    _validate_join(left_domain.schema, right_domain.schema, on=on, how=how)
     output_columns = columns_after_join(
         left_columns=list(left_domain.schema),
         right_columns=list(right_domain.schema),
@@ -232,15 +277,7 @@ def domain_after_join(
         assert right_descriptor is not None
         # The only remaining case is when the output column is a join column.
         assert output_column in on
-        if left_descriptor.data_type != right_descriptor.data_type:
-            # str(left_descriptor.datatype) changes based on the version of Spark
-            left_dtype = str(left_descriptor.data_type).replace("()", "")
-            right_dtype = str(right_descriptor.data_type).replace("()", "")
-            raise ValueError(
-                f"'{output_column}' has different data types in left "
-                f"({left_dtype}) and right "
-                f"({right_dtype}) domains."
-            )
+
         # All column types are nullable
         allow_null = None
         if how == "left":
@@ -325,11 +362,11 @@ def join(
             defaults to "inner".
         nulls_are_equal: If True, treats null values as equal. Defaults to False.
     """
-    # `columns_after_join` and `domain_after_join` are only called for validation.
-    columns_after_join(left_columns=left.columns, right_columns=right.columns, on=on)
-    domain_after_join(
-        left_domain=SparkDataFrameDomain.from_spark_schema(left.schema),
-        right_domain=SparkDataFrameDomain.from_spark_schema(right.schema),
+    if on is None:
+        on = natural_join_columns(left.columns, right.columns)
+    _validate_join(
+        left_schema=SparkDataFrameDomain.from_spark_schema(left.schema).schema,
+        right_schema=SparkDataFrameDomain.from_spark_schema(right.schema).schema,
         on=on,
         how=how,
     )
@@ -339,7 +376,10 @@ def join(
 
 
 def _rename_columns(
-    left: DataFrame, right: DataFrame, on: Optional[List[str]] = None
+    left: DataFrame,
+    right: DataFrame,
+    on: Optional[List[str]] = None,
+    how: str = "inner",
 ) -> Tuple[
     DataFrame,
     DataFrame,
@@ -403,12 +443,8 @@ def _rename_columns(
             * Mapping from output column name to
               (left column name, right column name). See :func:`columns_after_join`.
     """  # pylint: disable=line-too-long,useless-suppression
-    if on is None:
-        on = natural_join_columns(
-            left_columns=left.columns, right_columns=right.columns
-        )
     output_columns = columns_after_join(
-        left_columns=left.columns, right_columns=right.columns, on=on
+        left_columns=left.columns, right_columns=right.columns, on=on, how=how
     )
     for output_column, (left_column, right_column) in output_columns.items():
         if left_column is not None and left_column != output_column:
@@ -421,7 +457,7 @@ def _rename_columns(
 def _join_where_nulls_are_not_equal(
     left: DataFrame,
     right: DataFrame,
-    on: Optional[List[str]] = None,
+    on: List[str],
     how: str = "inner",
 ) -> DataFrame:
     """Returns the join of two dataframes, with null values not being equal.
@@ -433,7 +469,9 @@ def _join_where_nulls_are_not_equal(
         how: Join type. Must be one of "left", "right", "inner", "outer". If None,
             defaults to "inner".
     """
-    left, right, output_columns = _rename_columns(left=left, right=right, on=on)
+    left, right, output_columns = _rename_columns(
+        left=left, right=right, on=on, how=how
+    )
     return left.join(right, on=on, how=how).select(
         [escape_column_name(column) for column in output_columns]
     )
@@ -442,7 +480,7 @@ def _join_where_nulls_are_not_equal(
 def _join_where_nulls_are_equal(
     left: DataFrame,
     right: DataFrame,
-    on: Optional[List[str]] = None,
+    on: List[str],
     how: str = "inner",
 ) -> DataFrame:
     """Returns the join of two dataframes, with null values being equal.
@@ -454,11 +492,9 @@ def _join_where_nulls_are_equal(
         how: Join type. Must be one of "left", "right", "inner", "outer". If None,
             defaults to "inner".
     """
-    left, right, output_columns = _rename_columns(left=left, right=right, on=on)
-    if on is None:
-        on = natural_join_columns(
-            left_columns=left.columns, right_columns=right.columns
-        )
+    left, right, output_columns = _rename_columns(
+        left=left, right=right, on=on, how=how
+    )
     # Rename left and right columns to avoid confusing Spark
     left_temporary_names: Dict[str, str] = {}
     right_temporary_names: Dict[str, str] = {}
@@ -477,17 +513,21 @@ def _join_where_nulls_are_equal(
         )
     left = left.select(
         [
-            sf.col(column).alias(left_temporary_names[column])
-            if column in on
-            else sf.col(escape_column_name(column))
+            (
+                sf.col(column).alias(left_temporary_names[column])
+                if column in on
+                else sf.col(escape_column_name(column))
+            )
             for column in left.columns
         ]
     )
     right = right.select(
         [
-            sf.col(column).alias(right_temporary_names[column])
-            if column in on
-            else sf.col(escape_column_name(column))
+            (
+                sf.col(column).alias(right_temporary_names[column])
+                if column in on
+                else sf.col(escape_column_name(column))
+            )
             for column in right.columns
         ]
     )
@@ -512,11 +552,14 @@ def _join_where_nulls_are_equal(
     for column in on:
         left_column = left_temporary_names[column]
         right_column = right_temporary_names[column]
-        merged_column = (
-            sf.when(sf.col(left_column).isNotNull(), sf.col(left_column))
-            .when(sf.col(right_column).isNotNull(), sf.col(right_column))
-            .otherwise(sf.lit(None))
-        )
+        if how == "left_anti":
+            merged_column = sf.col(left_column)
+        else:
+            merged_column = (
+                sf.when(sf.col(left_column).isNotNull(), sf.col(left_column))
+                .when(sf.col(right_column).isNotNull(), sf.col(right_column))
+                .otherwise(sf.lit(None))
+            )
         result = result.withColumn(column, merged_column)
     # Drop temporary columns and fix order
     return result.select([escape_column_name(column) for column in output_columns])
