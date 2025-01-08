@@ -1,7 +1,7 @@
 """Measurements for adding noise to individual numbers."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 import random
 from fractions import Fraction

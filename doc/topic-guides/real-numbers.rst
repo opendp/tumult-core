@@ -5,7 +5,7 @@ Handling Real Numbers
 
 ..
     SPDX-License-Identifier: CC-BY-SA-4.0
-    Copyright Tumult Labs 2024
+    Copyright Tumult Labs 2025
 
 A DP algorithm (a single :class:`~.Measurement`) may be constructed using the Tumult Core library by composing
 arbitrarily many transformations and measurements; and calling the

@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.domains.base`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 from unittest.case import TestCase
 from unittest.mock import Mock, patch
 

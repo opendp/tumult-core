@@ -1,7 +1,7 @@
 """Creates a Spark Context to use for each testing session."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 import logging
 from typing import Any, Optional, Sequence, Union

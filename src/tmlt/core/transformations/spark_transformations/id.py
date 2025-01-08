@@ -8,7 +8,7 @@ for more information on transformations.
 
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf

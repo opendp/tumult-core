@@ -1,7 +1,7 @@
 """Domains for common python collections such as lists and dictionaries."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional

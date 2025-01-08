@@ -1,7 +1,7 @@
 """Floating-point safe utility functions for per-record diffential privacy."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 from tmlt.core.random.continuous_gaussian import gaussian_inverse_cdf
 from tmlt.core.random.inverse_cdf import construct_inverse_sampler

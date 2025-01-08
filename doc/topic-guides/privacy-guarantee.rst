@@ -5,7 +5,7 @@ Tumult Core Privacy Guarantee
 
 ..
     SPDX-License-Identifier: CC-BY-SA-4.0
-    Copyright Tumult Labs 2024
+    Copyright Tumult Labs 2025
 
 The privacy guarantee of a Core :class:`~.Measurement`, :math:`\mathcal{M}` is
 the following. Let :math:`r` denote the privacy relation of :math:`\mathcal{M}`,

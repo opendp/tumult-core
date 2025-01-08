@@ -1,7 +1,7 @@
 """Derived measurements for computing noisy aggregates on spark DataFrames."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 from enum import Enum
 from math import ceil, log2

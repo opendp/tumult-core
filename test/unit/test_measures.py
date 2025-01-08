@@ -1,7 +1,7 @@
 """Unit tests for :mod:`tmlt.core.measures`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 import itertools
 import re
 from typing import Any, Tuple, Union
