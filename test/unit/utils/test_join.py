@@ -40,7 +40,7 @@ from tmlt.core.utils.join import (
     join,
     natural_join_columns,
 )
-from tmlt.core.utils.testing import PySparkTest
+from tmlt.core.utils.testing import PySparkTest, assert_dataframe_equal
 
 
 class TestNaturalJoinColumns(TestCase):
@@ -1608,7 +1608,7 @@ class TestJoin(PySparkTest):
             nulls_are_equal=nulls_are_equal,
         )
         assert actual.schema == expected_schema
-        self.assert_frame_equal_with_sort(actual.toPandas(), expected_data)
+        assert_dataframe_equal(actual.toPandas(), expected_data)
 
     def test_left_and_right_are_from_the_same_source(self):
         """Previous implementation got confused when joining a DataFrame with a view."""
