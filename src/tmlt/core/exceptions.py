@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Collection, Iterable, Union
 import sympy as sp
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 # TYPE_CHECKING is True when MyPy analyzes this file, but False at runtime
 # (see: https://docs.python.org/3/library/typing.html)

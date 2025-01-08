@@ -1,6 +1,6 @@
 """Transformations for performing groupby on Spark DataFrames."""
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 from __future__ import annotations
 

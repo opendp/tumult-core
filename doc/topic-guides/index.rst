@@ -5,7 +5,7 @@ Topic Guides
 
 ..
     SPDX-License-Identifier: CC-BY-SA-4.0
-    Copyright Tumult Labs 2024
+    Copyright Tumult Labs 2025
 
 The following pages explain concepts and advanced topics that come up in Tumult Core.
 

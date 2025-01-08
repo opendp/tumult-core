@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.measurements.noise_mechanisms`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 import re
 from contextlib import nullcontext as does_not_raise

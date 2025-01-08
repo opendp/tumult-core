@@ -1,7 +1,7 @@
 """Helper functions for selecting component parameters."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 from typing import Union
 

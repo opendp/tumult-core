@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.measurements.converters`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 from typing import Tuple
 from unittest.case import TestCase
 from unittest.mock import call

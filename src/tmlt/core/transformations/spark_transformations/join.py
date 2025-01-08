@@ -7,7 +7,7 @@ for more information on transformations.
 # pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union

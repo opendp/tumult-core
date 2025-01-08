@@ -1,7 +1,7 @@
 """Tests that Quantile measurement adds noise sample from the correct distributions."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 
 import math

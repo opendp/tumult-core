@@ -6,7 +6,7 @@ from unittest import TestCase
 from tmlt.core.utils.configuration import Config, _java11_config_opts, get_java11_config
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 
 class TestConfiguration(TestCase):

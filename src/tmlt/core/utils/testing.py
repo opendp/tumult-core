@@ -1,7 +1,7 @@
 """Utilities for testing."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 # TODO(#1218): Move dummy aggregate class back to the test.
 

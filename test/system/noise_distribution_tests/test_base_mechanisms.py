@@ -1,7 +1,7 @@
 """Tests that base mechanisms add noise sampled from the correct distributions."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 
 import math

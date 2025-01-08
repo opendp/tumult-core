@@ -5,7 +5,7 @@
 # TODO(#1023): Handle clamping bounds approximation.
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 import math
 from abc import abstractmethod

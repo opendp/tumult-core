@@ -8,7 +8,7 @@ for more information.
 # TODO: Open question regarding "switching" column names.
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024
+# Copyright Tumult Labs 2025
 
 from typing import Dict, Union
 
