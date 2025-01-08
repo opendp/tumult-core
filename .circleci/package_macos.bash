@@ -1,8 +1,8 @@
 #!/bin/bash
 
-set -euo pipefail
+set -euox pipefail
 
-curl -sSL https://install.python-poetry.org | python3.9 -
+curl -sSL https://install.python-poetry.org | python3.9 - --version 1.8.4
 poetry="/Users/distiller/.local/bin/poetry"
 
 python3.9 --version
