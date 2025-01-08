@@ -30,7 +30,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for information about installing our deve
 
 ## License
 
-Copyright Tumult Labs 2024
+Copyright Tumult Labs 2025
 
 The Tumult Platform source code is licensed under the Apache License, version 2.0 (Apache-2.0).
 The Tumult Platform documentation is licensed under
