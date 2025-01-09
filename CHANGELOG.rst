@@ -5,6 +5,7 @@ Changelog
 
 Unreleased
 ----------
+This release drops support for older versions of Python and Spark, improves the performance of bounds-finding, and makes additional minor miscellaneous changes.
 
 Added
 ~~~~~
