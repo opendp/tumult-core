@@ -127,11 +127,8 @@ LICENSE_IGNORE_FILES = [
     r".pipeline_handlers",
     r"CHANGELOG.rst",
     r"CONTRIBUTING.md",
-    r"LICENSE",
     r"LICENSE.docs",
     r"Makefile",
-    r"NOTICE",
-    r"README.md",
     r"changelog.rst",
     r"class.rst",
     r"module.rst",
@@ -140,6 +137,11 @@ LICENSE_IGNORE_FILES = [
     r"py.typed",
     r"pyproject.toml",
     r"test_requirements.txt",
+]
+
+LICENSE_YEAR_ONLY_FILES = [
+    r"LICENSE",
+    r"NOTICE",
 ]
 
 LICENSE_KEYWORDS = ["Apache-2.0", "CC-BY-SA-4.0"]
@@ -170,6 +172,7 @@ _builder = SessionBuilder(
         "dependency_matrix": DEPENDENCY_MATRIX,
         "license_exclude_globs": LICENSE_IGNORE_GLOBS,
         "license_exclude_files": LICENSE_IGNORE_FILES,
+        "license_year_only_files": LICENSE_YEAR_ONLY_FILES,
         "license_keyword_patterns": LICENSE_KEYWORDS,
         "check_copyright": True,
         "illegal_words_exclude_globs": ILLEGAL_WORDS_IGNORE_GLOBS,

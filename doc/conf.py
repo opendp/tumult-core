@@ -15,7 +15,7 @@ _logger = logging.getLogger(__name__)
 
 project = "Tumult Core"
 author = "Tumult Labs"
-copyright = "2025 Tumult Labs"
+copyright = f"{datetime.date.today().year} Tumult Labs"
 # Note that this is the name of the module provided by the package, not
 # necessarily the name of the package as pip understands it.
 package_name = "tmlt.core"
@@ -97,6 +97,7 @@ def autoapi_prepare_jinja_env(jinja_env):
     # docstring; this needs to be defined here because Jinja2 doesn't have a
     # built-in "contains" or "match" test.
     jinja_env.tests["nodoc"] = lambda obj: "@nodoc" in obj.docstring
+
 
 # Autodoc settings
 autodoc_typehints = "description"
@@ -197,6 +198,7 @@ def skip_members(app, what, name, obj, skip, options):
     if "@nodoc" in obj.docstring:
         return True
     return skip
+
 
 def setup(sphinx):
     sphinx.connect("autoapi-skip-member", skip_members)
