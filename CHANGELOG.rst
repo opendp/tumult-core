@@ -5,6 +5,11 @@ Changelog
 
 Unreleased
 ----------
+
+.. _v0.18.0:
+
+0.18.0 - 2025-01-14
+-------------------
 This release drops support for older versions of Python and Spark, improves the performance of bounds-finding, and makes additional minor miscellaneous changes.
 
 Added
