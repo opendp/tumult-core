@@ -17,6 +17,7 @@ Changed
 - :class:`~tmlt.core.random.rng.RNGWrapper` has been moved into :mod:`tmlt.core.random.rng`.
 - The parameter to :meth:`.RNGWrapper.randrange` has renamed from ``high`` to ``stop`` for consistency with the single-parameter version of :func:`random.randrange`.
 - Refactor ``NoisyBounds`` to be more scalable. The new measurement is :class:`~.SparseVectorPrefixSums`, which is used in :func:`~.create_bounds_measurement` to construct the bounds measurement.
+- Now requires PyArrow 18 or higher to remove any possibility of CVE-2024-52338.
 
 Removed
 ~~~~~~~
