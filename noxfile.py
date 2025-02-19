@@ -370,6 +370,9 @@ def get_wheels_from_circleci(session):
             timeout=10,
         ).json()
         Path("dist").mkdir(exist_ok=True)
+        if "items" not in artifacts or len(artifacts["items"]) == 0:
+            session.error(f"Unable to find wheels for commit {commit_hash} in job "
+                          f"{job_no}. Have they expired?")
         for artifact in artifacts["items"]:
             with open(artifact["path"], "wb") as f:
                 f.write(
