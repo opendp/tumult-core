@@ -124,7 +124,10 @@ package:
   interruptible: true
   tags: [saas-linux-large-amd64]
 
-get_circleci_wheels:
+# Requires the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY variables to be set.
+# We use an access key from the core-ci AWS user, which has permissions to list
+# and modify all objects in the tumult.core-wheel-cache bucket.
+get_mac_wheels:
   extends: .base
   stage: setup
   needs: []
@@ -132,7 +135,7 @@ get_circleci_wheels:
     paths: ["dist/"]
     expire_in: 1 week
   script:
-    - nox --no-venv -s get_wheels_from_circleci
+    - nox --no-venv -s get_mac_wheels
   rules:
     # Start this job with a short delay to allow the CircleCI pipeline
     # to be created
@@ -355,7 +358,7 @@ test_release_linux_x86:
 
 test_release_macos_arm:
   stage: test-release
-  needs: [get_circleci_wheels]
+  needs: [get_mac_wheels]
   parallel:
     matrix:
       - IMAGE: ["macos-13-xcode-14", "macos-14-xcode-15"]
@@ -396,7 +399,7 @@ test_release_macos_arm:
 
 test_release_macos_x86:
   stage: test-release
-  needs: [get_circleci_wheels]
+  needs: [get_mac_wheels]
   parallel:
     matrix:
       - IMAGE: ["macos-13-xcode-14", "macos-14-xcode-15"]
@@ -464,7 +467,7 @@ audit:
 
 publish:
   stage: release
-  dependencies: [get_circleci_wheels, package]
+  dependencies: [get_mac_wheels, package]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.9
   script:
     - poetry publish -u __token__ -p "${RELEASE_PYPI_TOKEN}"

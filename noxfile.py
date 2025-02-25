@@ -282,25 +282,63 @@ def benchmark_multi_deps(session, packages):
 
 
 @poetry_session()
-def get_wheels_from_circleci(session):
-    """Get Core wheels for macOS x86 from CircleCI.
+def get_mac_wheels(session):
+    """Gets the build wheels for this commit.
 
-    This session is used to grab macOS wheels from CircleCI. It finds the CircleCI
-    pipeline associated with the commit's sha and downloads the wheels into the `dist`
-    directory.
+    Checks s3 first. If the wheels aren't yet in s3, get them from circleci and
+    uploads them.
+
+    Uses the AWS command line instead of boto3 because boto3 does not work well
+    with poetry.
     """
-    import polling2  # pylint: disable=import-outside-toplevel
-    import requests  # pylint: disable=import-outside-toplevel
-
     commit_hash = (
         subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, check=True)
         .stdout.decode("ascii")
         .strip()
     )
-    session.log(f"Grabbing wheels for commit {commit_hash}...")
+    session.log(f"Fetching wheels for commit {commit_hash}...")
+
+    # If there is not yet anything for this commit, this will error and print
+    # nothing.
+    buckets = session.run(
+        "aws", "s3", "ls", f"s3://tumult.core-wheel-cache/{commit_hash}", 
+        silent=True, success_codes=[0, 1]
+    )
+
+
+    if buckets == "":
+        session.log("Nothing in s3, fetching wheels from circleci.")
+        wheel_dir = Path(session.create_tmp())
+        try:
+            get_wheels_from_circleci(commit_hash, wheel_dir)
+        except RuntimeError as e:
+            session.error(str(e))
+        session.run(
+            "aws", "s3", "cp", "--recursive", f"{wheel_dir}", 
+            f"s3://tumult.core-wheel-cache/{commit_hash}"
+        )
+    
+    Path("dist").mkdir(exist_ok=True)
+
+    session.run(
+        "aws", "s3", "cp", "--recursive",
+        f"s3://tumult.core-wheel-cache/{commit_hash}",
+        ".",
+    )
+
+
+def get_wheels_from_circleci(commit_hash: str, wheel_dir: Path):
+    """Get Core wheels for macOS x86 from CircleCI and save them to a directory.
+
+    This helper method is used to grab macOS wheels from CircleCI. It finds the CircleCI
+    pipeline associated with the commit's sha and downloads the wheels.
+    """
+    import polling2  # pylint: disable=import-outside-toplevel
+    import requests  # pylint: disable=import-outside-toplevel
+
     CIRCLECI_TOKEN = os.environ.get("CIRCLECI_API_TOKEN")
     if not CIRCLECI_TOKEN:
-        session.error("CIRCLECI_API_TOKEN not set, unable to get wheels from CircleCI")
+        raise RuntimeError("CIRCLECI_API_TOKEN not set, unable to get wheels from CircleCI")
     headers = {
         "Accept": "application/json",
         "Circle-Token": CIRCLECI_TOKEN,
@@ -331,11 +369,10 @@ def get_wheels_from_circleci(session):
             break
         next_page_token = pipelines["next_page_token"]
         if next_page_token is None:
-            session.error(
+            raise RuntimeError(
                 f"Unable to find CircleCI pipeline for commit {commit_hash}, "
                 "unable to get wheels from CircleCI"
             )
-            break
 
     pipeline_id = commit_pipelines[0]["id"]
     workflows = requests.get(
@@ -344,7 +381,7 @@ def get_wheels_from_circleci(session):
         timeout=10,
     ).json()
     if "items" not in workflows or len(workflows["items"]) == 0:
-        session.error(f"Unable to find CircleCI workflow for commit {commit_hash}")
+        raise RuntimeError(f"Unable to find CircleCI workflow for commit {commit_hash}")
     workflow_id = workflows["items"][0]["id"]
     polling2.poll(
         lambda: requests.get(  # pylint: disable=missing-timeout
@@ -361,7 +398,7 @@ def get_wheels_from_circleci(session):
         timeout=10,
     ).json()
     if "items" not in jobs or len(jobs["items"]) == 0:
-        session.error(f"Unable to find CircleCI job for commit {commit_hash}")
+        raise ValueError(f"Unable to find CircleCI job for commit {commit_hash}")
     for job in jobs["items"]:
         job_no = job["job_number"]
         artifacts = requests.get(
@@ -369,12 +406,12 @@ def get_wheels_from_circleci(session):
             headers=headers,
             timeout=10,
         ).json()
-        Path("dist").mkdir(exist_ok=True)
+        Path(wheel_dir / "dist").mkdir(exist_ok=True)
         if "items" not in artifacts or len(artifacts["items"]) == 0:
-            session.error(f"Unable to find wheels for commit {commit_hash} in job "
+            raise RuntimeError(f"Unable to find wheels for commit {commit_hash} in job "
                           f"{job_no}. Have they expired?")
         for artifact in artifacts["items"]:
-            with open(artifact["path"], "wb") as f:
+            with open(wheel_dir / artifact["path"], "wb") as f:
                 f.write(
                     requests.get(artifact["url"], headers=headers, timeout=10).content
                 )
