@@ -173,6 +173,9 @@ intersphinx_mapping = {
     "pyspark": ("https://spark.apache.org/docs/3.5.1/api/python/", None),
 }
 
+# The ACM website seems to have some sort of protection that foils the linkchecker.
+linkcheck_ignore = [r"https://doi.org/10.1145/2382196.2382264"]
+
 
 def skip_members(app, what, name, obj, skip, options):
     """Skip some members."""

@@ -152,7 +152,7 @@ def _verify_expr_is_an_exact_number(expr: sp.Expr) -> None:
     # is_number means no free symbols, and no undefined functions
     if not expr.is_number:
         raise UnsupportedSympyExprError(expr, f"{expr} has an undefined function")
-    if expr.is_finite and not expr.is_real:
+    if expr.is_finite and not expr.is_real:  # type: ignore
         raise UnsupportedSympyExprError(expr, f"{expr} has an imaginary component")
     if expr in (sp.oo, -sp.oo):
         return
@@ -271,12 +271,12 @@ class ExactNumber:
     @property
     def is_integer(self) -> bool:
         """Returns whether self represents an integer."""
-        return bool(self.expr.is_integer)
+        return bool(self.expr.is_integer)  # type: ignore
 
     @property
     def is_finite(self) -> bool:
         """Returns whether self represents a finite number."""
-        return bool(self.expr.is_finite)
+        return bool(self.expr.is_finite)  # type: ignore
 
     def to_float(self, round_up: bool) -> float:
         """Returns self as a float.
@@ -335,7 +335,7 @@ class ExactNumber:
         def compare(x: sp.Expr, y: sp.Rational) -> bool:
             return x < y if round_up else x > y
 
-        while compare(expr, value):
+        while compare(expr, sp.Rational(value)):
             expr += nudge
             nudge *= 10
         return ExactNumber(expr)

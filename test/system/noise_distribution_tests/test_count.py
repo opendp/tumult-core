@@ -4,7 +4,7 @@
 # Copyright Tumult Labs 2025
 
 
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 import pytest
 
@@ -44,7 +44,7 @@ def _get_count_test_cases(noise_mechanism: NoiseMechanism):
     """
     test_cases = []
     count_locations = [10, 45]
-    privacy_budgets = [1, "0.4"]
+    privacy_budgets: List[Union[int, str]] = [1, "0.4"]
     for count_loc, budget in zip(count_locations, privacy_budgets):
         dataset = FixedGroupDataSet(
             group_vals=list(range(count_loc)), num_groups=SAMPLE_SIZE
