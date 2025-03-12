@@ -48,7 +48,7 @@ def benchmark_join(truncation_strategy: TruncationStrategy):
         for each row, identified by integers 0,...,[GROUPSIZE].
 
     """
-    group_counts = [10 ** i for i in (2, 4, 5)]
+    group_counts = [10**i for i in (2, 4, 5)]
     runtimes = []
 
     for left_group_count, right_group_count in itertools.combinations_with_replacement(
@@ -126,7 +126,7 @@ def benchmark_trunc():
     """
     truncations = {"TRUNCATE": truncate_large_groups, "DROP": drop_large_groups}
     trunc_runtimes = pd.DataFrame()
-    group_counts = [10 ** i for i in (2, 4, 5)]
+    group_counts = [10**i for i in (2, 4, 5)]
     group_sizes_tau = [
         ([1, 5, 10], [1, 7]),
         ([10, 20, 50], [10, 48]),
@@ -151,10 +151,12 @@ def benchmark_trunc():
                         )
                         truncated_df.write.saveAsTable("tbl", mode="overwrite")
                     runtimes_record[f"{truncation_mech} time(sec)"] = f"{t.elapsed:.2f}"
-                    runtimes_record[
-                        f"{truncation_mech} #rows output"
-                    ] = truncated_df.count()
-                trunc_runtimes = pd.concat([trunc_runtimes, pd.DataFrame([runtimes_record])], ignore_index=True)
+                    runtimes_record[f"{truncation_mech} #rows output"] = (
+                        truncated_df.count()
+                    )
+                trunc_runtimes = pd.concat(
+                    [trunc_runtimes, pd.DataFrame([runtimes_record])], ignore_index=True
+                )
     return pd.DataFrame.from_records(trunc_runtimes)
 
 
@@ -183,7 +185,7 @@ def generate_dataframe(
     )
     group_size_factory = itertools.cycle(group_sizes)
     data = [
-        (str(i), *[randint(0, 1e6) for _ in range(num_cols - 1)])
+        (str(i), *[randint(0, 1_000_000) for _ in range(num_cols - 1)])
         for i in range(group_count)
         for _ in range(next(group_size_factory) + randint(-fuzz, fuzz))
     ]

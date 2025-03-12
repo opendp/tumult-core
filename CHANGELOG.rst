@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+Changed
+~~~~~~~
+- We now support sympy versions >=1.10, <1.13.
+
 .. _v0.18.0:
 
 0.18.0 - 2025-01-14
