@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+.. _v0.18.1:
+
+0.18.1 - 2025-03-17
+-------------------
+
 Changed
 ~~~~~~~
 - We now support sympy versions >=1.10, <1.13.
