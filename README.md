@@ -4,6 +4,13 @@ Tumult Core is a programming framework for implementing [differentially private]
 
 The design of Tumult Core is based on the design proposed in the [OpenDP White Paper](https://projects.iq.harvard.edu/files/opendifferentialprivacy/files/opendp_white_paper_11may2020.pdf), and can automatically verify the privacy properties of algorithms constructed from Tumult Core components. Tumult Core is scalable, includes a wide variety of components, and supports multiple privacy definitions.
 
+
+## 🚨 Important Update: the Tumult Labs Team is Joining LinkedIn 🚨
+The [Tumult Labs team has joined LinkedIn](https://www.linkedin.com/pulse/whats-next-us-tumult-labs-gerome-miklau-zmpye)! 🎉 As part of this transition, we are exploring options for the future of Tumult Core, including finding a new home for the project. 🏡
+We greatly appreciate the community’s support and contributions. If your organization is interested in maintaining or adopting Tumult Core, please reach out! 📩
+For now, the repository remains available, and we encourage users to continue engaging with the project. We’ll provide updates as soon as we have more to share.
+— The Tumult Labs Team 💙
+
 ## Installation
 
 See the [installation instructions in the documentation](https://docs.tmlt.dev/core/latest/installation.html#installation-instructions) for information about setting up prerequisites such as Spark and Java.
