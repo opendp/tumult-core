@@ -361,7 +361,7 @@ test_release_macos_arm:
   needs: [get_mac_wheels]
   parallel:
     matrix:
-      - IMAGE: ["macos-13-xcode-14", "macos-14-xcode-15"]
+      - IMAGE: ["macos-14-xcode-15"]
   image: ${IMAGE}
   before_script:
     - python --version
@@ -402,7 +402,7 @@ test_release_macos_x86:
   needs: [get_mac_wheels]
   parallel:
     matrix:
-      - IMAGE: ["macos-13-xcode-14", "macos-14-xcode-15"]
+      - IMAGE: ["macos-14-xcode-15"]
   image: ${IMAGE}
   before_script:
     - softwareupdate --install-rosetta --agree-to-license
