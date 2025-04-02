@@ -15,6 +15,11 @@ For now, the repository remains available, and we encourage users to continue en
 Unreleased
 ----------
 
+.. _v0.18.2:
+
+0.18.2 - 2025-04-02
+-------------------
+
 Added
 ~~~~~
 - Add LinkedIn announcement to CHANGELOG.rst.
