@@ -112,6 +112,16 @@ AUDIT_SUPPRESSIONS = [
     #         have their own pip installations -- it is not a dependency of Core.
 ]
 
+BENCHMARKS = [
+    ("private_join", 35 * 60),
+    ("count_sum", 25 * 60),
+    ("quantile", 84 * 60),
+    ("noise_mechanism", 7 * 60),
+    ("sparkmap", 28 * 60),
+    ("sparkflatmap", 12 * 60),
+    ("public_join", 14 * 60),
+]
+
 
 @session
 @install_group("build")
@@ -153,3 +163,6 @@ sm.docs_doctest()
 sm.docs()
 
 sm.audit()
+
+for name, timeout in BENCHMARKS:
+    sm.benchmark(Path('benchmark') / f"{name}.py", timeout)

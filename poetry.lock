@@ -3186,7 +3186,7 @@ nox = ">=2022.8.7"
 type = "git"
 url = "https://github.com/opendp/tumult-tools.git"
 reference = "HEAD"
-resolved_reference = "4663655567e2819bf5116364e347897a12652487"
+resolved_reference = "016224ee64be1ba720476bedbe7603efbb21f573"
 subdirectory = "nox-utils"
 
 [[package]]
