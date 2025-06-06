@@ -370,8 +370,12 @@ class Arb:
         if not self.is_exact():
             raise ValueError("Arb must be exact to obtain (man, exp) representation.")
         x = self._ptr.contents.mid
+        # Per the docs, the initializer for ctypes.c_long is optional, but
+        # pylint thinks it is required.
+        # pylint: disable=no-value-for-parameter
         man_ptr = ctypes.pointer(ctypes.c_long())
         exp_ptr = ctypes.pointer(ctypes.c_long())
+        # pylint: enable=no-value-for-parameter
         arblib.arf_get_fmpz_2exp(man_ptr, exp_ptr, ctypes.byref(x))
         return _fmpz_t_to_int(man_ptr), _fmpz_t_to_int(exp_ptr)
 
@@ -628,6 +632,7 @@ def _int_to_fmpz_t(val: int) -> "ctypes._PointerLike":
     Args:
         val: Integer to convert.
     """
+    # pylint: disable-next=no-value-for-parameter
     fmpz_pointer = ctypes.pointer(ctypes.c_long())
     s = "%x" % int(val)  # pylint: disable=consider-using-f-string
     val_c_string = ctypes.c_char_p(s.encode("ascii"))

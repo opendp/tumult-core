@@ -1,24 +1,18 @@
-[tool.poetry]
+[project]
 name = "tmlt.core"
 description = "Tumult's differential privacy primitives"
 readme = "README.md"
 authors = []
 license = "Apache-2.0"
-repository = "https://gitlab.com/tumult-labs/core"
-documentation = "https://docs.tmlt.dev/core/latest"
-# The version field is required in this file format, even though it's ignored because of poetry-dynamic-versioning.
-version = "0.0.0"
 
-classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: Developers",
-  "Intended Audience :: Science/Research",
-  "Natural Language :: English",
-  "Topic :: Software Development :: Libraries",
-  "Topic :: Software Development :: Libraries :: Python Modules",
-  "Topic :: Scientific/Engineering",
-  "Topic :: Security",
-]
+dynamic = ["version", "classifiers", "dependencies", "requires-python"]
+
+[project.urls]
+documentation = "https://docs.tmlt.dev/core/latest"
+repository = "https://github.com/opendp/tumult-core"
+
+[tool.poetry]
+requires-poetry = ">=2.0"
 include = [
   { path = "doc/", format = "sdist" },
   { path = "examples/", format = "sdist" },
@@ -34,9 +28,24 @@ include = [
 ]
 packages = [{ include = "tmlt", from = "src" }]
 
-[tool.poetry.build]
-script = "ext/build.py"
-generate-setup-file = false
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Security",
+]
+
+# The version field is required in this file format, even though it's ignored
+# because of poetry-dynamic-versioning.
+version = "0.0.0"
+
+
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
 
 [tool.poetry.dependencies]
 python = "^3.9.0, <3.13"
@@ -75,6 +84,84 @@ typeguard = "^4.0.0"
 parameterized = "^0.7.4"
 pytest = "^7.3.1"
 
+[tool.poetry.group.black.dependencies]
+black = "^23.3"
+
+[tool.poetry.group.isort.dependencies]
+isort = { version = "^5.11", extras = ["pyproject"] }
+
+[tool.poetry.group.mypy.dependencies]
+# 1.4.0 incompatible with typing extensions 3.10.0 https://github.com/python/mypy/issues/15487
+mypy = "^1.2, !=1.4.0"
+
+[tool.poetry.group.pydocstyle.dependencies]
+pydocstyle = { version = "^6.3", extras = ["toml"] }
+
+[tool.poetry.group.pylint.dependencies]
+pylint = "^3.2.5"
+
+[tool.poetry.group.test.dependencies]
+pytest = "*"
+pytest-cov = "^5.0"
+pytest-xdist = "^3.6"
+
+[tool.poetry.group.docs.dependencies]
+pydata-sphinx-theme = "^0.14.4"
+sphinx = "^7.2.0"
+sphinx-autoapi = "^3.1.1"
+sphinx-autodoc-typehints = "^2.0.1"
+sphinx-automodapi = "^0.17.0"
+sphinx-copybutton = "^0.5.2"
+sphinxcontrib-bibtex = "^2.6.2"
+sphinxcontrib-images = "^0.9.4"
+sphinx-design = "^0.5.0"
+
+[tool.poetry.group.docs-examples.dependencies]
+matplotlib = "^3.1.0"
+seaborn = "^0.13.0"
+
+[tool.poetry.group.ci-tools.dependencies]
+requests = "^2.31.0"
+
+[tool.poetry.group.build.dependencies]
+cibuildwheel = "^2.10.0"
+
+[tool.poetry.group.audit.dependencies]
+pip-audit = "^2.9.0"
+
+[tool.poetry.group.scripting.dependencies]
+nox = ">=2024.03.02"
+"tmlt.nox_utils" = { git = "https://github.com/opendp/tumult-tools.git", subdirectory = "nox-utils" }
+
+################################################################################
+# Build configuration
+
+[build-system]
+requires = ["poetry-core>=1.3.2", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry.build]
+script = "ext/build.py"
+generate-setup-file = false
+
+[tool.poetry-dynamic-versioning]
+enable = true
+style = "semver"
+pattern = "^(?P<base>\\d+\\.\\d+\\.\\d+)(-(?P<stage>[a-zA-Z]+)\\.(?P<revision>\\d+))?"
+fix-shallow-repository = true
+[tool.poetry-dynamic-versioning.substitution]
+files = ["src/tmlt/core/__init__.py"]
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-*"
+skip = "*-musllinux*"
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+
+################################################################################
+# Test configuration
+
 [tool.pytest.ini_options]
 markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
 
@@ -87,52 +174,8 @@ omit = ["**/core/ext/*"]
 # us to combine the coverage data from multiple test jobs into a single report.
 source = ["src/tmlt/core", ".nox/**/site-packages/tmlt/core"]
 
-[tool.poetry.group.dev.dependencies]
-# Linters, formatters
-black = "^23.3"
-isort = { version = "^5.11", extras = ["pyproject"] }
-mypy = "^1.2, !=1.4.0" # 1.4.0 incompatible with typing extensions 3.10.0 https://github.com/python/mypy/issues/15487
-pydocstyle = { version = "^6.3", extras = ["toml"] }
-pylint = "^3.2.5"
-
-# Testing
-pytest-cov = "^5.0"
-
-# Docs
-pydata-sphinx-theme = "^0.14.4"
-sphinx = "^7.2.0"
-sphinx-autoapi = "^3.1.1"
-sphinx-autodoc-typehints = "^2.0.1"
-sphinx-automodapi = "^0.17.0"
-sphinx-copybutton = "^0.5.2"
-sphinxcontrib-bibtex = "^2.6.2"
-sphinxcontrib-images = "^0.9.4"
-sphinx-design = "^0.5.0"
-
-[tool.poetry.group.scripting.dependencies]
-nox = "2022.8.7"
-nox_poetry = "1.0.1"
-polling2 = "0.5.0"
-requests = "*"
-"tmlt.nox_utils" = { git = "git@gitlab.com:tumult-labs/nox-utils.git" }
-
-[tool.poetry.group.ci-tools.dependencies]
-requests = "^2.31.0"
-
-[tool.poetry.group.build.dependencies]
-cibuildwheel = "^2.10.0"
-
-[build-system]
-requires = ["poetry-core>=1.3.2", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"
-
-[tool.poetry-dynamic-versioning]
-enable = true
-style = "semver"
-pattern = "^(?P<base>\\d+\\.\\d+\\.\\d+)(-(?P<stage>[a-zA-Z]+)\\.(?P<revision>\\d+))?"
-fix-shallow-repository = true
-[tool.poetry-dynamic-versioning.substitution]
-files = ["src/tmlt/core/__init__.py"]
+################################################################################
+# Linter configuration
 
 [tool.black]
 force-exclude = "noxfile.py"
@@ -231,10 +274,3 @@ add-ignore = [
   # conflicts with pylint's `max-line-length`.
   "D200",
 ]
-
-[tool.cibuildwheel]
-build = "cp39-* cp310-* cp311-* cp312-*"
-skip = "*-musllinux*"
-
-[tool.cibuildwheel.linux]
-archs = ["x86_64"]
