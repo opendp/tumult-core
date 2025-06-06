@@ -145,7 +145,7 @@ html_theme_options = {
     "footer_start": ["copyright", "build-info"],
     "footer_end": ["sphinx-version", "theme-version"],
     "switcher": {
-        "json_url": "https://docs.tmlt.dev/core/versions.json",
+        "json_url": "https://opendp.github.io/tumult-docs/core/versions.json",
         "version_match": version,
     },
     "gitlab_url": "https://gitlab.com/tumult-labs/core",
