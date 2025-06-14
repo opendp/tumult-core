@@ -6,6 +6,8 @@ __pycache__/
 # C extensions
 *.so
 src/tmlt/core/ext/*
+# Auto-populated version file
+src/tmlt/core/_version.py
 
 # Distribution / packaging
 .Python
