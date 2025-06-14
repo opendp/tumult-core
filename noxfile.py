@@ -14,9 +14,7 @@ from pathlib import Path
 
 import nox
 from nox import session as session
-from tmlt.nox_utils import SessionManager, install_group
-
-nox.options.default_venv_backend = "uv|virtualenv"
+from tmlt.nox_utils import SessionManager
 
 CWD = Path(".").resolve()
 
@@ -123,27 +121,16 @@ BENCHMARKS = [
 ]
 
 
-@session
-@install_group("build")
-def build(session):
-    """Build packages for distribution.
-
-    Positional arguments given to nox are passed to the cibuildwheel command,
-    allowing it to be run outside of the CI if needed.
-    """
-    session.run("poetry", "build", "--format", "sdist", external=True)
-    session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
-
-
 sm = SessionManager(
     PACKAGE_NAME, CWD,
-    custom_build=build,
     smoketest_script=SMOKETEST_SCRIPT,
     parallel_tests=False,
     min_coverage=MIN_COVERAGE,
     audit_versions=AUDIT_VERSIONS,
     audit_suppressions=AUDIT_SUPPRESSIONS,
 )
+
+sm.build()
 
 sm.black()
 sm.isort()
