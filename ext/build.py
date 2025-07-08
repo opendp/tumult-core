@@ -2,6 +2,8 @@ import subprocess
 import sys
 import platform
 from pathlib import Path
+from typing import Any
+from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 build_dir = Path(__file__).parent
 build_command = ["bash", str(build_dir / "build.sh")]
@@ -35,13 +37,13 @@ def check_platform():
         sys.exit(1)
     print(f"Running on: {platform.system()} {platform.machine()}")
 
-
-check_platform()
-
-try:
-    subprocess.run(build_command, check=True)
-except subprocess.CalledProcessError:
-    print("=" * 80)
-    print("Failed to build C dependencies, see above output for details.")
-    print("=" * 80)
-    sys.exit(1)
+class CustomBuildHook(BuildHookInterface):
+    def initialize(self, _version: str, _build_data: dict[str, Any]):
+        check_platform()
+        try:
+            subprocess.run(build_command, check=True)
+        except subprocess.CalledProcessError:
+            print("=" * 80)
+            print("Failed to build C dependencies, see above output for details.")
+            print("=" * 80)
+            sys.exit(1)
