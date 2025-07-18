@@ -31,7 +31,7 @@ Intended Users
 ^^^^^^^^^^^^^^
 
 This library is intended for advanced users who need capabilities beyond those available in Tumult Analytics.
-Most users should use `Tumult Analytics <https://docs.tmlt.dev/analytics/>`__ rather than using Tumult Core directly.
+Most users should use `Tumult Analytics <https://tmlt.dev/analytics/>`__ rather than using Tumult Core directly.
 
 .. grid:: 1 2 2 2
    :gutter: 2

@@ -1,7 +1,7 @@
 # pylint: disable=line-too-long
 """Transformations for persisting and un-persisting Spark DataFrames.
 
-See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information.
 """
 # pylint: enable=line-too-long

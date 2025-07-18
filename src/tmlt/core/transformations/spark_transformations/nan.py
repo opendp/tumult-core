@@ -1,7 +1,7 @@
 # pylint: disable=line-too-long
 """Transformations to drop or replace NaNs, nulls, and infs in Spark DataFrames.
 
-See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
 # pylint: enable=line-too-long
@@ -185,7 +185,7 @@ class DropInfs(Transformation):
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:
@@ -363,7 +363,7 @@ class DropNaNs(Transformation):
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:
@@ -532,7 +532,7 @@ class DropNulls(Transformation):
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:
@@ -720,7 +720,7 @@ class ReplaceInfs(Transformation):
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:
@@ -906,7 +906,7 @@ class ReplaceNaNs(Transformation):
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:
@@ -1086,7 +1086,7 @@ class ReplaceNulls(Transformation):
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:

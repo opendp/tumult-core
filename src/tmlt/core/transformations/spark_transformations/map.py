@@ -1,7 +1,7 @@
 # pylint: disable=line-too-long
 """Transformations for applying user defined maps to Spark DataFrames.
 
-See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
 # pylint: enable=line-too-long

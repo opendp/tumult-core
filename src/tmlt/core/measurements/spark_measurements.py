@@ -1,7 +1,7 @@
 # pylint: disable=line-too-long
 """Measurements on Spark DataFrames.
 
-See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+See `the architecture guide <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information.
 """
 # pylint: enable=line-too-long
@@ -219,7 +219,7 @@ class AddNoiseToColumn(SparkMeasurement):
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the measurement.
 
-        See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture guide <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:
@@ -339,7 +339,7 @@ class ApplyInPandas(SparkMeasurement):
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the measurement.
 
-        See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture guide <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:
@@ -540,7 +540,7 @@ class GeometricPartitionSelection(SparkMeasurement):
     ) -> Tuple[ExactNumber, ExactNumber]:
         """Returns the smallest d_out satisfied by the measurement.
 
-        See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture guide <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:
@@ -793,7 +793,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
         """Returns the smallest d_out satisfied by the measurement.
 
         See `the architecture guide
-        <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_ for more
+        <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_ for more
         information.
 
         Args:

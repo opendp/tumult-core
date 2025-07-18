@@ -1,7 +1,7 @@
 # pylint: disable=line-too-long
 """Transformations for joining Spark DataFrames.
 
-See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
 # pylint: enable=line-too-long
@@ -753,7 +753,7 @@ class PrivateJoin(Transformation):
     def stability_function(self, d_in: Dict[Any, ExactNumberInput]) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information.
 
         Args:
@@ -1081,7 +1081,7 @@ class PrivateJoinOnKey(Transformation):
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
 
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        See `the architecture overview <https://tmlt.dev/core/latest/topic-guides/architecture.html>`_
         for more information on transformations.
 
         Args:
