@@ -10,7 +10,10 @@ import setuptools  # TODO(#3258): This import provides a workaround for a bug in
 import typeguard
 
 # This version file is populated during build -- do not commit it.
-from ._version import __version__
+try:
+    from ._version import __version__
+except ImportError:
+    from tmlt.core._version import __version__
 
 # By default, typeguard only checks the first element lists, but we want to
 # check the type of every list item.
