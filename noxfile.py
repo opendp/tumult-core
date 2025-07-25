@@ -20,6 +20,8 @@ CWD = Path(".").resolve()
 
 PACKAGE_NAME = "tmlt.core"
 """Name of the package."""
+PACKAGE_GITHUB = "opendp/tumult-core"
+"""GitHub organization/project."""
 # TODO(#2177): Once we have a better way to self-test our code, use it here in
 #              place of this import check.
 SMOKETEST_SCRIPT = """
@@ -122,7 +124,9 @@ BENCHMARKS = [
 
 
 sm = SessionManager(
-    PACKAGE_NAME, CWD,
+    package=PACKAGE_NAME,
+    package_github=PACKAGE_GITHUB,
+    directory=CWD,
     smoketest_script=SMOKETEST_SCRIPT,
     parallel_tests=False,
     min_coverage=MIN_COVERAGE,
@@ -150,6 +154,8 @@ sm.docs_doctest()
 sm.docs()
 
 sm.audit()
+
+sm.make_release()
 
 for name, timeout in BENCHMARKS:
     sm.benchmark(Path('benchmark') / f"{name}.py", timeout)
