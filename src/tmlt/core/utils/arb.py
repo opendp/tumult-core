@@ -17,37 +17,36 @@ from typing import Any, List, Tuple, Union
 # the API, but they don't obviously affect this code.
 # pylint: disable=deprecated-method
 if platform.system() == "Windows":
-    with importlib.resources.path(
-        "tmlt.core.ext.lib", "libarb.dll"
-    ) as _arb_path, importlib.resources.path(
-        "tmlt.core.ext.lib", "libflint.dll.a"
-    ) as _flint_path:
+    with (
+        importlib.resources.path("tmlt.core.ext.lib", "libarb.dll") as _arb_path,
+        importlib.resources.path("tmlt.core.ext.lib", "libflint.dll.a") as _flint_path,
+    ):
         arblib = ctypes.WinDLL(str(_arb_path))  # type: ignore
         flintlib = ctypes.WinDLL(str(_flint_path))  # type: ignore
 elif platform.system() == "Linux":
-    with importlib.resources.path(
-        "tmlt.core.ext.lib", "libgmp.so.10.5.0"
-    ) as _gmp_path, importlib.resources.path(
-        "tmlt.core.ext.lib", "libmpfr.so.6.2.1"
-    ) as _mpfr_path, importlib.resources.path(
-        "tmlt.core.ext.lib", "libflint.so.17.0.0"
-    ) as _flint_path, importlib.resources.path(
-        "tmlt.core.ext.lib", "libarb.so.2.14.0"
-    ) as _arb_path:
+    with (
+        importlib.resources.path("tmlt.core.ext.lib", "libgmp.so.10.5.0") as _gmp_path,
+        importlib.resources.path("tmlt.core.ext.lib", "libmpfr.so.6.2.1") as _mpfr_path,
+        importlib.resources.path(
+            "tmlt.core.ext.lib", "libflint.so.17.0.0"
+        ) as _flint_path,
+        importlib.resources.path("tmlt.core.ext.lib", "libarb.so.2.14.0") as _arb_path,
+    ):
         ctypes.CDLL(str(_gmp_path))
         ctypes.CDLL(str(_mpfr_path))
         flintlib = ctypes.CDLL(str(_flint_path))
         arblib = ctypes.CDLL(str(_arb_path))
 elif platform.system() == "Darwin":
-    with importlib.resources.path(
-        "tmlt.core.ext.lib", "libgmp.10.dylib"
-    ) as _gmp_path, importlib.resources.path(
-        "tmlt.core.ext.lib", "libmpfr.6.dylib"
-    ) as _mpfr_path, importlib.resources.path(
-        "tmlt.core.ext.lib", "libarb-2.14.0.dylib"
-    ) as _arb_path, importlib.resources.path(
-        "tmlt.core.ext.lib", "libflint-17.dylib"
-    ) as _flint_path:
+    with (
+        importlib.resources.path("tmlt.core.ext.lib", "libgmp.10.dylib") as _gmp_path,
+        importlib.resources.path("tmlt.core.ext.lib", "libmpfr.6.dylib") as _mpfr_path,
+        importlib.resources.path(
+            "tmlt.core.ext.lib", "libarb-2.14.0.dylib"
+        ) as _arb_path,
+        importlib.resources.path(
+            "tmlt.core.ext.lib", "libflint-17.dylib"
+        ) as _flint_path,
+    ):
         # NOTE: Below, loading with mode=`RTLD_GLOBAL` makes symbols in GMP available
         # for loading MPFR.
         ctypes.CDLL(str(_gmp_path), mode=ctypes.RTLD_GLOBAL)
@@ -372,10 +371,10 @@ class Arb:
         x = self._ptr.contents.mid
         # Per the docs, the initializer for ctypes.c_long is optional, but
         # pylint thinks it is required.
-        # pylint: disable=no-value-for-parameter
+        # pylint: disable=no-value-for-parameter, useless-suppression
         man_ptr = ctypes.pointer(ctypes.c_long())
         exp_ptr = ctypes.pointer(ctypes.c_long())
-        # pylint: enable=no-value-for-parameter
+        # pylint: enable=no-value-for-parameter, useless-suppression
         arblib.arf_get_fmpz_2exp(man_ptr, exp_ptr, ctypes.byref(x))
         return _fmpz_t_to_int(man_ptr), _fmpz_t_to_int(exp_ptr)
 
@@ -632,7 +631,7 @@ def _int_to_fmpz_t(val: int) -> "ctypes._PointerLike":
     Args:
         val: Integer to convert.
     """
-    # pylint: disable-next=no-value-for-parameter
+    # pylint: disable-next=no-value-for-parameter, useless-suppression
     fmpz_pointer = ctypes.pointer(ctypes.c_long())
     s = "%x" % int(val)  # pylint: disable=consider-using-f-string
     val_c_string = ctypes.c_char_p(s.encode("ascii"))
