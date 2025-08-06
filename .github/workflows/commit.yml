@@ -1,0 +1,49 @@
+name: Commit Pipeline
+
+concurrency: docs-push
+
+on:
+  push:
+    branches:
+      - 'main'
+
+env:
+  # Force nox to produce colorful logs:
+  FORCE_COLOR: "true"
+
+jobs:
+  Package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@0f3d49599e5824a9f407a6e2063990c1e0d4c2e8
+      - run: uv run --only-group scripting nox -s build
+      - name: Archive packaged library
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+  Push-Docs:
+    runs-on: ubuntu-latest
+    environment: docs-push
+    needs: Package
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@0f3d49599e5824a9f407a6e2063990c1e0d4c2e8
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Push docs
+        uses: opendp/tumult-tools/actions/push_docs@1c7b4b3cfa98ab75f3c5b0b91858c897a81629ad
+        with:
+          docs-repository: opendp/tumult-docs
+          docs-repository-token: ${{ secrets.DOCS_REPO_PAT }}
+          docs-path: docs/core
+          version: dev
