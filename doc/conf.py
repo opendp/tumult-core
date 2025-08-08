@@ -174,7 +174,11 @@ intersphinx_mapping = {
 }
 
 # The ACM website seems to have some sort of protection that foils the linkchecker.
-linkcheck_ignore = [r"https://doi.org/10.1145/2382196.2382264"]
+linkcheck_ignore = [
+    r"https://doi.org/10.1145/2382196.2382264",
+    # TODO: Re-enable when we got the docs site moved back to docs.tmlt.dev.
+    r"https://docs.tmlt.dev",
+]
 
 
 def skip_members(app, what, name, obj, skip, options):
