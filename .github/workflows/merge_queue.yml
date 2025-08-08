@@ -4,9 +4,6 @@ on:
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
-  push:
-    branches:
-      - 'dasm/merge-queue'
 
 env:
   # Force nox to produce colorful logs:
