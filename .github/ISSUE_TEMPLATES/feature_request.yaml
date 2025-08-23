@@ -1,0 +1,71 @@
+name: Feature Request
+description: Suggest an improvement for tmlt.core
+labels: [Enhancement, Needs Triage]
+
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Feature Category
+      description: Please mark what category of feature you're proposing.
+      options:
+        - label: >
+            Adding new functionality to tmlt.core
+        - label: >
+            Changing existing functionality in tmlt.core
+        - label: >
+            Removing existing functionality in tmlt.core
+  - type: textarea
+    id: description
+    attributes:
+      label: Use Case Description
+      description: >
+        Please describe what the use case for your proposed feature is. What type of problem does this feature solve?
+      placeholder: >
+        I want to utilize geometric noise for each query type.
+    validations:
+      required: true
+  - type: textarea
+    id: feature
+    attributes:
+      label: Feature Request
+      description: >
+        Please describe the feature that you are proposing. Include any relevant code examples that describe the feature.
+      placeholder: >
+        # Enable Geometric noise.
+
+        from pyspark.sql import SparkSession
+        from pyspark.sql.types import *
+        from tmlt.core.transformations.spark_transformations.filter import Filter
+        from tmlt.core.transformations.spark_transformations.agg import Count
+        from tmlt.core.domains.spark_domains import convert_spark_schema, SparkDataFrameDomain
+        from tmlt.core.metrics import SymmetricDifference
+        from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise
+        from tmlt.core.utils.misc import print_sdf
+
+        spark = SparkSession.builder.getOrCreate()
+        spark_schema = StructType(
+            [StructField("Name", StringType()), StructField("Age", IntegerType())]
+        )
+        df = spark.createDataFrame([("Alice", 30), ("Bob", 15), ("Carlos", 50)], schema=spark_schema)
+
+        tumult_schema = SparkDataFrameDomain(convert_spark_schema(spark_schema))
+        over_18_measurement = (
+            Filter(filter_expr="Age >= 18", domain=tumult_schema, metric=SymmetricDifference())
+            | Count(input_domain=tumult_schema, input_metric=SymmetricDifference())
+            | AddGeometricNoise(2)
+        )
+        print("Noisy count of records with age >= 18:")
+        print(over_18_measurement(df))
+        print("Privacy loss (epsilon):")
+        print(over_18_measurement.privacy_function(1))
+        
+        ...
+    validations:
+      required: true
+  - type: textarea
+    id: information
+    attributes:
+      label: Additional Information
+      description: >
+        Please add any relevant details, code, Github links, other issues, or academic papers.
