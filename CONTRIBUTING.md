@@ -6,7 +6,7 @@ First, let us know what you would like to contribute. Feel free to:
 
 - report a bug or request a feature by filing an issue on our [GitHub](https://github.com/opendp/tumult-core/issues);
 - send general queries to info@opendp.org, or email security@opendp.org if it is related to security;
-- ask any question on our [Slack][slack] instance. Tumult Analytics maintainers are active on most of the public channels, the `lib-dev` and `lib-support` channels are a great place to start interacting with the development community.
+- ask any question on our [Slack][slack] instance. Tumult Core maintainers are active on most of the public channels, the `lib-dev` and `lib-support` channels are a great place to start interacting with the development community.
 
 [slack]: https://join.slack.com/t/opendp/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w
 
