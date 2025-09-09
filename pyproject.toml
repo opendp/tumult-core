@@ -146,6 +146,7 @@ only-include = [
 packages = ["src/tmlt"]
 artifacts = [
     "src/tmlt/core/ext/lib/*.so.*",
+    "src/tmlt/core/ext/lib/*[0-9].dylib",
     "src/tmlt/core/ext/__init__.py",
     "src/tmlt/core/ext/lib/__init__.py",
 ]
@@ -153,6 +154,7 @@ artifacts = [
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-*"
 skip = "*-musllinux*"
+environment = "MACOSX_DEPLOYMENT_TARGET='11.0'"
 
 [tool.cibuildwheel.linux]
 archs = ["x86_64"]

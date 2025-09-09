@@ -1,9 +1,10 @@
+import platform
 import subprocess
 import sys
-import platform
 import sysconfig
 from pathlib import Path
 from typing import Any
+
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 build_dir = Path(__file__).parent
@@ -38,6 +39,7 @@ def check_platform():
         sys.exit(1)
     print(f"Running on: {platform.system()} {platform.machine()}")
 
+
 class CustomBuildHook(BuildHookInterface):
     def initialize(self, _version: str, build_data: dict[str, Any]):
         # Tell hatchling to indicate that the package is not pure Python in its
@@ -48,8 +50,10 @@ class CustomBuildHook(BuildHookInterface):
         # to some disagreement between sysconfig and various packaging tools, we
         # need to slightly alter the format of the platform tag for it to be
         # accepted by cibuildwheel.
-        build_data['pure_python'] = False
-        build_data['tag'] = f'py3-none-{sysconfig.get_platform().replace("-", "_")}'
+        build_data["pure_python"] = False
+        build_data["tag"] = (
+            f'py3-none-{sysconfig.get_platform().replace("-", "_").replace(".", "_")}'
+        )
 
         check_platform()
         try:
