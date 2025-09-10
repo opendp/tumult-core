@@ -146,10 +146,16 @@ only-include = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/tmlt"]
 artifacts = [
-    "src/tmlt/core/ext/lib/*.so.*",
-    "src/tmlt/core/ext/lib/*[0-9].dylib",
     "src/tmlt/core/ext/__init__.py",
     "src/tmlt/core/ext/lib/__init__.py",
+    # Only include the needed copy of each library -- the build process
+    # generates multiple symlinks to each library, which are converted into
+    # separate, identical files when building the wheel.
+    "src/tmlt/core/ext/lib/*.so.*.*.*",
+    "src/tmlt/core/ext/lib/libarb-*.dylib",
+    "src/tmlt/core/ext/lib/libflint-*.dylib",
+    "src/tmlt/core/ext/lib/libgmp.*.dylib",
+    "src/tmlt/core/ext/lib/libmpfr.*.dylib",
 ]
 
 [tool.cibuildwheel]
