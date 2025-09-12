@@ -2478,8 +2478,8 @@ test = [
 
 [[package]]
 name = "tmlt-nox-utils"
-version = "0.0.0.post15+60b02cab"
-source = { git = "https://github.com/opendp/tumult-tools.git?subdirectory=nox-utils#60b02cabf3b5bd0d20fa51c4598c92622f2c65e9" }
+version = "0.0.0.post25+eabe1054"
+source = { git = "https://github.com/opendp/tumult-tools.git?subdirectory=nox-utils#eabe1054863f0916a0087ad180fd83719049c094" }
 dependencies = [
     { name = "gitpython" },
     { name = "nox" },
