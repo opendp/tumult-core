@@ -37,7 +37,7 @@ DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.9-oldest", python="3.9",
             packages={
-                "pyspark[sql]": "==3.3.1",  
+                "pyspark[sql]": "==3.5.0",  
                 "sympy": "==1.8",    
                 "pandas": "==1.4.0",
                 "numpy": "==1.23.2", 
@@ -47,21 +47,9 @@ DEPENDENCY_MATRIX = [
             }
         ),
         DependencyConfiguration(
-            id="3.9-pyspark3.4", python="3.9",
-            packages={
-                "pyspark[sql]": "==3.4.0",  
-                "sympy": "==1.9",    
-                "pandas": "==1.5.3",
-                "numpy": "==1.26.4", 
-                "scipy": "==1.13.1", 
-                "randomgen": "==1.26.0", 
-                "pyarrow": "==16.1.0",
-            }
-        ),
-        DependencyConfiguration(
             id="3.9-newest", python="3.9", 
             packages={
-                "pyspark[sql]": "==3.5.1",  
+                "pyspark[sql]": "==3.5.6",  
                 "sympy": "==1.9",
                 "pandas": "==1.5.3",
                 "numpy": "==1.26.4",
@@ -73,7 +61,7 @@ DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.10-oldest", python="3.10", 
             packages={
-                "pyspark[sql]": "==3.1.1",  
+                "pyspark[sql]": "==3.5.0",  
                 "sympy": "==1.8",    
                 "pandas": "==1.4.0",
                 "numpy": "==1.23.2", 
@@ -85,7 +73,7 @@ DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.10-newest", python="3.10", 
             packages={
-                "pyspark[sql]": "==3.5.1",
+                "pyspark[sql]": "==3.5.6",
                 "sympy": "==1.9",
                 "pandas": "==1.5.3",
                 "numpy": "==1.26.4",
@@ -97,7 +85,7 @@ DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.11-oldest", python="3.11", 
             packages={
-                "pyspark[sql]": "==3.4.0",
+                "pyspark[sql]": "==3.5.0",
                 "sympy": "==1.8",
                 "pandas": "==1.5.0",
                 "numpy": "==1.23.2",
@@ -109,7 +97,7 @@ DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.11-newest", python="3.11", 
             packages={
-                "pyspark[sql]": "==3.5.1",  
+                "pyspark[sql]": "==3.5.6",  
                 "sympy": "==1.9",    
                 "pandas": "==1.5.3",
                 "numpy": "==1.26.4", 
@@ -134,7 +122,7 @@ DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.12-newest", python="3.12", 
             packages={
-                "pyspark[sql]": "==3.5.1",  
+                "pyspark[sql]": "==3.5.6",  
                 "sympy": "==1.9",    
                 "pandas": "==2.2.2",
                 "numpy": "==1.26.4", 
