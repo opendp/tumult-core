@@ -10,6 +10,8 @@ environment (i.e. with nox's --no-venv option) or in a nox-managed virtualenv
 indicate this in their docstrings.
 """
 
+import platform
+import sys
 from pathlib import Path
 
 import nox
@@ -33,6 +35,10 @@ MIN_COVERAGE = 75
 """For test suites where we track coverage (i.e. the fast tests and the full
 test suite), fail if test coverage falls below this percentage."""
 
+def is_arm_mac():
+    """Returns true if the current system is am arm-based mac."""
+    return sys.platform == "darwin" and platform.processor() == "arm"
+
 DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.9-oldest", python="3.9",
@@ -41,8 +47,11 @@ DEPENDENCY_MATRIX = [
                 "sympy": "==1.8",    
                 "pandas": "==1.4.0",
                 "numpy": "==1.23.2", 
-                "scipy": "==1.6.0",  
-                "randomgen": "==1.20.0", 
+                # Scipy 1.7.3 is the first to include arm mac wheels, but it is
+                # incompatible with numpy 1.23.2, so we use the next version.
+                "scipy": "==1.6.0" if not is_arm_mac else "==1.8.0",  
+                # Randomgen 1.23.0 is the first version to include arm mac wheels.
+                "randomgen": "==1.20.0" if not is_arm_mac() else "==1.23.0", 
                 "pyarrow": "==14.0.1",
             }
         ),
