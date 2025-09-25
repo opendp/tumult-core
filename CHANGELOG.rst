@@ -15,6 +15,10 @@ For now, the repository remains available, and we encourage users to continue en
 Unreleased
 ----------
 
+Changed
+~~~~~~~
+- Dropped support for pyspark <3.5.0 on Macs after discovering that these configurations frequently crash. Older versions of the library may also be affected.
+
 .. _v0.18.2:
 
 0.18.2 - 2025-04-02
