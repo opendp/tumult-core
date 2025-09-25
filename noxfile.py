@@ -35,15 +35,19 @@ MIN_COVERAGE = 75
 """For test suites where we track coverage (i.e. the fast tests and the full
 test suite), fail if test coverage falls below this percentage."""
 
+def is_mac():
+    """Returns true if the current system is a mac."""
+    return sys.platform == "darwin"
+
 def is_arm_mac():
     """Returns true if the current system is am arm-based mac."""
-    return sys.platform == "darwin" and platform.processor() == "arm"
+    return is_mac() and platform.processor() == "arm"
 
 DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.9-oldest", python="3.9",
             packages={
-                "pyspark[sql]": "==3.5.0",  
+                "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",  
                 "sympy": "==1.8",    
                 "pandas": "==1.4.0",
                 "numpy": "==1.23.2", 
@@ -70,7 +74,7 @@ DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.10-oldest", python="3.10", 
             packages={
-                "pyspark[sql]": "==3.5.0",  
+                "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",
                 "sympy": "==1.8",    
                 "pandas": "==1.4.0",
                 "numpy": "==1.23.2", 
@@ -94,7 +98,7 @@ DEPENDENCY_MATRIX = [
         DependencyConfiguration(
             id="3.11-oldest", python="3.11", 
             packages={
-                "pyspark[sql]": "==3.5.0",
+                "pyspark[sql]": "==3.4.0" if not is_mac() else "==3.5.0",  
                 "sympy": "==1.8",
                 "pandas": "==1.5.0",
                 "numpy": "==1.23.2",
