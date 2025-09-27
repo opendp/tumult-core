@@ -16,7 +16,7 @@ from pathlib import Path
 
 import nox
 from nox import session as session
-from tmlt.nox_utils import DependencyConfiguration, SessionManager
+from tmlt.nox_utils import DependencyConfiguration, SessionManager, install_group
 
 CWD = Path(".").resolve()
 
@@ -35,116 +35,127 @@ MIN_COVERAGE = 75
 """For test suites where we track coverage (i.e. the fast tests and the full
 test suite), fail if test coverage falls below this percentage."""
 
+
 def is_mac():
     """Returns true if the current system is a mac."""
     return sys.platform == "darwin"
+
 
 def is_arm_mac():
     """Returns true if the current system is am arm-based mac."""
     return is_mac() and platform.processor() == "arm"
 
+
 DEPENDENCY_MATRIX = [
-        DependencyConfiguration(
-            id="3.9-oldest", python="3.9",
-            packages={
-                "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",  
-                "sympy": "==1.8",    
-                "pandas": "==1.4.0",
-                "numpy": "==1.23.2", 
-                # Scipy 1.7.3 is the first to include arm mac wheels, but it is
-                # incompatible with numpy 1.23.2, so we use the next version.
-                "scipy": "==1.6.0" if not is_arm_mac else "==1.8.0",  
-                # Randomgen 1.23.0 is the first version to include arm mac wheels.
-                "randomgen": "==1.20.0" if not is_arm_mac() else "==1.23.0", 
-                "pyarrow": "==14.0.1",
-            }
-        ),
-        DependencyConfiguration(
-            id="3.9-newest", python="3.9", 
-            packages={
-                "pyspark[sql]": "==3.5.6",  
-                "sympy": "==1.9",
-                "pandas": "==1.5.3",
-                "numpy": "==1.26.4",
-                "scipy": "==1.13.1",
-                "randomgen": "==1.26.0",
-                "pyarrow": "==16.1.0",
-            }
-        ),
-        DependencyConfiguration(
-            id="3.10-oldest", python="3.10", 
-            packages={
-                "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",
-                "sympy": "==1.8",    
-                "pandas": "==1.4.0",
-                "numpy": "==1.23.2", 
-                "scipy": "==1.8.0",  
-                "randomgen": "==1.23.0", 
-                "pyarrow": "==14.0.1",
-            }
-        ),
-        DependencyConfiguration(
-            id="3.10-newest", python="3.10", 
-            packages={
-                "pyspark[sql]": "==3.5.6",
-                "sympy": "==1.9",
-                "pandas": "==1.5.3",
-                "numpy": "==1.26.4",
-                "scipy": "==1.14.1",
-                "randomgen": "==1.26.0",
-                "pyarrow": "==16.1.0",
-            }
-        ),
-        DependencyConfiguration(
-            id="3.11-oldest", python="3.11", 
-            packages={
-                "pyspark[sql]": "==3.4.0" if not is_mac() else "==3.5.0",  
-                "sympy": "==1.8",
-                "pandas": "==1.5.0",
-                "numpy": "==1.23.2",
-                "scipy": "==1.9.2",
-                "randomgen": "==1.26.0",
-                "pyarrow": "==14.0.1",
-            }
-        ),
-        DependencyConfiguration(
-            id="3.11-newest", python="3.11", 
-            packages={
-                "pyspark[sql]": "==3.5.6",  
-                "sympy": "==1.9",    
-                "pandas": "==1.5.3",
-                "numpy": "==1.26.4", 
-                "scipy": "==1.14.1", 
-                "randomgen": "==1.26.1", 
-                "pyarrow": "==16.1.0",
-            }
-        ),
-        DependencyConfiguration(
-            id="3.12-oldest", python="3.12", 
-            packages={
-                "pyspark[sql]": "==3.5.0",  
-                "sympy": "==1.8",    
-                "pandas": "==2.2.0",
-                "numpy": "==1.26.0", 
-                "scipy": "==1.11.2", 
-                "randomgen":  "==1.26.0",
-                "pyarrow":  "==14.0.1"
-            },
-        ),
-        # 3.12 support was added in sympy 1.12.1 but internal cap is at 1.9 #1797
-        DependencyConfiguration(
-            id="3.12-newest", python="3.12", 
-            packages={
-                "pyspark[sql]": "==3.5.6",  
-                "sympy": "==1.9",    
-                "pandas": "==2.2.2",
-                "numpy": "==1.26.4", 
-                "scipy": "==1.14.1", 
-                "randomgen": "==1.26.1", 
-                "pyarrow": "==16.1.0",
-            }
-        ),
-    ]
+    DependencyConfiguration(
+        id="3.9-oldest",
+        python="3.9",
+        packages={
+            "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",
+            "sympy": "==1.8",
+            "pandas": "==1.4.0",
+            "numpy": "==1.23.2",
+            # Scipy 1.7.3 is the first to include arm mac wheels, but it is
+            # incompatible with numpy 1.23.2, so we use the next version.
+            "scipy": "==1.6.0" if not is_arm_mac else "==1.8.0",
+            # Randomgen 1.23.0 is the first version to include arm mac wheels.
+            "randomgen": "==1.20.0" if not is_arm_mac() else "==1.23.0",
+            "pyarrow": "==14.0.1",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.9-newest",
+        python="3.9",
+        packages={
+            "pyspark[sql]": "==3.5.6",
+            "sympy": "==1.9",
+            "pandas": "==1.5.3",
+            "numpy": "==1.26.4",
+            "scipy": "==1.13.1",
+            "randomgen": "==1.26.0",
+            "pyarrow": "==16.1.0",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.10-oldest",
+        python="3.10",
+        packages={
+            "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",
+            "sympy": "==1.8",
+            "pandas": "==1.4.0",
+            "numpy": "==1.23.2",
+            "scipy": "==1.8.0",
+            "randomgen": "==1.23.0",
+            "pyarrow": "==14.0.1",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.10-newest",
+        python="3.10",
+        packages={
+            "pyspark[sql]": "==3.5.6",
+            "sympy": "==1.9",
+            "pandas": "==1.5.3",
+            "numpy": "==1.26.4",
+            "scipy": "==1.14.1",
+            "randomgen": "==1.26.0",
+            "pyarrow": "==16.1.0",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.11-oldest",
+        python="3.11",
+        packages={
+            "pyspark[sql]": "==3.4.0" if not is_mac() else "==3.5.0",
+            "sympy": "==1.8",
+            "pandas": "==1.5.0",
+            "numpy": "==1.23.2",
+            "scipy": "==1.9.2",
+            "randomgen": "==1.26.0",
+            "pyarrow": "==14.0.1",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.11-newest",
+        python="3.11",
+        packages={
+            "pyspark[sql]": "==3.5.6",
+            "sympy": "==1.9",
+            "pandas": "==1.5.3",
+            "numpy": "==1.26.4",
+            "scipy": "==1.14.1",
+            "randomgen": "==1.26.1",
+            "pyarrow": "==16.1.0",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.12-oldest",
+        python="3.12",
+        packages={
+            "pyspark[sql]": "==3.5.0",
+            "sympy": "==1.8",
+            "pandas": "==2.2.0",
+            "numpy": "==1.26.0",
+            "scipy": "==1.11.2",
+            "randomgen": "==1.26.0",
+            "pyarrow": "==14.0.1",
+        },
+    ),
+    # 3.12 support was added in sympy 1.12.1 but internal cap is at 1.9 #1797
+    DependencyConfiguration(
+        id="3.12-newest",
+        python="3.12",
+        packages={
+            "pyspark[sql]": "==3.5.6",
+            "sympy": "==1.9",
+            "pandas": "==2.2.2",
+            "numpy": "==1.26.4",
+            "scipy": "==1.14.1",
+            "randomgen": "==1.26.1",
+            "pyarrow": "==16.1.0",
+        },
+    ),
+]
 
 AUDIT_VERSIONS = ["3.9", "3.10", "3.11", "3.12"]
 AUDIT_SUPPRESSIONS = [
@@ -167,10 +178,23 @@ BENCHMARKS = [
 ]
 
 
+@session
+@install_group("build")
+def build(session):
+    """Build packages for distribution.
+
+    Positional arguments given to nox are passed to the cibuildwheel command,
+    allowing it to be run outside of the CI if needed.
+    """
+    session.run("uv", "build", "--sdist", external=True)
+    session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
+
+
 sm = SessionManager(
     package=PACKAGE_NAME,
     package_github=PACKAGE_GITHUB,
     directory=CWD,
+    custom_build=build,
     smoketest_script=SMOKETEST_SCRIPT,
     parallel_tests=False,
     min_coverage=MIN_COVERAGE,
@@ -204,4 +228,4 @@ sm.make_release()
 sm.test_dependency_matrix(dependency_matrix=DEPENDENCY_MATRIX)
 
 for name, timeout in BENCHMARKS:
-    sm.benchmark(Path('benchmark') / f"{name}.py", timeout)
+    sm.benchmark(Path("benchmark") / f"{name}.py", timeout)

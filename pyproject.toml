@@ -67,6 +67,7 @@ required-version = ">=0.7.0"
 default-groups = "all"
 
 [dependency-groups]
+build = ["cibuildwheel >=2,<3"]
 black = ["black >=23.3,<24"]
 isort = ["isort >=5.11,<6"]
 mypy = ["mypy >=1.14.0"]
@@ -145,8 +146,18 @@ only-include = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/tmlt"]
 artifacts = [
-    "src/tmlt/core/ext/"
+    "src/tmlt/core/ext/lib/*.so.*",
+    "src/tmlt/core/ext/__init__.py",
+    "src/tmlt/core/ext/lib/__init__.py",
 ]
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-*"
+skip = "*-musllinux*"
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+
 
 ################################################################################
 # Test configuration
