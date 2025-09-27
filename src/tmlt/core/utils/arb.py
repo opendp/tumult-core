@@ -15,6 +15,7 @@ from typing import Any, List, Tuple, Union
 # in 3.13, so there's not actually a problem here. It's possible this code will
 # need to be tweaked slightly for 3.13 support, as there were some changes to
 # the API, but they don't obviously affect this code.
+
 # pylint: disable=deprecated-method
 if platform.system() == "Windows":
     with (
