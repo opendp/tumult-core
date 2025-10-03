@@ -186,8 +186,8 @@ def build(session):
     Positional arguments given to nox are passed to the cibuildwheel command,
     allowing it to be run outside of the CI if needed.
     """
-    session.run("uv", "build", "--sdist", external=True)
     session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
+    session.run("uv", "build", "--sdist", external=True)
 
 
 sm = SessionManager(
