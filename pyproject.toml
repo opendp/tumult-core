@@ -161,6 +161,11 @@ artifacts = [
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-*"
 skip = "*-musllinux*"
+before-all = """
+if [ -d src/tmlt/core/ext/lib ] && [ ! -z ${CI+x} ]; then 
+  echo 'Found compiled vendor libraries, but these must be built fresh by cibuildwheel.'
+  exit 1
+fi"""
 
 [tool.cibuildwheel.macos]
 environment = "MACOSX_DEPLOYMENT_TARGET='11.0'"
