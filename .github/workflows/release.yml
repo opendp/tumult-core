@@ -1,6 +1,7 @@
 # This pipeline is executed every time someone pushes a tag to GitHub. If the
-# tag is a valid version number, it builds the library, and (will eventually) 
-# run the slow tests and the benchmarks, push the package distribution to PyPI,
+# tag is a valid version number, it builds the library, and 
+# runs the slow tests, the benchmarks, and then dependency matrix.
+# It will eventually push the package distribution to PyPI,
 # and if this is a production release, also publish the docs.
 name: Release Pipeline
 
@@ -78,3 +79,60 @@ jobs:
         with:
           name: macos-arm-wheel
           path: dist/*.whl
+
+  Test-Slow:
+    if: github.repository == 'opendp/tumult-core'
+    runs-on: ubuntu-latest
+    needs: Package-linux
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-wheel
+          path: dist
+      - run: uv run nox -s test-slow
+
+  Benchmark:
+    if: github.repository == 'opendp/tumult-core'
+    runs-on: ubuntu-latest
+    needs: Package-linux
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-wheel
+          path: dist
+      - run: uv run nox -t benchmark
+
+  Dependency-Matrix:
+    if: github.repository == 'opendp/tumult-core'
+    strategy:
+      fail-fast: false
+      matrix:
+        # Note: mac runners are rather expensive (10x multiplier) so we don't use them here.
+        os: [ubuntu-latest]
+        dependencies: [oldest, newest]
+        python: ["3.9", "3.12"]
+    runs-on: ${{ matrix.os }}
+    needs: Package-linux
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-wheel
+          path: dist
+      - run: uv run nox -s "test_dependency_matrix(${{matrix.python}}-${{matrix.dependencies}})"
+        env: 
+          SPARK_LOCAL_HOSTNAME: localhost
