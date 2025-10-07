@@ -165,6 +165,7 @@ sm = SessionManager(
     package=PACKAGE_NAME,
     package_github=PACKAGE_GITHUB,
     directory=CWD,
+    default_python_version= "3.10",
     custom_build=build,
     smoketest_script=SMOKETEST_SCRIPT,
     parallel_tests=False,
