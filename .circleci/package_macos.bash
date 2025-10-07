@@ -2,10 +2,10 @@
 
 set -euox pipefail
 
-curl -sSL https://install.python-poetry.org | python3.9 - --version 1.8.4
+curl -sSL https://install.python-poetry.org | python3.10 - --version 1.8.4
 poetry="/Users/distiller/.local/bin/poetry"
 
-python3.9 --version
+python3.10 --version
 $poetry --version
 $poetry self add "poetry-dynamic-versioning[plugin]"
 
