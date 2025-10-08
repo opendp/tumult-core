@@ -1,7 +1,7 @@
 # pylint: skip-file
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+
 
 import datetime
 import logging
@@ -15,7 +15,6 @@ _logger = logging.getLogger(__name__)
 
 project = "Tumult Core"
 author = "Tumult Labs"
-copyright = f"{datetime.date.today().year} Tumult Labs"
 # Note that this is the name of the module provided by the package, not
 # necessarily the name of the package as pip understands it.
 package_name = "tmlt.core"
@@ -142,13 +141,13 @@ html_theme_options = {
     "collapse_navigation": True,
     "navigation_depth": 4,
     "navbar_end": ["navbar-icon-links"],
-    "footer_start": ["copyright", "build-info"],
+    "footer_start": ["build-info"],
     "footer_end": ["sphinx-version", "theme-version"],
     "switcher": {
         "json_url": "https://docs.tmlt.dev/core/versions.json",
         "version_match": version,
     },
-    "gitlab_url": "https://gitlab.com/tumult-labs/core",
+    "github_url": "https://github.com/opendp/tumult-core",
 }
 html_context = {
     "default_mode": "light",
