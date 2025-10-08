@@ -124,6 +124,32 @@ package:
   interruptible: true
   tags: [saas-linux-large-amd64]
 
+# Build Linux aarch64 wheels via cibuildwheel/QEMU in Docker
+package_linux_aarch64:
+  extends: .base
+  stage: setup
+  needs: []
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.9
+  services:
+    - name: docker:dind
+      entrypoint: ["env", "-u", "DOCKER_HOST"]
+      command: ["dockerd-entrypoint.sh"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+    # Tell cibuildwheel to build only Linux aarch64 wheels
+    CIBW_ARCHS_LINUX: "aarch64"
+    CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+  script:
+    - curl -sSL https://get.docker.com/ | sh
+    - nox -s build
+  artifacts:
+    paths: ["dist/"]
+  timeout: 45m
+  interruptible: true
+  tags: [saas-linux-large-amd64]
+
 # Requires the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY variables to be set.
 # We use an access key from the core-ci AWS user, which has permissions to list
 # and modify all objects in the tumult.core-wheel-cache bucket.
@@ -467,7 +493,7 @@ audit:
 
 publish:
   stage: release
-  dependencies: [get_mac_wheels, package]
+  dependencies: [get_mac_wheels, package, package_linux_aarch64]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.9
   script:
     - poetry publish -u __token__ -p "${RELEASE_PYPI_TOKEN}"
