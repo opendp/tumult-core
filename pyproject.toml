@@ -5,7 +5,7 @@ readme = "README.md"
 authors = []
 license = "Apache-2.0"
 
-dynamic = ["version"]
+version = "0.18.2+hotfix.pr"
 
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -110,13 +110,9 @@ scripting = [
 # Build configuration
 
 [build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.version]
-source = "uv-dynamic-versioning"
-
-[tool.uv-dynamic-versioning]
 vcs = "git"
 style = "semver"
 # The default configuration expect vX.Y.Z, but we haven't been using the 'v' prefix.
