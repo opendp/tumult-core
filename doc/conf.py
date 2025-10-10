@@ -103,6 +103,9 @@ def autoapi_prepare_jinja_env(jinja_env):
 autodoc_typehints = "description"
 autodoc_member_order = "bysource"
 
+# Autodoc typehints settings
+always_use_bars_union = True
+
 # General settings
 master_doc = "index"
 exclude_patterns = ["templates"]
