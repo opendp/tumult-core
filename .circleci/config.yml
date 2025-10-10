@@ -58,6 +58,36 @@ jobs:
       - store_artifacts:
           path: dist
 
+  build-linux-aarch64-core:
+    machine:
+      image: ubuntu-2204:2023.04
+    resource_class: arm.medium
+    environment:
+      CIBW_ARCHS: "aarch64"
+      CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+    steps:
+      - checkout
+      - compress_ext
+      - restore_cache:
+          key: ext-linux-aarch64-{{ checksum "ext_concat" }}
+      - run:
+          name: Install build dependencies and cibuildwheel
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y python3 python3-venv python3-pip git build-essential
+            python3 -m pip install --upgrade pip
+            python3 -m pip install cibuildwheel
+      - run:
+          name: Build wheels (Linux aarch64)
+          command: |
+            cibuildwheel --platform linux --archs aarch64
+      - save_cache:
+          key: ext-linux-aarch64-{{ checksum "ext_concat" }}
+          paths:
+            - src/tmlt/core/ext
+      - store_artifacts:
+          path: wheelhouse
+
 workflows:
   build-core-mac-wheels-workflow:
     jobs:
@@ -68,6 +98,12 @@ workflows:
             tags:
               only: /.*/
       - build-intel-core:
+          filters:
+            branches:
+              only: dev
+            tags:
+              only: /.*/
+      - build-linux-aarch64-core:
           filters:
             branches:
               only: dev
