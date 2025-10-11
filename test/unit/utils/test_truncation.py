@@ -1,7 +1,7 @@
 """Tests for :mod:`~tmlt.core.utils.truncation`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+
 
 import datetime
 import itertools
@@ -142,8 +142,7 @@ class TestLimitKeysPerGroup(PySparkTest):
         """Test :func:`~.limit_keys_per_group` works when there are hash collisions.
 
         This test fails for a previous, incorrect version of
-        :func:`~.limit_keys_per_group`. See
-        https://gitlab.com/tumult-labs/tumult/-/issues/2455 for more details.
+        :func:`~.limit_keys_per_group`.
         """
 
         df = self.spark.createDataFrame(

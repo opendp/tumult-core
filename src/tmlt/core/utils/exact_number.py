@@ -133,7 +133,7 @@ Examples:
 """  # pylint: disable=line-too-long,useless-suppression
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+
 
 from fractions import Fraction
 from typing import Any, Union
@@ -297,7 +297,6 @@ class ExactNumber:
             # Sympy seems to have an easier time determining whether an expression is
             # larger or smaller than a rational number than a float, so we convert to a
             # rational number before comparing.
-            # See https://gitlab.com/tumult-labs/tumult/-/issues/1697#note_1428848301
             if float("-inf") < x < float("inf"):
                 return sp.Rational(x)
             return x

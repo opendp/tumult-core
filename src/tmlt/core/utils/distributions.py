@@ -1,7 +1,7 @@
 """Probability functions for distributions commonly used in differential privacy."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+
 
 from functools import lru_cache
 from typing import Union, overload
@@ -474,8 +474,6 @@ def discrete_gaussian_pmf(
     # this is based on experiments for how many terms are needed. Technically you can
     # get a way with fewer for larger values of sigma (like 7 standard
     # deviations instead of 10 for sigma=10^4, but this works for all values of sigma).
-    # see https://gitlab.com/tumult-labs/tumult/-/issues/2358#note_1418996578 for more
-    # information.
     n_terms = int(np.sqrt(sigma_squared) * 10) + 1
     sigma_squared_arb = Arb.from_float(sigma_squared)
     prec = 100
@@ -522,8 +520,6 @@ def discrete_gaussian_cmf(
     # this is based on experiments for how many terms are needed. Technically you can
     # get a way with fewer for larger values of sigma (like 7 standard
     # deviations instead of 10 for sigma=10^4, but this works for all values of sigma).
-    # see https://gitlab.com/tumult-labs/tumult/-/issues/2358#note_1418996578 for more
-    # information.
     n_terms = int(np.sqrt(sigma_squared) * 10) + 1
     prec = 100
     while True:
