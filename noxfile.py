@@ -48,35 +48,6 @@ def is_arm_mac():
 
 DEPENDENCY_MATRIX = [
     DependencyConfiguration(
-        id="3.9-oldest",
-        python="3.9",
-        packages={
-            "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",
-            "sympy": "==1.8",
-            "pandas": "==1.4.0",
-            "numpy": "==1.23.2",
-            # Scipy 1.7.3 is the first to include arm mac wheels, but it is
-            # incompatible with numpy 1.23.2, so we use the next version.
-            "scipy": "==1.6.0" if not is_arm_mac else "==1.8.0",
-            # Randomgen 1.23.0 is the first version to include arm mac wheels.
-            "randomgen": "==1.20.0" if not is_arm_mac() else "==1.23.0",
-            "pyarrow": "==14.0.1",
-        },
-    ),
-    DependencyConfiguration(
-        id="3.9-newest",
-        python="3.9",
-        packages={
-            "pyspark[sql]": "==3.5.6",
-            "sympy": "==1.9",
-            "pandas": "==1.5.3",
-            "numpy": "==1.26.4",
-            "scipy": "==1.13.1",
-            "randomgen": "==1.26.0",
-            "pyarrow": "==16.1.0",
-        },
-    ),
-    DependencyConfiguration(
         id="3.10-oldest",
         python="3.10",
         packages={
@@ -157,7 +128,7 @@ DEPENDENCY_MATRIX = [
     ),
 ]
 
-AUDIT_VERSIONS = ["3.9", "3.10", "3.11", "3.12"]
+AUDIT_VERSIONS = ["3.10", "3.11", "3.12"]
 AUDIT_SUPPRESSIONS = [
     "PYSEC-2023-228",
     # Affects: pip<23.3
@@ -194,6 +165,7 @@ sm = SessionManager(
     package=PACKAGE_NAME,
     package_github=PACKAGE_GITHUB,
     directory=CWD,
+    default_python_version= "3.10",
     custom_build=build,
     smoketest_script=SMOKETEST_SCRIPT,
     parallel_tests=False,

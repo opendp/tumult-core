@@ -18,7 +18,6 @@ classifiers = [
   "Topic :: Security",
 
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -27,7 +26,7 @@ keywords = [
   "differential privacy",
 ]
 
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "numpy >=1.23.2,<2 ; python_version < '3.12'",
     "numpy >=1.26.0,<2 ; python_version >= '3.12'",
@@ -159,7 +158,7 @@ artifacts = [
 ]
 
 [tool.cibuildwheel]
-build = "cp39-* cp310-* cp311-* cp312-*"
+build = "cp310-* cp311-* cp312-*"
 skip = "*-musllinux*"
 before-all = """
 if [ -d src/tmlt/core/ext/lib ] && [ ! -z ${CI+x} ]; then 
@@ -269,10 +268,6 @@ disable = [
   'unnecessary-lambda-assignment',
   'unsubscriptable-object',
   'use-dict-literal',
-  # There are a lot of false positives for unsupported-binary-operation
-  # on Python 3.8 and 3.9;
-  # see: https://github.com/pylint-dev/pylint/issues/7381
-  'unsupported-binary-operation',
   # black and isort group tmlt.core separately from tmlt.analytics,
   # but pylint thinks they should both be grouped as 'tmlt'.
   'ungrouped-imports',

@@ -32,7 +32,7 @@ variables:
   FF_USE_FASTZIP: "true"
 
 .base:
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.9
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.10
   before_script:
     - java -version
     - python --version
@@ -104,7 +104,7 @@ package:
   extends: .base
   stage: setup
   needs: []
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.9
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.10
   # make a docker daemon available for cibuildwheel to use
   services:
     - name: docker:dind
@@ -215,9 +215,9 @@ test_dep_matrix:
   needs: ["package"]
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.9", "3.10", "3.11", "3.12"]
+      - PYTHON_VERSION: ["3.10", "3.11", "3.12"]
         TEST_TYPE: ["oldest", "newest"]
-      - PYTHON_VERSION: ["3.9"]
+      - PYTHON_VERSION: ["3.10"]
         TEST_TYPE: ["pyspark3.4"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   rules:
@@ -297,7 +297,7 @@ test_analytics_pro_docs:
 #   channel
 nightly_handler:
   stage: handler
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.9
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.10
   script:
     - source .pipeline_handlers
     - nightly_handler
@@ -337,7 +337,7 @@ test_release_linux_x86:
   needs: ["package"]
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.9", "3.10", "3.11", "3.12"]
+      - PYTHON_VERSION: ["3.10", "3.11", "3.12"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   script:
     - nox -s release_smoketest release_test
@@ -413,8 +413,8 @@ test_release_macos_x86:
     - export PATH="/usr/local/bin:$PATH"
     - arch -x86_64 brew update
     # Setup non-ARM Python
-    - arch -x86_64 brew install python@3.9
-    - export PATH="/usr/local/opt/python@3.9/libexec/bin:$PATH"
+    - arch -x86_64 brew install python@3.10
+    - export PATH="/usr/local/opt/python@3.10/libexec/bin:$PATH"
     - python --version
     # Setup Java 11
     - arch -x86_64 brew install openjdk@11
@@ -427,7 +427,7 @@ test_release_macos_x86:
     - cp $GITLAB_SSH_KNOWN_HOSTS ~/.ssh/known_hosts
     - chmod 600 "$CI_SSH_KEY"
     - cp -pv "$CI_SSH_KEY" ~/.ssh/id_ed25519
-    - curl -sSL https://install.python-poetry.org | python3.9 -
+    - curl -sSL https://install.python-poetry.org | python3.10 -
     - export PATH="/Users/gitlab/.local/bin:$PATH"
     - poetry self add "poetry-dynamic-versioning[plugin]"
     - poetry install --no-root --only scripting
@@ -454,7 +454,7 @@ audit:
   needs: ["package"]
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.9", "3.10", "3.11", "3.12"]
+      - PYTHON_VERSION: ["3.10", "3.11", "3.12"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   script:
     - nox -s "audit(python=\"${PYTHON_VERSION}\")"
@@ -468,7 +468,7 @@ audit:
 publish:
   stage: release
   dependencies: [get_mac_wheels, package]
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.9
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.10
   script:
     - poetry publish -u __token__ -p "${RELEASE_PYPI_TOKEN}"
   timeout: 3m
@@ -484,7 +484,7 @@ publish:
 publish_docs:
   stage: release
   dependencies: [docs]
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.9
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.10
   variables:
     GIT_STRATEGY: none
   before_script:
@@ -547,9 +547,9 @@ benchmark_dependency_matrix:
   needs: ["package"]
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.9", "3.10", "3.11", "3.12"]
+      - PYTHON_VERSION: ["3.10", "3.11", "3.12"]
         TEST_TYPE: ["oldest", "newest"]
-      - PYTHON_VERSION: ["3.9"]
+      - PYTHON_VERSION: ["3.10"]
         TEST_TYPE: ["pyspark3.4"]
   image: registry.gitlab.com/tumult-labs/ops/ci/linux:python${PYTHON_VERSION}
   script:
@@ -572,7 +572,7 @@ benchmark_dependency_matrix:
 #   channel
 nightly_handler:
   stage: handler
-  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.9
+  image: registry.gitlab.com/tumult-labs/ops/ci/linux:python3.10
   script:
     - poetry install --no-root --only ci-tools
     - source .venv/bin/activate
