@@ -103,6 +103,9 @@ def autoapi_prepare_jinja_env(jinja_env):
 autodoc_typehints = "description"
 autodoc_member_order = "bysource"
 
+# Autodoc typehints settings
+always_use_bars_union = True
+
 # General settings
 master_doc = "index"
 exclude_patterns = ["templates"]
@@ -145,7 +148,7 @@ html_theme_options = {
     "footer_start": ["copyright", "build-info"],
     "footer_end": ["sphinx-version", "theme-version"],
     "switcher": {
-        "json_url": "https://tmlt.dev/core/versions.json",
+        "json_url": "https://docs.tmlt.dev/core/versions.json",
         "version_match": version,
     },
     "gitlab_url": "https://gitlab.com/tumult-labs/core",
@@ -176,8 +179,7 @@ intersphinx_mapping = {
 # The ACM website seems to have some sort of protection that foils the linkchecker.
 linkcheck_ignore = [
     r"https://doi.org/10.1145/2382196.2382264",
-    # TODO: Re-enable when we got the docs site moved back to docs.tmlt.dev.
-    r"https://docs.tmlt.dev",
+    r"https://gmplib.org/",
 ]
 
 

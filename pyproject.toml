@@ -18,7 +18,6 @@ classifiers = [
   "Topic :: Security",
 
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -27,7 +26,7 @@ keywords = [
   "differential privacy",
 ]
 
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "numpy >=1.23.2,<2 ; python_version < '3.12'",
     "numpy >=1.26.0,<2 ; python_version >= '3.12'",
@@ -35,9 +34,10 @@ dependencies = [
     "pandas >=1.5.0,<2 ; python_version == '3.11'",
     "pandas >=2.2.0,<3 ; python_version >= '3.12'",
     "pyarrow >=18.0.0,<19",
-    "pyspark[sql] >=3.3.1,<3.6 ; python_version < '3.11'",
-    "pyspark[sql] >=3.4.0,<3.6 ; python_version == '3.11'",
-    "pyspark[sql] >=3.5.0,<5 ; python_version >= '3.12'",
+    "pyspark[sql] >=3.3.1,<3.6 ; python_version < '3.11' and sys_platform != 'darwin'",
+    "pyspark[sql] >=3.4.0,<3.6 ; python_version == '3.11' and sys_platform != 'darwin'",
+    "pyspark[sql] >=3.5.0,<3.6 ; python_version >= '3.12' and sys_platform != 'darwin'",
+    "pyspark[sql] >=3.5.0,<3.6 ; sys_platform == 'darwin'",
     "randomgen >=1.20.0,<=1.26.0 ; python_version < '3.10'",
     "randomgen >=1.23.0,<=1.26.0 ; python_version == '3.10'",
     "randomgen >=1.26.0,<=2 ; python_version >= '3.11'",
@@ -66,6 +66,7 @@ required-version = ">=0.7.0"
 default-groups = "all"
 
 [dependency-groups]
+build = ["cibuildwheel >=2,<3"]
 black = ["black >=23.3,<24"]
 isort = ["isort >=5.11,<6"]
 mypy = ["mypy >=1.14.0"]
@@ -144,8 +145,33 @@ only-include = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/tmlt"]
 artifacts = [
-    "src/tmlt/core/ext/"
+    "src/tmlt/core/ext/__init__.py",
+    "src/tmlt/core/ext/lib/__init__.py",
+    # Only include the needed copy of each library -- the build process
+    # generates multiple symlinks to each library, which are converted into
+    # separate, identical files when building the wheel.
+    "src/tmlt/core/ext/lib/*.so.*.*.*",
+    "src/tmlt/core/ext/lib/libarb-*.dylib",
+    "src/tmlt/core/ext/lib/libflint-*.dylib",
+    "src/tmlt/core/ext/lib/libgmp.*.dylib",
+    "src/tmlt/core/ext/lib/libmpfr.*.dylib",
 ]
+
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-*"
+skip = "*-musllinux*"
+before-all = """
+if [ -d src/tmlt/core/ext/lib ] && [ ! -z ${CI+x} ]; then 
+  echo 'Found compiled vendor libraries, but these must be built fresh by cibuildwheel.'
+  exit 1
+fi"""
+
+[tool.cibuildwheel.macos]
+environment = "MACOSX_DEPLOYMENT_TARGET='11.0'"
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+
 
 ################################################################################
 # Test configuration
@@ -242,10 +268,6 @@ disable = [
   'unnecessary-lambda-assignment',
   'unsubscriptable-object',
   'use-dict-literal',
-  # There are a lot of false positives for unsupported-binary-operation
-  # on Python 3.8 and 3.9;
-  # see: https://github.com/pylint-dev/pylint/issues/7381
-  'unsupported-binary-operation',
   # black and isort group tmlt.core separately from tmlt.analytics,
   # but pylint thinks they should both be grouped as 'tmlt'.
   'ungrouped-imports',

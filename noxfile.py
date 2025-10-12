@@ -10,11 +10,13 @@ environment (i.e. with nox's --no-venv option) or in a nox-managed virtualenv
 indicate this in their docstrings.
 """
 
+import platform
+import sys
 from pathlib import Path
 
 import nox
 from nox import session as session
-from tmlt.nox_utils import SessionManager
+from tmlt.nox_utils import DependencyConfiguration, SessionManager, install_group
 
 CWD = Path(".").resolve()
 
@@ -33,76 +35,100 @@ MIN_COVERAGE = 75
 """For test suites where we track coverage (i.e. the fast tests and the full
 test suite), fail if test coverage falls below this percentage."""
 
-DEPENDENCY_MATRIX = {
-    name: {
-        # The Python minor version to run with
-        "python": python,
-        # All other entries take PEP440 version specifiers for the package named in
-        # the key -- see https://peps.python.org/pep-0440/#version-specifiers
-        "pyspark[sql]": pyspark,
-        "sympy": sympy,
-        "pandas": pandas,
-        "numpy": numpy,
-        "scipy": scipy,
-        "randomgen": randomgen,
-        "pyarrow": pyarrow,
-    }
-    for (name, python, pyspark, sympy, pandas, numpy, scipy, randomgen, pyarrow) in [
-        # fmt: off
-          # name
-          # python      pyspark     sympy       pandas
-          # numpy       scipy       randomgen   pyarrow
-        (
-            "3.9-oldest",
-            "3.9",      "==3.3.1",  "==1.8",    "==1.4.0",
-            "==1.23.2", "==1.6.0",  "==1.20.0", "==14.0.1",
-        ),
-        (
-            "3.9-pyspark3.4",
-            "3.9",      "==3.4.0",  "==1.9",    "==1.5.3",
-            "==1.26.4", "==1.13.1", "==1.26.0", "==16.1.0",
-        ),
-        (
-            "3.9-newest",
-            "3.9",      "==3.5.1",  "==1.9",    "==1.5.3",
-            "==1.26.4", "==1.13.1", "==1.26.0", "==16.1.0",
-        ),
-        (
-            "3.10-oldest",
-            "3.10",     "==3.1.1",  "==1.8",    "==1.4.0",
-            "==1.23.2", "==1.8.0",  "==1.23.0", "==14.0.1",
-        ),
-        (
-            "3.10-newest",
-            "3.10",     "==3.5.1",  "==1.9",    "==1.5.3",
-            "==1.26.4", "==1.14.1", "==1.26.0", "==16.1.0",
-        ),
-        (
-            "3.11-oldest",
-            "3.11",     "==3.4.0",  "==1.8",    "==1.5.0",
-            "==1.23.2", "==1.9.2",  "==1.26.0", "==14.0.1",
-        ),
-        (
-            "3.11-newest",
-            "3.11",     "==3.5.1",  "==1.9",    "==1.5.3",
-            "==1.26.4", "==1.14.1", "==1.26.1", "==16.1.0",
-        ),
-        (
-            "3.12-oldest",
-            "3.12",     "==3.5.0",  "==1.8",    "==2.2.0",
-            "==1.26.0", "==1.11.2",  "==1.26.0", "==14.0.1",
-        ),
-        # 3.12 support was added in sympy 1.12.1 but internal cap is at 1.9 #1797
-        (
-            "3.12-newest",
-            "3.12",     "==4.0.0",  "==1.9",    "==2.3.1",
-            "==1.26.4", "==1.14.1", "==1.26.1", "==16.1.0",
-        ),
-        # fmt: on
-    ]
-}
 
-AUDIT_VERSIONS = ["3.9", "3.10", "3.11", "3.12"]
+def is_mac():
+    """Returns true if the current system is a mac."""
+    return sys.platform == "darwin"
+
+
+def is_arm_mac():
+    """Returns true if the current system is am arm-based mac."""
+    return is_mac() and platform.processor() == "arm"
+
+
+DEPENDENCY_MATRIX = [
+    DependencyConfiguration(
+        id="3.10-oldest",
+        python="3.10",
+        packages={
+            "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",
+            "sympy": "==1.8",
+            "pandas": "==1.4.0",
+            "numpy": "==1.23.2",
+            "scipy": "==1.8.0",
+            "randomgen": "==1.23.0",
+            "pyarrow": "==14.0.1",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.10-newest",
+        python="3.10",
+        packages={
+            "pyspark[sql]": "==3.5.6",
+            "sympy": "==1.9",
+            "pandas": "==1.5.3",
+            "numpy": "==1.26.4",
+            "scipy": "==1.14.1",
+            "randomgen": "==1.26.0",
+            "pyarrow": "==16.1.0",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.11-oldest",
+        python="3.11",
+        packages={
+            "pyspark[sql]": "==3.4.0" if not is_mac() else "==3.5.0",
+            "sympy": "==1.8",
+            "pandas": "==1.5.0",
+            "numpy": "==1.23.2",
+            "scipy": "==1.9.2",
+            "randomgen": "==1.26.0",
+            "pyarrow": "==14.0.1",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.11-newest",
+        python="3.11",
+        packages={
+            "pyspark[sql]": "==3.5.6",
+            "sympy": "==1.9",
+            "pandas": "==1.5.3",
+            "numpy": "==1.26.4",
+            "scipy": "==1.14.1",
+            "randomgen": "==1.26.1",
+            "pyarrow": "==16.1.0",
+        },
+    ),
+    DependencyConfiguration(
+        id="3.12-oldest",
+        python="3.12",
+        packages={
+            "pyspark[sql]": "==3.5.0",
+            "sympy": "==1.8",
+            "pandas": "==2.2.0",
+            "numpy": "==1.26.0",
+            "scipy": "==1.11.2",
+            "randomgen": "==1.26.0",
+            "pyarrow": "==14.0.1",
+        },
+    ),
+    # 3.12 support was added in sympy 1.12.1 but internal cap is at 1.9 #1797
+    DependencyConfiguration(
+        id="3.12-newest",
+        python="3.12",
+        packages={
+            "pyspark[sql]": "==3.5.6",
+            "sympy": "==1.9",
+            "pandas": "==2.2.2",
+            "numpy": "==1.26.4",
+            "scipy": "==1.14.1",
+            "randomgen": "==1.26.1",
+            "pyarrow": "==16.1.0",
+        },
+    ),
+]
+
+AUDIT_VERSIONS = ["3.10", "3.11", "3.12"]
 AUDIT_SUPPRESSIONS = [
     "PYSEC-2023-228",
     # Affects: pip<23.3
@@ -123,10 +149,24 @@ BENCHMARKS = [
 ]
 
 
+@session
+@install_group("build")
+def build(session):
+    """Build packages for distribution.
+
+    Positional arguments given to nox are passed to the cibuildwheel command,
+    allowing it to be run outside of the CI if needed.
+    """
+    session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
+    session.run("uv", "build", "--sdist", external=True)
+
+
 sm = SessionManager(
     package=PACKAGE_NAME,
     package_github=PACKAGE_GITHUB,
     directory=CWD,
+    default_python_version= "3.10",
+    custom_build=build,
     smoketest_script=SMOKETEST_SCRIPT,
     parallel_tests=False,
     min_coverage=MIN_COVERAGE,
@@ -157,5 +197,7 @@ sm.audit()
 
 sm.make_release()
 
+sm.test_dependency_matrix(dependency_matrix=DEPENDENCY_MATRIX)
+
 for name, timeout in BENCHMARKS:
-    sm.benchmark(Path('benchmark') / f"{name}.py", timeout)
+    sm.benchmark(Path("benchmark") / f"{name}.py", timeout)

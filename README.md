@@ -31,14 +31,11 @@ If you have any questions/concerns, please [create an issue](https://gitlab.com/
 
 ## Contributing
 
-We are not yet accepting external contributions, but please let us know if you are interested in contributing via [Slack](https://tmltdev.slack.com/join/shared_invite/zt-1bky0mh9v-vOB8azKAVoxmzJDUdWd5Wg#).
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for information about installing our development dependencies and running tests.
+We welcome external volunteers! If you are interested in contributing, please
+let us know on [Slack][slack]. See [CONTRIBUTING.md](https://github.com/opendp/tumult-core/blob/main/CONTRIBUTING.md) for information. 
 
 ## License
 
-Copyright Tumult Labs 2025
-
-The Tumult Platform source code is licensed under the Apache License, version 2.0 (Apache-2.0).
-The Tumult Platform documentation is licensed under
-Creative Commons Attribution-ShareAlike 4.0 International (CC-BY-SA-4.0).
+Tumult Core's source code is licensed under the Apache License, version 2.0
+(Apache-2.0). Tumult Core's documentation is licensed under Creative Commons
+Attribution-ShareAlike 4.0 International (CC-BY-SA-4.0).

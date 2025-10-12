@@ -1,0 +1,80 @@
+# This pipeline is executed every time someone pushes a tag to GitHub. If the
+# tag is a valid version number, it builds the library, and (will eventually) 
+# run the slow tests and the benchmarks, push the package distribution to PyPI,
+# and if this is a production release, also publish the docs.
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - '**'
+
+
+env:
+  # Force nox to produce colorful logs:
+  FORCE_COLOR: "true"
+
+jobs:
+  Check-Tag-Pattern:
+    if: github.repository == 'opendp/tumult-core'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          re="^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc)\.(0|[1-9][0-9]*))?$"
+          if [[ ! "$GITHUB_REF_NAME" =~ $re ]]; then 
+            echo "Tag $GITHUB_REF_NAME is not a valid version number. Aborting release pipeline."
+            exit 1
+          fi
+
+  Package-linux:
+    if: github.repository == 'opendp/tumult-core'
+    runs-on: ubuntu-latest
+    needs: Check-Tag-Pattern
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+      - run: uv run --only-group scripting nox -s build
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-wheel
+          path: dist/*.whl
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  Package-macos-intel:
+    if: github.repository == 'opendp/tumult-core'
+    runs-on: macos-15-intel
+    needs: Check-Tag-Pattern
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+      - run: uv run --only-group scripting nox -s build
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-intel-wheel
+          path: dist/*.whl
+
+  Package-macos-arm:
+    if: github.repository == 'opendp/tumult-core'
+    runs-on: macos-latest
+    needs: Check-Tag-Pattern
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+      - run: uv run --only-group scripting nox -s build
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm-wheel
+          path: dist/*.whl

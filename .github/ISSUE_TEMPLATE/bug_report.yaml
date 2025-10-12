@@ -1,0 +1,88 @@
+name: Bug Report
+description: Report incorrect behavior in the tmlt.core library
+labels: [Bug, Needs Triage]
+
+body:
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Basic checks
+      options:
+        - label: >
+            I can confirm that there isn't a seperate issue filed related to this bug.
+          required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Reproducible Example
+      description: >
+        Please add an example that reproduces the bug.
+        
+        [This guide](https://matthewrocklin.com/blog/work/2018/02/28/minimal-bug-reports) has guidance
+        on how to create an example.
+      placeholder: >
+        from pyspark.sql import SparkSession
+        from pyspark.sql.types import *
+        from tmlt.core.transformations.spark_transformations.filter import Filter
+        from tmlt.core.transformations.spark_transformations.agg import Count
+        from tmlt.core.domains.spark_domains import convert_spark_schema, SparkDataFrameDomain
+        from tmlt.core.metrics import SymmetricDifference
+        from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise
+        from tmlt.core.utils.misc import print_sdf
+
+        spark = SparkSession.builder.getOrCreate()
+        spark_schema = StructType(
+            [StructField("Name", StringType()), StructField("Age", IntegerType())]
+        )
+        df = spark.createDataFrame([("Alice", 30), ("Bob", 15), ("Carlos", 50)], schema=spark_schema)
+
+        tumult_schema = SparkDataFrameDomain(convert_spark_schema(spark_schema))
+        over_18_measurement = (
+            Filter(filter_expr="Age >= 18", domain=tumult_schema, metric=SymmetricDifference())
+            | Count(input_domain=tumult_schema, input_metric=SymmetricDifference())
+            | AddGeometricNoise(2)
+        )
+        print("Noisy count of records with age >= 18:")
+        print(over_18_measurement(df))
+        print("Privacy loss (epsilon):")
+        print(over_18_measurement.privacy_function(1))
+        ...
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Bug Description
+      description: >
+        Please describe the bug, specifically the undesirable behavior, shown by your example.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: >
+        Please describe what the exepected program outputs of your example code are.
+    validations:
+      required: true
+  - type: input
+    id: version-info
+    attributes:
+      label: Version Info
+      description: >
+        Please add what version of tmlt.core you have:
+    validations:
+      required: true
+  - type: textarea
+    id: platform
+    attributes:
+      label: Platform
+      description: >
+        [Optional] If you think this bug is an installation issue, please describe your system:
+        
+
+        Important notes for tmlt.core:
+         - What versions of Java, Python, and Spark do you have installed?
+         - What processor architecture (ex: x86_64 or arm) are you installing on?
+         - What operating system and version are you installing on?

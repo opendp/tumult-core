@@ -22,7 +22,7 @@ jobs:
           key: ext-arm-{{ checksum "ext_concat" }}
       - run: |
           bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          /opt/homebrew/bin/brew install python@3.9
+          /opt/homebrew/bin/brew install python@3.10
 
           .circleci/package_macos.bash
       - save_cache:
@@ -48,7 +48,7 @@ jobs:
       - run: |
           softwareupdate --install-rosetta --agree-to-license
           arch -x86_64 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          arch -x86_64 /usr/local/bin/brew install python@3.9
+          arch -x86_64 /usr/local/bin/brew install python@3.10
 
           arch -x86_64 .circleci/package_macos.bash
       - save_cache:
