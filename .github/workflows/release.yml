@@ -48,142 +48,142 @@ jobs:
           name: sdist
           path: dist/*.tar.gz
 
-  Package-macos-intel:
-    if: github.repository == 'opendp/tumult-core'
-    runs-on: macos-15-intel
-    needs: Check-Tag-Pattern
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
-      - run: uv run --only-group scripting nox -s build
-      - name: Upload wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-intel-wheel
-          path: dist/*.whl
+  # Package-macos-intel:
+  #   if: github.repository == 'opendp/tumult-core'
+  #   runs-on: macos-15-intel
+  #   needs: Check-Tag-Pattern
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Set up runner
+  #       uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+  #     - run: uv run --only-group scripting nox -s build
+  #     - name: Upload wheel
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: macos-intel-wheel
+  #         path: dist/*.whl
 
-  Package-macos-arm:
-    if: github.repository == 'opendp/tumult-core'
-    runs-on: macos-latest
-    needs: Check-Tag-Pattern
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
-      - run: uv run --only-group scripting nox -s build
-      - name: Upload wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-arm-wheel
-          path: dist/*.whl
+  # Package-macos-arm:
+  #   if: github.repository == 'opendp/tumult-core'
+  #   runs-on: macos-latest
+  #   needs: Check-Tag-Pattern
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Set up runner
+  #       uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+  #     - run: uv run --only-group scripting nox -s build
+  #     - name: Upload wheel
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: macos-arm-wheel
+  #         path: dist/*.whl
 
-  Test-Slow:
-    if: github.repository == 'opendp/tumult-core'
-    runs-on: ubuntu-latest
-    needs: Package-linux
-    steps:
-      - name: Checkout code repository
-        uses: actions/checkout@v4
-      - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
-      - name: Download dist
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-wheel
-          path: dist
-      - run: uv run nox -s test-slow
+  # Test-Slow:
+  #   if: github.repository == 'opendp/tumult-core'
+  #   runs-on: ubuntu-latest
+  #   needs: Package-linux
+  #   steps:
+  #     - name: Checkout code repository
+  #       uses: actions/checkout@v4
+  #     - name: Set up runner
+  #       uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+  #     - name: Download dist
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: linux-wheel
+  #         path: dist
+  #     - run: uv run nox -s test-slow
 
-  Benchmark:
-    if: github.repository == 'opendp/tumult-core'
-    runs-on: ubuntu-latest
-    needs: Package-linux
-    steps:
-      - name: Checkout code repository
-        uses: actions/checkout@v4
-      - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
-      - name: Download dist
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-wheel
-          path: dist
-      - run: uv run nox -t benchmark
+  # Benchmark:
+  #   if: github.repository == 'opendp/tumult-core'
+  #   runs-on: ubuntu-latest
+  #   needs: Package-linux
+  #   steps:
+  #     - name: Checkout code repository
+  #       uses: actions/checkout@v4
+  #     - name: Set up runner
+  #       uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+  #     - name: Download dist
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: linux-wheel
+  #         path: dist
+  #     - run: uv run nox -t benchmark
 
-  Dependency-Matrix:
-    if: github.repository == 'opendp/tumult-core'
-    strategy:
-      fail-fast: false
-      matrix:
-        # Note: mac runners are rather expensive (10x multiplier) so we don't use them here.
-        os: [ubuntu-latest]
-        dependencies: [oldest, newest]
-        python: ["3.10", "3.12"]
-    runs-on: ${{ matrix.os }}
-    needs: Package-linux
-    steps:
-      - name: Checkout code repository
-        uses: actions/checkout@v4
-      - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
-      - name: Download dist
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-wheel
-          path: dist
-      - run: uv run nox -s "test_dependency_matrix(${{matrix.python}}-${{matrix.dependencies}})"
-        env: 
-          SPARK_LOCAL_HOSTNAME: localhost
+  # Dependency-Matrix:
+  #   if: github.repository == 'opendp/tumult-core'
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       # Note: mac runners are rather expensive (10x multiplier) so we don't use them here.
+  #       os: [ubuntu-latest]
+  #       dependencies: [oldest, newest]
+  #       python: ["3.10", "3.12"]
+  #   runs-on: ${{ matrix.os }}
+  #   needs: Package-linux
+  #   steps:
+  #     - name: Checkout code repository
+  #       uses: actions/checkout@v4
+  #     - name: Set up runner
+  #       uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+  #     - name: Download dist
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: linux-wheel
+  #         path: dist
+  #     - run: uv run nox -s "test_dependency_matrix(${{matrix.python}}-${{matrix.dependencies}})"
+  #       env: 
+  #         SPARK_LOCAL_HOSTNAME: localhost
 
-  Publish-To-PyPI:
-    if: github.repository == 'opendp/tumult-core'
-    runs-on: ubuntu-latest
-    needs:
-      - Test-Slow
-      - Benchmark
-      - Dependency-Matrix
-      - Package-linux
-      - Package-macos-arm
-      - Package-macos-intel
-    environment:
-      name: pypi
-      url: https://pypi.org/p/tmlt-core
-    permissions:
-      id-token: write
-    steps:
-      - name: Download linux wheel
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-wheel
-          path: dist
-      - name: Download mac arm wheel
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-arm-wheel
-          path: dist
-      - name: Download mac intel wheel
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-intel-wheel
-          path: dist
-      - name: Download sdist
-        uses: actions/download-artifact@v4
-        with:
-          name: sdist
-          path: dist
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+  # Publish-To-PyPI:
+  #   if: github.repository == 'opendp/tumult-core'
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     # - Test-Slow
+  #     # - Benchmark
+  #     # - Dependency-Matrix
+  #     - Package-linux
+  #     # - Package-macos-arm
+  #     # - Package-macos-intel
+  #   environment:
+  #     name: pypi
+  #     url: https://pypi.org/p/tmlt-core
+  #   permissions:
+  #     id-token: write
+  #   steps:
+  #     - name: Download linux wheel
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: linux-wheel
+  #         path: dist
+  #     # - name: Download mac arm wheel
+  #     #   uses: actions/download-artifact@v4
+  #     #   with:
+  #     #     name: macos-arm-wheel
+  #     #     path: dist
+  #     # - name: Download mac intel wheel
+  #     #   uses: actions/download-artifact@v4
+  #     #   with:
+  #     #     name: macos-intel-wheel
+  #     #     path: dist
+  #     - name: Download sdist
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: sdist
+  #         path: dist
+  #     - name: Publish package distributions to PyPI
+  #       uses: pypa/gh-action-pypi-publish@release/v1
 
   Push-Docs:
     if: ${{ github.repository == 'opendp/tumult-core'
               && ! contains(github.ref_name, 'alpha')
-              && ! contains(github.ref_name, 'beta')
-              && ! contains(github.ref_name, 'rc') }}
+              && ! contains(github.ref_name, 'beta') }}
+              #&& ! contains(github.ref_name, 'rc') }}
     runs-on: ubuntu-latest
     environment: docs-push
-    needs: Publish-To-PyPI
+    needs: Package-linux
     steps:
       - name: Checkout code repository
         uses: actions/checkout@v4
@@ -206,3 +206,4 @@ jobs:
           docs-repository-token: ${{ secrets.DOCS_REPO_PAT }}
           docs-path: docs/core
           version: ${{ format('v{0}.{1}', env.MAJOR_VERSION, env.MINOR_VERSION) }}
+          dry-run: true
