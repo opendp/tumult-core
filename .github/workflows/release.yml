@@ -48,37 +48,37 @@ jobs:
           name: sdist
           path: dist/*.tar.gz
 
-  Package-macos-intel:
-    if: github.repository == 'opendp/tumult-core'
-    runs-on: macos-15-intel
-    needs: Check-Tag-Pattern
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
-      - run: uv run --only-group scripting nox -s build
-      - name: Upload wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-intel-wheel
-          path: dist/*.whl
+  # Package-macos-intel:
+  #   if: github.repository == 'opendp/tumult-core'
+  #   runs-on: macos-15-intel
+  #   needs: Check-Tag-Pattern
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Set up runner
+  #       uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+  #     - run: uv run --only-group scripting nox -s build
+  #     - name: Upload wheel
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: macos-intel-wheel
+  #         path: dist/*.whl
 
-  Package-macos-arm:
-    if: github.repository == 'opendp/tumult-core'
-    runs-on: macos-latest
-    needs: Check-Tag-Pattern
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
-      - run: uv run --only-group scripting nox -s build
-      - name: Upload wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-arm-wheel
-          path: dist/*.whl
+  # Package-macos-arm:
+  #   if: github.repository == 'opendp/tumult-core'
+  #   runs-on: macos-latest
+  #   needs: Check-Tag-Pattern
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Set up runner
+  #       uses: opendp/tumult-tools/actions/setup@eabe1054863f0916a0087ad180fd83719049c094
+  #     - run: uv run --only-group scripting nox -s build
+  #     - name: Upload wheel
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: macos-arm-wheel
+  #         path: dist/*.whl
 
   # Test-Slow:
   #   if: github.repository == 'opendp/tumult-core'
@@ -145,8 +145,8 @@ jobs:
       # - Benchmark
       # - Dependency-Matrix
       - Package-linux
-      - Package-macos-arm
-      - Package-macos-intel
+      # - Package-macos-arm
+      # - Package-macos-intel
     environment:
       name: pypi
       url: https://pypi.org/p/tmlt-core
@@ -158,16 +158,16 @@ jobs:
         with:
           name: linux-wheel
           path: dist
-      - name: Download mac arm wheel
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-arm-wheel
-          path: dist
-      - name: Download mac intel wheel
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-intel-wheel
-          path: dist
+      # - name: Download mac arm wheel
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: macos-arm-wheel
+      #     path: dist
+      # - name: Download mac intel wheel
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: macos-intel-wheel
+      #     path: dist
       - name: Download sdist
         uses: actions/download-artifact@v4
         with:
