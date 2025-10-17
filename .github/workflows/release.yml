@@ -102,6 +102,15 @@ jobs:
         os: [ubuntu-latest]
         dependencies: [oldest, newest]
         python: ["3.10", "3.12"]
+        include:
+          # Set a wheel for all intel linux runs.
+          - os: ubuntu-latest
+            wheel: linux-intel-wheel
+          # Add an extra run to test arm linux.
+          - os: ubuntu-24.04-arm
+            dependencies: oldest
+            python: "3.10"
+            wheel: linux-arm-wheel
     runs-on: ${{ matrix.os }}
     needs: Package
     steps:
@@ -112,7 +121,7 @@ jobs:
       - name: Download dist
         uses: actions/download-artifact@v4
         with:
-          name: linux-intel-wheel
+          name: ${{ matrix.wheel }}
           path: dist
       - run: uv run nox -s "test_dependency_matrix(${{matrix.python}}-${{matrix.dependencies}})"
         env: 
