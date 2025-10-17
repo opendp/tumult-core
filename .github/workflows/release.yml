@@ -33,12 +33,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: linux
+          - name: linux-intel
             os: ubuntu-latest
           - name: macos-intel
             os: macos-15-intel
           - name: macos-arm
             os: macos-latest
+          - name: linux-arm
+            os: ubuntu-24.04-arm
     needs: Check-Tag-Pattern
     steps:
       - name: Checkout repository
@@ -71,7 +73,7 @@ jobs:
       - name: Download dist
         uses: actions/download-artifact@v4
         with:
-          name: linux-wheel
+          name: linux-intel-wheel
           path: dist
       - run: uv run nox -s test-slow
 
@@ -87,7 +89,7 @@ jobs:
       - name: Download dist
         uses: actions/download-artifact@v4
         with:
-          name: linux-wheel
+          name: linux-intel-wheel
           path: dist
       - run: uv run nox -t benchmark
 
@@ -110,7 +112,7 @@ jobs:
       - name: Download dist
         uses: actions/download-artifact@v4
         with:
-          name: linux-wheel
+          name: linux-intel-wheel
           path: dist
       - run: uv run nox -s "test_dependency_matrix(${{matrix.python}}-${{matrix.dependencies}})"
         env: 
