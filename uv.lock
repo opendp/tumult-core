@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12' and sys_platform != 'darwin'",
@@ -1928,16 +1928,19 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas", version = "1.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "pandas", version = "2.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "parameterized" },
     { name = "pyarrow" },
     { name = "pyspark", extra = ["sql"] },
-    { name = "pytest" },
     { name = "randomgen", version = "1.26.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "randomgen", version = "2.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "scipy" },
     { name = "setuptools" },
     { name = "sympy" },
     { name = "typeguard" },
+]
+
+[package.optional-dependencies]
+testing = [
+    { name = "pytest" },
 ]
 
 [package.dev-dependencies]
@@ -1955,6 +1958,7 @@ ci-tools = [
 ]
 docs = [
     { name = "pydata-sphinx-theme" },
+    { name = "pytest" },
     { name = "sphinx" },
     { name = "sphinx-autoapi" },
     { name = "sphinx-autodoc-typehints" },
@@ -1979,13 +1983,16 @@ pydocstyle = [
     { name = "pydocstyle", extra = ["toml"] },
 ]
 pylint = [
+    { name = "parameterized" },
     { name = "pylint" },
+    { name = "pytest" },
 ]
 scripting = [
     { name = "nox" },
     { name = "tmlt-nox-utils" },
 ]
 test = [
+    { name = "parameterized" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
@@ -1998,13 +2005,12 @@ requires-dist = [
     { name = "pandas", marker = "python_full_version < '3.11'", specifier = ">=1.4.0,<2" },
     { name = "pandas", marker = "python_full_version == '3.11.*'", specifier = ">=1.5.0,<2" },
     { name = "pandas", marker = "python_full_version >= '3.12'", specifier = ">=2.2.0,<3" },
-    { name = "parameterized", specifier = ">=0.7.4,<0.8" },
     { name = "pyarrow", specifier = ">=18.0.0,<19" },
     { name = "pyspark", extras = ["sql"], marker = "sys_platform == 'darwin'", specifier = ">=3.5.0,<3.6" },
     { name = "pyspark", extras = ["sql"], marker = "python_full_version < '3.11' and sys_platform != 'darwin'", specifier = ">=3.3.1,<3.6" },
     { name = "pyspark", extras = ["sql"], marker = "python_full_version == '3.11.*' and sys_platform != 'darwin'", specifier = ">=3.4.0,<3.6" },
     { name = "pyspark", extras = ["sql"], marker = "python_full_version >= '3.12' and sys_platform != 'darwin'", specifier = ">=3.5.0,<3.6" },
-    { name = "pytest", specifier = ">=7.3.1,<8" },
+    { name = "pytest", marker = "extra == 'testing'", specifier = ">=7.3.1,<8" },
     { name = "randomgen", marker = "python_full_version < '3.10'", specifier = ">=1.20.0,<=1.26.0" },
     { name = "randomgen", marker = "python_full_version == '3.10.*'", specifier = ">=1.23.0,<=1.26.0" },
     { name = "randomgen", marker = "python_full_version >= '3.11'", specifier = ">=1.26.0,<=2" },
@@ -2016,6 +2022,7 @@ requires-dist = [
     { name = "sympy", specifier = ">=1.8,<1.13" },
     { name = "typeguard", specifier = ">=4.0.0,<5" },
 ]
+provides-extras = ["testing"]
 
 [package.metadata.requires-dev]
 audit = [{ name = "pip-audit", specifier = ">=2.9.0,<3" }]
@@ -2024,6 +2031,7 @@ build = [{ name = "cibuildwheel", specifier = ">=2,<3" }]
 ci-tools = [{ name = "requests", specifier = ">=2.31.0,<3" }]
 docs = [
     { name = "pydata-sphinx-theme", specifier = ">=0.14.4,<15" },
+    { name = "pytest" },
     { name = "sphinx", specifier = ">=7.2.0,<8" },
     { name = "sphinx-autoapi", specifier = ">=3.1.1,<4" },
     { name = "sphinx-autodoc-typehints", specifier = ">=2.0.1,<3" },
@@ -2041,12 +2049,17 @@ docs-examples = [
 isort = [{ name = "isort", specifier = ">=5.11,<6" }]
 mypy = [{ name = "mypy", specifier = ">=1.14.0" }]
 pydocstyle = [{ name = "pydocstyle", extras = ["toml"], specifier = ">=6.3" }]
-pylint = [{ name = "pylint", specifier = ">=3.2.5" }]
+pylint = [
+    { name = "parameterized" },
+    { name = "pylint", specifier = ">=3.2.5" },
+    { name = "pytest" },
+]
 scripting = [
     { name = "nox", specifier = ">=2024.3.2" },
     { name = "tmlt-nox-utils", git = "https://github.com/opendp/tumult-tools.git?subdirectory=nox-utils" },
 ]
 test = [
+    { name = "parameterized", specifier = ">=0.7.4,<0.8" },
     { name = "pytest" },
     { name = "pytest-cov", specifier = ">=5.0,<6" },
     { name = "pytest-xdist", specifier = ">=3.6,<4" },

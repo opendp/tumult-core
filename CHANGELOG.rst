@@ -19,6 +19,9 @@ Changed
 ~~~~~~~
 - Dropped support for Python 3.9, as it has reached end-of-life.
 - Dropped support for pyspark <3.5.0 on Macs after discovering that these configurations frequently crash. Older versions of the library may also be affected.
+- Removed ``pytest`` and ``parameterized`` as dependencies.
+  :mod:`tmlt.core.utils.testing` can now only be imported when the ``testing`` extra is installed;
+  for most users, this module will not be used, and so the extra does not need to be installed.
 
 .. _v0.18.2:
 

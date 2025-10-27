@@ -1,9 +1,21 @@
-"""Utilities for testing."""
+"""Utilities for testing.
+
+This module can only be imported if Core is installed with the ``testing``
+extra, e.g. via ``pip install tmlt.core[testing]``.
+"""
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
 # TODO(#1218): Move dummy aggregate class back to the test.
+
+try:
+    import pytest
+except ImportError as e:
+    raise ImportError(
+        "tmlt.core.utils.testing requires the 'testing' extra, which can be "
+        "installed with: pip install tmlt.core[testing]"
+    ) from e
 
 import logging
 import math
@@ -26,7 +38,6 @@ from unittest.mock import Mock, create_autospec
 
 import numpy as np
 import pandas as pd
-import pytest
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 

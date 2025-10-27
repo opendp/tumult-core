@@ -47,14 +47,15 @@ dependencies = [
     "scipy >=1.11.2,<2.0.0 ; python_version >= '3.12'",
     "sympy >=1.8,<1.13",
     "typeguard >=4.0.0,<5",
-    # TODO: These should potentially be pulled out into an extra -- normal
-    # operation of Core doesn't depend on them.
-    "parameterized >=0.7.4,<0.8",
-    "pytest >=7.3.1,<8",
     # This works around a bug in some older versions of PySpark. We should
     # determine what versions are affected and, when possible, remove the extra
     # dependency.
     "setuptools >=70.0.0",
+]
+
+[project.optional-dependencies]
+testing = [
+    "pytest >=7.3.1,<8",
 ]
 
 [project.urls]
@@ -70,9 +71,10 @@ build = ["cibuildwheel >=2,<3"]
 black = ["black >=23.3,<24"]
 isort = ["isort >=5.11,<6"]
 mypy = ["mypy >=1.14.0"]
-pylint = ["pylint >=3.2.5"]
+pylint = ["pylint >=3.2.5", "parameterized", "pytest"]
 pydocstyle = ["pydocstyle[toml] >=6.3"]
 test = [
+    "parameterized >=0.7.4,<0.8",
     "pytest",
     "pytest-cov >=5.0,<6",
     "pytest-xdist >=3.6,<4",
@@ -88,6 +90,7 @@ docs = [
     "sphinx-reredirects >=0.1.5,<0.2",
     "sphinxcontrib-bibtex >=2.6.2,<3",
     "sphinxcontrib-images >=0.9.4,<0.10",
+    "pytest",
 ]
 docs-examples = [
     "matplotlib >=3.1.0,<4",
@@ -161,7 +164,7 @@ artifacts = [
 build = "cp310-* cp311-* cp312-*"
 skip = "*-musllinux*"
 before-all = """
-if [ -d src/tmlt/core/ext/lib ] && [ ! -z ${CI+x} ]; then 
+if [ -d src/tmlt/core/ext/lib ] && [ ! -z ${CI+x} ]; then
   echo 'Found compiled vendor libraries, but these must be built fresh by cibuildwheel.'
   exit 1
 fi"""
