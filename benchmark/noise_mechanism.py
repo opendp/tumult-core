@@ -7,7 +7,7 @@ import time
 
 import pandas as pd
 from pyspark.sql import SparkSession
-from pyspark.sql.dataframe import DataFrame
+from pyspark.sql import DataFrame
 from pyspark.sql.types import IntegerType, StructField, StructType
 from benchmarking_utils import write_as_html
 

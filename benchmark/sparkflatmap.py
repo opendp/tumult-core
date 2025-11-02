@@ -9,7 +9,7 @@ from typing import Callable
 
 import pandas as pd
 from pyspark.sql import SparkSession
-from pyspark.sql.dataframe import DataFrame
+from pyspark.sql import DataFrame
 from pyspark.sql.types import IntegerType, StringType, StructField, StructType
 
 from tmlt.core.domains.collections import ListDomain

@@ -9,7 +9,6 @@ from typing import Any
 import numpy as np
 from randomgen.rdrand import RDRAND  # pylint: disable=no-name-in-module
 from randomgen.wrapper import UserBitGenerator  # pylint: disable=no-name-in-module
-"""Can this be switched to something else to avoid import errors?"""
 
 try:
     _core_privacy_prng = np.random.Generator(RDRAND())

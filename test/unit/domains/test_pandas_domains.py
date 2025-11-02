@@ -259,16 +259,14 @@ class TestPandasSeriesDomain(DomainTests):
 
     @pytest.mark.parametrize(
         "dtype, expected, expectation",
-        # pylint: disable=line-too-long
         [
             (
                 np.dtype(dtype),
                 PandasSeriesDomain(NumpyIntegerDomain(size=32)),
                 does_not_raise(),
             )
-            for dtype in [np.int8, np.int16, np.int32, np.bool_]  # type: ignore[attr-defined]
+            for dtype in [np.int8, np.int16, np.int32, np.bool_]
         ]
-        # pylint: enable=line-too-long
         + [
             (
                 np.dtype(np.float32),
@@ -281,7 +279,7 @@ class TestPandasSeriesDomain(DomainTests):
                 does_not_raise(),
             ),
             (
-                np.dtype(np.object_),  # type: ignore[attr-defined]
+                np.dtype(np.object_),
                 PandasSeriesDomain(NumpyStringDomain()),
                 does_not_raise(),
             ),
@@ -290,9 +288,7 @@ class TestPandasSeriesDomain(DomainTests):
                 PandasSeriesDomain(NumpyIntegerDomain(size=64)),
                 does_not_raise(),
             ),
-            # pylint: disable=line-too-long
-            (np.dtype([("f1", np.int16)]), None, pytest.raises(KeyError)),  # type: ignore
-            # pylint: enable=line-too-long
+            (np.dtype([("f1", np.int16)]), None, pytest.raises(KeyError)),
         ],
     )
     def test_from_numpy_type(

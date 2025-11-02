@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from benchmarking_utils import Timer, write_as_html
 from pyspark.sql import SparkSession, functions as sf
-from pyspark.sql.dataframe import DataFrame
+from pyspark.sql import DataFrame
 from pyspark.sql.types import LongType, StructField, StructType
 
 from tmlt.core.domains.spark_domains import (

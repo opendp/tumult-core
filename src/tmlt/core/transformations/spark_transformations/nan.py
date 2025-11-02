@@ -195,6 +195,7 @@ class DropInfs(Transformation):
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
+    # pylint: disable=invalid-unary-operand-type
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Drops rows containing +inf or -inf in ``self.columns``."""
         return sdf.filter(
@@ -208,6 +209,8 @@ class DropInfs(Transformation):
                 sf.lit(True),
             )
         )
+
+    # pylint: enable=invalid-unary-operand-type
 
 
 class DropNaNs(Transformation):

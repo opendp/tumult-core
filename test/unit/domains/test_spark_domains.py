@@ -14,7 +14,7 @@ from typing import Any, Callable, ContextManager, Dict, List, Optional, Type
 import pandas as pd
 import pytest
 from pyspark import Row
-from pyspark.sql.dataframe import DataFrame
+from pyspark.sql import DataFrame
 from pyspark.sql.session import SparkSession
 from pyspark.sql.types import (
     DataType,
