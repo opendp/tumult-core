@@ -266,7 +266,7 @@ class TestPandasSeriesDomain(DomainTests):
                 PandasSeriesDomain(NumpyIntegerDomain(size=32)),
                 does_not_raise(),
             )
-            for dtype in [np.int8, np.int16, np.int32, np.bool8]  # type: ignore[attr-defined]
+            for dtype in [np.int8, np.int16, np.int32, np.bool_]  # type: ignore[attr-defined]
         ]
         # pylint: enable=line-too-long
         + [
@@ -281,7 +281,7 @@ class TestPandasSeriesDomain(DomainTests):
                 does_not_raise(),
             ),
             (
-                np.dtype(np.object0),  # type: ignore[attr-defined]
+                np.dtype(np.object_),  # type: ignore[attr-defined]
                 PandasSeriesDomain(NumpyStringDomain()),
                 does_not_raise(),
             ),

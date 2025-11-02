@@ -458,10 +458,10 @@ class TestSubset(TestCase):
         [
             (
                 ["A", ("B", "B"), "C"],
-                {"A": np.int_(20), ("B", "B"): "XYZ", "C": np.float_(10.11)},
+                {"A": np.int_(20), ("B", "B"): "XYZ", "C": np.float64(10.11)},
             ),
             (["A"], {"A": np.int_(20)}),
-            ([("B", "B"), "C"], {("B", "B"): "XYZ", "C": np.float_(10.11)}),
+            ([("B", "B"), "C"], {("B", "B"): "XYZ", "C": np.float64(10.11)}),
         ]
     )
     def test_correctness(
@@ -488,7 +488,7 @@ class TestSubset(TestCase):
             input_domain=input_domain, input_metric=input_metric, keys=keys
         )
         actual = transformation(
-            {"A": np.int_(20), ("B", "B"): "XYZ", "C": np.float_(10.11)}
+            {"A": np.int_(20), ("B", "B"): "XYZ", "C": np.float64(10.11)}
         )
         self.assertEqual(actual, expected)
 

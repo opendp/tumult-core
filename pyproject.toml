@@ -28,19 +28,11 @@ keywords = [
 
 requires-python = ">=3.10,<3.13"
 dependencies = [
-    "numpy >=1.23.2,<=2.2.6 ; python_version < '3.12'",
-    "numpy >=1.26.0,<=2.2.6 ; python_version >= '3.12'",
-    "pandas >=1.4.0,<3 ; python_version < '3.11'",
-    "pandas >=1.5.0,<3 ; python_version == '3.11'",
-    "pandas >=2.2.0,<3 ; python_version >= '3.12'",
+    "numpy >=1.26.0,<=2.2.6",
+    "pandas >=1.5.0,<3",
     "pyarrow >=18.0.0,<19",
-    "pyspark[sql] >=3.3.1,<5 ; python_version < '3.11' and sys_platform != 'darwin'",
-    "pyspark[sql] >=3.4.0,<5 ; python_version == '3.11' and sys_platform != 'darwin'",
-    "pyspark[sql] >=3.5.0,<5; python_version >= '3.12' and sys_platform != 'darwin'",
-    "pyspark[sql] >=3.5.0,<5 ; sys_platform == 'darwin'",
-    "randomgen >=1.20.0,<=1.26.0 ; python_version < '3.10'",
-    "randomgen >=1.23.0,<=1.26.0 ; python_version == '3.10'",
-    "randomgen >=1.26.0,<=2 ; python_version >= '3.11'",
+    "pyspark[sql] >=3.4.0, <5",
+    "randomgen >=1.26.0,<=2.3.0",
     "scipy >=1.6.0,<2.0.0 ; python_version < '3.10'",
     "scipy >=1.8.0,<2.0.0 ; python_version == '3.10'",
     "scipy >=1.9.2,<2.0.0 ; python_version == '3.11'",
