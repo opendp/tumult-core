@@ -10,11 +10,9 @@ from collections import Counter
 from functools import reduce
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
 
-import numpy as np
 import pandas as pd
 import sympy as sp
 from pyspark.sql import functions as sf
-from pyspark.sql.session import SparkSession
 from typeguard import typechecked
 
 from tmlt.core.domains.base import Domain

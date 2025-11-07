@@ -194,8 +194,10 @@ source = ["src/tmlt/core", ".nox/**/site-packages/tmlt/core"]
 # Linter configuration
 
 [tool.ruff.lint]
-# Enable Ruff-specific lints plus Pylint and pydocstyle
-select = ["RUF", "PL", "D"]
+# Enable Ruff-specific lints plus Pylint, pydocstyle, pyflakes, and pycodestyle.
+# The latter two cover many lints that we previously used pylint for, but
+# because they are overlapping Ruff only implements them in one set of rules.
+select = ["RUF", "PL", "D", "F", "E", "W"]
 ignore = [
     "RUF002",  # ambiguous-unicode-character-docstring -- doesn't like unicode Greek letters
     "PLR09",   # too-many-*
@@ -222,6 +224,9 @@ ignore = [
     "D210",    # surrounding-whitespace
     "D102",    # undocumented-public-method
     "PLW2901", # redefined-loop-name
+    "E501",    # line-too-long
+    "E731",    # lambda-assignment
+    "E741",    # ambiguous-variable-name
 ]
 
 [tool.ruff.lint.pydocstyle]

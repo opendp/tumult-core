@@ -19,7 +19,6 @@ from pyspark.sql.types import IntegerType
 from typeguard import typechecked
 
 # cleanup is imported just so its cleanup function runs at exit
-import tmlt.core.utils.cleanup
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,

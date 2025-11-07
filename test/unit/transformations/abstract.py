@@ -5,7 +5,6 @@
 
 import copy
 from abc import ABC, abstractmethod
-from contextlib import nullcontext as does_not_raise
 from test.conftest import assert_frame_equal_with_sort
 from typing import Any, Callable, ContextManager, Dict, Optional, Type
 

@@ -14,7 +14,7 @@ from tmlt.core.measurements.interactive_measurements import (
     SequentialComposition,
 )
 from tmlt.core.measures import PureDP
-from tmlt.core.metrics import SumOf, SymmetricDifference
+from tmlt.core.metrics import SymmetricDifference
 from tmlt.core.transformations.dictionary import CreateDictFromValue
 from tmlt.core.transformations.spark_transformations.partition import PartitionByKeys
 from tmlt.core.utils.testing import PySparkTest

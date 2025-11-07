@@ -256,7 +256,7 @@ class AddNoiseToSeries(Measurement):
             noise_measurement: Noise Measurement to be applied to each element
                 in input pandas Series.
         """
-        if not noise_measurement.output_measure in [PureDP(), RhoZCDP()]:
+        if noise_measurement.output_measure not in [PureDP(), RhoZCDP()]:
             raise AssertionError(
                 "This is probably a bug; please let us know so we can fix it!"
             )
