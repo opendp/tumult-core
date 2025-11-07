@@ -1,10 +1,9 @@
-# pylint: disable=line-too-long
 """Transformations to drop or replace NaNs, nulls, and infs in Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
+
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
@@ -35,7 +34,6 @@ from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
 class DropInfs(Transformation):
-    # pylint: disable=line-too-long
     """Drops rows containing +inf or -inf in one or more specified columns.
 
     Examples:
@@ -105,7 +103,6 @@ class DropInfs(Transformation):
                 >>> drop_b_infs.stability_function(2)
                 2
     """
-    # pylint: enable=line-too-long
 
     @typechecked
     def __init__(
@@ -182,7 +179,6 @@ class DropInfs(Transformation):
         """Returns the columns to check for +inf and -inf."""
         return self._columns.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -193,7 +189,6 @@ class DropInfs(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -282,7 +277,7 @@ class DropNaNs(Transformation):
                 1
                 >>> drop_b_nans.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -362,7 +357,6 @@ class DropNaNs(Transformation):
         """Returns the columns to check for NaNs."""
         return self._columns.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -373,13 +367,11 @@ class DropNaNs(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Drops rows containing NaNs in ``self.columns``."""
-        # pylint: disable=no-member
         return sdf.filter(
             reduce(
                 lambda exp, column: exp & ~sf.isnan(sf.col(column)),
@@ -460,7 +452,7 @@ class DropNulls(Transformation):
                 1
                 >>> drop_b_nulls.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -533,7 +525,6 @@ class DropNulls(Transformation):
         """Returns the columns to check for nulls."""
         return self._columns.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -544,7 +535,6 @@ class DropNulls(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -560,7 +550,6 @@ class DropNulls(Transformation):
 
 
 class ReplaceInfs(Transformation):
-    # pylint: disable=line-too-long
     """Replaces +inf and -inf in one or more specified columns.
 
     Examples:
@@ -635,7 +624,6 @@ class ReplaceInfs(Transformation):
                 >>> replace_infs.stability_function(2)
                 2
     """
-    # pylint: enable=line-too-long
 
     @typechecked
     def __init__(
@@ -723,7 +711,6 @@ class ReplaceInfs(Transformation):
         """Returns mapping used to replace infinite values."""
         return self._replace_map.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -734,7 +721,6 @@ class ReplaceInfs(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -829,7 +815,7 @@ class ReplaceNaNs(Transformation):
                 1
                 >>> replace_nans.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -911,7 +897,6 @@ class ReplaceNaNs(Transformation):
         """Returns mapping used to replace NaNs and nulls."""
         return self._replace_map.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -922,13 +907,11 @@ class ReplaceNaNs(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns DataFrame with NaNs replaced in specified columns."""
-        # pylint: disable=no-member
         for column, replacement in self.replace_map.items():
             sdf = sdf.withColumn(
                 column,
@@ -1011,7 +994,7 @@ class ReplaceNulls(Transformation):
                 1
                 >>> replace_nulls.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -1093,7 +1076,6 @@ class ReplaceNulls(Transformation):
         """Returns mapping used to replace nulls."""
         return self._replace_map.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -1104,13 +1086,11 @@ class ReplaceNulls(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns DataFrame with nulls replaced in specified columns."""
-        # pylint: disable=no-member
         for column, replacement in self.replace_map.items():
             sdf = sdf.withColumn(
                 column,

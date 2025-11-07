@@ -582,7 +582,6 @@ class Case:
     For usage information, see :func:`~tmlt.core.utils.testing.parametrize`.
     """
 
-    # pylint: disable-next=redefined-builtin
     def __init__(self, id: Optional[str] = None, **kwargs: Any):
         """Constructor.
 

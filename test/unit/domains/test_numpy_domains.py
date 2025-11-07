@@ -801,9 +801,7 @@ class TestNumpyStringDomain(DomainTests):
     @pytest.mark.parametrize(
         "dtype, expected, expectation",
         [
-            # pylint: disable=line-too-long
             (np.dtype(np.object0), NumpyStringDomain(), does_not_raise()),  # type: ignore[attr-defined]
-            # pylint: enable=line-too-long
             (
                 np.dtype([("f1", np.int64)]),
                 None,

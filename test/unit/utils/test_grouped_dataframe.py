@@ -69,9 +69,7 @@ class TestGroupedDataFrame(PySparkTest):
             group_keys=self.spark.createDataFrame([(1,), (1,)], schema=["A"]),
         )
         expected = pd.DataFrame({"A": [1], "B": [2]})
-        actual = grouped_dataframe.select(  # pylint:disable=protected-access
-            ["A", "B"]
-        )._dataframe.toPandas()
+        actual = grouped_dataframe.select(["A", "B"])._dataframe.toPandas()
         self.assert_frame_equal_with_sort(actual, expected)
 
     def test_agg_with_nulls(self) -> None:

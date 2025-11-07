@@ -72,8 +72,6 @@ ruff = ["ruff >=0.14.3,<1"]
 black = ["black >=23.3,<24"]
 isort = ["isort >=5.11,<6"]
 mypy = ["mypy >=1.14.0"]
-pylint = ["pylint >=3.2.5", "parameterized", "pytest"]
-pydocstyle = ["pydocstyle[toml] >=6.3"]
 test = [
     "parameterized >=0.7.4,<0.8",
     "pytest",
@@ -261,64 +259,3 @@ check_untyped_defs = true
 module = "tmlt.core.utils.arb"
 disallow_untyped_defs = false
 check_untyped_defs = true
-
-[tool.pylint.master]
-# See https://github.com/PyCQA/pylint/issues/1975#issuecomment-387924981
-extension-pkg-whitelist = ['numpy']
-load-plugins = ['pylint.extensions.docparams']
-# Only check param docs in docstrings that contain an Args: section.
-# Set to "no" to show docstrings missing argument documentation.
-accept-no-param-doc = true
-
-[tool.pylint.'MESSAGES CONTROL']
-enable = [
-  # Note: there is a false positive on 'useless-suppression' when you
-  # use 'disable=line-too-long' at the end of a docstring.
-  # See: https://github.com/pylint-dev/pylint/issues/8301
-  'useless-suppression'
-]
-# By default, informational rules like useless-suppression don't cause PyLint to
-# produce an error.
-fail-on = ['useless-suppression']
-disable = [
-  'arguments-differ',
-  'duplicate-code',
-  'fixme',
-  'invalid-name',
-  'logging-format-interpolation',
-  'logging-fstring-interpolation',
-  'missing-raises-doc',
-  'missing-return-doc',
-  'no-else-return',
-  'super-init-not-called',
-  'too-few-public-methods',
-  'too-many-ancestors',
-  'too-many-arguments',
-  'too-many-branches',
-  'too-many-instance-attributes',
-  'too-many-lines',
-  'too-many-locals',
-  'too-many-positional-arguments',
-  'too-many-public-methods',
-  'too-many-return-statements',
-  'too-many-statements',
-  'unbalanced-tuple-unpacking',
-  'unnecessary-lambda-assignment',
-  'unsubscriptable-object',
-  'use-dict-literal',
-  # black and isort group tmlt.core separately from tmlt.analytics,
-  # but pylint thinks they should both be grouped as 'tmlt'.
-  'ungrouped-imports',
-  'wrong-import-order',
-]
-
-[tool.pylint.FORMAT]
-max-line-length = 88
-
-[tool.pydocstyle]
-convention = "google"
-add-ignore = [
-  # `D200: One-line docstring should fit on one line with quotes`
-  # conflicts with pylint's `max-line-length`.
-  "D200",
-]

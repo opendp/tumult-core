@@ -11,8 +11,6 @@ from randomgen import UserBitGenerator
 
 import tmlt.core.random.rng
 
-# pylint: disable=import-outside-toplevel, no-name-in-module
-
 
 class TestRNG(TestCase):
     """Tests for :func:`~.laplace_inverse_cdf`."""

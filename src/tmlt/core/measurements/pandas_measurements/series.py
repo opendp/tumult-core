@@ -303,9 +303,7 @@ class AddNoiseToSeries(Measurement):
 
     def __call__(self, values: pd.Series) -> pd.Series:
         """Adds noise to each number in the input Series."""
-        return values.apply(
-            lambda x: self.noise_measurement(x)  # pylint: disable=unnecessary-lambda
-        )
+        return values.apply(lambda x: self.noise_measurement(x))
 
 
 class _RankedInterval(NamedTuple):
@@ -383,7 +381,7 @@ def _select_quantile_interval(
             :math:`log(x_j - x_i) - |rank - target| * \frac{epsilon}{2 \cdot \Delta U} + G`
             where :math:`G` is a sampled from the standard Gumbel distribution.
         - Returns the interval with the highest noisy score.
-    """  # pylint:disable=line-too-long
+    """
     arb_q = Arb.from_float(float(q))
     prec = 53
     # target_rank = arb_q * len(values)
@@ -456,13 +454,12 @@ def _select_quantile_interval(
 
         # try to get a noisy score which is above most others
         approx_max = Arb.from_float(float("-inf"))
-        # pylint: disable=consider-using-max-builtin
+
         # Unclear if max works correctly with Arb
         for noisy_score in noisy_scores:
             if noisy_score > approx_max:
                 # only if noisy_score.lower > approx_max.upper
                 approx_max = noisy_score
-        # pylint: enable=consider-using-max-builtin
 
         # do another pass to eliminate other intervals
         new_gumbel_p_bits = []

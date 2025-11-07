@@ -56,7 +56,7 @@ def main():
 
     for size in [100, 400, 10000, 40000, 160000, 640000]:
         df = pd.DataFrame({"count": [0] * size})
-        sdf = spark.createDataFrame(df)  # pylint: disable=no-member
+        sdf = spark.createDataFrame(df)
         running_time = evaluate_runtime(
             input_domain=input_domain,
             measure_column="count",
@@ -72,7 +72,7 @@ def main():
 
     for size in [100, 400, 10000, 40000, 160000, 640000]:
         df = pd.DataFrame({"count": [0] * size})
-        sdf = spark.createDataFrame(df)  # pylint: disable=no-member
+        sdf = spark.createDataFrame(df)
         running_time = evaluate_runtime(
             input_domain=input_domain,
             measure_column="count",
@@ -90,7 +90,7 @@ def main():
 
     for size in [100, 400, 10000, 40000, 160000, 640000]:
         df = pd.DataFrame({"count": [0] * size})
-        sdf = spark.createDataFrame(df)  # pylint: disable=no-member
+        sdf = spark.createDataFrame(df)
         running_time = evaluate_runtime(
             input_domain=input_domain,
             measure_column="count",

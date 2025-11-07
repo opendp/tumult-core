@@ -75,7 +75,7 @@ class BenchmarkSparkPublicJoin:
             domain_size = 2
             rows_in_private = 100
             input_domain = SparkDataFrameDomain(schema=self.schema)
-            private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+            private_df = self.spark.createDataFrame(
                 pd.DataFrame(
                     [[1.2, i] for i in range(domain_size)]
                     * int(rows_in_private / domain_size),
@@ -121,7 +121,7 @@ class BenchmarkSparkPublicJoin:
                 columns=["B", "C"],
             )
             for rows in rows_private:
-                private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+                private_df = self.spark.createDataFrame(
                     pd.DataFrame(
                         [[1.2, i] for i in range(domain_size)]
                         * int(rows / domain_size),
@@ -157,7 +157,7 @@ class BenchmarkSparkPublicJoin:
             rows_in_public = 10000
             rows_in_private = 100
             input_domain = SparkDataFrameDomain(schema=self.schema)
-            private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+            private_df = self.spark.createDataFrame(
                 pd.DataFrame(
                     [[10.0, i] for i in range(domain_size)]
                     * int(rows_in_private / domain_size),
@@ -205,7 +205,7 @@ class BenchmarkSparkPublicJoin:
             )
             for cols in columns_private:
                 schema = {f"Col_{i}": SparkFloatColumnDescriptor() for i in range(cols)}
-                private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+                private_df = self.spark.createDataFrame(
                     pd.DataFrame(
                         [tuple(range(cols))] * rows_in_private, columns=schema.keys()
                     )
@@ -248,7 +248,7 @@ class BenchmarkSparkPublicJoin:
                 schema = {
                     f"Col_{i}": SparkStringColumnDescriptor() for i in range(num_cols)
                 }
-                private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+                private_df = self.spark.createDataFrame(
                     pd.DataFrame(data, columns=columns)
                 )
                 private_df = private_df.withColumn("B", lit("B"))
@@ -281,7 +281,7 @@ class BenchmarkSparkPublicJoin:
             rows, join_columns = 4000, 1
             input_domain = SparkDataFrameDomain(schema=self.schema)
             for size in domain_sizes:
-                private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+                private_df = self.spark.createDataFrame(
                     pd.DataFrame(
                         [[10.0, i] for i in range(size)] * int(rows / size),
                         columns=["A", "B"],

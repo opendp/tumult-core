@@ -116,9 +116,7 @@ class GroupBy(Transformation):
 
             >>> groupby_B.stability_function(1)
             1
-    """  # pylint: disable=line-too-long,useless-suppression
-
-    # pylint: enable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(

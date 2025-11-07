@@ -921,10 +921,8 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         # Separate asserts for the frames are required since GroupedDataFrame does not
         # implement __eq__.
         assert_frame_equal_with_sort(
-            exception_properties[  # pylint: disable=protected-access
-                "value"
-            ]._dataframe,
-            core_exception.value._dataframe,  # pylint: disable=protected-access
+            exception_properties["value"]._dataframe,
+            core_exception.value._dataframe,
         )
         assert_frame_equal_with_sort(
             exception_properties["value"].group_keys, core_exception.value.group_keys
@@ -1342,7 +1340,7 @@ class TestSparkColumnDescriptors:
                         ValueError,
                         match="Column must be "
                         f"{get_fullname(_type_to_spark_type[col_type])}; got "
-                        f"{get_fullname(_type_to_spark_type[_col_name_to_type[col_name]])} "  # pylint: disable=line-too-long
+                        f"{get_fullname(_type_to_spark_type[_col_name_to_type[col_name]])} "
                         "instead",
                     )
                 ),

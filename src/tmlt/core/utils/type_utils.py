@@ -7,8 +7,6 @@ from enum import Enum
 from types import FunctionType
 from typing import Any, NoReturn, Sequence, Tuple, Type
 
-# pylint: disable=cyclic-import, import-outside-toplevel
-
 
 def assert_never(x: NoReturn) -> NoReturn:
     """Assertion for statically checking exhaustive pattern matches.

@@ -1,10 +1,9 @@
-# pylint: disable=line-too-long
 """Measurements on Spark DataFrames.
 
 See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information.
 """
-# pylint: enable=line-too-long
+
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
@@ -20,7 +19,7 @@ from pyspark.sql.types import IntegerType
 from typeguard import typechecked
 
 # cleanup is imported just so its cleanup function runs at exit
-import tmlt.core.utils.cleanup  # pylint: disable=unused-import
+import tmlt.core.utils.cleanup
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -162,7 +161,7 @@ class AddNoiseToColumn(SparkMeasurement):
 
             >>> add_laplace_noise_to_column.privacy_function(1)
             2
-    """  # pylint: disable=line-too-long
+    """
 
     @typechecked
     def __init__(
@@ -334,7 +333,6 @@ class ApplyInPandas(SparkMeasurement):
         """Returns input domain."""
         return cast(SparkGroupedDataFrameDomain, super().input_domain)
 
-    # pylint: disable=line-too-long
     @typechecked
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the measurement.
@@ -349,7 +347,6 @@ class ApplyInPandas(SparkMeasurement):
             NotImplementedError: If self.aggregation_function.privacy_function(d_in)
                 raises :class:`NotImplementedError`.
         """
-        # pylint: enable=line-too-long
         return self.aggregation_function.privacy_function(d_in)
 
     def call(self, val: GroupedDataFrame) -> DataFrame:
@@ -464,7 +461,7 @@ class GeometricPartitionSelection(SparkMeasurement):
             2
             >>> delta.to_float(round_up=True)
             5.664238400088129e-21
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -533,7 +530,6 @@ class GeometricPartitionSelection(SparkMeasurement):
         """Returns the count column name."""
         return self._count_column
 
-    # pylint: disable=line-too-long
     @typechecked
     def privacy_function(
         self, d_in: ExactNumberInput
@@ -546,7 +542,6 @@ class GeometricPartitionSelection(SparkMeasurement):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         d_in = ExactNumber(d_in)
         if d_in == 0:
@@ -686,7 +681,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
             4
             >>> measurement.privacy_function(2)
             8
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(

@@ -84,7 +84,7 @@ class Transformation(ABC):
         raise NotImplementedError(
             f"{self.__class__.__name__} does not have a stability function"
         )
-        return d_in  # pylint: disable=unreachable
+        return d_in
 
     @typechecked
     def stability_relation(self, d_in: Any, d_out: Any) -> bool:
@@ -111,7 +111,6 @@ class Transformation(ABC):
 
     def __or__(self, other: Any) -> Union[Measurement, Transformation]:
         """Return this transformation chained with another component."""
-        # pylint: disable=import-outside-toplevel
         check_type(other, Union[Measurement, Transformation])
         if isinstance(other, Measurement):
             from tmlt.core.measurements.chaining import ChainTM

@@ -1251,11 +1251,10 @@ class TestDerivedTransformations(PySparkTest):
         )
 
         # the "type: ignore" comment makes the next line 2 characters too long.
-        # pylint: disable=line-too-long
+
         count_distinct_transformation = create_count_distinct_aggregation(  # type: ignore
             input_domain=input_domain, input_metric=input_metric
         )
-        # pylint: enable=line-too-long
 
         self.assertTrue(
             isinstance(
