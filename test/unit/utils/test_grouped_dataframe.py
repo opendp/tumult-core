@@ -329,7 +329,6 @@ class TestGroupedDataFrame(PySparkTest):
 
     def test_agg_with_rows_no_cols(self):
         """Tests that a groupby errors when there are keys but no columns."""
-
         with pytest.raises(ValueError) as exp_info:
             GroupedDataFrame(
                 dataframe=self.spark.createDataFrame(

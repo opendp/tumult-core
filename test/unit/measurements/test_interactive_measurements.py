@@ -1070,7 +1070,6 @@ class TestPrivacyAccountant(PySparkTest):
     @patch.object(PrivacyAccountant, "__init__", autospec=True, return_value=None)
     def test_launch(self, mock_accountant_init):
         """PrivacyAccountant.launch works as expected."""
-
         mock_queryable = Mock(spec=SequentialQueryable)
         mock_sequential_composition = Mock(
             spec=SequentialComposition, return_value=mock_queryable
@@ -2074,8 +2073,8 @@ class TestCreateAdaptiveComposition(TestCase):
         requested_budget = self.budget_type(self.budget_quarters[3])
         error_message = re.escape(
             (
-                f"The remaining privacy budget is {str(remaining_budget)}, which "
-                f"is insufficient given the requested budget {str(requested_budget)}."
+                f"The remaining privacy budget is {remaining_budget!s}, which "
+                f"is insufficient given the requested budget {requested_budget!s}."
             )
         )
         with self.assertRaisesRegex(ValueError, error_message):

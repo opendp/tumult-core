@@ -1228,7 +1228,8 @@ class TestSparkColumnDescriptors:
     r"""Tests for subclasses of class SparkColumnDescriptor.
 
     See subclasses of
-    :class:`~tmlt.core.domains.spark_domains.SparkColumnDescriptor`\ s."""
+    :class:`~tmlt.core.domains.spark_domains.SparkColumnDescriptor`\ s.
+    """
 
     spark: SparkSession
 

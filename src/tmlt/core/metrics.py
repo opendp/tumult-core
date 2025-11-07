@@ -61,7 +61,7 @@ class Metric(ABC):
         """Raise an exception if the arguments to a distance method aren't valid."""
         if not self.supports_domain(domain):
             raise UnsupportedCombinationError(
-                (self, domain), f"{repr(self)} does not support domain {repr(domain)}."
+                (self, domain), f"{self!r} does not support domain {domain!r}."
             )
         try:
             domain.validate(value1)
@@ -868,7 +868,7 @@ class OnColumn(ExactNumberMetric):
     def __repr__(self) -> str:
         """Returns string representation."""
         return (
-            f"{self.__class__.__name__}(column={repr(self.column)},"
+            f"{self.__class__.__name__}(column={self.column!r},"
             f" metric={self.metric})"
         )
 
@@ -1426,9 +1426,8 @@ class AddRemoveKeys(Metric):
                     return False
                 if column_descriptor is None:
                     column_descriptor = element_domain.schema[id_column]
-                else:
-                    if element_domain.schema[id_column] != column_descriptor:
-                        return False
+                elif element_domain.schema[id_column] != column_descriptor:
+                    return False
             return True
         return False
 
@@ -1488,6 +1487,4 @@ class AddRemoveKeys(Metric):
 
     def __repr__(self) -> str:
         """Returns string representation."""
-        return (
-            f"{self.__class__.__name__}(df_to_key_column={repr(self.df_to_key_column)})"
-        )
+        return f"{self.__class__.__name__}(df_to_key_column={self.df_to_key_column!r})"

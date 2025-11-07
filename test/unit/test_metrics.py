@@ -59,12 +59,12 @@ class TestNullMetric(TestCase):
     """TestCase for NullMetric."""
 
     def test_valid(self):
-        """validate is not implemented"""
+        """Validate is not implemented"""
         with self.assertRaises(NotImplementedError):
             NullMetric().validate(3)
 
     def test_compare(self):
-        """compare is not implemented"""
+        """Compare is not implemented"""
         with self.assertRaises(NotImplementedError):
             NullMetric().compare(3, 2)
 

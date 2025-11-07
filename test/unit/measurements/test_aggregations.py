@@ -925,7 +925,6 @@ class TestAggregationMeasurement(PySparkTest):
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_count_measurement works correctly without groupby."""
-
         if (
             isinstance(input_metric, IfGroupedBy)
             and input_metric.column not in self.groupby_columns  # type: ignore

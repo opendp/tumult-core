@@ -788,9 +788,8 @@ class FlatMap(Transformation):
             self.input_metric.inner_metric, SymmetricDifference
         ):
             return ExactNumber(d_in)
-        else:
-            if self.max_num_rows is None:
-                return ExactNumber(float("inf"))
+        elif self.max_num_rows is None:
+            return ExactNumber(float("inf"))
         # help mypy
         assert self.max_num_rows is not None
         return ExactNumber(d_in) * self.max_num_rows

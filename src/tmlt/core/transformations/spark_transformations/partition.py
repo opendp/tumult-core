@@ -216,8 +216,7 @@ class PartitionByKeys(Partition):
         if isinstance(input_metric, IfGroupedBy):
             if not (
                 (isinstance(input_metric.inner_metric, RootSumOfSquared) and use_l2)
-                or isinstance(input_metric.inner_metric, SumOf)
-                and not use_l2
+                or (isinstance(input_metric.inner_metric, SumOf) and not use_l2)
             ):
                 raise UnsupportedMetricError(
                     input_metric, "IfGroupedBy inner metric must match use_l2"

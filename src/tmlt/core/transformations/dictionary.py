@@ -314,7 +314,7 @@ class GetValue(Transformation):
         """
         if key not in input_domain.key_to_domain:
             raise DomainKeyError(
-                input_domain, key, f"{repr(key)} is not one of the input domain's keys"
+                input_domain, key, f"{key!r} is not one of the input domain's keys"
             )
         # Below is the check in base class, but needs to happen before so
         # output_metric = input_metric[key] won't get a KeyError

@@ -163,7 +163,6 @@ def test_transformation_correctness(
 
 def test_null_nan_inf(spark):
     """Transformation handles null/NaN/inf inputs and outputs correctly."""
-
     # Do not use Pandas in this test! Anything passing through a Pandas
     # dataframe could silently modify the NaNs/nulls and invalidate the
     # test.

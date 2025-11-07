@@ -124,8 +124,10 @@ class DropInfs(Transformation):
             columns: Columns to drop +inf and -inf from.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -300,8 +302,10 @@ class DropNaNs(Transformation):
             columns: Columns to drop NaNs from.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -476,8 +480,10 @@ class DropNulls(Transformation):
             columns: Columns to drop nulls from.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -649,8 +655,10 @@ class ReplaceInfs(Transformation):
                 in that column.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -839,8 +847,10 @@ class ReplaceNaNs(Transformation):
                 replacing NaNs in that column.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -1019,8 +1029,10 @@ class ReplaceNulls(Transformation):
                 replacing nulls in that column.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
