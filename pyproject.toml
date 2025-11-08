@@ -194,12 +194,16 @@ source = ["src/tmlt/core", ".nox/**/site-packages/tmlt/core"]
 # Linter configuration
 
 [tool.ruff.lint]
-# Enable Ruff-specific lints plus Pylint, pydocstyle, pyflakes, and pycodestyle.
-# The latter two cover many lints that we previously used pylint for, but
-# because they are overlapping Ruff only implements them in one set of rules.
-select = ["RUF", "PL", "D", "F", "E", "W"]
+# A list of all of Ruff's rules can be found at https://docs.astral.sh/ruff/rules/
+select = [
+    # Enable Ruff-specific lints plus Pylint, pydocstyle, pyflakes, and pycodestyle.
+    # The latter two cover many lints that we previously used pylint for, but
+    # because they are overlapping Ruff only implements them in one set of rules.
+    "RUF", "PL", "D", "F", "E", "W",
+    # Also enable a subset of flake8 rules, for similar reasons to pyflakes/pycodestyle.
+    "ISC", "SLF"
+]
 ignore = [
-    "RUF002",  # ambiguous-unicode-character-docstring -- doesn't like unicode Greek letters
     "PLR09",   # too-many-*
     "PLR2004", # magic-value-comparison
 
@@ -213,7 +217,7 @@ ignore = [
     "PLW0177", # nan-comparison
     "RUF005",  # collection-literal-concatenation
     "PLR1730", # if-stmt-min-max
-    "PLW0127", # selt-assigning-variable
+    "PLW0127", # self-assigning-variable
     "PLW0128", # redeclared-assigned-name
     "RUF015",  # unnecessary-iterable-allocation-for-first-element
     "D417",    # undocumented-param
@@ -227,7 +231,15 @@ ignore = [
     "E501",    # line-too-long
     "E731",    # lambda-assignment
     "E741",    # ambiguous-variable-name
+    "SLF001",  # private-member-access
+    "RET504",  # unnecessary-assign
 ]
+
+# Ruff's RUF001-003 rules disallow certain Unicode characters that are easily
+# confused with ASCII characters; this makes sense for the most part, but some
+# of our docstrings use Greek letters that fall into that category. This allows
+# those characters.
+allowed-confusables = ['α', 'ρ', '𝝆']
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
