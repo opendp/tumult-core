@@ -37,7 +37,7 @@ jobs:
           name: dist
           path: dist
       - run: uv lock --check
-      - run: uv run --only-group scripting nox -t lint
+      - run: uv run --only-group scripting nox -t lint -- --check
   Test:
     runs-on: ubuntu-latest
     needs: Package
