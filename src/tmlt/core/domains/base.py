@@ -21,7 +21,7 @@ class Domain(ABC):
 
     def validate(self, value: Any) -> None:
         """Raises an error if value is not in the domain."""
-        if value.__class__ is not self.carrier_type:
+        if not isinstance(value, self.carrier_type):
             raise OutOfDomainError(
                 self,
                 value,

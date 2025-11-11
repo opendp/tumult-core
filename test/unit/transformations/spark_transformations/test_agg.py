@@ -505,7 +505,7 @@ class TestCountDistinctGrouped(PySparkTest):
         count_distinct_groups = CountDistinctGrouped(
             input_domain=SparkGroupedDataFrameDomain(
                 schema={
-                    "X": SparkIntegerColumnDescriptor(),
+                    "X": SparkIntegerColumnDescriptor(allow_null=True),
                     "Y": SparkStringColumnDescriptor(allow_null=True),
                     "Z": SparkFloatColumnDescriptor(
                         allow_nan=True, allow_null=True, allow_inf=True
