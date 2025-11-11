@@ -197,15 +197,15 @@ class TransformValue(Transformation):
             )
         if key not in input_domain.key_to_domain:
             raise DomainKeyError(
-                input_domain, key, f"{key!r} is not one of the input domain's keys"
+                input_domain, key, f"{repr(key)} is not one of the input domain's keys"
             )
         if new_key in input_domain.key_to_domain:
-            raise ValueError(f"{new_key!r} is already a key in the input domain")
+            raise ValueError(f"{repr(new_key)} is already a key in the input domain")
         if transformation.input_domain != input_domain.key_to_domain[key]:
             raise DomainMismatchError(
                 (transformation.input_domain, input_domain),
                 (
-                    f"Input domain's value for {key!r} does not match"
+                    f"Input domain's value for {repr(key)} does not match"
                     " transformation's input domain"
                 ),
             )

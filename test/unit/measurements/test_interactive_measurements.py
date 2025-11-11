@@ -2055,8 +2055,8 @@ class TestCreateAdaptiveComposition(TestCase):
         requested_budget = self.budget_type(self.budget_quarters[3])
         error_message = re.escape(
             (
-                f"The remaining privacy budget is {remaining_budget!s}, which "
-                f"is insufficient given the requested budget {requested_budget!s}."
+                f"The remaining privacy budget is {remaining_budget}, which "
+                f"is insufficient given the requested budget {requested_budget}."
             )
         )
         with self.assertRaisesRegex(ValueError, error_message):
