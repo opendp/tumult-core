@@ -20,7 +20,7 @@ Introduction to Tumult Core
 
 Tumult Core is a collection of composable components for implementing
 algorithms to perform differentially private computations. The design of Tumult Core
-is based on the design proposed in the `OpenDP White Paper <https://projects.iq.harvard.edu/files/opendifferentialprivacy/files/opendp_white_paper_11may2020.pdf>`__,
+is based on the design proposed in the `OpenDP White Paper <https://web.archive.org/web/20250505214711/https://projects.iq.harvard.edu/files/opendp/files/opendp_programming_framework_11may2020_1_01.pdf>`_,
 and can automatically verify the privacy properties of algorithms constructed
 from Tumult Core components. Tumult Core is scalable, includes a wide variety of components,
 and supports multiple privacy definitions.

@@ -10,6 +10,7 @@ from collections import Counter
 from functools import reduce
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
 
+import numpy as np  # noqa: F401 -- needed for doctests
 import pandas as pd
 import sympy as sp
 from pyspark.sql import functions as sf
