@@ -20,7 +20,7 @@ Tumult Core supports the ``x86_64`` processor architecture, as well as Apple sil
 
 Below are instructions for installing these prerequisites on several common platforms.
 If none of these apply to you, install Python 3 and Java from your OS package manager.
-If you encounter any issues during the installation process, please `let us know <https://gitlab.com/tumult-labs/core/-/issues>`__!
+If you encounter any issues during the installation process, please `let us know <https://github.com/opendp/tumult-core/issues>`__!
 
 .. tab-set::
 

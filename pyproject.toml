@@ -59,7 +59,7 @@ testing = [
 ]
 
 [project.urls]
-documentation = "https://tmlt.dev/core/latest"
+documentation = "https://docs.tmlt.dev/core/latest/"
 repository = "https://github.com/opendp/tumult-core"
 
 [tool.uv]
