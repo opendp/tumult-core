@@ -27,7 +27,7 @@ If you have any questions/concerns, please [create an issue](https://github.com/
 We welcome external volunteers! If you are interested in contributing, please
 let us know on [Slack][slack]. See [CONTRIBUTING.md](https://github.com/opendp/tumult-core/blob/main/CONTRIBUTING.md) for information.
 
-[slack]: https://join.slack.com/t/opendp/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w
+[slack]: https://opendp.slack.com/join/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w#/shared-invite/email
 
 ## License
 
