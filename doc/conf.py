@@ -151,7 +151,7 @@ html_theme_options = {
         "json_url": "https://docs.tmlt.dev/core/versions.json",
         "version_match": version,
     },
-    "gitlab_url": "https://gitlab.com/tumult-labs/core",
+    "github_url": "https://github.com/opendp/tumult-core",
 }
 html_context = {
     "default_mode": "light",
