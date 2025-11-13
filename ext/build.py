@@ -31,7 +31,7 @@ def check_platform():
         failed = True
     if failed:
         print(
-            "Contact us on slack at tmltdev.slack.com if you want help or to request "
+            "Contact us on slack at https://opendp.slack.com/ if you want help or to request "
             "support for your environment."
         )
         print("Here is more information about your system:")
