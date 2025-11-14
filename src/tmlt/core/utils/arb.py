@@ -9,14 +9,12 @@ import math
 import platform
 from typing import Any, List, Tuple, Union
 
-# pylint: disable=protected-access
-
 # importlib.resources.path was deprecated in Python 3.11, and then un-deprecated
 # in 3.13, so there's not actually a problem here. It's possible this code will
 # need to be tweaked slightly for 3.13 support, as there were some changes to
 # the API, but they don't obviously affect this code.
 
-# pylint: disable=deprecated-method
+
 if platform.system() == "Windows":
     with (
         importlib.resources.path("tmlt.core.ext.lib", "libarb.dll") as _arb_path,
@@ -59,7 +57,6 @@ else:
         "Unrecognized platform. Expected platform.system() to be one of"
         f" 'Windows', 'Linux', or 'Darwin' not ({platform.system()})."
     )
-# pylint: enable=deprecated-method
 
 
 class _PtrStruct(ctypes.Structure):
@@ -372,10 +369,10 @@ class Arb:
         x = self._ptr.contents.mid
         # Per the docs, the initializer for ctypes.c_long is optional, but
         # pylint thinks it is required.
-        # pylint: disable=no-value-for-parameter, useless-suppression
+
         man_ptr = ctypes.pointer(ctypes.c_long())
         exp_ptr = ctypes.pointer(ctypes.c_long())
-        # pylint: enable=no-value-for-parameter, useless-suppression
+
         arblib.arf_get_fmpz_2exp(man_ptr, exp_ptr, ctypes.byref(x))
         return _fmpz_t_to_int(man_ptr), _fmpz_t_to_int(exp_ptr)
 
@@ -413,10 +410,8 @@ class Arb:
         arblib.arb_get_rad_arb(x, self._ptr)
         return Arb(x)
 
-    # pylint: disable=line-too-long
     def __contains__(self, value: Any) -> bool:
         """Returns True if value is contained in the interval represented by ``self``."""
-        # pylint: enable=line-too-long
         if isinstance(value, Arb):
             return arblib.arb_contains(self._ptr, value._ptr) != 0
         return False
@@ -632,9 +627,8 @@ def _int_to_fmpz_t(val: int) -> "ctypes._PointerLike":
     Args:
         val: Integer to convert.
     """
-    # pylint: disable-next=no-value-for-parameter, useless-suppression
     fmpz_pointer = ctypes.pointer(ctypes.c_long())
-    s = "%x" % int(val)  # pylint: disable=consider-using-f-string
+    s = "%x" % int(val)
     val_c_string = ctypes.c_char_p(s.encode("ascii"))
     flintlib.fmpz_set_str(fmpz_pointer, val_c_string, 16)
     return fmpz_pointer

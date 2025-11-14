@@ -1,10 +1,9 @@
-# pylint: disable=line-too-long
 """Transformations for grouping and aggregating Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
+
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
@@ -111,7 +110,7 @@ class Count(Transformation):
 
              >>> count_dataframe.stability_function(1)
              1
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -216,7 +215,7 @@ class CountDistinct(Transformation):
 
             >>> count_distinct_dataframe.stability_function(1)
             1
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -346,7 +345,7 @@ class CountGrouped(Transformation):
 
             >>> count_by_A.stability_function(1)
             1
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -425,7 +424,6 @@ class CountGrouped(Transformation):
 
     def __call__(self, grouped_data: GroupedDataFrame) -> DataFrame:
         """Returns a DataFrame containing counts for each group."""
-        # pylint: disable=no-member
         return grouped_data.agg(
             func=sf.count("*").alias(self.count_column), fill_value=0
         )
@@ -522,7 +520,7 @@ class CountDistinctGrouped(Transformation):
 
             >>> count_distinct_by_A.stability_function(1)
             1
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -695,7 +693,7 @@ class Sum(Transformation):
               :class:`~.SymmetricDifference`
             * :math:`h - \ell` if the input metric is
               :class:`~.HammingDistance`
-    """  # pylint: disable=line-too-long
+    """
 
     @typechecked
     def __init__(
@@ -916,7 +914,7 @@ class SumGrouped(Transformation):
             The sensitivity of the sum is:
 
             * :math:`\max(|h|, |\ell|)`
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -1049,7 +1047,6 @@ class SumGrouped(Transformation):
 
     def __call__(self, grouped_dataframe: GroupedDataFrame) -> DataFrame:
         """Returns DataFrame containing sum of specified column for each group."""
-        # pylint: disable=no-member
         lower_ceil = self.lower.to_float(round_up=True)
         upper_floor = (
             lower_ceil
@@ -1153,7 +1150,6 @@ def create_count_distinct_aggregation(
     ...
 
 
-# pylint: disable=line-too-long
 def create_count_distinct_aggregation(
     input_domain: Union[SparkDataFrameDomain, SparkGroupedDataFrameDomain],
     input_metric: Union[SymmetricDifference, HammingDistance, SumOf, RootSumOfSquared],
@@ -1167,7 +1163,6 @@ def create_count_distinct_aggregation(
         count_column: If ``input_domain`` is a SparkGroupedDataFrameDomain, this is the
             name of the output count column.
     """
-    # pylint: enable=line-too-long
     if isinstance(input_domain, SparkDataFrameDomain):
         assert isinstance(input_metric, (SymmetricDifference, HammingDistance))
         return CountDistinct(input_domain=input_domain, input_metric=input_metric)

@@ -32,7 +32,7 @@ class UnwrapIfGroupedBy(Transformation):
             domain: Domain of input DataFrames.
             input_metric: IfGroupedBy metric on input DataFrames.
         """
-        if not input_metric.column in domain.schema:
+        if input_metric.column not in domain.schema:
             raise DomainColumnError(
                 domain,
                 input_metric.column,

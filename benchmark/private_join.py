@@ -189,7 +189,7 @@ def generate_dataframe(
         for i in range(group_count)
         for _ in range(next(group_size_factory) + randint(-fuzz, fuzz))
     ]
-    df = spark.createDataFrame(  # pylint: disable=no-member
+    df = spark.createDataFrame(
         spark.sparkContext.parallelize(data), schema=list(dom.schema)
     )
     return df, dom, len(data)

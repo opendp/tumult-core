@@ -197,11 +197,8 @@ class TestPartitionByKeys(TestComponent):
         for key, partition in zip(key_values, partitions):
             actual_rows = partition.collect()
             self.assertEqual(len(actual_rows), 1)
-            assert (
-                actual_rows[0].A == key
-                or key is not None
-                and math.isnan(actual_rows[0].A)
-                and math.isnan(key)
+            assert actual_rows[0].A == key or (
+                key is not None and math.isnan(actual_rows[0].A) and math.isnan(key)
             )
             assert actual_rows[0].B == 1
 

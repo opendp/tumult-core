@@ -4,10 +4,7 @@
 # Copyright Tumult Labs 2025
 
 import copy
-
-# pylint: disable=unused-import
 from abc import ABC, abstractmethod
-from contextlib import nullcontext as does_not_raise
 from typing import Any, Callable, ContextManager, Dict, Optional, Type
 
 import pytest

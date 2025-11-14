@@ -86,7 +86,6 @@ class TestSparkAction(PySparkTest):
 
     def test_correctness(self):
         """SparkAction makes Spark evaluate and persist a DataFrame immediately."""
-        # pylint: disable=protected-access
         df = self.spark.createDataFrame([(1,)], schema=["A"]).persist()
         assert df.is_cached
         # this will assert that the list is empty

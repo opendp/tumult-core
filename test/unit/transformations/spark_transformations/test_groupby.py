@@ -196,7 +196,7 @@ class TestGroupBy(PySparkTest):
         grouped_dataframe = groupby_transformation(self.df)
         self.assertTrue(isinstance(grouped_dataframe, GroupedDataFrame))
         self.assert_frame_equal_with_sort(
-            grouped_dataframe._dataframe.toPandas(),  # pylint: disable=protected-access
+            grouped_dataframe._dataframe.toPandas(),
             self.df.toPandas(),
         )
         self.assert_frame_equal_with_sort(
@@ -214,7 +214,7 @@ class TestGroupBy(PySparkTest):
         grouped_dataframe = groupby_transformation(self.df)
         self.assertTrue(isinstance(grouped_dataframe, GroupedDataFrame))
         self.assert_frame_equal_with_sort(
-            grouped_dataframe._dataframe.toPandas(),  # pylint: disable=protected-access
+            grouped_dataframe._dataframe.toPandas(),
             self.df.toPandas(),
         )
         self.assert_frame_equal_with_sort(

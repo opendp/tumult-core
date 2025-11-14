@@ -1,10 +1,8 @@
-# pylint: disable=line-too-long
 """Add a column containing a unique id for each row in a Spark DataFrame.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
 
 
 # SPDX-License-Identifier: Apache-2.0
@@ -96,9 +94,7 @@ class AddUniqueColumn(Transformation):
                 1
                 >>> add_unique_column.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long,useless-suppression
-
-    # pylint: enable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(self, input_domain: SparkDataFrameDomain, column: str):
@@ -126,7 +122,6 @@ class AddUniqueColumn(Transformation):
         """Returns name of ID column to add."""
         return self._column
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -137,7 +132,6 @@ class AddUniqueColumn(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 

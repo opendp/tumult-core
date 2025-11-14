@@ -41,7 +41,7 @@ class PandasSeriesDomain(Domain):
         # iterating over a Series implicitly calls item() on the NumPy values
         # retrieving the corresponding python object
         super().validate(value)
-        for i in range(len(value)):  # pylint: disable=consider-using-enumerate
+        for i in range(len(value)):
             try:
                 self.element_domain.validate(value[i])
             except OutOfDomainError as exception:

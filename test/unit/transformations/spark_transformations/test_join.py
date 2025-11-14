@@ -1206,7 +1206,7 @@ class TestPrivateJoinOnKey(PySparkTest):
     """Tests for class PrivateJoinOnKey.
 
     Tests :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnKey`.
-    """  # pylint: disable=line-too-long
+    """
 
     def setUp(self):
         """Setup."""

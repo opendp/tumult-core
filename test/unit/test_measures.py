@@ -457,7 +457,6 @@ class TestInsufficientBudgetError(TestCase):
         high_budget: Union[ExactNumber, Tuple[ExactNumber, ExactNumber]],
     ):
         """Tests that the error message related to InsufficientBudgetError is useful."""
-
         low = budget_type(low_budget)  # type: ignore
         high = budget_type(high_budget)  # type: ignore
 

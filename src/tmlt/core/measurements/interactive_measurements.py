@@ -877,8 +877,6 @@ class PrivacyAccountant:
     :class:`~.PrivacyAccountantState` for more information.
     """
 
-    # pylint: disable=protected-access
-
     @typechecked
     def __init__(
         self,
@@ -1137,7 +1135,7 @@ class PrivacyAccountant:
 
         Raises:
             :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
-        """  # pylint: disable=line-too-long
+        """
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError(
                 f"PrivacyAccountant must be ACTIVE not {self.state}. To queue a"
@@ -1269,7 +1267,7 @@ class PrivacyAccountant:
 
         Raises:
             :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
-        """  # pylint: disable=line-too-long
+        """
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError(
                 f"PrivacyAccountant must be ACTIVE not {(self.state)}."
@@ -1511,7 +1509,7 @@ class PrivacyAccountant:
 
         Raises:
             :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
-        """  # pylint: disable=line-too-long
+        """
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError("PrivacyAccountant must be ACTIVE")
         if self._queryable is None:
@@ -1700,7 +1698,6 @@ class PrivacyAccountant:
     def queue_transformation(
         self, transformation: Transformation, d_out: Optional[Any] = None
     ) -> None:
-        # pylint: disable=line-too-long
         """Queue ``transformation`` to be executed when this :class:`~.PrivacyAccountant` becomes ACTIVE.
 
         If this :class:`~.PrivacyAccountant` is ACTIVE, this has
@@ -1721,8 +1718,6 @@ class PrivacyAccountant:
                 only used if ``transformation`` does not implement a
                 :meth:`~.Transformation.stability_function`.
         """
-        # pylint: enable=line-too-long
-
         if self.state == PrivacyAccountantState.RETIRED:
             raise RuntimeError(
                 "You cannot queue transformations on a "

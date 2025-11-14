@@ -1,10 +1,9 @@
-# pylint: disable=line-too-long
 """Transformations for joining Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
+
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
@@ -244,9 +243,7 @@ class PublicJoin(Transformation):
             ...     metric=IfGroupedBy("A", SymmetricDifference()),
             ... ).stability_function(2)
             2
-    """  # pylint: disable=line-too-long,useless-suppression
-
-    # pylint: enable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -276,7 +273,7 @@ class PublicJoin(Transformation):
                 public and private DataFrames will be considered to be equal.
             how: Type of join to perform. Defaults to "inner". Note that only "inner"
                 and "left" joins are supported.
-        """  # pylint: disable=line-too-long,useless-suppression
+        """
         if isinstance(metric, IfGroupedBy):
             if metric.inner_metric not in (
                 SymmetricDifference(),
@@ -584,7 +581,7 @@ class PrivateJoin(Transformation):
             8
             >>> private_join.stability_function({"left": 1, "right": 1})
             8
-    """  # pylint: disable=line-too-long
+    """
 
     @typechecked
     def __init__(
@@ -748,7 +745,6 @@ class PrivateJoin(Transformation):
             TruncationStrategy.NO_TRUNCATION: float("inf"),
         }[truncation_strategy]
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: Dict[Any, ExactNumberInput]) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -759,7 +755,6 @@ class PrivateJoin(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         tau_l = self.left_truncation_threshold
         tau_r = self.right_truncation_threshold
@@ -960,8 +955,7 @@ class PrivateJoinOnKey(Transformation):
         1
         >>> private_join.stability_function(2)
         2
-    """  # pylint: disable=line-too-long,useless-suppression
-    # pylint: enable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -1076,7 +1070,6 @@ class PrivateJoinOnKey(Transformation):
         """Returns whether to consider null equal to null."""
         return self._join_on_nulls
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -1087,7 +1080,6 @@ class PrivateJoinOnKey(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
