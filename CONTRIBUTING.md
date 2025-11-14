@@ -8,7 +8,7 @@ First, let us know what you would like to contribute. Feel free to:
 - send general queries to info@opendp.org, or email security@opendp.org if it is related to security;
 - ask any question on our [Slack][slack] instance. Tumult Core maintainers are active on most of the public channels, the `lib-dev` and `lib-support` channels are a great place to start interacting with the development community.
 
-[slack]: https://opendp.slack.com/
+[slack]: https://join.slack.com/t/opendp/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w
 
 
 Once you have agreement on the feature or bug, anyone can send us a Pull Request from a forked repo per Github's [documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork). Ideally Pull Requests are linked to an issue so the maintainers can easily understand the problem being solved. We try to link all Pull Requests to issues ourselves, so creating and commenting on issues is an easy way to get involved.
