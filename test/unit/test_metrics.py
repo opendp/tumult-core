@@ -59,12 +59,12 @@ class TestNullMetric(TestCase):
     """TestCase for NullMetric."""
 
     def test_valid(self):
-        """Validate is not implemented"""
+        """Validate is not implemented."""
         with self.assertRaises(NotImplementedError):
             NullMetric().validate(3)
 
     def test_compare(self):
-        """Compare is not implemented"""
+        """Compare is not implemented."""
         with self.assertRaises(NotImplementedError):
             NullMetric().compare(3, 2)
 
@@ -1927,7 +1927,7 @@ class TestIfGroupedBy(TestCase):
 
 
 class TestDictMetric(TestCase):
-    """TestCase for DictMetric"""
+    """TestCase for DictMetric."""
 
     def test_constructor_mutable_arguments(self):
         """Tests that mutable constructor arguments are copied."""
@@ -2125,7 +2125,7 @@ class TestDictMetric(TestCase):
 
 
 class TestAddRemoveKeys(PySparkTest):
-    """TestCase for AddRemoveKeys"""
+    """TestCase for AddRemoveKeys."""
 
     @parameterized.expand(
         [

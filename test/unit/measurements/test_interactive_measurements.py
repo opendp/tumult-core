@@ -1467,7 +1467,7 @@ class TestPrivacyAccountant(PySparkTest):
             self.assertEqual(child.state, expected_state)
 
     def test_queue_transformation_on_active_accountant(self):
-        """queue_transformation runs immediately on active accountant"""
+        """queue_transformation runs immediately on active accountant."""
         accountant = PrivacyAccountant.launch(
             measurement=self.measurement, data=self.data
         )
@@ -1495,7 +1495,7 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertIsNone(accountant._pending_transformation)
 
     def test_queue_transformation_on_inactive_accountant(self):
-        """queue_transformation queues transformations on inactive account"""
+        """queue_transformation queues transformations on inactive account."""
         accountant = PrivacyAccountant.launch(
             measurement=self.measurement, data=self.data
         )

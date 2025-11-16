@@ -1370,7 +1370,7 @@ class TestPrivateJoinOnKey(PySparkTest):
     def test_stability_relation_and_function(
         self, d_in: ExactNumberInput, d_out: ExactNumberInput, expected: bool
     ):
-        """Test that PrivateJoinOnKey's stability relation and function are correct"""
+        """Test that PrivateJoinOnKey's stability relation and function are correct."""
         private_join = PrivateJoinOnKey(
             input_domain=DictDomain(
                 {"left": self.left_domain, "right": self.right_domain}

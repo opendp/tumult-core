@@ -1,4 +1,4 @@
-"""Test for :mod:`tmlt.core.utils.arb`"""
+"""Test for :mod:`tmlt.core.utils.arb`."""
 
 
 # SPDX-License-Identifier: Apache-2.0

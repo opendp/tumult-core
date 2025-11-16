@@ -11,7 +11,7 @@ from tmlt.core.domains.base import Domain, OutOfDomainError
 
 
 class NewDomain(Domain):
-    """New Domain class that inherits from Domain"""
+    """New Domain class that inherits from Domain."""
 
     @property
     def carrier_type(self) -> type:
