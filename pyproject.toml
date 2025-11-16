@@ -213,11 +213,13 @@ ignore = [
     # explicit-f-string-type-conversion: we don't generally use the !r syntax in
     #     f-strings, which this rule enforces.
     "RUF010",
+    # eq-without-hash: Core contains several classes with custom __eq__
+    #     implementations where we don't care that the class isn't hashable.
+    "PLW1641",
 
     # TODO: This disables every lint that is currently failing; go through and
     #     either fix/individually disable each instance, or choose to permanently
     #     ignore each one.
-    "PLW1641", # eq-without-hash
     "PLC0206", # dict-index-missing-items
     "RUF012",  # mutable-class-default
     "PLC0415", # import-outside-top-level
