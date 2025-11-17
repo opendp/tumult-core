@@ -95,7 +95,7 @@ Most users should use `Tumult Analytics <https://docs.tmlt.dev/analytics/>`__ ra
 Contact Information
 ^^^^^^^^^^^^^^^^^^^
 The best place to ask questions, file feature requests, or give feedback about Tumult Core
-is our `Slack server <https://tmltdev.slack.com/join/shared_invite/zt-1bky0mh9v-vOB8azKAVoxmzJDUdWd5Wg#>`__.
+is our `Slack server <https://join.slack.com/t/opendp/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w>`__.
 We also use it for announcements of new releases and feature additions.
 
 Documentation License
