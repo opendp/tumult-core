@@ -1233,7 +1233,7 @@ class TestSparkColumnDescriptors:
 
     @pytest.fixture
     def test_df(self) -> DataFrame:
-        """Get a base DataFrame"""
+        """Get a base DataFrame."""
         return self.spark.createDataFrame(
             [
                 (

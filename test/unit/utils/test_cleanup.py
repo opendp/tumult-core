@@ -48,7 +48,7 @@ class TestCleanup(PySparkTest):
 
     @staticmethod
     def _recursive_remove(p: Path):
-        """Recursively remove a path (just like `rm -r`)"""
+        """Recursively remove a path (just like `rm -r`)."""
         if not p.is_dir():
             p.unlink()
         for f in p.iterdir():

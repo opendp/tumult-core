@@ -229,7 +229,6 @@ ignore = [
     "RUF015",  # unnecessary-iterable-allocation-for-first-element
     "D417",    # undocumented-param
     "RUF007",  # zip-instead-of-pairwise
-    "D415",    # missing-terminal-punctuation
     "RUF043",  # pytest-raises-ambiguous-pattern
     "D205",    # missing-blank-line-after-summary
     "D210",    # surrounding-whitespace
