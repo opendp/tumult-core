@@ -1,10 +1,9 @@
-# pylint: disable=line-too-long
 """Transformations for partitioning Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
+
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
@@ -59,7 +58,6 @@ class Partition(Transformation):
         """
         return self._num_partitions
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -70,7 +68,6 @@ class Partition(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -167,9 +164,7 @@ class PartitionByKeys(Partition):
             1
             >>> partition.stability_function(2)
             2
-    """  # pylint: disable=line-too-long,useless-suppression
-
-    # pylint: enable=line-too-long, useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -216,8 +211,7 @@ class PartitionByKeys(Partition):
         if isinstance(input_metric, IfGroupedBy):
             if not (
                 (isinstance(input_metric.inner_metric, RootSumOfSquared) and use_l2)
-                or isinstance(input_metric.inner_metric, SumOf)
-                and not use_l2
+                or (isinstance(input_metric.inner_metric, SumOf) and not use_l2)
             ):
                 raise UnsupportedMetricError(
                     input_metric, "IfGroupedBy inner metric must match use_l2"

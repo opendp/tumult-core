@@ -118,7 +118,7 @@ def _sample_dlaplace(scale: Union[float, Fraction]) -> int:
 
     In particular, this returns an integer :math:`x` with
     .. math::
-        Pr(x) = exp(-\frac{|x|}{scale}) \cdot \frac{exp(\frac{1}{scale}) - 1}{exp(\frac{1}{xcale}) +1}  # pylint: disable=line-too-long
+        Pr(x) = exp(-\frac{|x|}{scale}) \cdot \frac{exp(\frac{1}{scale}) - 1}{exp(\frac{1}{xcale}) +1}
 
     Args:
         scale: Desired noise scale (>=0).

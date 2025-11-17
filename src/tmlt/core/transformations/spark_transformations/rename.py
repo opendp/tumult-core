@@ -1,10 +1,9 @@
-# pylint: disable=line-too-long
 """Transformations for renaming Spark DataFrame columns.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information.
 """
-# pylint: enable=line-too-long
+
 # TODO: Open question regarding "switching" column names.
 
 # SPDX-License-Identifier: Apache-2.0
@@ -103,9 +102,7 @@ class Rename(Transformation):
             1
             >>> rename_b_to_c.stability_function(2)
             2
-    """  # pylint: disable=line-too-long,useless-suppression
-
-    # pylint: enable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -172,7 +169,6 @@ class Rename(Transformation):
         """Returns mapping from old column names to new column names."""
         return self._rename_mapping.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -183,7 +179,6 @@ class Rename(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 

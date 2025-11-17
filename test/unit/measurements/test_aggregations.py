@@ -79,7 +79,7 @@ params = [
     ),
 ]
 
-# pylint: disable=no-member
+
 # Disabling no-member because groupby_columns are defined in the setup function.
 
 
@@ -925,7 +925,6 @@ class TestAggregationMeasurement(PySparkTest):
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_count_measurement works correctly without groupby."""
-
         if (
             isinstance(input_metric, IfGroupedBy)
             and input_metric.column not in self.groupby_columns  # type: ignore
@@ -1635,9 +1634,6 @@ datasets = [
 ]
 
 
-# pylint: disable=redefined-outer-name
-
-
 # request is of class "FixtureRequest", which is imported from _pytest.fixtures
 # using type "Any" to avoid protected access.
 @pytest.fixture(
@@ -1804,9 +1800,6 @@ def test_groupbyvar(spark_data):
     ).reset_index(drop=True)
 
     pd.testing.assert_frame_equal(expected_sorted, output_sorted)
-
-
-# pylint: enable=redefined-outer-name
 
 
 class TestBounds:

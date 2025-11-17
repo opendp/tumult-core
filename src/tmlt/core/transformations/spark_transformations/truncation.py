@@ -100,7 +100,7 @@ class LimitRowsPerGroup(Transformation):
             2
             >>> truncate.stability_function(2)
             4
-    """  # pylint: disable=line-too-long,useless-suppression
+    """
 
     @typechecked
     def __init__(
@@ -154,7 +154,6 @@ class LimitRowsPerGroup(Transformation):
         """Returns the maximum number of rows per group after truncation."""
         return self._threshold
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -165,7 +164,6 @@ class LimitRowsPerGroup(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         if self.output_metric == SymmetricDifference():
             return ExactNumber(d_in) * self.threshold
@@ -268,7 +266,7 @@ class LimitKeysPerGroup(Transformation):
             2
             >>> truncate.stability_function(2)
             4
-    """  # pylint: disable=line-too-long
+    """
 
     @typechecked
     def __init__(
@@ -343,7 +341,6 @@ class LimitKeysPerGroup(Transformation):
         """Returns the maximum number of keys per group after truncation."""
         return self._threshold
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -354,7 +351,6 @@ class LimitKeysPerGroup(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         d_in = ExactNumber(d_in)
         self.input_metric.validate(d_in)
         if self.output_metric == IfGroupedBy(
@@ -468,7 +464,7 @@ class LimitRowsPerKeyPerGroup(Transformation):
             2
             >>> truncate.stability_function(2)
             4
-    """  # pylint: disable=line-too-long
+    """
 
     @typechecked
     def __init__(
@@ -549,7 +545,6 @@ class LimitRowsPerKeyPerGroup(Transformation):
         """Returns the maximum number of rows each unique (key, grouping column value) pair may appear in after truncation."""
         return self._threshold
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -560,7 +555,6 @@ class LimitRowsPerKeyPerGroup(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         d_in = ExactNumber(d_in)
         self.input_metric.validate(d_in)
         if self.input_metric == IfGroupedBy(

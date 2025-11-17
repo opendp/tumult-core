@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
-# pylint: disable=attribute-defined-outside-init
-
 import time
 import pandas as pd
 from pathlib import Path

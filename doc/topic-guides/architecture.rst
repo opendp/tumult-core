@@ -24,7 +24,7 @@ Tumult Core Architecture
 Tumult Core is a collection of composable components for implementing
 algorithms to perform differentially private computations. The design of Tumult Core
 is based on the design proposed in the
-`OpenDP White Paper <https://projects.iq.harvard.edu/files/opendp/files/opendp_programming_framework_11may2020_1_01.pdf>`_.
+`OpenDP White Paper <https://web.archive.org/web/20250505214711/https://projects.iq.harvard.edu/files/opendp/files/opendp_programming_framework_11may2020_1_01.pdf>`_.
 On this page, we give an overview of this design. Readers who want more
 information should refer to the linked white paper.
 

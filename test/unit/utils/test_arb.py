@@ -1,4 +1,4 @@
-"""Test for :mod:`tmlt.core.utils.arb`"""
+"""Test for :mod:`tmlt.core.utils.arb`."""
 
 
 # SPDX-License-Identifier: Apache-2.0
@@ -9,7 +9,6 @@ from unittest import TestCase
 
 from parameterized import parameterized
 
-# pylint: disable=no-name-in-module,useless-suppression
 # This suppression is useless on Python 3.12 but does something on Python 3.8.
 from scipy.special import erf, erfc
 
@@ -34,8 +33,6 @@ from tmlt.core.utils.arb import (
     arb_sum,
     arb_union,
 )
-
-# pylint: enable=no-name-in-module,useless-suppression
 
 
 class TestArb(TestCase):

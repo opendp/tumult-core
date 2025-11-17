@@ -7,8 +7,8 @@ import os
 from typing import Any
 
 import numpy as np
-from randomgen.rdrand import RDRAND  # pylint: disable=no-name-in-module
-from randomgen.wrapper import UserBitGenerator  # pylint: disable=no-name-in-module
+from randomgen.rdrand import RDRAND
+from randomgen.wrapper import UserBitGenerator
 
 try:
     _core_privacy_prng = np.random.Generator(RDRAND())

@@ -178,9 +178,8 @@ sm.build()
 
 sm.black()
 sm.isort()
+sm.ruff_check()
 sm.mypy()
-sm.pylint()
-sm.pydocstyle()
 
 sm.smoketest()
 sm.release_smoketest()

@@ -56,8 +56,6 @@ from tmlt.core.utils.testing import (
     get_all_props,
 )
 
-# pylint: disable=no-member
-
 
 @parameterized_class(
     [

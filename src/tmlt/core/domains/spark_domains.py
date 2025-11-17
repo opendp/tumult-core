@@ -544,9 +544,7 @@ class SparkGroupedDataFrameDomain(Domain):
     def carrier_type(self) -> type:
         """Returns carrier type for the domain."""
         # avoid circular import
-        from tmlt.core.utils.grouped_dataframe import (  # pylint: disable=import-outside-toplevel
-            GroupedDataFrame,
-        )
+        from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 
         return GroupedDataFrame
 
@@ -571,17 +569,13 @@ class SparkGroupedDataFrameDomain(Domain):
     def validate(self, value: Any) -> None:
         """Raises error if value is not a GroupedDataFrame with matching group_keys."""
         # avoid circular import
-        from tmlt.core.utils.grouped_dataframe import (  # pylint: disable=import-outside-toplevel
-            GroupedDataFrame,
-        )
+        from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 
         super().validate(value)
         assert isinstance(value, GroupedDataFrame)
         inner_df_domain = SparkDataFrameDomain(self.schema)
         try:
-            inner_df_domain.validate(
-                value._dataframe  # pylint: disable=protected-access
-            )
+            inner_df_domain.validate(value._dataframe)
         except OutOfDomainError as exception:
             raise OutOfDomainError(
                 self, value, f"Invalid inner DataFrame: {exception}"

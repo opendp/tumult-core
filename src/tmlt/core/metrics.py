@@ -10,11 +10,10 @@ from collections import Counter
 from functools import reduce
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
 
-import numpy as np  # pylint: disable=unused-import
+import numpy as np  # noqa: F401 -- needed for doctests
 import pandas as pd
 import sympy as sp
 from pyspark.sql import functions as sf
-from pyspark.sql.session import SparkSession  # pylint: disable=unused-import
 from typeguard import typechecked
 
 from tmlt.core.domains.base import Domain
@@ -1426,9 +1425,8 @@ class AddRemoveKeys(Metric):
                     return False
                 if column_descriptor is None:
                     column_descriptor = element_domain.schema[id_column]
-                else:
-                    if element_domain.schema[id_column] != column_descriptor:
-                        return False
+                elif element_domain.schema[id_column] != column_descriptor:
+                    return False
             return True
         return False
 

@@ -84,7 +84,7 @@ class Transformation(ABC):
         raise NotImplementedError(
             f"{self.__class__.__name__} does not have a stability function"
         )
-        return d_in  # pylint: disable=unreachable
+        return d_in
 
     @typechecked
     def stability_relation(self, d_in: Any, d_out: Any) -> bool:
@@ -102,20 +102,15 @@ class Transformation(ABC):
         return self.output_metric.compare(min_d_out, d_out)
 
     @overload
-    def __or__(
-        self, other: "Transformation"
-    ) -> "Transformation":  # noqa: D105 https://github.com/PyCQA/pydocstyle/issues/525
+    def __or__(self, other: "Transformation") -> "Transformation":
         ...
 
     @overload
-    def __or__(
-        self, other: Measurement
-    ) -> Measurement:  # noqa: D105 https://github.com/PyCQA/pydocstyle/issues/525
+    def __or__(self, other: Measurement) -> Measurement:
         ...
 
     def __or__(self, other: Any) -> Union[Measurement, Transformation]:
         """Return this transformation chained with another component."""
-        # pylint: disable=import-outside-toplevel
         check_type(other, Union[Measurement, Transformation])
         if isinstance(other, Measurement):
             from tmlt.core.measurements.chaining import ChainTM

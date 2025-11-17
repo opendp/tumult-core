@@ -1,10 +1,9 @@
-# pylint: disable=line-too-long
 """Transformations for filtering Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
+
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
@@ -88,7 +87,7 @@ class Filter(Transformation):
             1
             >>> filter_transformation.stability_function(123)
             123
-    """  # pylint: disable=line-too-long
+    """
 
     @typechecked
     def __init__(
@@ -147,7 +146,6 @@ class Filter(Transformation):
         """Returns the filter expression."""
         return self._filter_expr
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -158,7 +156,6 @@ class Filter(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 

@@ -145,7 +145,6 @@ class TestLimitKeysPerGroup(PySparkTest):
         :func:`~.limit_keys_per_group`. See
         https://gitlab.com/tumult-labs/tumult/-/issues/2455 for more details.
         """
-
         df = self.spark.createDataFrame(
             pd.DataFrame({"A": [1, 1, 1, 1, 2, 2, 2, 2], "B": [1, 1, 2, 2, 1, 2, 3, 4]})
         )
