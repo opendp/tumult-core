@@ -6,8 +6,11 @@
 
 from typing import List, Optional, Tuple
 
+import pandas as pd
+
 from parameterized import parameterized
 from pyspark.sql import functions as sf
+from pyspark.sql.types import StructType, StructField, LongType, IntegerType, StringType
 
 from tmlt.core.domains.spark_domains import (
     SparkColumnsDescriptor,
@@ -64,40 +67,93 @@ class TestAddUniqueColumn(PySparkTest):
 
     @parameterized.expand(
         [
-            ([(1, "A", 2.0), (2, "B", 1.1), (3, "C", float("nan"))],),
-            ([(1, None, 2.0), (None, "B", 1.1), (3, "D", float("nan"))],),
-            ([(1, "", 2.0), (1, None, 2.0), (1, "A", 2.0)],),
+            (pd.DataFrame({
+                "A":[1,2,3],
+                "B":["A'","B", "C"],
+                "C":[2.0, 1.1, float('nan')]}),{
+                    "A": SparkIntegerColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=True),
+                    "C": SparkFloatColumnDescriptor(
+                    allow_null=True, allow_nan=True, allow_inf=True
+                ),
+                }),
             (
-                [
-                    (None, None, None),
-                    (None, None, None),
-                    (1, "A", 2.0),
-                    (1, "A", float("inf")),
-                ],
+                pd.DataFrame({
+                    "A": [1, None, 3],
+                    "B": [None, "B", "D"],
+                    "C": [2.0, 1.1, float("nan")]
+                }),
+                {
+                    "A": SparkIntegerColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=True),
+                    "C": SparkFloatColumnDescriptor(
+                    allow_null=True, allow_nan=True, allow_inf=True
+                ),
+                }
             ),
             (
-                [("false", ""), ("", "false")],
+                pd.DataFrame({
+                    "A":[1,1,1],
+                    "B":["",None, "A"],
+                    "C":[2.0,2.0,2.0],
+                }),
+                {
+                    "A": SparkIntegerColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=True),
+                    "C": SparkFloatColumnDescriptor(
+                    allow_null=True, allow_nan=True, allow_inf=True
+                ),
+                }
+             ),
+            (
+                pd.DataFrame({
+                    "A":[None, None, 1, 1],
+                    "B": [None, None, "A", "A"],
+                    "C": [None, None, 2.0, float("inf")]
+                }),
+                {
+                    "A": SparkIntegerColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=True),
+                    "C": SparkFloatColumnDescriptor(
+                    allow_null=True, allow_nan=True, allow_inf=True
+                ),
+                }
+            ),
+            (
+                pd.DataFrame({
+                    "A": ["False", ""],
+                    "B": ["", "false"]
+                }),
                 {
                     "A": SparkStringColumnDescriptor(),
                     "B": SparkStringColumnDescriptor(),
                 },
             ),
             (
-                [(None, ""), ("", None)],
+                pd.DataFrame({
+                    "A": [None, ""],
+                    "B": ["", None],
+                }),
                 {
                     "A": SparkStringColumnDescriptor(allow_null=True),
                     "B": SparkStringColumnDescriptor(allow_null=True),
                 },
             ),
             (
-                [(None, "null"), ("null", None)],
+                pd.DataFrame({
+                    "A": [None, "null"],
+                    "B": ["null", None],
+                }),
                 {
                     "A": SparkStringColumnDescriptor(allow_null=True),
                     "B": SparkStringColumnDescriptor(allow_null=True),
                 },
             ),
             (
-                [(None, "null"), ("null", None)],
+                pd.DataFrame({
+                    "A": [None, "null"],
+                    "B": ["null", None]
+                }),
                 {
                     "A": SparkStringColumnDescriptor(allow_null=True),
                     "B": SparkStringColumnDescriptor(allow_null=True),
@@ -106,24 +162,19 @@ class TestAddUniqueColumn(PySparkTest):
         ]
     )
     def test_correctness(
-        self, rows: List[Tuple], schema: Optional[SparkColumnsDescriptor] = None
+        self, rows: pd.DataFrame, schema: Optional[SparkColumnsDescriptor] = None
     ):
         """AddUniqueColumn works correctly."""
-        if not schema:
-            schema = {
-                "A": SparkIntegerColumnDescriptor(allow_null=True),
-                "B": SparkIntegerColumnDescriptor(allow_null=True),
-                "C": SparkFloatColumnDescriptor(
-                    allow_null=True, allow_nan=True, allow_inf=True
-                ),
-            }
         transformation = AddUniqueColumn(
             input_domain=SparkDataFrameDomain(schema), column="ID"
         )
-
+        sample_df = self.spark.createDataFrame(rows)
+        print(sample_df.collect())
+        print(sample_df.describe())
         df_with_ID = transformation(
-            self.spark.createDataFrame(rows, schema=list(schema))
+            sample_df
         )
+        df_with_ID.collect()
         self.assertEqual(
             df_with_ID.agg(sf.countDistinct(sf.col("ID"))).collect()[0][0], len(rows)
         )
@@ -134,7 +185,7 @@ class TestAddUniqueColumn(PySparkTest):
                 [(1, "X"), (2, "Y"), (None, None), (4, "Z")],
                 [(1, "X"), (2, "Y"), (None, None)],
             ),
-            ([(1, "X"), (-102, "Y"), (90, None), (None, "Z")], [(1, "AZX"), (6, "Y")]),
+            ([(1, "X"), (-102, "Y"), (90, None), (None, "ZZZ")], [(1, "AZX"), (6, "Y")]),
             (
                 [(1, "X"), (2, "Y"), (None, None), (4, "Z")],
                 [(1, "X"), (2, "Y"), (None, None), (4, "Z")],
@@ -142,7 +193,7 @@ class TestAddUniqueColumn(PySparkTest):
             ([(1, ""), (2, "Y"), (2, "Y"), (2, "Y")], [(1, None), (2, "Y"), (2, "Y")]),
         ]
     )
-    def test_consistent_ids(self, df1_rows: List[Tuple], df2_rows: List[Tuple]):
+    def test_consistent_ids(self, df1_rows: pd.DataFrame, df2_rows: pd.DataFrame):
         """AddUniqueColumn assigns IDs consistently.
 
         This tests that the stability is in fact 1.
@@ -153,9 +204,17 @@ class TestAddUniqueColumn(PySparkTest):
                 "B": SparkStringColumnDescriptor(allow_null=True),
             }
         )
+        simple_sdf_schema= StructType([
+            StructField("A", IntegerType()),
+            StructField("B", StringType())
+        ])
         transformation = AddUniqueColumn(input_domain=domain, column="ID")
-        df1 = self.spark.createDataFrame(df1_rows, schema=["A", "B"])
-        df2 = self.spark.createDataFrame(df2_rows, schema=["A", "B"])
+        df1 = self.spark.createDataFrame(df1_rows, schema=simple_sdf_schema)
+        print(df1.describe())
+        df1 = df1.withColumn("A", df1.A.cast(LongType()))
+        # assert df1.A IS THE RIGHT TYPE
+        # Ask the question: Has this DF been created with correct types?
+        df2 = self.spark.createDataFrame(df2_rows, schema=simple_sdf_schema)
         self.assertEqual(
             transformation.stability_function(
                 SymmetricDifference().distance(df1, df2, domain)
