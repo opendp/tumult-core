@@ -145,7 +145,7 @@ class TestDropInfs(PySparkTest):
                     "or L1 or L2 over SymmetricDifference."
                 ),
                 ["B"],
-                IfGroupedBy("A", SumOf(AbsoluteDifference())),
+                IfGroupedBy(["A"], SumOf(AbsoluteDifference())),
             ),
         ]
     )
@@ -164,8 +164,8 @@ class TestDropInfs(PySparkTest):
     @parameterized.expand(
         [
             (SymmetricDifference(),),
-            (IfGroupedBy("A", SumOf(SymmetricDifference())),),
-            (IfGroupedBy("A", SymmetricDifference()),),
+            (IfGroupedBy(["A"], SumOf(SymmetricDifference())),),
+            (IfGroupedBy(["A"], SymmetricDifference()),),
         ]
     )
     def test_stability_function(
@@ -257,7 +257,7 @@ class TestDropNaNs(PySparkTest):
                     "or L1 or L2 over SymmetricDifference."
                 ),
                 ["B"],
-                IfGroupedBy("A", SumOf(AbsoluteDifference())),
+                IfGroupedBy(["A"], SumOf(AbsoluteDifference())),
             ),
         ]
     )
@@ -276,8 +276,8 @@ class TestDropNaNs(PySparkTest):
     @parameterized.expand(
         [
             (SymmetricDifference(),),
-            (IfGroupedBy("A", SumOf(SymmetricDifference())),),
-            (IfGroupedBy("A", SymmetricDifference()),),
+            (IfGroupedBy(["A"], SumOf(SymmetricDifference())),),
+            (IfGroupedBy(["A"], SymmetricDifference()),),
         ]
     )
     def test_stability_function(
@@ -376,12 +376,12 @@ class TestDropNulls(PySparkTest):
         """Unlike ReplaceNulls, DropNulls can drop on grouping column."""
         DropNulls(
             input_domain=self.input_domain,
-            metric=IfGroupedBy("A", SymmetricDifference()),
+            metric=IfGroupedBy(["A"], SymmetricDifference()),
             columns=["A"],
         )
         DropNulls(
             input_domain=self.input_domain,
-            metric=IfGroupedBy("A", RootSumOfSquared(SymmetricDifference())),
+            metric=IfGroupedBy(["A"], RootSumOfSquared(SymmetricDifference())),
             columns=["A"],
         )
 
@@ -396,7 +396,7 @@ class TestDropNulls(PySparkTest):
                     "or L1 or L2 over SymmetricDifference."
                 ),
                 ["B"],
-                IfGroupedBy("A", SumOf(AbsoluteDifference())),
+                IfGroupedBy(["A"], SumOf(AbsoluteDifference())),
             ),
         ]
     )
@@ -415,8 +415,8 @@ class TestDropNulls(PySparkTest):
     @parameterized.expand(
         [
             (SymmetricDifference(),),
-            (IfGroupedBy("A", SumOf(SymmetricDifference())),),
-            (IfGroupedBy("A", SymmetricDifference()),),
+            (IfGroupedBy(["A"], SumOf(SymmetricDifference())),),
+            (IfGroupedBy(["A"], SymmetricDifference()),),
         ]
     )
     def test_stability_function(
@@ -557,14 +557,14 @@ class TestReplaceInfs(PySparkTest):
                     "or L1 or L2 over SymmetricDifference."
                 ),
                 {"B": (1.0, 23.0)},
-                IfGroupedBy("A", SumOf(AbsoluteDifference())),
+                IfGroupedBy(["A"], SumOf(AbsoluteDifference())),
             ),
             (
                 # if this was supported, it would still not be allowed, because
                 # you can't replace on grouping column. See ReplaceNulls
                 "Can not group by a floating point column: B",
                 {"B": (1.0, 23.0)},
-                IfGroupedBy("B", SumOf(SymmetricDifference())),
+                IfGroupedBy(["B"], SumOf(SymmetricDifference())),
             ),
         ]
     )
@@ -585,8 +585,8 @@ class TestReplaceInfs(PySparkTest):
     @parameterized.expand(
         [
             (SymmetricDifference(),),
-            (IfGroupedBy("A", SumOf(SymmetricDifference())),),
-            (IfGroupedBy("A", SymmetricDifference()),),
+            (IfGroupedBy(["A"], SumOf(SymmetricDifference())),),
+            (IfGroupedBy(["A"], SymmetricDifference()),),
         ]
     )
     def test_stability_function(
@@ -714,14 +714,14 @@ class TestReplaceNaNs(PySparkTest):
                     "or L1 or L2 over SymmetricDifference."
                 ),
                 {"B": 1.0},
-                IfGroupedBy("A", SumOf(AbsoluteDifference())),
+                IfGroupedBy(["A"], SumOf(AbsoluteDifference())),
             ),
             (
                 # if this was supported, it would still not be allowed, because
                 # you can't replace on grouping column. See ReplaceNulls
                 "Can not group by a floating point column: B",
                 {"B": 1.0},
-                IfGroupedBy("B", SumOf(SymmetricDifference())),
+                IfGroupedBy(["B"], SumOf(SymmetricDifference())),
             ),
         ]
     )
@@ -742,9 +742,9 @@ class TestReplaceNaNs(PySparkTest):
     @parameterized.expand(
         [
             (SymmetricDifference(),),
-            (IfGroupedBy("A", SumOf(SymmetricDifference())),),
+            (IfGroupedBy(["A"], SumOf(SymmetricDifference())),),
             (HammingDistance(),),
-            (IfGroupedBy("A", SymmetricDifference()),),
+            (IfGroupedBy(["A"], SymmetricDifference()),),
         ]
     )
     def test_stability_function(
@@ -873,12 +873,12 @@ class TestReplaceNulls(PySparkTest):
                     "or L1 or L2 over SymmetricDifference."
                 ),
                 {"B": 1.0},
-                IfGroupedBy("A", SumOf(AbsoluteDifference())),
+                IfGroupedBy(["A"], SumOf(AbsoluteDifference())),
             ),
             (
                 "Cannot replace values in the grouping column for IfGroupedBy.",
                 {"A": 1},
-                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                IfGroupedBy(["A"], SumOf(SymmetricDifference())),
             ),
         ]
     )
@@ -899,9 +899,9 @@ class TestReplaceNulls(PySparkTest):
     @parameterized.expand(
         [
             (SymmetricDifference(),),
-            (IfGroupedBy("A", SumOf(SymmetricDifference())),),
+            (IfGroupedBy(["A"], SumOf(SymmetricDifference())),),
             (HammingDistance(),),
-            (IfGroupedBy("A", SymmetricDifference()),),
+            (IfGroupedBy(["A"], SymmetricDifference()),),
         ]
     )
     def test_stability_function(

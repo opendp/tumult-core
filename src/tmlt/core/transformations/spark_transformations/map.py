@@ -4,7 +4,6 @@ See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/a
 for more information on transformations.
 """
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -995,7 +994,7 @@ class GroupingFlatMap(Transformation):
             output_domain=SparkDataFrameDomain(
                 row_transformer.output_domain.element_domain.schema
             ),
-            output_metric=IfGroupedBy(self._grouping_column, output_metric),
+            output_metric=IfGroupedBy([self._grouping_column], output_metric),
         )
 
     @property
@@ -1333,9 +1332,16 @@ class FlatMapByKey(Transformation):
                 metric, "Inner metric for IfGroupedBy must be SymmetricDifference()."
             )
 
-        key_column = metric.column
+        if len(metric.columns) > 1:
+            raise UnsupportedMetricError(
+                metric,
+                "Keys must be contained in a single column, but FlatMapByKey "
+                "got an IfGroupedBy with multiple columns.",
+            )
+
+        self._key_column = metric.columns[0]
         output_schema = OrderedDict(row_transformer.output_domain.element_domain.schema)
-        if key_column in output_schema:
+        if self._key_column in output_schema:
             raise UnsupportedDomainError(
                 row_transformer.output_domain,
                 "Transformer output rows must not contain grouping column.",
@@ -1358,10 +1364,10 @@ class FlatMapByKey(Transformation):
             )
 
         # Add the key column back to the schema, ensuring it is the first column.
-        output_schema[key_column] = row_transformer.input_domain.element_domain.schema[
-            key_column
-        ]
-        output_schema.move_to_end(key_column, last=False)
+        output_schema[
+            self._key_column
+        ] = row_transformer.input_domain.element_domain.schema[self._key_column]
+        output_schema.move_to_end(self._key_column, last=False)
 
         super().__init__(
             input_domain=input_domain,
@@ -1398,7 +1404,6 @@ class FlatMapByKey(Transformation):
         )
 
         spark = SparkSession.builder.getOrCreate()
-        key_col = self.input_metric.column
         transformer_output_schema = (
             self.row_transformer.output_domain.element_domain.schema
         )
@@ -1443,11 +1448,15 @@ class FlatMapByKey(Transformation):
             # PySpark doesn't handle empty rows very gracefully, so if the
             # output rows are empty, don't bother looking at them.
             if len(transformer_output_schema) == 0:
-                return [Row(**{key_col: key}) for _ in transformed_rows]
-            return [Row(**{key_col: key}, **r.asDict()) for r in transformed_rows]
+                return [Row(**{self._key_column: key}) for _ in transformed_rows]
+            return [
+                Row(**{self._key_column: key}, **r.asDict()) for r in transformed_rows
+            ]
 
         grouped_df = (
-            spark.createDataFrame(sdf.rdd.keyBy(lambda r: r[key_col]), ["key", "row"])
+            spark.createDataFrame(
+                sdf.rdd.keyBy(lambda r: r[self._key_column]), ["key", "row"]
+            )
             .groupby("key")
             .agg(sf.collect_list("row"))
         )

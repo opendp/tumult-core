@@ -4,7 +4,6 @@ See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/a
 for more information.
 """
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -127,10 +126,11 @@ class Select(Transformation):
             )
         output_columns = {col: input_domain[col] for col in columns}
         if isinstance(metric, IfGroupedBy):
-            if metric.column not in columns:
+            assert len(metric.columns) == 1
+            metric_column = metric.columns[0]
+            if metric_column not in columns:
                 raise ValueError(
-                    "Column used in IfGroupedBy metric must be"
-                    f" selected: {metric.column}."
+                    f"Column used in IfGroupedBy metric must be selected: {metric_column}."
                 )
             if metric.inner_metric not in (
                 SymmetricDifference(),

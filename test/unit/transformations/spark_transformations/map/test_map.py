@@ -39,7 +39,7 @@ from tmlt.core.utils.testing import (
 
 @parametrize(
     Case()(metric=SymmetricDifference()),
-    Case()(metric=IfGroupedBy("a", SymmetricDifference())),
+    Case()(metric=IfGroupedBy(["a"], SymmetricDifference())),
 )
 def test_properties(metric):
     """Map's properties have the expected values."""
@@ -127,7 +127,7 @@ def test_property_immutability(prop_name: str):
         expected_df=pd.DataFrame({"a": [1, 1]}),
     ),
     Case("grouped")(
-        metric=IfGroupedBy("a", SymmetricDifference()),
+        metric=IfGroupedBy(["a"], SymmetricDifference()),
         transformer=RowToRowTransformation(
             input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
             output_domain=SparkRowDomain(
@@ -216,13 +216,13 @@ def test_null_nan_inf(spark):
     Case("SymmetricDifference")(metric=SymmetricDifference()),
     Case("HammingDistance")(metric=HammingDistance()),
     Case("IfGroupedBy-SumOf-SymmetricDifference")(
-        metric=IfGroupedBy("a", SumOf(SymmetricDifference()))
+        metric=IfGroupedBy(["a"], SumOf(SymmetricDifference()))
     ),
     Case("IfGroupedBy-RootSumOfSquared-SymmetricDifference")(
-        metric=IfGroupedBy("a", RootSumOfSquared(SymmetricDifference()))
+        metric=IfGroupedBy(["a"], RootSumOfSquared(SymmetricDifference()))
     ),
     Case("IfGroupedBy-SymmetricDifference")(
-        metric=IfGroupedBy("a", SymmetricDifference())
+        metric=IfGroupedBy(["a"], SymmetricDifference())
     ),
 )
 def test_metrics(
@@ -280,7 +280,7 @@ def test_if_grouped_by_metric_invalid_parameters(
     schema = {"a": SparkIntegerColumnDescriptor()}
     with raises:
         Map(
-            metric=IfGroupedBy(groupby_column, inner_metric),
+            metric=IfGroupedBy([groupby_column], inner_metric),
             row_transformer=RowToRowTransformation(
                 input_domain=SparkRowDomain(schema),
                 output_domain=SparkRowDomain(schema),

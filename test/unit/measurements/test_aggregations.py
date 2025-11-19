@@ -142,7 +142,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 SymmetricDifference(),
                 HammingDistance(),
                 IfGroupedBy(
-                    "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
+                    ["A"], cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
             for output_measure, d_out in [
@@ -210,7 +210,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 SymmetricDifference(),
                 HammingDistance(),
                 IfGroupedBy(
-                    "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
+                    ["A"], cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
             for output_measure, d_out in [
@@ -279,7 +279,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 SymmetricDifference(),
                 HammingDistance(),
                 IfGroupedBy(
-                    "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
+                    ["A"], cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
             for output_measure, d_out in [
@@ -349,7 +349,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 SymmetricDifference(),
                 HammingDistance(),
                 IfGroupedBy(
-                    "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
+                    ["A"], cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
             for output_measure, d_out in [
@@ -420,7 +420,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 SymmetricDifference(),
                 HammingDistance(),
                 IfGroupedBy(
-                    "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
+                    ["A"], cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
             for output_measure, d_out in [
@@ -499,7 +499,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 SymmetricDifference(),
                 HammingDistance(),
                 IfGroupedBy(
-                    "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
+                    ["A"], cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
             for output_measure, d_out in [
@@ -570,7 +570,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 SymmetricDifference(),
                 HammingDistance(),
                 IfGroupedBy(
-                    "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
+                    ["A"], cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
         ]
@@ -627,7 +627,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             for input_metric in [
                 SymmetricDifference(),
                 IfGroupedBy(
-                    "A", cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
+                    ["A"], cast(Union[SumOf, RootSumOfSquared], groupby_output_metric)
                 ),
             ]
         ]
@@ -680,8 +680,8 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 "C": SparkIntegerColumnDescriptor(),
             }
         ),
-        input_metric=IfGroupedBy("A", SumOf(SymmetricDifference())),
-        groupby_input_metric=IfGroupedBy("B", SumOf(SymmetricDifference())),
+        input_metric=IfGroupedBy(["A"], SumOf(SymmetricDifference())),
+        groupby_input_metric=IfGroupedBy(["B"], SumOf(SymmetricDifference())),
         groupby_input_domain=SparkDataFrameDomain(
             {
                 "A": SparkStringColumnDescriptor(allow_null=True),
@@ -702,8 +702,8 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 "C": SparkIntegerColumnDescriptor(),
             }
         ),
-        input_metric=IfGroupedBy("A", SumOf(SymmetricDifference())),
-        groupby_input_metric=IfGroupedBy("A", SumOf(SymmetricDifference())),
+        input_metric=IfGroupedBy(["A"], SumOf(SymmetricDifference())),
+        groupby_input_metric=IfGroupedBy(["A"], SumOf(SymmetricDifference())),
         groupby_input_domain=SparkDataFrameDomain(
             {
                 "A": SparkStringColumnDescriptor(allow_null=True),
@@ -2218,7 +2218,7 @@ class TestBounds:
             ),
             (
                 SparkFloatColumnDescriptor(),
-                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                IfGroupedBy(["A"], SumOf(SymmetricDifference())),
                 pd.DataFrame(
                     {"A": ["1"] * 10 + ["2"] * 10, "X": [16.0] * 10 + [1024.0] * 10}
                 ),

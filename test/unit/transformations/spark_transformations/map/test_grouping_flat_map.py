@@ -60,7 +60,7 @@ def test_properties():
         }
     )
     assert transformation.output_metric == IfGroupedBy(
-        "g", RootSumOfSquared(SymmetricDifference())
+        ["g"], RootSumOfSquared(SymmetricDifference())
     )
     assert transformation.row_transformer == row_transformer
     assert transformation.max_num_rows == 2

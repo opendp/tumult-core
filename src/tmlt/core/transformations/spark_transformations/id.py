@@ -4,7 +4,6 @@ See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/a
 for more information on transformations.
 """
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -113,7 +112,7 @@ class AddUniqueColumn(Transformation):
             output_domain=SparkDataFrameDomain(
                 {**input_domain.schema, column: SparkStringColumnDescriptor()}
             ),
-            output_metric=IfGroupedBy(column, SymmetricDifference()),
+            output_metric=IfGroupedBy([column], SymmetricDifference()),
         )
         self._column = column
 

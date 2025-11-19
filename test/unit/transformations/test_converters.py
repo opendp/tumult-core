@@ -35,7 +35,7 @@ class TestUnwrapIfGroupedBy(TestComponent):
         """Tests that given property is immutable."""
         unwrapper = UnwrapIfGroupedBy(
             domain=SparkDataFrameDomain(self.schema_a),
-            input_metric=IfGroupedBy("B", SumOf(SymmetricDifference())),
+            input_metric=IfGroupedBy(["B"], SumOf(SymmetricDifference())),
         )
         assert_property_immutability(unwrapper, prop_name)
 
@@ -49,7 +49,7 @@ class TestUnwrapIfGroupedBy(TestComponent):
     )
     def test_properties(self, inner_metric: Union[SumOf, RootSumOfSquared]):
         """Tests that UnwrapIfGroupedBy's properties have expected values."""
-        input_metric = IfGroupedBy("B", inner_metric)
+        input_metric = IfGroupedBy(["B"], inner_metric)
         domain = SparkDataFrameDomain(self.schema_a)
         unwrapper = UnwrapIfGroupedBy(domain=domain, input_metric=input_metric)
         self.assertEqual(unwrapper.input_metric, input_metric)
@@ -75,7 +75,7 @@ class TestUnwrapIfGroupedBy(TestComponent):
         """Tests that UnwrapIfGroupedBy's stability relation is correct."""
         unwrapper = UnwrapIfGroupedBy(
             domain=SparkDataFrameDomain(self.schema_a),
-            input_metric=IfGroupedBy("B", inner_metric),
+            input_metric=IfGroupedBy(["B"], inner_metric),
         )
         self.assertEqual(unwrapper.stability_relation(d_in, d_out), expected)
 
@@ -83,7 +83,7 @@ class TestUnwrapIfGroupedBy(TestComponent):
         """Tests that UnwrapIfGroupedBy returns DataFrame unchanged."""
         unwrapper = UnwrapIfGroupedBy(
             domain=SparkDataFrameDomain(self.schema_a),
-            input_metric=IfGroupedBy("B", SumOf(SymmetricDifference())),
+            input_metric=IfGroupedBy(["B"], SumOf(SymmetricDifference())),
         )
         self.assert_frame_equal_with_sort(
             unwrapper(self.df_a).toPandas(), self.df_a.toPandas()
@@ -101,5 +101,5 @@ class TestUnwrapIfGroupedBy(TestComponent):
         ):
             UnwrapIfGroupedBy(
                 domain=SparkDataFrameDomain(self.schema_a),
-                input_metric=IfGroupedBy("B", SymmetricDifference()),
+                input_metric=IfGroupedBy(["B"], SymmetricDifference()),
             )

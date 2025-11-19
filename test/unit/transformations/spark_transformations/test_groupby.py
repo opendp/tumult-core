@@ -103,9 +103,11 @@ class TestGroupBy(PySparkTest):
         self.assertEqual(groupby.input_metric, SymmetricDifference())
         self.assertEqual(
             groupby.output_metric,
-            RootSumOfSquared(SymmetricDifference())
-            if use_l2
-            else SumOf(SymmetricDifference()),
+            (
+                RootSumOfSquared(SymmetricDifference())
+                if use_l2
+                else SumOf(SymmetricDifference())
+            ),
         )
         self.assertEqual(groupby.use_l2, use_l2)
         self.assertEqual(groupby.groupby_columns, ["A"])
@@ -113,7 +115,7 @@ class TestGroupBy(PySparkTest):
     @parameterized.expand(
         [
             (
-                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                IfGroupedBy(["A"], SumOf(SymmetricDifference())),
                 [("1",), ("2",)],
                 StructType([StructField("A", StringType())]),
                 f"Column must be {get_fullname(LongType)}; got "
@@ -121,7 +123,7 @@ class TestGroupBy(PySparkTest):
                 ValueError,
             ),
             (
-                IfGroupedBy("A", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["A"], RootSumOfSquared(SymmetricDifference())),
                 [(1,), (2,), (3,)],
                 StructType([StructField("A", LongType())]),
                 (

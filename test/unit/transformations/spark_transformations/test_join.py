@@ -281,9 +281,9 @@ class TestPublicJoin(TestComponent):
     @parameterized.expand(
         [
             (SymmetricDifference(), 2),
-            (IfGroupedBy("B", SumOf(SymmetricDifference())), 2),
-            (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())), 2),
-            (IfGroupedBy("B", SymmetricDifference()), 1),
+            (IfGroupedBy(["B"], SumOf(SymmetricDifference())), 2),
+            (IfGroupedBy(["B"], RootSumOfSquared(SymmetricDifference())), 2),
+            (IfGroupedBy(["B"], SymmetricDifference()), 1),
         ]
     )
     def test_public_join_correctness(
@@ -374,7 +374,7 @@ class TestPublicJoin(TestComponent):
                         {"X": ["a1", "a2"], "C": ["z1", "z2"], "B": ["1", "2"]}
                     )
                 ),
-                metric=IfGroupedBy(groupby_col, SumOf(inner_metric)),
+                metric=IfGroupedBy([groupby_col], SumOf(inner_metric)),
                 join_cols=join_cols,
             )
 

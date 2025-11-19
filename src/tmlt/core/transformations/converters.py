@@ -32,11 +32,13 @@ class UnwrapIfGroupedBy(Transformation):
             domain: Domain of input DataFrames.
             input_metric: IfGroupedBy metric on input DataFrames.
         """
-        if input_metric.column not in domain.schema:
+        assert len(input_metric.columns) == 1
+        input_metric_column = input_metric.columns[0]
+        if input_metric_column not in domain.schema:
             raise DomainColumnError(
                 domain,
-                input_metric.column,
-                f"Invalid IfGroupedBy metric: {input_metric.column} not in domain",
+                input_metric_column,
+                f"Invalid IfGroupedBy metric: {input_metric_column} not in domain",
             )
         if not isinstance(input_metric.inner_metric, (SumOf, RootSumOfSquared)):
             raise UnsupportedMetricError(

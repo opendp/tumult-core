@@ -74,8 +74,8 @@ class TestSelect(TestComponent):
     @parameterized.expand(
         [
             (SymmetricDifference(),),
-            (IfGroupedBy("B", SumOf(SymmetricDifference())),),
-            (IfGroupedBy("B", SymmetricDifference()),),
+            (IfGroupedBy(["B"], SumOf(SymmetricDifference())),),
+            (IfGroupedBy(["B"], SymmetricDifference()),),
         ]
     )
     def test_select_works_correctly(
@@ -131,6 +131,6 @@ class TestSelect(TestComponent):
         with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             Select(
                 input_domain=SparkDataFrameDomain(self.schema_a),
-                metric=IfGroupedBy(groupby_col, inner_metric),
+                metric=IfGroupedBy([groupby_col], inner_metric),
                 columns=select_columns,
             )

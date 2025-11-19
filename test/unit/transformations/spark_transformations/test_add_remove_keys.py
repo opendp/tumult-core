@@ -339,7 +339,7 @@ class TestTransformValue(PySparkTest):
         self.input_metric = AddRemoveKeys({"key1": "A", "key2": "D"})
         self.filter_transformation = Filter(
             domain=self.input_domain.key_to_domain["key1"],  # type: ignore
-            metric=IfGroupedBy("A", SymmetricDifference()),
+            metric=IfGroupedBy(["A"], SymmetricDifference()),
             filter_expr="B < 1",
         )
         self.mock_filter_value = MockValue(
@@ -361,8 +361,8 @@ class TestTransformValue(PySparkTest):
                 input_metric=AddRemoveKeys({"OLD": "A"}),
                 transformation=create_mock_transformation(
                     input_domain=df_domain,
-                    input_metric=IfGroupedBy("A", SymmetricDifference()),
-                    output_metric=IfGroupedBy("A", SymmetricDifference()),
+                    input_metric=IfGroupedBy(["A"], SymmetricDifference()),
+                    output_metric=IfGroupedBy(["A"], SymmetricDifference()),
                 ),
                 key="OLD",
                 new_key="NEW",
@@ -506,8 +506,8 @@ class TestTransformValue(PySparkTest):
                 ValueError,
                 {},
                 {
-                    "input_metric": IfGroupedBy("B", SymmetricDifference()),
-                    "output_metric": IfGroupedBy("B", SymmetricDifference()),
+                    "input_metric": IfGroupedBy(["B"], SymmetricDifference()),
+                    "output_metric": IfGroupedBy(["B"], SymmetricDifference()),
                 },
             ),
         ]
@@ -529,8 +529,8 @@ class TestTransformValue(PySparkTest):
         mock_transformation_args = {
             "input_domain": self.input_domain.key_to_domain["key1"],
             "output_domain": self.input_domain.key_to_domain["key1"],
-            "input_metric": IfGroupedBy("A", SymmetricDifference()),
-            "output_metric": IfGroupedBy("A", SymmetricDifference()),
+            "input_metric": IfGroupedBy(["A"], SymmetricDifference()),
+            "output_metric": IfGroupedBy(["A"], SymmetricDifference()),
         }
         mock_transformation_args.update(updated_mock_transformation_args)
         mock_value_args.update(updated_mock_value_args)

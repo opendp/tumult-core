@@ -132,9 +132,9 @@ class TestFilter(TestComponent):
     @parameterized.expand(
         [
             (SymmetricDifference(),),
-            (IfGroupedBy("B", SumOf(SymmetricDifference())),),
-            (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),),
-            (IfGroupedBy("B", SymmetricDifference()),),
+            (IfGroupedBy(["B"], SumOf(SymmetricDifference())),),
+            (IfGroupedBy(["B"], RootSumOfSquared(SymmetricDifference())),),
+            (IfGroupedBy(["B"], SymmetricDifference()),),
         ]
     )
     def test_metrics(self, metric: Union[SymmetricDifference, IfGroupedBy]):
@@ -168,6 +168,6 @@ class TestFilter(TestComponent):
         with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
             Filter(
                 domain=SparkDataFrameDomain(self.schema_a),
-                metric=IfGroupedBy(groupby_col, SumOf(inner_metric)),
+                metric=IfGroupedBy([groupby_col], SumOf(inner_metric)),
                 filter_expr="A < 0",
             )

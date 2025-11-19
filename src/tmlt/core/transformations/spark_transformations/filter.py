@@ -123,11 +123,13 @@ class Filter(Transformation):
                         " RootSumOfSquared(SymmetricDifference())"
                     ),
                 )
-            if metric.column not in domain.schema:
+            assert len(metric.columns) == 1
+            metric_column = metric.columns[0]
+            if metric_column not in domain.schema:
                 raise DomainColumnError(
                     domain,
-                    metric.column,
-                    f"Invalid IfGroupedBy metric: {metric.column} not in domain.",
+                    metric_column,
+                    f"Invalid IfGroupedBy metric: {metric_column} not in domain.",
                 )
         try:
             test_df.filter(filter_expr)

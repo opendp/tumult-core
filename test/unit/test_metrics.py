@@ -710,7 +710,7 @@ class TestSumOf(PySparkTest):
                 True,
             ),
             (
-                SumOf(IfGroupedBy("A", RootSumOfSquared(SymmetricDifference()))),
+                SumOf(IfGroupedBy(["A"], RootSumOfSquared(SymmetricDifference()))),
                 ListDomain(
                     SparkDataFrameDomain(
                         {
@@ -722,7 +722,7 @@ class TestSumOf(PySparkTest):
                 True,
             ),
             (
-                SumOf(IfGroupedBy("A", SumOf(HammingDistance()))),
+                SumOf(IfGroupedBy(["A"], SumOf(HammingDistance()))),
                 SparkGroupedDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -734,7 +734,7 @@ class TestSumOf(PySparkTest):
                 True,
             ),
             (
-                SumOf(IfGroupedBy("A", SumOf(AbsoluteDifference()))),
+                SumOf(IfGroupedBy(["A"], SumOf(AbsoluteDifference()))),
                 SparkGroupedDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -746,7 +746,7 @@ class TestSumOf(PySparkTest):
                 False,
             ),
             (
-                SumOf(IfGroupedBy("A", SumOf(HammingDistance()))),
+                SumOf(IfGroupedBy(["A"], SumOf(HammingDistance()))),
                 SparkGroupedDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -1070,7 +1070,7 @@ class TestRootSumOfSquared(TestCase):
                 True,
             ),
             (
-                RootSumOfSquared(IfGroupedBy("A", SumOf(SymmetricDifference()))),
+                RootSumOfSquared(IfGroupedBy(["A"], SumOf(SymmetricDifference()))),
                 ListDomain(
                     SparkDataFrameDomain(
                         {
@@ -1082,7 +1082,9 @@ class TestRootSumOfSquared(TestCase):
                 True,
             ),
             (
-                RootSumOfSquared(IfGroupedBy("A", RootSumOfSquared(HammingDistance()))),
+                RootSumOfSquared(
+                    IfGroupedBy(["A"], RootSumOfSquared(HammingDistance()))
+                ),
                 SparkGroupedDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -1095,7 +1097,7 @@ class TestRootSumOfSquared(TestCase):
             ),
             (
                 RootSumOfSquared(
-                    IfGroupedBy("A", RootSumOfSquared(AbsoluteDifference()))
+                    IfGroupedBy(["A"], RootSumOfSquared(AbsoluteDifference()))
                 ),
                 SparkGroupedDataFrameDomain(
                     {
@@ -1108,7 +1110,9 @@ class TestRootSumOfSquared(TestCase):
                 False,
             ),
             (
-                RootSumOfSquared(IfGroupedBy("A", RootSumOfSquared(HammingDistance()))),
+                RootSumOfSquared(
+                    IfGroupedBy(["A"], RootSumOfSquared(HammingDistance()))
+                ),
                 SparkGroupedDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -1696,61 +1700,63 @@ class TestIfGroupedBy(TestCase):
     def test_validate(self, mock_metric: Any):
         """Only valid values for the inner metric should be allowed."""
         mock_metric.validate.return_value = None
-        IfGroupedBy(column="A", inner_metric=mock_metric).validate(3)
+        IfGroupedBy(columns=["A"], inner_metric=mock_metric).validate(3)
         mock_metric.validate.side_effect = ValueError(3)
         with self.assertRaises(ValueError):
-            IfGroupedBy(column="A", inner_metric=mock_metric).validate(3)
+            IfGroupedBy(columns=["A"], inner_metric=mock_metric).validate(3)
 
     @patch("tmlt.core.metrics.RootSumOfSquared")
     def test_compare(self, mock_metric: Any):
         """Tests that compare returns the expected result."""
         mock_metric.compare.return_value = True
-        self.assertTrue(IfGroupedBy(column="A", inner_metric=mock_metric).compare(1, 3))
+        self.assertTrue(
+            IfGroupedBy(columns=["A"], inner_metric=mock_metric).compare(1, 3)
+        )
         mock_metric.compare.return_value = False
         self.assertFalse(
-            IfGroupedBy(column="A", inner_metric=mock_metric).compare(1, 3)
+            IfGroupedBy(columns=["A"], inner_metric=mock_metric).compare(1, 3)
         )
 
     @parameterized.expand(
         [
             (
                 IfGroupedBy(
-                    column="A", inner_metric=RootSumOfSquared(SymmetricDifference())
+                    columns=["A"], inner_metric=RootSumOfSquared(SymmetricDifference())
                 ),
                 IfGroupedBy(
-                    column="A", inner_metric=RootSumOfSquared(SymmetricDifference())
+                    columns=["A"], inner_metric=RootSumOfSquared(SymmetricDifference())
                 ),
                 True,
             ),
             (
-                IfGroupedBy(column="A", inner_metric=SumOf(AbsoluteDifference())),
-                IfGroupedBy(column="A", inner_metric=SumOf(AbsoluteDifference())),
+                IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference())),
+                IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference())),
                 True,
             ),
             (
-                IfGroupedBy(column="A", inner_metric=SumOf(AbsoluteDifference())),
-                IfGroupedBy(column="B", inner_metric=SumOf(AbsoluteDifference())),
+                IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference())),
+                IfGroupedBy(columns=["B"], inner_metric=SumOf(AbsoluteDifference())),
                 False,
             ),
             (
-                IfGroupedBy(column="A", inner_metric=SumOf(AbsoluteDifference())),
+                IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference())),
                 IfGroupedBy(
-                    column="A", inner_metric=RootSumOfSquared(AbsoluteDifference())
+                    columns=["A"], inner_metric=RootSumOfSquared(AbsoluteDifference())
                 ),
                 False,
             ),
             (
-                IfGroupedBy(column="A", inner_metric=SumOf(AbsoluteDifference())),
-                IfGroupedBy(column="A", inner_metric=SumOf(SymmetricDifference())),
+                IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference())),
+                IfGroupedBy(columns=["A"], inner_metric=SumOf(SymmetricDifference())),
                 False,
             ),
             (
-                IfGroupedBy(column="A", inner_metric=SumOf(AbsoluteDifference())),
+                IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference())),
                 SumOf(AbsoluteDifference()),
                 False,
             ),
             (
-                IfGroupedBy(column="A", inner_metric=SumOf(AbsoluteDifference())),
+                IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference())),
                 "not a metric",
                 False,
             ),
@@ -1765,29 +1771,29 @@ class TestIfGroupedBy(TestCase):
         self.assertEqual(
             repr(
                 IfGroupedBy(
-                    column="A", inner_metric=RootSumOfSquared(SymmetricDifference())
+                    columns=["A"], inner_metric=RootSumOfSquared(SymmetricDifference())
                 )
             ),
             (
-                "IfGroupedBy(column='A', "
+                "IfGroupedBy(column=['A'], "
                 "inner_metric=RootSumOfSquared(inner_metric=SymmetricDifference()))"
             ),
         )
         self.assertEqual(
             repr(
                 IfGroupedBy(
-                    column="A", inner_metric=RootSumOfSquared(AbsoluteDifference())
+                    columns=["A"], inner_metric=RootSumOfSquared(AbsoluteDifference())
                 )
             ),
             (
-                "IfGroupedBy(column='A', "
+                "IfGroupedBy(column=['A'], "
                 "inner_metric=RootSumOfSquared(inner_metric=AbsoluteDifference()))"
             ),
         )
         self.assertEqual(
-            repr(IfGroupedBy(column="A", inner_metric=SumOf(AbsoluteDifference()))),
+            repr(IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference()))),
             (
-                "IfGroupedBy(column='A', "
+                "IfGroupedBy(column=['A'], "
                 "inner_metric=SumOf(inner_metric=AbsoluteDifference()))"
             ),
         )
@@ -1795,12 +1801,12 @@ class TestIfGroupedBy(TestCase):
     @parameterized.expand(
         [
             (
-                IfGroupedBy("A", SumOf(AbsoluteDifference())),
+                IfGroupedBy(["A"], SumOf(AbsoluteDifference())),
                 NumpyIntegerDomain(),
                 False,
             ),
             (
-                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                IfGroupedBy(["A"], SumOf(SymmetricDifference())),
                 SparkDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -1810,7 +1816,7 @@ class TestIfGroupedBy(TestCase):
                 True,
             ),
             (
-                IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["B"], RootSumOfSquared(SymmetricDifference())),
                 SparkDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -1820,7 +1826,7 @@ class TestIfGroupedBy(TestCase):
                 True,
             ),
             (
-                IfGroupedBy("C", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["C"], RootSumOfSquared(SymmetricDifference())),
                 SparkDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -1830,7 +1836,7 @@ class TestIfGroupedBy(TestCase):
                 False,
             ),
             (
-                IfGroupedBy("A", RootSumOfSquared(AbsoluteDifference())),
+                IfGroupedBy(["A"], RootSumOfSquared(AbsoluteDifference())),
                 SparkDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -1848,62 +1854,62 @@ class TestIfGroupedBy(TestCase):
     @parameterized.expand(
         [
             (
-                IfGroupedBy("C", SumOf(SymmetricDifference())),
+                IfGroupedBy(["C"], SumOf(SymmetricDifference())),
                 pd.DataFrame({"A": [1, 1, 3], "B": [2, 1, 4], "C": [1, 1, 2]}),
                 pd.DataFrame({"A": [2, 1], "B": [1, 1], "C": [1, 1]}),
                 3,
             ),
             (
-                IfGroupedBy("C", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["C"], RootSumOfSquared(SymmetricDifference())),
                 pd.DataFrame({"A": [1, 1, 3], "B": [2, 1, 4], "C": [1, 1, 2]}),
                 pd.DataFrame({"A": [2, 1], "B": [1, 1], "C": [1, 1]}),
                 sp.sqrt(5),
             ),
             (
-                IfGroupedBy("C", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["C"], RootSumOfSquared(SymmetricDifference())),
                 pd.DataFrame({"A": [1, 1, 3], "B": [2, 1, 4], "C": [1, 1, 2]}),
                 pd.DataFrame({"A": [], "B": [], "C": []}),
                 sp.sqrt(5),
             ),
             (
-                IfGroupedBy("C", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["C"], RootSumOfSquared(SymmetricDifference())),
                 pd.DataFrame({"A": [], "B": [], "C": []}),
                 pd.DataFrame({"A": [], "B": [], "C": []}),
                 0,
             ),
             (
-                IfGroupedBy("B", SymmetricDifference()),
+                IfGroupedBy(["B"], SymmetricDifference()),
                 pd.DataFrame({"A": [1, 1, 1, 3], "B": [2, 2, 2, 4], "C": [1, 1, 1, 1]}),
                 pd.DataFrame({"A": [1, 2], "B": [2, 4], "C": [1, 1]}),
                 4,
             ),
             (
-                IfGroupedBy("B", SymmetricDifference()),
+                IfGroupedBy(["B"], SymmetricDifference()),
                 pd.DataFrame({"A": [1, 1, 3], "B": [2, 2, 4], "C": [1, 1, 1]}),
                 pd.DataFrame({"A": [1, 3, 1], "B": [2, 4, 2], "C": [1, 1, 1]}),
                 0,
             ),
             (
-                IfGroupedBy("B", SymmetricDifference()),
+                IfGroupedBy(["B"], SymmetricDifference()),
                 pd.DataFrame({"A": [], "B": [], "C": []}),
                 pd.DataFrame({"A": [1, 3, 1], "B": [2, 4, 2], "C": [1, 1, 1]}),
                 2,
             ),
             (
-                IfGroupedBy("B", SymmetricDifference()),
+                IfGroupedBy(["B"], SymmetricDifference()),
                 pd.DataFrame({"A": [], "B": [], "C": []}),
                 pd.DataFrame({"A": [], "B": [], "C": []}),
                 0,
             ),
             (
-                IfGroupedBy("A", SumOf(IfGroupedBy("B", SymmetricDifference()))),
+                IfGroupedBy(["A"], SumOf(IfGroupedBy(["B"], SymmetricDifference()))),
                 pd.DataFrame({"A": [1, 2, 2], "B": [2, 2, 4], "C": [1, 1, 1]}),
                 pd.DataFrame({"A": [3, 2, 2], "B": [1, 2, 2], "C": [1, 1, 1]}),
                 5,  # 1 for A=1, 3 for A=2, 1 for A=3, 1 + 3 + 1
             ),
             (
                 IfGroupedBy(
-                    "A", RootSumOfSquared(IfGroupedBy("B", SymmetricDifference()))
+                    ["A"], RootSumOfSquared(IfGroupedBy(["B"], SymmetricDifference()))
                 ),
                 pd.DataFrame({"A": [1, 2, 2], "B": [2, 2, 4], "C": [1, 1, 1]}),
                 pd.DataFrame({"A": [3, 2, 2], "B": [1, 2, 2], "C": [1, 1, 1]}),
@@ -2102,8 +2108,8 @@ class TestDictMetric(TestCase):
         domain = DictDomain({"A": df_domain, "B": df_domain})
         metric = DictMetric(
             {
-                "A": IfGroupedBy("C", SumOf(SymmetricDifference())),
-                "B": IfGroupedBy("C", RootSumOfSquared(SymmetricDifference())),
+                "A": IfGroupedBy(["C"], SumOf(SymmetricDifference())),
+                "B": IfGroupedBy(["C"], RootSumOfSquared(SymmetricDifference())),
             }
         )
         df1 = SparkSession.builder.getOrCreate().createDataFrame(

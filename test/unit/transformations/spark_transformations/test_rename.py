@@ -82,18 +82,18 @@ class TestRename(TestComponent):
         [
             (SymmetricDifference(), SymmetricDifference(), {"A": "AA"}),
             (
-                IfGroupedBy("B", SumOf(SymmetricDifference())),
-                IfGroupedBy("B", SumOf(SymmetricDifference())),
+                IfGroupedBy(["B"], SumOf(SymmetricDifference())),
+                IfGroupedBy(["B"], SumOf(SymmetricDifference())),
                 {"A": "AA"},
             ),
             (
-                IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),
-                IfGroupedBy("BB", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["B"], RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["BB"], RootSumOfSquared(SymmetricDifference())),
                 {"B": "BB"},
             ),
             (
-                IfGroupedBy("B", SymmetricDifference()),
-                IfGroupedBy("BB", SymmetricDifference()),
+                IfGroupedBy(["B"], SymmetricDifference()),
+                IfGroupedBy(["BB"], SymmetricDifference()),
                 {"B": "BB"},
             ),
         ]
@@ -163,6 +163,6 @@ class TestRename(TestComponent):
         with self.assertRaisesRegex(ValueError, error_msg):
             Rename(
                 input_domain=SparkDataFrameDomain(self.schema_a),
-                metric=IfGroupedBy(groupby_col, inner_metric),
+                metric=IfGroupedBy([groupby_col], inner_metric),
                 rename_mapping=rename_mapping,
             )

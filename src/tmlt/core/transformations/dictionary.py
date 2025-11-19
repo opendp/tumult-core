@@ -70,7 +70,16 @@ class CreateDictFromValue(Transformation):
                         "SymmetricDifference to use AddRemoveKeys as the output metric"
                     ),
                 )
-            output_metric = AddRemoveKeys({key: input_metric.column})
+            if len(input_metric.columns) > 1:
+                raise UnsupportedMetricError(
+                    input_metric,
+                    (
+                        "Input metric must have only a single grouping column to use "
+                        "AddRemoveKeys as the output metric, but found "
+                        f"{input_metric.columns}"
+                    ),
+                )
+            output_metric = AddRemoveKeys({key: input_metric.columns[0]})
         else:
             output_metric = DictMetric({key: input_metric})
         super().__init__(
@@ -331,7 +340,7 @@ class GetValue(Transformation):
             output_metric = input_metric[key]
         else:
             output_metric = IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             )
 
         super().__init__(

@@ -207,20 +207,20 @@ class TestPartitionByKeys(TestComponent):
             (SymmetricDifference(), SumOf(SymmetricDifference()), 2, 2),
             (SymmetricDifference(), RootSumOfSquared(SymmetricDifference()), 2, 2),
             (
-                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                IfGroupedBy(["A"], SumOf(SymmetricDifference())),
                 SumOf(SymmetricDifference()),
                 2,
                 2,
             ),
             (
-                IfGroupedBy("A", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["A"], RootSumOfSquared(SymmetricDifference())),
                 RootSumOfSquared(SymmetricDifference()),
                 2,
                 2,
             ),
             (
-                IfGroupedBy("A", SumOf(IfGroupedBy("B", SymmetricDifference()))),
-                SumOf(IfGroupedBy("B", SymmetricDifference())),
+                IfGroupedBy(["A"], SumOf(IfGroupedBy(["B"], SymmetricDifference()))),
+                SumOf(IfGroupedBy(["B"], SymmetricDifference())),
                 2,
                 2,
             ),
@@ -252,19 +252,19 @@ class TestPartitionByKeys(TestComponent):
     @parameterized.expand(
         [
             (
-                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                IfGroupedBy(["A"], SumOf(SymmetricDifference())),
                 RootSumOfSquared(SymmetricDifference()),
                 ValueError,
                 "IfGroupedBy inner metric must match use_l2",
             ),
             (
-                IfGroupedBy("A", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["A"], RootSumOfSquared(SymmetricDifference())),
                 SumOf(SymmetricDifference()),
                 ValueError,
                 "IfGroupedBy inner metric must match use_l2",
             ),
             (
-                IfGroupedBy("A", SymmetricDifference()),
+                IfGroupedBy(["A"], SymmetricDifference()),
                 SymmetricDifference(),
                 ValueError,
                 "IfGroupedBy inner metric must match use_l2",

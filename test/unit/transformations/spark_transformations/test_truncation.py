@@ -58,7 +58,7 @@ class TestLimitRowsPerGroup(PySparkTest):
         )
         self.assertEqual(transformation.input_domain, SparkDataFrameDomain(self.schema))
         self.assertEqual(
-            transformation.input_metric, IfGroupedBy("A", SymmetricDifference())
+            transformation.input_metric, IfGroupedBy(["A"], SymmetricDifference())
         )
         self.assertEqual(
             transformation.output_domain, SparkDataFrameDomain(self.schema)
@@ -109,13 +109,13 @@ class TestLimitRowsPerGroup(PySparkTest):
                 "Input metric .* and input domain .* are not compatible.",
             ),
             (
-                {"output_metric": IfGroupedBy("notA", SymmetricDifference())},
+                {"output_metric": IfGroupedBy(["notA"], SymmetricDifference())},
                 ValueError,
                 r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(A,"
                 r" SymmetricDifference\(\)\)`",
             ),
             (
-                {"output_metric": IfGroupedBy("A", SumOf(SymmetricDifference()))},
+                {"output_metric": IfGroupedBy(["A"], SumOf(SymmetricDifference()))},
                 ValueError,
                 r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(A,"
                 r" SymmetricDifference\(\)\)`",
@@ -156,7 +156,7 @@ class TestLimitKeysPerGroup(PySparkTest):
         truncate = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             output_metric=IfGroupedBy(
-                "B", SumOf(IfGroupedBy("A", SymmetricDifference()))
+                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
             ),
             grouping_column="A",
             key_column="B",
@@ -169,7 +169,7 @@ class TestLimitKeysPerGroup(PySparkTest):
         transformation = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             output_metric=IfGroupedBy(
-                "B", SumOf(IfGroupedBy("A", SymmetricDifference()))
+                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
             ),
             grouping_column="A",
             key_column="B",
@@ -177,7 +177,7 @@ class TestLimitKeysPerGroup(PySparkTest):
         )
         self.assertEqual(transformation.input_domain, SparkDataFrameDomain(self.schema))
         self.assertEqual(
-            transformation.input_metric, IfGroupedBy("A", SymmetricDifference())
+            transformation.input_metric, IfGroupedBy(["A"], SymmetricDifference())
         )
         self.assertEqual(
             transformation.output_domain, SparkDataFrameDomain(self.schema)
@@ -185,7 +185,7 @@ class TestLimitKeysPerGroup(PySparkTest):
 
         self.assertEqual(
             transformation.output_metric,
-            IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference()))),
+            IfGroupedBy(["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))),
         )
         self.assertEqual(transformation.grouping_column, "A")
         self.assertEqual(transformation.key_column, "B")
@@ -204,7 +204,8 @@ class TestLimitKeysPerGroup(PySparkTest):
         transformation = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             output_metric=IfGroupedBy(
-                key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference()))
+                [key_column],
+                SumOf(IfGroupedBy([grouping_column], SymmetricDifference())),
             ),
             grouping_column=grouping_column,
             key_column=key_column,
@@ -218,15 +219,30 @@ class TestLimitKeysPerGroup(PySparkTest):
 
     @parameterized.expand(
         [
-            (3, 1, 3, IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference())))),
-            (2, 2, 4, IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference())))),
-            (0, 1, 0, IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference())))),
+            (
+                3,
+                1,
+                3,
+                IfGroupedBy(["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))),
+            ),
+            (
+                2,
+                2,
+                4,
+                IfGroupedBy(["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))),
+            ),
+            (
+                0,
+                1,
+                0,
+                IfGroupedBy(["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))),
+            ),
             (
                 9,
                 1,
                 3,
                 IfGroupedBy(
-                    "B", RootSumOfSquared(IfGroupedBy("A", SymmetricDifference()))
+                    ["B"], RootSumOfSquared(IfGroupedBy(["A"], SymmetricDifference()))
                 ),
             ),
             (
@@ -234,7 +250,7 @@ class TestLimitKeysPerGroup(PySparkTest):
                 2,
                 4,
                 IfGroupedBy(
-                    "B", RootSumOfSquared(IfGroupedBy("A", SymmetricDifference()))
+                    ["B"], RootSumOfSquared(IfGroupedBy(["A"], SymmetricDifference()))
                 ),
             ),
             (
@@ -242,11 +258,11 @@ class TestLimitKeysPerGroup(PySparkTest):
                 1,
                 0,
                 IfGroupedBy(
-                    "B", RootSumOfSquared(IfGroupedBy("A", SymmetricDifference()))
+                    ["B"], RootSumOfSquared(IfGroupedBy(["A"], SymmetricDifference()))
                 ),
             ),
-            (5, 2, 2, IfGroupedBy("A", SymmetricDifference())),
-            (0, 4, 4, IfGroupedBy("A", SymmetricDifference())),
+            (5, 2, 2, IfGroupedBy(["A"], SymmetricDifference())),
+            (0, 4, 4, IfGroupedBy(["A"], SymmetricDifference())),
         ]
     )
     def test_stability_function(
@@ -270,7 +286,7 @@ class TestLimitKeysPerGroup(PySparkTest):
                 {
                     "grouping_column": "invalid",
                     "output_metric": IfGroupedBy(
-                        "B", SumOf(IfGroupedBy("invalid", SymmetricDifference()))
+                        ["B"], SumOf(IfGroupedBy(["invalid"], SymmetricDifference()))
                     ),
                 },
                 ValueError,
@@ -280,14 +296,14 @@ class TestLimitKeysPerGroup(PySparkTest):
                 {
                     "key_column": "invalid",
                     "output_metric": IfGroupedBy(
-                        "invalid", SumOf(IfGroupedBy("A", SymmetricDifference()))
+                        ["invalid"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
                     ),
                 },
                 ValueError,
                 "Output metric .* and output domain .* are not compatible.",
             ),
             (
-                {"output_metric": IfGroupedBy("B", SymmetricDifference())},
+                {"output_metric": IfGroupedBy(["B"], SymmetricDifference())},
                 ValueError,
                 r"Output metric must be one of `IfGroupedBy\(B, SumOf\(IfGroupedBy\(A,"
                 r" SymmetricDifference\(\)\)\)\)` "
@@ -304,7 +320,7 @@ class TestLimitKeysPerGroup(PySparkTest):
         args = {
             "input_domain": SparkDataFrameDomain(self.schema),
             "output_metric": IfGroupedBy(
-                "B", SumOf(IfGroupedBy("A", SymmetricDifference()))
+                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
             ),
             "grouping_column": "A",
             "key_column": "B",
@@ -334,7 +350,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         truncate = LimitRowsPerKeyPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             input_metric=IfGroupedBy(
-                "B", SumOf(IfGroupedBy("A", SymmetricDifference()))
+                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
             ),
             grouping_column="A",
             key_column="B",
@@ -347,7 +363,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         transformation = LimitRowsPerKeyPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             input_metric=IfGroupedBy(
-                "B", SumOf(IfGroupedBy("A", SymmetricDifference()))
+                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
             ),
             grouping_column="A",
             key_column="B",
@@ -356,7 +372,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         self.assertEqual(transformation.input_domain, SparkDataFrameDomain(self.schema))
         self.assertEqual(
             transformation.input_metric,
-            IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference()))),
+            IfGroupedBy(["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))),
         )
         self.assertEqual(
             transformation.output_domain, SparkDataFrameDomain(self.schema)
@@ -379,7 +395,8 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         transformation = LimitRowsPerKeyPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             input_metric=IfGroupedBy(
-                key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference()))
+                [key_column],
+                SumOf(IfGroupedBy([grouping_column], SymmetricDifference())),
             ),
             grouping_column=grouping_column,
             key_column=key_column,
@@ -397,7 +414,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
                 3,
                 1,
                 3,
-                IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference()))),
+                IfGroupedBy(["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))),
                 SymmetricDifference(),
             ),
             (
@@ -405,16 +422,16 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
                 1,
                 2,
                 IfGroupedBy(
-                    "B", RootSumOfSquared(IfGroupedBy("A", SymmetricDifference()))
+                    ["B"], RootSumOfSquared(IfGroupedBy(["A"], SymmetricDifference()))
                 ),
-                IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["B"], RootSumOfSquared(SymmetricDifference())),
             ),
             (
                 2,
                 2,
                 2,
-                IfGroupedBy("A", SymmetricDifference()),
-                IfGroupedBy("A", SymmetricDifference()),
+                IfGroupedBy(["A"], SymmetricDifference()),
+                IfGroupedBy(["A"], SymmetricDifference()),
             ),
         ]
     )
@@ -442,7 +459,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         [
             ({"threshold": -1}, ValueError, "Threshold must be nonnegative"),
             (
-                {"input_metric": IfGroupedBy("B", SymmetricDifference())},
+                {"input_metric": IfGroupedBy(["B"], SymmetricDifference())},
                 ValueError,
                 r"Input metric must be one of `IfGroupedBy\(B, SumOf\(IfGroupedBy\(A,"
                 r" SymmetricDifference\(\)\)\)\)` "
@@ -462,7 +479,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
             "key_column": "B",
             "threshold": 1,
             "input_metric": IfGroupedBy(
-                "B", SumOf(IfGroupedBy("A", SymmetricDifference()))
+                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
             ),
         }
         args.update(updated_args)

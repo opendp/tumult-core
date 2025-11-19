@@ -4,7 +4,6 @@ See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/a
 for more information on transformations.
 """
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -318,16 +317,18 @@ class PublicJoin(Transformation):
             how=how,
             nulls_are_equal=join_on_nulls,
         )
-        if (
-            isinstance(metric, IfGroupedBy)
-            and metric.column not in join_cols
-            and metric.column in input_domain.schema
-            and metric.column in public_df_domain.schema
-        ):
-            raise ValueError(
-                f"IfGroupedBy column '{metric.column}' is an overlapping"
-                " column but not a join key."
-            )
+        if isinstance(metric, IfGroupedBy):
+            assert len(metric.columns) == 1
+            metric_column = metric.columns[0]
+            if (
+                metric_column not in join_cols
+                and metric_column in input_domain.schema
+                and metric_column in public_df_domain.schema
+            ):
+                raise ValueError(
+                    f"IfGroupedBy column '{metric_column}' is an overlapping"
+                    " column but not a join key."
+                )
 
         public_df_join_columns = public_df.select(*join_cols)
         if not join_on_nulls:

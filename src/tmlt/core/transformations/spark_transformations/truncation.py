@@ -125,8 +125,10 @@ class LimitRowsPerGroup(Transformation):
         self._grouping_column = grouping_column
         self._threshold = threshold
         if isinstance(output_metric, IfGroupedBy):
+            assert len(output_metric.columns) == 1
+            output_metric_column = output_metric.columns[0]
             if (
-                output_metric.column != grouping_column
+                output_metric_column != grouping_column
                 or output_metric.inner_metric != SymmetricDifference()
             ):
                 raise UnsupportedMetricError(
@@ -139,7 +141,7 @@ class LimitRowsPerGroup(Transformation):
         # super init checks that grouping_column is in the domain
         super().__init__(
             input_domain=input_domain,
-            input_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
+            input_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
             output_domain=input_domain,
             output_metric=output_metric,
         )
@@ -298,13 +300,14 @@ class LimitKeysPerGroup(Transformation):
         self._threshold = threshold
         valid_output_metrics = [
             IfGroupedBy(
-                key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference()))
+                [key_column],
+                SumOf(IfGroupedBy([grouping_column], SymmetricDifference())),
             ),
             IfGroupedBy(
-                key_column,
-                RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())),
+                [key_column],
+                RootSumOfSquared(IfGroupedBy([grouping_column], SymmetricDifference())),
             ),
-            IfGroupedBy(grouping_column, SymmetricDifference()),
+            IfGroupedBy([grouping_column], SymmetricDifference()),
         ]
         if output_metric not in valid_output_metrics:
             raise UnsupportedMetricError(
@@ -321,7 +324,7 @@ class LimitKeysPerGroup(Transformation):
         # super init checks that grouping_column and key_column are in the domain
         super().__init__(
             input_domain=input_domain,
-            input_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
+            input_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
             output_domain=input_domain,
             output_metric=output_metric,
         )
@@ -354,12 +357,14 @@ class LimitKeysPerGroup(Transformation):
         d_in = ExactNumber(d_in)
         self.input_metric.validate(d_in)
         if self.output_metric == IfGroupedBy(
-            self.grouping_column, SymmetricDifference()
+            [self.grouping_column], SymmetricDifference()
         ):
             return d_in
         if self.output_metric == IfGroupedBy(
-            self.key_column,
-            RootSumOfSquared(IfGroupedBy(self.grouping_column, SymmetricDifference())),
+            [self.key_column],
+            RootSumOfSquared(
+                IfGroupedBy([self.grouping_column], SymmetricDifference())
+            ),
         ):
             return d_in * self.threshold ** ExactNumber("1/2")
         return d_in * self.threshold
@@ -497,17 +502,17 @@ class LimitRowsPerKeyPerGroup(Transformation):
 
         output_metric: Union[SymmetricDifference, IfGroupedBy]
         if input_metric == IfGroupedBy(
-            key_column, SumOf(IfGroupedBy(grouping_column, SymmetricDifference()))
+            [key_column], SumOf(IfGroupedBy([grouping_column], SymmetricDifference()))
         ):
             output_metric = SymmetricDifference()
         elif input_metric == IfGroupedBy(
-            key_column,
-            RootSumOfSquared(IfGroupedBy(grouping_column, SymmetricDifference())),
+            [key_column],
+            RootSumOfSquared(IfGroupedBy([grouping_column], SymmetricDifference())),
         ):
             output_metric = IfGroupedBy(
-                key_column, RootSumOfSquared(SymmetricDifference())
+                [key_column], RootSumOfSquared(SymmetricDifference())
             )
-        elif input_metric == IfGroupedBy(grouping_column, SymmetricDifference()):
+        elif input_metric == IfGroupedBy([grouping_column], SymmetricDifference()):
             output_metric = input_metric
         else:
             raise UnsupportedMetricError(
@@ -558,7 +563,7 @@ class LimitRowsPerKeyPerGroup(Transformation):
         d_in = ExactNumber(d_in)
         self.input_metric.validate(d_in)
         if self.input_metric == IfGroupedBy(
-            self.grouping_column, SymmetricDifference()
+            [self.grouping_column], SymmetricDifference()
         ):
             return d_in
         return d_in * ExactNumber(self.threshold)

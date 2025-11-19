@@ -1,4 +1,5 @@
 """Transformations for performing groupby on Spark DataFrames."""
+
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -144,11 +145,13 @@ class GroupBy(Transformation):
             else SumOf(SymmetricDifference())
         )
         if isinstance(input_metric, IfGroupedBy):
-            if input_metric.column not in group_keys.columns:
+            assert len(input_metric.columns) == 1
+            input_metric_column = input_metric.columns[0]
+            if input_metric_column not in group_keys.columns:
                 raise ValueError(
-                    f"Must group by IfGroupedBy metric column: {input_metric.column}"
+                    f"Must group by IfGroupedBy metric column: {input_metric_column}"
                 )
-            expected_input_metric = IfGroupedBy(input_metric.column, output_metric)
+            expected_input_metric = IfGroupedBy(input_metric.columns, output_metric)
             if input_metric != expected_input_metric:
                 raise UnsupportedMetricError(
                     input_metric,
@@ -416,7 +419,7 @@ def compute_full_domain_df(
             List[datetime.date],
             List[Optional[datetime.date]],
         ],
-    ]
+    ],
 ) -> DataFrame:
     """Returns a DataFrame containing the Cartesian product of given column domains."""
     spark = SparkSession.builder.getOrCreate()
