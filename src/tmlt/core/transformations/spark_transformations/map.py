@@ -47,13 +47,13 @@ def _assert_row_matches_domain(row: Dict[str, Any], domain: SparkRowDomain) -> N
             f"but expected {sorted(schema.keys())}.",
         )
 
-    for f in row.keys():
-        if not schema[f].valid_py_value(row[f]):
+    for col, value in row.items():
+        if not schema[col].valid_py_value(value):
             raise OutOfDomainError(
                 domain,
                 row,
-                f"Invalid value in column '{f}' of transformation output, "
-                f"{row[f]} is not a valid value for {schema[f]}.",
+                f"Invalid value in column '{col}' of transformation output, "
+                f"{value} is not a valid value for {schema[col]}.",
             )
 
 
