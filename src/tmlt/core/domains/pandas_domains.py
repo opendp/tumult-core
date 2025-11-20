@@ -128,7 +128,8 @@ class PandasDataFrameDomain(Domain):
     @classmethod
     def from_numpy_types(cls, dtypes: Dict[str, np.dtype]) -> "PandasDataFrameDomain":
         """Returns a Pandas DataFrame domain from a dictionary of NumPy types."""
-        col_to_desc = {}
-        for col in dtypes:
-            col_to_desc[col] = PandasSeriesDomain.from_numpy_type(dtypes[col])
+        col_to_desc = {
+            col: PandasSeriesDomain.from_numpy_type(dtype)
+            for col, dtype in dtypes.items()
+        }
         return PandasDataFrameDomain(col_to_desc)
