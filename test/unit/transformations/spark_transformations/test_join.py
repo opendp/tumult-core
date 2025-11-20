@@ -424,7 +424,7 @@ class TestPublicJoin(TestComponent):
         self.assertEqual(actual, expected)
 
     def test_join_drops_invalid_rows_from_public_df(self):
-        """ "Tests that nans/infs are dropped from public DataFrame when disallowed."""
+        """Tests that nans/infs are dropped from public DataFrame when disallowed."""
         public_join = PublicJoin(
             input_domain=self.input_domain,
             metric=SymmetricDifference(),

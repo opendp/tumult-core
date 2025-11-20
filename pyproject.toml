@@ -233,7 +233,6 @@ ignore = [
     "RUF007",  # zip-instead-of-pairwise
     "RUF043",  # pytest-raises-ambiguous-pattern
     "D205",    # missing-blank-line-after-summary
-    "D210",    # surrounding-whitespace
     "D102",    # undocumented-public-method
     "PLW2901", # redefined-loop-name
     "E501",    # line-too-long
