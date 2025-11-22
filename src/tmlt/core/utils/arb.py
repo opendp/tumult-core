@@ -7,7 +7,7 @@ import ctypes
 import importlib.resources
 import math
 import platform
-from typing import Any, List, Tuple, Union
+from typing import Any, ClassVar, List, Tuple, Union
 
 # importlib.resources.path was deprecated in Python 3.11, and then un-deprecated
 # in 3.13, so there's not actually a problem here. It's possible this code will
@@ -73,7 +73,10 @@ class _PtrStruct(ctypes.Structure):
         mantissa_ptr_struct;
     """
 
-    _fields_ = [("alloc", ctypes.c_int), ("d", ctypes.POINTER(ctypes.c_ulong))]
+    _fields_: ClassVar = [
+        ("alloc", ctypes.c_int),
+        ("d", ctypes.POINTER(ctypes.c_ulong)),
+    ]
 
 
 class _NoPtrStruct(ctypes.Structure):
@@ -90,7 +93,7 @@ class _NoPtrStruct(ctypes.Structure):
 
     """
 
-    _fields_ = [("d", ctypes.c_ulong * 2)]
+    _fields_: ClassVar = [("d", ctypes.c_ulong * 2)]
 
 
 class _MantissaStruct(ctypes.Union):
@@ -108,7 +111,7 @@ class _MantissaStruct(ctypes.Union):
 
     """
 
-    _fields_ = [("noptr", _NoPtrStruct), ("ptr", _PtrStruct)]
+    _fields_: ClassVar = [("noptr", _NoPtrStruct), ("ptr", _PtrStruct)]
 
 
 class _MagStruct(ctypes.Structure):
@@ -128,7 +131,7 @@ class _MagStruct(ctypes.Structure):
         mag_struct;
     """
 
-    _fields_ = [("exp", ctypes.c_long), ("man", ctypes.c_int)]
+    _fields_: ClassVar = [("exp", ctypes.c_long), ("man", ctypes.c_int)]
 
 
 class _ArfStruct(ctypes.Structure):
@@ -148,7 +151,11 @@ class _ArfStruct(ctypes.Structure):
         arf_struct;
     """
 
-    _fields_ = [("exp", ctypes.c_long), ("size", ctypes.c_int), ("d", _MantissaStruct)]
+    _fields_: ClassVar = [
+        ("exp", ctypes.c_long),
+        ("size", ctypes.c_int),
+        ("d", _MantissaStruct),
+    ]
 
 
 class _ArbStruct(ctypes.Structure):
@@ -165,7 +172,7 @@ class _ArbStruct(ctypes.Structure):
         arb_struct;
     """
 
-    _fields_ = [("mid", _ArfStruct), ("rad", _MagStruct)]
+    _fields_: ClassVar = [("mid", _ArfStruct), ("rad", _MagStruct)]
 
 
 class Arb:
