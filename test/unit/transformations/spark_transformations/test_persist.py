@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
-
 from parameterized import parameterized
 
 from tmlt.core.domains.spark_domains import (
@@ -89,9 +88,16 @@ class TestSparkAction(PySparkTest):
         df = self.spark.createDataFrame([(1,)], schema=["A"]).persist()
         assert df.is_cached
         # this will assert that the list is empty
-        assert not list(self.spark.sparkContext._jsc.sc().getRDDStorageInfo())
+        assert not list(
+            self.spark.sparkContext._jsc.sc().getRDDStorageInfo()  # noqa: SLF001
+        )
         df = self.transformation(df)
         self.assertEqual(
-            len(list(self.spark.sparkContext._jsc.sc().getRDDStorageInfo())), 1
+            len(
+                list(
+                    self.spark.sparkContext._jsc.sc().getRDDStorageInfo()  # noqa: SLF001
+                )
+            ),
+            1,
         )
         df.unpersist()

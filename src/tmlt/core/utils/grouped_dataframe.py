@@ -52,6 +52,10 @@ class GroupedDataFrame:
         self._groupby_columns = group_keys.columns
 
     @property
+    def dataframe(self) -> DataFrame:
+        return self._dataframe
+
+    @property
     def group_keys(self) -> DataFrame:
         """Returns DataFrame containing group keys."""
         return self._group_keys

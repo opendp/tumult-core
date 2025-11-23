@@ -575,7 +575,7 @@ class SparkGroupedDataFrameDomain(Domain):
         assert isinstance(value, GroupedDataFrame)
         inner_df_domain = SparkDataFrameDomain(self.schema)
         try:
-            inner_df_domain.validate(value._dataframe)
+            inner_df_domain.validate(value.dataframe)
         except OutOfDomainError as exception:
             raise OutOfDomainError(
                 self, value, f"Invalid inner DataFrame: {exception}"
