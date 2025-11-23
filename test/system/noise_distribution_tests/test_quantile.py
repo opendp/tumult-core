@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2025
 
 
+import itertools
 import math
 import sys
 from typing import List, Tuple, Union, cast
@@ -87,7 +88,7 @@ def _get_quantile_probabilities(
     target_rank = quantile * n
 
     data = [lower] + cast(List[float], data) + [upper]
-    indexed_intervals = enumerate(zip(data[:-1], data[1:]))
+    indexed_intervals = enumerate(itertools.pairwise(data))
     weights = np.array(
         [
             (
