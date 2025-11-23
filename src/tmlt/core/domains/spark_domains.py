@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, List, Mapping, Optional, Sequence
+from typing import Any, ClassVar, List, Mapping, Optional, Sequence
 
 import numpy as np
 from pyspark import Row
@@ -87,10 +87,10 @@ SparkColumnsDescriptor = Mapping[str, SparkColumnDescriptor]
 class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
     """Describes an integer attribute in Spark."""
 
-    SIZE_TO_TYPE = {32: IntegerType(), 64: LongType()}
+    SIZE_TO_TYPE: ClassVar = {32: IntegerType(), 64: LongType()}
     """Mapping from size to Spark type."""
 
-    SIZE_TO_MIN_MAX = {
+    SIZE_TO_MIN_MAX: ClassVar = {
         32: (-2147483648, 2147483647),
         64: (-9223372036854775808, 9223372036854775807),
     }
@@ -133,7 +133,7 @@ class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
 class SparkFloatColumnDescriptor(SparkColumnDescriptor):
     """Describes a float attribute in Spark."""
 
-    SIZE_TO_TYPE = {32: FloatType(), 64: DoubleType()}
+    SIZE_TO_TYPE: ClassVar = {32: FloatType(), 64: DoubleType()}
     """Mapping from size to Spark type."""
 
     allow_nan: bool = False
