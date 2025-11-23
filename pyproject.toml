@@ -220,7 +220,6 @@ ignore = [
     # TODO: This disables every lint that is currently failing; go through and
     #     either fix/individually disable each instance, or choose to permanently
     #     ignore each one.
-    "PLC0415", # import-outside-top-level
     "PLW0177", # nan-comparison
     "RUF005",  # collection-literal-concatenation
     "PLR1730", # if-stmt-min-max

@@ -544,7 +544,7 @@ class SparkGroupedDataFrameDomain(Domain):
     def carrier_type(self) -> type:
         """Returns carrier type for the domain."""
         # avoid circular import
-        from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+        from tmlt.core.utils.grouped_dataframe import GroupedDataFrame  # noqa: PLC0415
 
         return GroupedDataFrame
 
@@ -569,7 +569,7 @@ class SparkGroupedDataFrameDomain(Domain):
     def validate(self, value: Any) -> None:
         """Raises error if value is not a GroupedDataFrame with matching group_keys."""
         # avoid circular import
-        from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+        from tmlt.core.utils.grouped_dataframe import GroupedDataFrame  # noqa: PLC0415
 
         super().validate(value)
         assert isinstance(value, GroupedDataFrame)
