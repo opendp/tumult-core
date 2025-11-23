@@ -235,7 +235,6 @@ ignore = [
     "E501",    # line-too-long
     "E731",    # lambda-assignment
     "E741",    # ambiguous-variable-name
-    "SLF001",  # private-member-access
     "RET504",  # unnecessary-assign
 ]
 

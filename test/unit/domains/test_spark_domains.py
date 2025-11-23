@@ -921,8 +921,8 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         # Separate asserts for the frames are required since GroupedDataFrame does not
         # implement __eq__.
         assert_frame_equal_with_sort(
-            exception_properties["value"]._dataframe,
-            core_exception.value._dataframe,
+            exception_properties["value"].dataframe,
+            core_exception.value.dataframe,
         )
         assert_frame_equal_with_sort(
             exception_properties["value"].group_keys, core_exception.value.group_keys

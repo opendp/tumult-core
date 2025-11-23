@@ -1637,7 +1637,7 @@ class PrivacyAccountant:
                 raise AssertionError(
                     "This is probably a bug; please let us know so we can fix it!"
                 )
-            self.parent._retire_preceding_siblings(self)
+            self.parent._retire_preceding_siblings(self)  # noqa: SLF001
         self._execute_pending_transformation()
 
     def retire(self, force: bool = False) -> None:
@@ -1693,7 +1693,7 @@ class PrivacyAccountant:
             # This activates the "next" Privacy Accountant.
             # If this is last child of its parent, the parent is activated; otherwise,
             # the next sibling is activated.
-            self.parent._activate_next(self)
+            self.parent._activate_next(self)  # noqa: SLF001
 
     def queue_transformation(
         self, transformation: Transformation, d_out: Optional[Any] = None
@@ -1841,10 +1841,12 @@ class PrivacyAccountant:
             raise AssertionError(
                 "This is probably a bug; please let us know so we can fix it!"
             )
-        self.children[index]._state = PrivacyAccountantState.ACTIVE
-        self.children[index]._queryable = self._parallel_queryable(IndexQuery(index))
+        self.children[index]._state = PrivacyAccountantState.ACTIVE  # noqa: SLF001
+        self.children[index]._queryable = self._parallel_queryable(  # noqa: SLF001
+            IndexQuery(index)
+        )
         self._active_child_index = index
-        self.children[index]._execute_pending_transformation()
+        self.children[index]._execute_pending_transformation()  # noqa: SLF001
 
 
 @typechecked

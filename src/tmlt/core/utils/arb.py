@@ -9,10 +9,14 @@ import math
 import platform
 from typing import Any, ClassVar, List, Tuple, Union
 
+# These bindings use a ton of private member accesses, just squash all lints
+# related to them.
+# ruff: noqa: SLF001
+
 # importlib.resources.path was deprecated in Python 3.11, and then un-deprecated
-# in 3.13, so there's not actually a problem here. It's possible this code will
-# need to be tweaked slightly for 3.13 support, as there were some changes to
-# the API, but they don't obviously affect this code.
+# in 3.13. It's possible this code will need to be tweaked slightly for 3.13
+# support, as there were some changes to the API, but they don't obviously
+# affect this code.
 
 
 if platform.system() == "Windows":
