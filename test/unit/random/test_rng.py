@@ -22,7 +22,7 @@ class TestRNG(TestCase):
 
     def test_rdrand_available(self):
         """Rng uses RDRAND if it is available."""
-        from randomgen.rdrand import RDRAND
+        from randomgen.rdrand import RDRAND  # noqa: PLC0415
 
         try:
             RDRAND()

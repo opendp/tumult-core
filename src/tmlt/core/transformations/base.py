@@ -113,11 +113,12 @@ class Transformation(ABC):
         """Return this transformation chained with another component."""
         check_type(other, Union[Measurement, Transformation])
         if isinstance(other, Measurement):
-            from tmlt.core.measurements.chaining import ChainTM
+            from tmlt.core.measurements.chaining import ChainTM  # noqa: PLC0415
 
             return ChainTM(transformation=self, measurement=other)
+
         assert isinstance(other, Transformation)
-        from tmlt.core.transformations.chaining import ChainTT
+        from tmlt.core.transformations.chaining import ChainTT  # noqa: PLC0415
 
         return ChainTT(transformation1=self, transformation2=other)
 
