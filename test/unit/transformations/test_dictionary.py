@@ -658,7 +658,17 @@ class TestCreateDictFromValue(TestCase):
                 AbsoluteDifference(),
                 "A",
                 True,
-            )
+            ),
+            (
+                re.escape(
+                    "Input metric must have only a single grouping column to use "
+                    "AddRemoveKeys as the output metric, but found ['A', 'B']"
+                ),
+                NumpyIntegerDomain(),
+                IfGroupedBy(["A", "B"], SymmetricDifference()),
+                "A",
+                True,
+            ),
         ]
     )
     def test_invalid_arguments_raises_error(

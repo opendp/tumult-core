@@ -510,6 +510,28 @@ class TestTransformValue(PySparkTest):
                     "output_metric": IfGroupedBy(["B"], SymmetricDifference()),
                 },
             ),
+            (
+                (
+                    "Transformation's input metric must have a single grouping"
+                    " column, but found ['A', 'B']"
+                ),
+                ValueError,
+                {},
+                {
+                    "input_metric": IfGroupedBy(["A", "B"], SymmetricDifference()),
+                },
+            ),
+            (
+                (
+                    "Transformation's output metric must have a single grouping"
+                    " column, but found ['A', 'B']"
+                ),
+                ValueError,
+                {},
+                {
+                    "output_metric": IfGroupedBy(["A", "B"], SymmetricDifference()),
+                },
+            ),
         ]
     )
     def test_invalid_parameters(

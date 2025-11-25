@@ -204,23 +204,59 @@ class TestPartitionByKeys(TestComponent):
 
     @parameterized.expand(
         [
-            (SymmetricDifference(), SumOf(SymmetricDifference()), 2, 2),
-            (SymmetricDifference(), RootSumOfSquared(SymmetricDifference()), 2, 2),
+            (
+                SymmetricDifference(),
+                ["A"],
+                [("a1",), ("a2",)],
+                SumOf(SymmetricDifference()),
+                2,
+                2,
+            ),
+            (
+                SymmetricDifference(),
+                ["A"],
+                [("a1",), ("a2",)],
+                RootSumOfSquared(SymmetricDifference()),
+                2,
+                2,
+            ),
             (
                 IfGroupedBy(["A"], SumOf(SymmetricDifference())),
+                ["A"],
+                [("a1",), ("a2",)],
                 SumOf(SymmetricDifference()),
                 2,
                 2,
             ),
             (
                 IfGroupedBy(["A"], RootSumOfSquared(SymmetricDifference())),
+                ["A"],
+                [("a1",), ("a2",)],
                 RootSumOfSquared(SymmetricDifference()),
                 2,
                 2,
             ),
             (
                 IfGroupedBy(["A"], SumOf(IfGroupedBy(["B"], SymmetricDifference()))),
+                ["A"],
+                [("a1",), ("a2",)],
                 SumOf(IfGroupedBy(["B"], SymmetricDifference())),
+                2,
+                2,
+            ),
+            (
+                IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+                ["A"],
+                [("a1",), ("a2",)],
+                SumOf(IfGroupedBy(["A", "B"], SumOf(SymmetricDifference()))),
+                2,
+                2,
+            ),
+            (
+                IfGroupedBy(["A", "B"], RootSumOfSquared(SymmetricDifference())),
+                ["A", "B"],
+                [("a1", "b1"), ("a2", "b2")],
+                RootSumOfSquared(SymmetricDifference()),
                 2,
                 2,
             ),
@@ -229,6 +265,8 @@ class TestPartitionByKeys(TestComponent):
     def test_stability_function(
         self,
         input_metric: Union[IfGroupedBy, SymmetricDifference],
+        keys: List[str],
+        list_values: List[Tuple[str]],
         expected_output_metric: Union[SumOf, RootSumOfSquared],
         d_in: int,
         expected_d_out: int,
@@ -241,8 +279,8 @@ class TestPartitionByKeys(TestComponent):
             ),
             input_metric=input_metric,
             use_l2=use_l2,
-            keys=["A"],
-            list_values=[("a1",), ("a2",)],
+            keys=keys,
+            list_values=list_values,
         )
         self.assertEqual(partition_op.input_metric, input_metric)
         self.assertEqual(partition_op.output_metric, expected_output_metric)

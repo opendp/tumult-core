@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
+import re
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from parameterized import parameterized, parameterized_class
+from pyspark.sql.functions import lit
 from pyspark.sql.types import (
     DataType,
     DateType,
@@ -146,6 +148,20 @@ class TestGroupBy(PySparkTest):
                     }
                 ),
             ),
+            (
+                IfGroupedBy(["B"], SumOf(SymmetricDifference())),
+                [(1,), (2,)],
+                StructType([StructField("A", LongType())]),
+                re.escape("Must group by IfGroupedBy metric columns: ['B']"),
+                ValueError,
+            ),
+            (
+                IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+                [(1,), (2,)],
+                StructType([StructField("A", LongType())]),
+                re.escape("Must group by IfGroupedBy metric columns: ['B']"),
+                ValueError,
+            ),
         ]
     )
     def test_invalid_constructor_arguments(
@@ -186,6 +202,22 @@ class TestGroupBy(PySparkTest):
             group_keys=self.group_keys,
         )
         self.assertTrue(groupby_hamming_to_symmetric.stability_function(1) == 2)
+        groupby_ifgroupbedby_to_symmetric = GroupBy(
+            input_domain=self.domain,
+            input_metric=IfGroupedBy(["A"], SumOf(SymmetricDifference())),
+            use_l2=False,
+            group_keys=self.group_keys,
+        )
+        self.assertTrue(groupby_ifgroupbedby_to_symmetric.stability_function(1) == 1)
+        groupby_ifgroupbedby_multicolumn_to_symmetric = GroupBy(
+            input_domain=self.domain,
+            input_metric=IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+            use_l2=False,
+            group_keys=self.group_keys.withColumn("B", lit("B")),
+        )
+        self.assertTrue(
+            groupby_ifgroupbedby_multicolumn_to_symmetric.stability_function(1) == 1
+        )
 
     def test_correctness(self):
         """Tests that GroupBy transformation works correctly."""

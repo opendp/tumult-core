@@ -783,6 +783,7 @@ class TestReplaceNulls(PySparkTest):
         self.input_domain = SparkDataFrameDomain(
             {
                 "A": SparkIntegerColumnDescriptor(allow_null=True),
+                "AA": SparkIntegerColumnDescriptor(allow_null=True),
                 "B": SparkFloatColumnDescriptor(allow_nan=True, allow_null=True),
             }
         )
@@ -822,6 +823,7 @@ class TestReplaceNulls(PySparkTest):
         expected_output_domain = SparkDataFrameDomain(
             {
                 "A": SparkIntegerColumnDescriptor(allow_null=True),
+                "AA": SparkIntegerColumnDescriptor(allow_null=True),
                 "B": SparkFloatColumnDescriptor(allow_nan=True, allow_null=False),
             }
         )
@@ -880,6 +882,11 @@ class TestReplaceNulls(PySparkTest):
                 {"A": 1},
                 IfGroupedBy(["A"], SumOf(SymmetricDifference())),
             ),
+            (
+                "Cannot replace values in the grouping column for IfGroupedBy.",
+                {"B": 1.0},
+                IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+            ),
         ]
     )
     def test_invalid_constructor_args(
@@ -902,6 +909,7 @@ class TestReplaceNulls(PySparkTest):
             (IfGroupedBy(["A"], SumOf(SymmetricDifference())),),
             (HammingDistance(),),
             (IfGroupedBy(["A"], SymmetricDifference()),),
+            (IfGroupedBy(["A", "AA"], SymmetricDifference()),),
         ]
     )
     def test_stability_function(

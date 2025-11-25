@@ -8,7 +8,10 @@ from typing import Dict, Union
 import pandas as pd
 from parameterized import parameterized
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import (
+    SparkDataFrameDomain,
+    SparkStringColumnDescriptor,
+)
 from tmlt.core.exceptions import DomainColumnError
 from tmlt.core.metrics import (
     HammingDistance,
@@ -96,6 +99,16 @@ class TestRename(TestComponent):
                 IfGroupedBy(["BB"], SymmetricDifference()),
                 {"B": "BB"},
             ),
+            (
+                IfGroupedBy(["A", "B"], SymmetricDifference()),
+                IfGroupedBy(["A", "BB"], SymmetricDifference()),
+                {"B": "BB"},
+            ),
+            (
+                IfGroupedBy(["A", "B"], SymmetricDifference()),
+                IfGroupedBy(["AA", "BB"], SymmetricDifference()),
+                {"A": "AA", "B": "BB"},
+            ),
         ]
     )
     def test_rename_works_correctly(
@@ -106,7 +119,12 @@ class TestRename(TestComponent):
     ):
         """Tests that rename transformation works correctly."""
         rename_transformation = Rename(
-            input_domain=SparkDataFrameDomain(self.schema_a),
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
             metric=metric,
             rename_mapping=rename_mapping,
         )

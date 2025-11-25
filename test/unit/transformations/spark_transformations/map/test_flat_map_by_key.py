@@ -338,6 +338,17 @@ def test_null_nan_inf(spark):
         metric=IfGroupedBy(["missing"], SymmetricDifference()),
         raises=pytest.raises(UnsupportedCombinationError),
     ),
+    Case("multiple-grouping-columns")(
+        input_schema={
+            "k": SparkIntegerColumnDescriptor(),
+            "a": SparkFloatColumnDescriptor(),
+        },
+        output_schema={
+            "a": SparkFloatColumnDescriptor(),
+        },
+        metric=IfGroupedBy(["k", "a"], SymmetricDifference()),
+        raises=pytest.raises(UnsupportedMetricError),
+    ),
 )
 def test_invalid_metrics(
     input_schema: Dict, output_schema: Dict, metric: Metric, raises

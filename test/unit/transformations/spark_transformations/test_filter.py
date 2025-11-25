@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 from datetime import datetime
-from typing import Union
+from typing import List, Union
 
 import pandas as pd
 from parameterized import parameterized
@@ -11,10 +11,11 @@ from pyspark.sql.types import LongType, StructField, StructType, TimestampType
 
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
     SparkTimestampColumnDescriptor,
 )
-from tmlt.core.exceptions import DomainColumnError
+from tmlt.core.exceptions import DomainColumnError, UnsupportedMetricError
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -135,13 +136,20 @@ class TestFilter(TestComponent):
             (IfGroupedBy(["B"], SumOf(SymmetricDifference())),),
             (IfGroupedBy(["B"], RootSumOfSquared(SymmetricDifference())),),
             (IfGroupedBy(["B"], SymmetricDifference()),),
+            (IfGroupedBy(["B", "C"], SymmetricDifference()),),
         ]
     )
     def test_metrics(self, metric: Union[SymmetricDifference, IfGroupedBy]):
         """Tests that Filter works correctly with supported metrics."""
         negative_filter = Filter(
             filter_expr="A < 0",
-            domain=SparkDataFrameDomain(self.schema_a),
+            domain=SparkDataFrameDomain(
+                {
+                    "A": SparkFloatColumnDescriptor(),
+                    "B": SparkIntegerColumnDescriptor(),
+                    "C": SparkIntegerColumnDescriptor(),
+                }
+            ),
             metric=metric,
         )
         self.assertEqual(negative_filter.stability_function(1), 1)
@@ -154,20 +162,27 @@ class TestFilter(TestComponent):
 
     @parameterized.expand(
         [
-            ("B", HammingDistance(), "must be SymmetricDifference"),
-            ("C", SymmetricDifference(), "C not in domain"),
+            (
+                ["B"],
+                HammingDistance(),
+                UnsupportedMetricError,
+                "must be SymmetricDifference",
+            ),
+            (["C"], SymmetricDifference(), DomainColumnError, "C not in domain"),
+            (["B", "C"], SymmetricDifference(), DomainColumnError, "C not in domain"),
         ]
     )
     def test_if_grouped_by_invalid_parameters(
         self,
-        groupby_col: str,
+        groupby_cols: List[str],
         inner_metric: Union[HammingDistance, SymmetricDifference],
+        error_type,
         error_msg: str,
     ):
         """Tests that Filter raises appropriate error with invalid parameters."""
-        with self.assertRaisesRegex((ValueError, DomainColumnError), error_msg):
+        with self.assertRaisesRegex(error_type, error_msg):
             Filter(
                 domain=SparkDataFrameDomain(self.schema_a),
-                metric=IfGroupedBy([groupby_col], SumOf(inner_metric)),
+                metric=IfGroupedBy(groupby_cols, SumOf(inner_metric)),
                 filter_expr="A < 0",
             )

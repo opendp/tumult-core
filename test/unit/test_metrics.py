@@ -1734,8 +1734,24 @@ class TestIfGroupedBy(TestCase):
                 True,
             ),
             (
+                IfGroupedBy(
+                    columns=["A", "B"], inner_metric=SumOf(AbsoluteDifference())
+                ),
+                IfGroupedBy(
+                    columns=["A", "B"], inner_metric=SumOf(AbsoluteDifference())
+                ),
+                True,
+            ),
+            (
                 IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference())),
                 IfGroupedBy(columns=["B"], inner_metric=SumOf(AbsoluteDifference())),
+                False,
+            ),
+            (
+                IfGroupedBy(
+                    columns=["A", "B"], inner_metric=SumOf(AbsoluteDifference())
+                ),
+                IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference())),
                 False,
             ),
             (
@@ -1826,7 +1842,27 @@ class TestIfGroupedBy(TestCase):
                 True,
             ),
             (
+                IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkIntegerColumnDescriptor(),
+                    }
+                ),
+                True,
+            ),
+            (
                 IfGroupedBy(["C"], RootSumOfSquared(SymmetricDifference())),
+                SparkDataFrameDomain(
+                    {
+                        "A": SparkIntegerColumnDescriptor(),
+                        "B": SparkIntegerColumnDescriptor(),
+                    }
+                ),
+                False,
+            ),
+            (
+                IfGroupedBy(["A", "C"], RootSumOfSquared(SymmetricDifference())),
                 SparkDataFrameDomain(
                     {
                         "A": SparkIntegerColumnDescriptor(),
@@ -1914,6 +1950,14 @@ class TestIfGroupedBy(TestCase):
                 pd.DataFrame({"A": [1, 2, 2], "B": [2, 2, 4], "C": [1, 1, 1]}),
                 pd.DataFrame({"A": [3, 2, 2], "B": [1, 2, 2], "C": [1, 1, 1]}),
                 "sqrt(11)",  # 1 for A=1, 3 for A=2, 1 for A=3, sqrt(1 + 9 + 1)
+            ),
+            (  # If you group by just A or just B, there are only 3 groups,
+                # 1 of which is identical. Only if you group by A and B do you
+                # get 4 groups, 1 of which is identical.
+                IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+                pd.DataFrame({"A": [1, 1, 2, 3], "B": [1, 2, 2, 3], "C": [8, 8, 8, 8]}),
+                pd.DataFrame({"A": [1, 1, 2, 3], "B": [1, 2, 2, 3], "C": [9, 9, 9, 8]}),
+                6,
             ),
         ]
     )
