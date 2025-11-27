@@ -455,9 +455,10 @@ def _select_quantile_interval(
         # try to get a noisy score which is above most others
         approx_max = Arb.from_float(float("-inf"))
 
-        # Unclear if max works correctly with Arb
+        # Unclear if max works correctly with Arb, and arb_max performs a
+        # somewhat different operation than this comparison.
         for noisy_score in noisy_scores:
-            if noisy_score > approx_max:
+            if noisy_score > approx_max:  # noqa: PLR1730
                 # only if noisy_score.lower > approx_max.upper
                 approx_max = noisy_score
 

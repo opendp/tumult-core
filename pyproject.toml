@@ -222,7 +222,6 @@ ignore = [
     #     ignore each one.
     "PLW0177", # nan-comparison
     "RUF005",  # collection-literal-concatenation
-    "PLR1730", # if-stmt-min-max
     "PLW0127", # self-assigning-variable
     "PLW0128", # redeclared-assigned-name
     "RUF015",  # unnecessary-iterable-allocation-for-first-element
