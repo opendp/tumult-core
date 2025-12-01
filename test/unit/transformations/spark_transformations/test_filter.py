@@ -15,7 +15,7 @@ from tmlt.core.domains.spark_domains import (
     SparkIntegerColumnDescriptor,
     SparkTimestampColumnDescriptor,
 )
-from tmlt.core.exceptions import DomainColumnError, UnsupportedMetricError
+from tmlt.core.exceptions import UnsupportedCombinationError, UnsupportedMetricError
 from tmlt.core.metrics import (
     HammingDistance,
     IfGroupedBy,
@@ -168,8 +168,18 @@ class TestFilter(TestComponent):
                 UnsupportedMetricError,
                 "must be SymmetricDifference",
             ),
-            (["C"], SymmetricDifference(), DomainColumnError, "C not in domain"),
-            (["B", "C"], SymmetricDifference(), DomainColumnError, "C not in domain"),
+            (
+                ["C"],
+                SymmetricDifference(),
+                UnsupportedCombinationError,
+                r"Input metric .* and input domain .* are not compatible",
+            ),
+            (
+                ["B", "C"],
+                SymmetricDifference(),
+                UnsupportedCombinationError,
+                r"Input metric .* and input domain .* are not compatible",
+            ),
         ]
     )
     def test_if_grouped_by_invalid_parameters(

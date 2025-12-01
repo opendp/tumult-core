@@ -1051,7 +1051,6 @@ class IfGroupedBy(ExactNumberMetric):
             inner_metric: Metric to be applied to corresponding groups in
                 the DataFrame.
         """
-        assert len(columns) == 1
         self._columns = columns
         self._inner_metric = inner_metric
 

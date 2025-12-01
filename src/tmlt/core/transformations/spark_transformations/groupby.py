@@ -145,11 +145,14 @@ class GroupBy(Transformation):
             else SumOf(SymmetricDifference())
         )
         if isinstance(input_metric, IfGroupedBy):
-            assert len(input_metric.columns) == 1
-            input_metric_column = input_metric.columns[0]
-            if input_metric_column not in group_keys.columns:
+            missing_metric_columns = [
+                column
+                for column in input_metric.columns
+                if column not in group_keys.columns
+            ]
+            if missing_metric_columns:
                 raise ValueError(
-                    f"Must group by IfGroupedBy metric column: {input_metric_column}"
+                    f"Must group by IfGroupedBy metric columns: {missing_metric_columns}"
                 )
             expected_input_metric = IfGroupedBy(input_metric.columns, output_metric)
             if input_metric != expected_input_metric:

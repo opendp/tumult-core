@@ -1070,10 +1070,13 @@ class ReplaceNulls(Transformation):
                     RuntimeWarning,
                 )
         if isinstance(metric, IfGroupedBy):
-            assert len(metric.columns) == 1
-            if metric.columns[0] in replace_map:
+            replaced_groupby_columns = [
+                column for column in metric.columns if column in replace_map
+            ]
+            if replaced_groupby_columns:
                 raise ValueError(
-                    "Cannot replace values in the grouping column for IfGroupedBy."
+                    "Cannot replace values in the grouping columns for IfGroupedBy, "
+                    f"but {replaced_groupby_columns} were selected."
                 )
         super().__init__(
             input_domain=input_domain,

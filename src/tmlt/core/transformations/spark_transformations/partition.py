@@ -215,9 +215,10 @@ class PartitionByKeys(Partition):
                 raise UnsupportedMetricError(
                     input_metric, "IfGroupedBy inner metric must match use_l2"
                 )
-            assert len(input_metric.columns) == 1
-            input_metric_column = input_metric.columns[0]
-            if input_metric_column in keys:
+            if all(
+                input_metric_column in keys
+                for input_metric_column in input_metric.columns
+            ):
                 output_metric = input_metric.inner_metric
             else:
                 output_metric = (

@@ -878,12 +878,12 @@ class TestReplaceNulls(PySparkTest):
                 IfGroupedBy(["A"], SumOf(AbsoluteDifference())),
             ),
             (
-                "Cannot replace values in the grouping column for IfGroupedBy.",
+                "Cannot replace values in the grouping columns for IfGroupedBy.",
                 {"A": 1},
                 IfGroupedBy(["A"], SumOf(SymmetricDifference())),
             ),
             (
-                "Cannot replace values in the grouping column for IfGroupedBy.",
+                "Cannot replace values in the grouping columns for IfGroupedBy.",
                 {"B": 1.0},
                 IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
             ),

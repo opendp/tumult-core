@@ -144,14 +144,11 @@ class Rename(Transformation):
                         " RootSumOfSquared(SymmetricDifference())"
                     ),
                 )
-            assert len(metric.columns) == 1
-            metric_column = metric.columns[0]
-            if metric_column in rename_mapping:
-                # If we add support multiple grouping columns, make sure that
-                # two grouping columns can't switch names for FilterValue
-                output_metric = IfGroupedBy(
-                    [rename_mapping[metric_column]], metric.inner_metric
-                )
+            output_metric_columns = [
+                rename_mapping[column] if column in rename_mapping else column
+                for column in metric.columns
+            ]
+            output_metric = IfGroupedBy(output_metric_columns, metric.inner_metric)
 
         output_columns = {
             rename_mapping.get(column, column): input_domain[column]

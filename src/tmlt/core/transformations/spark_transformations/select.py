@@ -126,11 +126,13 @@ class Select(Transformation):
             )
         output_columns = {col: input_domain[col] for col in columns}
         if isinstance(metric, IfGroupedBy):
-            assert len(metric.columns) == 1
-            metric_column = metric.columns[0]
-            if metric_column not in columns:
+            unselected_metric_columns = [
+                column for column in metric.columns if column not in columns
+            ]
+            if unselected_metric_columns:
                 raise ValueError(
-                    f"Column used in IfGroupedBy metric must be selected: {metric_column}."
+                    "Column used in IfGroupedBy metric must be selected: "
+                    f"{unselected_metric_columns}."
                 )
             if metric.inner_metric not in (
                 SymmetricDifference(),

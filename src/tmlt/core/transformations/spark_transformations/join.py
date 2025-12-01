@@ -318,16 +318,19 @@ class PublicJoin(Transformation):
             nulls_are_equal=join_on_nulls,
         )
         if isinstance(metric, IfGroupedBy):
-            assert len(metric.columns) == 1
-            metric_column = metric.columns[0]
-            if (
-                metric_column not in join_cols
-                and metric_column in input_domain.schema
-                and metric_column in public_df_domain.schema
-            ):
+            bad_groupby_columns = [
+                column
+                for column in metric.columns
+                if (
+                    column not in join_cols
+                    and column in input_domain.schema
+                    and column in public_df_domain.schema
+                )
+            ]
+            if bad_groupby_columns:
                 raise ValueError(
-                    f"IfGroupedBy column '{metric_column}' is an overlapping"
-                    " column but not a join key."
+                    f"IfGroupedBy columns {bad_groupby_columns} are overlapping"
+                    " columns but not join keys."
                 )
 
         public_df_join_columns = public_df.select(*join_cols)
