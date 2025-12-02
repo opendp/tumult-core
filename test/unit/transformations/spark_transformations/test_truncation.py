@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
-from typing import Dict, Type, Union
+from typing import Dict, List, Type, Union
 
 from parameterized import parameterized
 
@@ -18,6 +18,7 @@ from tmlt.core.transformations.spark_transformations.truncation import (
 )
 from tmlt.core.utils.testing import (
     PySparkTest,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -43,7 +44,7 @@ class TestLimitRowsPerGroup(PySparkTest):
         truncate = LimitRowsPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             output_metric=SymmetricDifference(),
-            grouping_column="A",
+            grouping_columns=["A"],
             threshold=2,
         )
         assert_property_immutability(truncate, prop_name)
@@ -53,48 +54,59 @@ class TestLimitRowsPerGroup(PySparkTest):
         transformation = LimitRowsPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             output_metric=SymmetricDifference(),
-            grouping_column="A",
+            grouping_columns=["A", "B"],
             threshold=2,
         )
         self.assertEqual(transformation.input_domain, SparkDataFrameDomain(self.schema))
         self.assertEqual(
-            transformation.input_metric, IfGroupedBy(["A"], SymmetricDifference())
+            transformation.input_metric, IfGroupedBy(["A", "B"], SymmetricDifference())
         )
         self.assertEqual(
             transformation.output_domain, SparkDataFrameDomain(self.schema)
         )
         self.assertEqual(transformation.output_metric, SymmetricDifference())
-        self.assertEqual(transformation.grouping_column, "A")
+        self.assertEqual(transformation.grouping_columns, ["A", "B"])
         self.assertEqual(transformation.threshold, 2)
 
     @parameterized.expand(
         [
             (grouping_column, threshold)
-            for grouping_column in ["A", "B"]
+            for grouping_column in [["A"], ["B"], ["A", "B"]]
             for threshold in [0, 1, 2]
         ]
     )
-    def test_correctness(self, grouping_column: str, threshold: int):
+    def test_correctness(self, grouping_columns: List[str], threshold: int):
         """Tests that LimitRowsPerGroup works correctly."""
         transformation = LimitRowsPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             output_metric=SymmetricDifference(),
-            grouping_column=grouping_column,
+            grouping_columns=grouping_columns,
             threshold=threshold,
         )
-        actual_df = transformation(self.df).toPandas()
-        expected_df = truncate_large_groups(
-            self.df, [grouping_column], threshold
-        ).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        actual_df = transformation(self.df)
+        expected_df = truncate_large_groups(self.df, grouping_columns, threshold)
+        assert_dataframe_equal(actual_df, expected_df)
 
-    @parameterized.expand([(3, 1, 3), (2, 2, 4), (0, 1, 0)])
-    def test_stability_function(self, threshold: int, d_in: int, expected_d_out: int):
+    @parameterized.expand(
+        [
+            (3, 1, SymmetricDifference(), 3),
+            (2, 2, SymmetricDifference(), 4),
+            (0, 1, SymmetricDifference(), 0),
+            (3, 3, IfGroupedBy(["A"], SymmetricDifference()), 3),
+        ]
+    )
+    def test_stability_function(
+        self,
+        threshold: int,
+        d_in: int,
+        output_metric: Union[SymmetricDifference, IfGroupedBy],
+        expected_d_out: int,
+    ):
         """Tests that supported metrics have the correct stability functions."""
         transformation = LimitRowsPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
-            output_metric=SymmetricDifference(),
-            grouping_column="A",
+            output_metric=output_metric,
+            grouping_columns=["A"],
             threshold=threshold,
         )
         self.assertEqual(transformation.stability_function(d_in), expected_d_out)
@@ -104,20 +116,20 @@ class TestLimitRowsPerGroup(PySparkTest):
         [
             ({"threshold": -1}, ValueError, "Threshold must be nonnegative"),
             (
-                {"grouping_column": "invalid"},
+                {"grouping_columns": ["invalid"]},
                 ValueError,
                 "Input metric .* and input domain .* are not compatible.",
             ),
             (
                 {"output_metric": IfGroupedBy(["notA"], SymmetricDifference())},
                 ValueError,
-                r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(A,"
+                r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(\['A'\],"
                 r" SymmetricDifference\(\)\)`",
             ),
             (
                 {"output_metric": IfGroupedBy(["A"], SumOf(SymmetricDifference()))},
                 ValueError,
-                r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(A,"
+                r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(\['A'\],"
                 r" SymmetricDifference\(\)\)`",
             ),
         ]
@@ -128,7 +140,7 @@ class TestLimitRowsPerGroup(PySparkTest):
         """Tests that appropriate errors are raised for invalid params."""
         args = {
             "input_domain": SparkDataFrameDomain(self.schema),
-            "grouping_column": "A",
+            "grouping_columns": ["A"],
             "threshold": 1,
             "output_metric": SymmetricDifference(),
         }
@@ -145,9 +157,10 @@ class TestLimitKeysPerGroup(PySparkTest):
         self.schema = {
             "A": SparkStringColumnDescriptor(),
             "B": SparkStringColumnDescriptor(),
+            "C": SparkStringColumnDescriptor(),
         }
         self.df = self.spark.createDataFrame(
-            [("x1", "y1"), ("x2", "y2")], schema=["A", "B"]
+            [("x1", "y1", "z1"), ("x2", "y2", "z2")], schema=["A", "B", "C"]
         )
 
     @parameterized.expand(get_all_props(LimitKeysPerGroup))
@@ -158,7 +171,7 @@ class TestLimitKeysPerGroup(PySparkTest):
             output_metric=IfGroupedBy(
                 ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
             ),
-            grouping_column="A",
+            grouping_columns=["A"],
             key_column="B",
             threshold=2,
         )
@@ -169,15 +182,15 @@ class TestLimitKeysPerGroup(PySparkTest):
         transformation = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             output_metric=IfGroupedBy(
-                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
+                ["C"], SumOf(IfGroupedBy(["A", "B"], SymmetricDifference()))
             ),
-            grouping_column="A",
-            key_column="B",
+            grouping_columns=["A", "B"],
+            key_column="C",
             threshold=2,
         )
         self.assertEqual(transformation.input_domain, SparkDataFrameDomain(self.schema))
         self.assertEqual(
-            transformation.input_metric, IfGroupedBy(["A"], SymmetricDifference())
+            transformation.input_metric, IfGroupedBy(["A", "B"], SymmetricDifference())
         )
         self.assertEqual(
             transformation.output_domain, SparkDataFrameDomain(self.schema)
@@ -185,37 +198,48 @@ class TestLimitKeysPerGroup(PySparkTest):
 
         self.assertEqual(
             transformation.output_metric,
-            IfGroupedBy(["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))),
+            IfGroupedBy(["C"], SumOf(IfGroupedBy(["A", "B"], SymmetricDifference()))),
         )
-        self.assertEqual(transformation.grouping_column, "A")
-        self.assertEqual(transformation.key_column, "B")
+        self.assertEqual(transformation.grouping_columns, ["A", "B"])
+        self.assertEqual(transformation.key_column, "C")
         self.assertEqual(transformation.threshold, 2)
 
     @parameterized.expand(
         [
-            (grouping_column, threshold)
-            for grouping_column in ["A", "B"]
+            (grouping_columns, threshold)
+            for grouping_columns in [["A"], ["B"], ["A", "B"]]
             for threshold in [0, 1, 2]
         ]
     )
-    def test_correctness(self, grouping_column: str, threshold: int):
+    def test_correctness(self, grouping_columns: List[str], threshold: int):
         """Tests that LimitKeysPerGroup works correctly."""
-        key_column = "A" if grouping_column == "B" else "B"
+        df = self.spark.createDataFrame(
+            [
+                ("x1", "y1", "z1"),
+                ("x1", "y2", "z2"),
+                ("x1", "y3", "z3"),
+                ("x2", "y1", "z4"),
+                ("x2", "y2", "z5"),
+                ("x2", "y3", "z6"),
+                ("x3", "y1", "z7"),
+                ("x3", "y2", "z8"),
+                ("x3", "y3", "z9"),
+            ],
+            schema=["A", "B", "C"],
+        )
         transformation = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             output_metric=IfGroupedBy(
-                [key_column],
-                SumOf(IfGroupedBy([grouping_column], SymmetricDifference())),
+                ["C"],
+                SumOf(IfGroupedBy(grouping_columns, SymmetricDifference())),
             ),
-            grouping_column=grouping_column,
-            key_column=key_column,
+            grouping_columns=grouping_columns,
+            key_column="C",
             threshold=threshold,
         )
-        actual_df = transformation(self.df).toPandas()
-        expected_df = limit_keys_per_group(
-            self.df, [grouping_column], [key_column], threshold
-        ).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        actual_df = transformation(df)
+        expected_df = limit_keys_per_group(df, grouping_columns, ["C"], threshold)
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand(
         [
@@ -272,7 +296,7 @@ class TestLimitKeysPerGroup(PySparkTest):
         transformation = LimitKeysPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             output_metric=output_metric,
-            grouping_column="A",
+            grouping_columns=["A"],
             key_column="B",
             threshold=threshold,
         )
@@ -284,7 +308,7 @@ class TestLimitKeysPerGroup(PySparkTest):
             ({"threshold": -1}, ValueError, "Threshold must be nonnegative"),
             (
                 {
-                    "grouping_column": "invalid",
+                    "grouping_columns": ["invalid"],
                     "output_metric": IfGroupedBy(
                         ["B"], SumOf(IfGroupedBy(["invalid"], SymmetricDifference()))
                     ),
@@ -305,11 +329,16 @@ class TestLimitKeysPerGroup(PySparkTest):
             (
                 {"output_metric": IfGroupedBy(["B"], SymmetricDifference())},
                 ValueError,
-                r"Output metric must be one of `IfGroupedBy\(B, SumOf\(IfGroupedBy\(A,"
+                r"Output metric must be one of `IfGroupedBy\(\['B'\], SumOf\(IfGroupedBy\(\['A'\],"
                 r" SymmetricDifference\(\)\)\)\)` "
-                r"or `IfGroupedBy\(B, RootSumOfSquared\(IfGroupedBy\(A,"
+                r"or `IfGroupedBy\(\['B'\], RootSumOfSquared\(IfGroupedBy\(\['A'\],"
                 r" SymmetricDifference\(\)\)\)\)` "
-                r"or `IfGroupedBy\(A, SymmetricDifference\(\)\)",
+                r"or `IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)",
+            ),
+            (
+                {"grouping_columns": ["A", "B"], "key_column": "B"},
+                ValueError,
+                "Key column cannot be a grouping column",
             ),
         ]
     )
@@ -322,7 +351,7 @@ class TestLimitKeysPerGroup(PySparkTest):
             "output_metric": IfGroupedBy(
                 ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
             ),
-            "grouping_column": "A",
+            "grouping_columns": ["A"],
             "key_column": "B",
             "threshold": 1,
         }
@@ -339,9 +368,10 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         self.schema = {
             "A": SparkStringColumnDescriptor(),
             "B": SparkStringColumnDescriptor(),
+            "C": SparkStringColumnDescriptor(),
         }
         self.df = self.spark.createDataFrame(
-            [("x1", "y1"), ("x2", "y2")], schema=["A", "B"]
+            [("x1", "y1", "z1"), ("x2", "y2", "z2")], schema=["A", "B", "C"]
         )
 
     @parameterized.expand(get_all_props(LimitRowsPerKeyPerGroup))
@@ -352,7 +382,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
             input_metric=IfGroupedBy(
                 ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
             ),
-            grouping_column="A",
+            grouping_columns=["A"],
             key_column="B",
             threshold=2,
         )
@@ -363,50 +393,61 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         transformation = LimitRowsPerKeyPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             input_metric=IfGroupedBy(
-                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
+                ["C"], SumOf(IfGroupedBy(["A", "B"], SymmetricDifference()))
             ),
-            grouping_column="A",
-            key_column="B",
+            grouping_columns=["A", "B"],
+            key_column="C",
             threshold=2,
         )
         self.assertEqual(transformation.input_domain, SparkDataFrameDomain(self.schema))
         self.assertEqual(
             transformation.input_metric,
-            IfGroupedBy(["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))),
+            IfGroupedBy(["C"], SumOf(IfGroupedBy(["A", "B"], SymmetricDifference()))),
         )
         self.assertEqual(
             transformation.output_domain, SparkDataFrameDomain(self.schema)
         )
         self.assertEqual(transformation.output_metric, SymmetricDifference())
-        self.assertEqual(transformation.grouping_column, "A")
-        self.assertEqual(transformation.key_column, "B")
+        self.assertEqual(transformation.grouping_columns, ["A", "B"])
+        self.assertEqual(transformation.key_column, "C")
         self.assertEqual(transformation.threshold, 2)
 
     @parameterized.expand(
         [
             (grouping_column, threshold)
-            for grouping_column in ["A", "B"]
+            for grouping_column in [["A"], ["B"], ["A", "B"]]
             for threshold in [0, 1, 2]
         ]
     )
-    def test_correctness(self, grouping_column: str, threshold: int):
+    def test_correctness(self, grouping_columns: List[str], threshold: int):
         """Tests that LimitRowsPerKeyPerGroup works correctly."""
-        key_column = "A" if grouping_column == "B" else "B"
+        df = self.spark.createDataFrame(
+            [
+                ("x1", "y1", "z1", "d1"),
+                ("x1", "y1", "z1", "d2"),
+                ("x1", "y1", "z1", "d3"),
+                ("x1", "y2", "z1", "d4"),
+                ("x1", "y2", "z1", "d5"),
+                ("x1", "y2", "z1", "d6"),
+                ("x1", "y1", "z3", "d7"),
+                ("x1", "y1", "z3", "d8"),
+                ("x1", "y1", "z3", "d9"),
+            ],
+            schema=["A", "B", "C", "D"],
+        )
         transformation = LimitRowsPerKeyPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             input_metric=IfGroupedBy(
-                [key_column],
-                SumOf(IfGroupedBy([grouping_column], SymmetricDifference())),
+                ["C"],
+                SumOf(IfGroupedBy(grouping_columns, SymmetricDifference())),
             ),
-            grouping_column=grouping_column,
-            key_column=key_column,
+            grouping_columns=grouping_columns,
+            key_column="C",
             threshold=threshold,
         )
-        actual_df = transformation(self.df).toPandas()
-        expected_df = truncate_large_groups(
-            self.df, [grouping_column, key_column], threshold
-        ).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        actual_df = transformation(df)
+        expected_df = truncate_large_groups(df, grouping_columns + ["C"], threshold)
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand(
         [
@@ -447,7 +488,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         transformation = LimitRowsPerKeyPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
             input_metric=input_metric,
-            grouping_column="A",
+            grouping_columns=["A"],
             key_column="B",
             threshold=threshold,
         )
@@ -461,11 +502,16 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
             (
                 {"input_metric": IfGroupedBy(["B"], SymmetricDifference())},
                 ValueError,
-                r"Input metric must be one of `IfGroupedBy\(B, SumOf\(IfGroupedBy\(A,"
+                r"Input metric must be one of `IfGroupedBy\(\['B'\], SumOf\(IfGroupedBy\(\['A'\],"
                 r" SymmetricDifference\(\)\)\)\)` "
-                r"or `IfGroupedBy\(B, RootSumOfSquared\(IfGroupedBy\(A,"
+                r"or `IfGroupedBy\(\['B'\], RootSumOfSquared\(IfGroupedBy\(\['A'\],"
                 r" SymmetricDifference\(\)\)\)\)` "
-                r"or `IfGroupedBy\(A, SymmetricDifference\(\)\)",
+                r"or `IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)",
+            ),
+            (
+                {"grouping_columns": ["A", "B"], "key_column": "B"},
+                ValueError,
+                "Key column cannot be a grouping column",
             ),
         ]
     )
@@ -475,7 +521,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         """Tests that appropriate errors are raised for invalid params."""
         args = {
             "input_domain": SparkDataFrameDomain(self.schema),
-            "grouping_column": "A",
+            "grouping_columns": ["A"],
             "key_column": "B",
             "threshold": 1,
             "input_metric": IfGroupedBy(

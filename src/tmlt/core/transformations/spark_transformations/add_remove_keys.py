@@ -346,7 +346,7 @@ class LimitRowsPerGroupValue(TransformValue):
         transformation = LimitRowsPerGroup(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             output_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
-            grouping_column=grouping_column,
+            grouping_columns=[grouping_column],
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -385,7 +385,7 @@ class LimitKeysPerGroupValue(TransformValue):
         transformation = LimitKeysPerGroup(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             output_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
-            grouping_column=grouping_column,
+            grouping_columns=[grouping_column],
             key_column=key_column,
             threshold=threshold,
         )
@@ -426,7 +426,7 @@ class LimitRowsPerKeyPerGroupValue(TransformValue):
         transformation = LimitRowsPerKeyPerGroup(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             input_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
-            grouping_column=grouping_column,
+            grouping_columns=[grouping_column],
             key_column=key_column,
             threshold=threshold,
         )
