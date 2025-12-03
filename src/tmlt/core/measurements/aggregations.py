@@ -293,13 +293,22 @@ def create_count_measurement(
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
     assert isinstance(groupby_transformation.output_domain, SparkGroupedDataFrameDomain)
 
-    if isinstance(input_metric, IfGroupedBy):
-        if input_metric.column not in groupby_transformation.group_keys.columns:
-            raise ValueError(
-                "The input_metric column must be in the groupby_transformation "
-                f"group_keys columns. Got input_metric column = {input_metric.column},"
-                f" group_keys columns = {groupby_transformation.group_keys.columns}",
-            )
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
 
     count_aggregation = create_count_aggregation(
         input_domain=groupby_transformation.output_domain,
@@ -537,6 +546,24 @@ def create_count_distinct_measurement(
                 "output domain of SparkGroupedDataFrameDomain."
             ),
         )
+
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
+
     count_distinct_aggregation = create_count_distinct_aggregation(
         input_domain=groupby_transformation.output_domain,
         input_metric=groupby_transformation.output_metric,
@@ -769,6 +796,24 @@ def create_sum_measurement(
     add_noise_to_series: AddNoiseToSeries
     assert isinstance(groupby_transformation.output_domain, SparkGroupedDataFrameDomain)
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
+
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
+
     sum_aggregation = create_sum_aggregation(
         input_domain=groupby_transformation.output_domain,
         input_metric=groupby_transformation.output_metric,
@@ -1041,9 +1086,29 @@ def create_average_measurement(
         assert average_measurement.privacy_function(d_in) == d_out
         return average_measurement
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
+    assert isinstance(
+        groupby_transformation.input_metric,
+        (HammingDistance, SymmetricDifference, IfGroupedBy),
+    )
     groupby = GroupBy(
         input_domain=deviations_map.output_domain,
-        input_metric=input_metric,
+        input_metric=groupby_transformation.input_metric,
         use_l2=groupby_transformation.use_l2,
         group_keys=groupby_transformation.group_keys,
     )
@@ -1401,6 +1466,22 @@ def create_variance_measurement(
         return variance_measurement
     assert isinstance(groupby_transformation, GroupBy)
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
     groupby = GroupBy(
         input_domain=deviations_map.output_domain,
         input_metric=deviations_map.output_metric,
@@ -2204,9 +2285,11 @@ def create_bounds_measurement(
     element_type = input_domain[measure_column]
 
     bucket_group_keys = spark.createDataFrame(
-        [(i,) for i in range(element_type.size - 1)]
-        if isinstance(element_type, SparkIntegerColumnDescriptor)
-        else [(i,) for i in range(-100, 101)],
+        (
+            [(i,) for i in range(element_type.size - 1)]
+            if isinstance(element_type, SparkIntegerColumnDescriptor)
+            else [(i,) for i in range(-100, 101)]
+        ),
         schema=StructType([StructField(rank_column, IntegerType(), False)]),
     )
 
@@ -2216,9 +2299,11 @@ def create_bounds_measurement(
 
         return {
             rank_column: clamp(
-                -100
-                if row[measure_column] == 0
-                else ceil(log2(abs(row[measure_column]))),
+                (
+                    -100
+                    if row[measure_column] == 0
+                    else ceil(log2(abs(row[measure_column])))
+                ),
                 -100 if isinstance(element_type, SparkFloatColumnDescriptor) else 0,
                 100,
             )
