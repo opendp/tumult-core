@@ -23,6 +23,7 @@ from tmlt.core.domains.spark_domains import (
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
+from tmlt.core.exceptions import DomainMismatchError, MetricMismatchError
 from tmlt.core.measurements.aggregations import (
     NoiseMechanism,
     create_average_measurement,
@@ -55,7 +56,7 @@ from tmlt.core.metrics import (
 from tmlt.core.transformations.spark_transformations.groupby import GroupBy
 from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
-from tmlt.core.utils.testing import PySparkTest
+from tmlt.core.utils.testing import Case, PySparkTest, parametrize
 
 datasets = [
     # Tests with data.
@@ -160,32 +161,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_count_measurement works correctly with groupby."""
-        if (
-            isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns
-        ):
-            with pytest.raises(ValueError) as excinfo:
-                count_measurement = create_count_measurement(
-                    input_domain=self.input_domain,
-                    input_metric=input_metric,
-                    output_measure=output_measure,
-                    noise_mechanism=noise_mechanism,
-                    d_in=sp.Integer(1),
-                    d_out=d_out,
-                    groupby_transformation=GroupBy(
-                        input_domain=self.input_domain,
-                        input_metric=input_metric,
-                        use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
-                        group_keys=self.group_keys,
-                    ),
-                    count_column="test_count",
-                )
-            assert excinfo.match(
-                "The input_metric column must be in the "
-                "groupby_transformation group_keys columns."
-            )
-            return
-
         count_measurement = create_count_measurement(
             input_domain=self.input_domain,
             input_metric=input_metric,
@@ -254,32 +229,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_count_distinct_measurement works correctly with groupby."""
-        if (
-            isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns
-        ):
-            with pytest.raises(ValueError) as excinfo:
-                count_distinct_measurement = create_count_distinct_measurement(
-                    input_domain=self.input_domain,
-                    input_metric=input_metric,
-                    output_measure=output_measure,
-                    noise_mechanism=noise_mechanism,
-                    d_in=sp.Integer(1),
-                    d_out=d_out,
-                    groupby_transformation=GroupBy(
-                        input_domain=self.input_domain,
-                        input_metric=input_metric,
-                        use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
-                        group_keys=self.group_keys,
-                    ),
-                    count_column="test_count",
-                )
-            assert excinfo.match(
-                "The input_metric column must match the "
-                "groupby_transformation group_keys columns."
-            )
-            return
-
         count_distinct_measurement = create_count_distinct_measurement(
             input_domain=self.input_domain,
             input_metric=input_metric,
@@ -349,34 +298,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_sum_measurement works correctly with groupby."""
-        if (
-            isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns
-        ):
-            with pytest.raises(ValueError) as excinfo:
-                sum_measurement = create_sum_measurement(
-                    input_domain=self.input_domain,
-                    input_metric=input_metric,
-                    output_measure=output_measure,
-                    measure_column="C",
-                    upper=sp.Integer(10),
-                    lower=sp.Integer(0),
-                    noise_mechanism=noise_mechanism,
-                    d_in=sp.Integer(1),
-                    d_out=d_out,
-                    groupby_transformation=GroupBy(
-                        input_domain=self.input_domain,
-                        input_metric=input_metric,
-                        use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
-                        group_keys=self.group_keys,
-                    ),
-                    sum_column="sumC",
-                )
-            assert excinfo.match(
-                "The input_metric column must match the "
-                "groupby_transformation group_keys columns."
-            )
-            return
         sum_measurement = create_sum_measurement(
             input_domain=self.input_domain,
             input_metric=input_metric,
@@ -447,34 +368,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         noise_mechanism: NoiseMechanism,
     ):
         """Tests that create_average_measurement works correctly with groupby."""
-        if (
-            isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns
-        ):
-            with pytest.raises(ValueError) as excinfo:
-                average_measurement = create_average_measurement(
-                    input_domain=self.input_domain,
-                    input_metric=input_metric,
-                    output_measure=output_measure,
-                    measure_column="C",
-                    upper=sp.Integer(10),
-                    lower=sp.Integer(0),
-                    noise_mechanism=noise_mechanism,
-                    d_in=sp.Integer(1),
-                    d_out=d_out,
-                    groupby_transformation=GroupBy(
-                        input_domain=self.input_domain,
-                        input_metric=input_metric,
-                        use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
-                        group_keys=self.group_keys,
-                    ),
-                    average_column="AVG(C)",
-                )
-            assert excinfo.match(
-                "The input_metric column must match the "
-                "groupby_transformation group_keys columns."
-            )
-            return
         average_measurement = create_average_measurement(
             input_domain=self.input_domain,
             input_metric=input_metric,
@@ -548,35 +441,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         output_column: Optional[str] = None,
     ):
         """Tests that create_standard_deviation_measurement works correctly."""
-        if (
-            isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns
-        ):
-            with pytest.raises(ValueError) as excinfo:
-                standard_deviation_measurement = create_standard_deviation_measurement(
-                    input_domain=self.input_domain,
-                    input_metric=input_metric,
-                    output_measure=output_measure,
-                    measure_column="C",
-                    upper=sp.Integer(10),
-                    lower=sp.Integer(0),
-                    noise_mechanism=noise_mechanism,
-                    d_in=sp.Integer(1),
-                    d_out=d_out,
-                    groupby_transformation=GroupBy(
-                        input_domain=self.input_domain,
-                        input_metric=input_metric,
-                        use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
-                        group_keys=self.group_keys,
-                    ),
-                    keep_intermediates=False,
-                    standard_deviation_column=output_column,
-                )
-            assert excinfo.match(
-                "The input_metric column must match the "
-                "groupby_transformation group_keys columns."
-            )
-            return
         standard_deviation_measurement = create_standard_deviation_measurement(
             input_domain=self.input_domain,
             input_metric=input_metric,
@@ -656,35 +520,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         output_column: Optional[str] = None,
     ):
         """Tests that create_variance_measurement works correctly with groupby."""
-        if (
-            isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns
-        ):
-            with pytest.raises(ValueError) as excinfo:
-                variance_measurement = create_variance_measurement(
-                    input_domain=self.input_domain,
-                    input_metric=input_metric,
-                    output_measure=output_measure,
-                    measure_column="C",
-                    upper=sp.Integer(10),
-                    lower=sp.Integer(0),
-                    noise_mechanism=noise_mechanism,
-                    d_in=sp.Integer(1),
-                    d_out=d_out,
-                    groupby_transformation=GroupBy(
-                        input_domain=self.input_domain,
-                        input_metric=input_metric,
-                        use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
-                        group_keys=self.group_keys,
-                    ),
-                    keep_intermediates=False,
-                    variance_column=output_column,
-                )
-            assert excinfo.match(
-                "The input_metric column must match the "
-                "groupby_transformation group_keys columns."
-            )
-            return
         variance_measurement = create_variance_measurement(
             input_domain=self.input_domain,
             input_metric=input_metric,
@@ -744,34 +579,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         output_measure: Union[PureDP, RhoZCDP],
     ):
         """Tests that create_quantile_measurement works correctly with groupby."""
-        if (
-            isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns
-        ):
-            with pytest.raises(ValueError) as excinfo:
-                quantile_measurement = create_quantile_measurement(
-                    input_domain=self.input_domain,
-                    input_metric=input_metric,
-                    output_measure=output_measure,
-                    measure_column="C",
-                    quantile=0.5,
-                    upper=10,
-                    lower=0,
-                    d_in=sp.Integer(1),
-                    d_out=d_out,
-                    groupby_transformation=GroupBy(
-                        input_domain=self.input_domain,
-                        input_metric=input_metric,
-                        use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
-                        group_keys=self.group_keys,
-                    ),
-                    quantile_column="MEDIAN(C)",
-                )
-            assert excinfo.match(
-                "The input_metric column must match the "
-                "groupby_transformation group_keys columns."
-            )
-            return
         quantile_measurement = create_quantile_measurement(
             input_domain=self.input_domain,
             input_metric=input_metric,
@@ -828,32 +635,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         output_measure: Union[PureDP, ApproxDP, RhoZCDP],
     ):
         """Tests that create_bounds_measurement works correctly with groupby."""
-        if (
-            isinstance(input_metric, IfGroupedBy)
-            and input_metric.column not in self.groupby_columns
-        ):
-            with pytest.raises(ValueError) as excinfo:
-                bounds_measurement = create_bounds_measurement(
-                    input_domain=self.input_domain,
-                    input_metric=input_metric,
-                    output_measure=output_measure,
-                    measure_column="C",
-                    threshold=0.9,
-                    d_in=sp.Integer(1),
-                    d_out=d_out,
-                    groupby_transformation=GroupBy(
-                        input_domain=self.input_domain,
-                        input_metric=input_metric,
-                        use_l2=isinstance(groupby_output_metric, RootSumOfSquared),
-                        group_keys=self.group_keys,
-                    ),
-                )
-            assert excinfo.match(
-                "The input_metric column must match the "
-                "groupby_transformation group_keys columns."
-            )
-            return
-
         bounds_measurement = create_bounds_measurement(
             input_domain=self.input_domain,
             input_metric=input_metric,
@@ -883,6 +664,151 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         for row in answer.collect():
             assert row.upper > 0
             assert row.lower < 0
+
+
+@parametrize(
+    Case("groupby metric mismatch")(
+        input_domain=SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(allow_null=True),
+                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                "C": SparkIntegerColumnDescriptor(),
+            }
+        ),
+        input_metric=IfGroupedBy("A", SumOf(SymmetricDifference())),
+        groupby_input_metric=IfGroupedBy("B", SumOf(SymmetricDifference())),
+        groupby_input_domain=SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(allow_null=True),
+                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                "C": SparkIntegerColumnDescriptor(),
+            }
+        ),
+        group_keys=pd.DataFrame({"B": [1]}),
+        groupby_use_l2=False,
+        error_type=MetricMismatchError,
+        error_message="Input metric must match with groupby transformation",
+    ),
+    Case("groupby domain mismatch")(
+        input_domain=SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(allow_null=True),
+                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                "C": SparkIntegerColumnDescriptor(),
+            }
+        ),
+        input_metric=IfGroupedBy("A", SumOf(SymmetricDifference())),
+        groupby_input_metric=IfGroupedBy("A", SumOf(SymmetricDifference())),
+        groupby_input_domain=SparkDataFrameDomain(
+            {
+                "A": SparkStringColumnDescriptor(allow_null=True),
+                "B": SparkIntegerColumnDescriptor(allow_null=True),
+                "X": SparkIntegerColumnDescriptor(),
+            }
+        ),
+        group_keys=pd.DataFrame({"A": ["x1"]}),
+        groupby_use_l2=False,
+        error_type=DomainMismatchError,
+        error_message="Input domain must match with groupby transformation",
+    ),
+)
+@parametrize(
+    Case("count")(
+        create_measurement_method=create_count_measurement,
+        extra_args={
+            "count_column": "C",
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+        },
+    ),
+    Case("count distinct")(
+        create_measurement_method=create_count_distinct_measurement,
+        extra_args={
+            "count_column": "C",
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+        },
+    ),
+    Case("sum")(
+        create_measurement_method=create_sum_measurement,
+        extra_args={
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+            "measure_column": "C",
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+        },
+    ),
+    Case("average")(
+        create_measurement_method=create_average_measurement,
+        extra_args={
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+            "measure_column": "C",
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+        },
+    ),
+    Case("standard deviation")(
+        create_measurement_method=create_standard_deviation_measurement,
+        extra_args={
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+            "measure_column": "C",
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+        },
+    ),
+    Case("variance")(
+        create_measurement_method=create_variance_measurement,
+        extra_args={
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+            "measure_column": "C",
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+        },
+    ),
+    Case("quantile")(
+        create_measurement_method=create_quantile_measurement,
+        extra_args={
+            "lower": 0,
+            "upper": 10,
+            "measure_column": "C",
+            "quantile": 0.5,
+        },
+    ),
+    Case("bounds")(
+        create_measurement_method=create_bounds_measurement,
+        extra_args={
+            "measure_column": "C",
+            "threshold": 0.9,
+        },
+    ),
+)
+def test_create_measurement_with_groupby_errors(
+    spark,
+    create_measurement_method,
+    extra_args,
+    input_domain: SparkDataFrameDomain,
+    input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
+    groupby_input_domain: SparkDataFrameDomain,
+    groupby_input_metric: IfGroupedBy,
+    group_keys: pd.DataFrame,
+    groupby_use_l2: bool,
+    error_type,
+    error_message: str,
+):
+    """Test that the various create_*_measurement methods correctly catch errors."""
+    with pytest.raises(error_type, match=error_message):
+        create_measurement_method(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            output_measure=PureDP(),
+            d_in=sp.Integer(1),
+            d_out=sp.Integer(1),
+            groupby_transformation=GroupBy(
+                input_domain=groupby_input_domain,
+                input_metric=groupby_input_metric,
+                use_l2=groupby_use_l2,
+                group_keys=spark.createDataFrame(group_keys),
+            ),
+            **extra_args,
+        )
 
 
 class TestAggregationMeasurement(PySparkTest):
