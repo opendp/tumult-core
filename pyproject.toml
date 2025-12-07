@@ -216,6 +216,9 @@ ignore = [
     # eq-without-hash: Core contains several classes with custom __eq__
     #     implementations where we don't care that the class isn't hashable.
     "PLW1641",
+    # ambiguous-variable-name: This tries to warn about variable names that are
+    #     easily confused with other symbols (e.g. l vs 1).
+    "E741",
 
     # TODO: This disables every lint that is currently failing; go through and
     #     either fix/individually disable each instance, or choose to permanently
@@ -232,7 +235,6 @@ ignore = [
     "PLW2901", # redefined-loop-name
     "E501",    # line-too-long
     "E731",    # lambda-assignment
-    "E741",    # ambiguous-variable-name
     "RET504",  # unnecessary-assign
 ]
 
