@@ -1518,7 +1518,7 @@ def create_variance_measurement(
             ),
         ).withColumn(
             variance_column,
-            sf.when(sf.col(variance_column) == np.nan, np.nan)
+            sf.when(sf.isnan(sf.col(variance_column)), np.nan)
             .when(sf.col(variance_column) < 0.0, 0.0)
             .otherwise(
                 sf.least(
