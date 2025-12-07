@@ -220,7 +220,6 @@ ignore = [
     # TODO: This disables every lint that is currently failing; go through and
     #     either fix/individually disable each instance, or choose to permanently
     #     ignore each one.
-    "PLW0177", # nan-comparison
     "RUF005",  # collection-literal-concatenation
     "PLW0127", # self-assigning-variable
     "PLW0128", # redeclared-assigned-name
