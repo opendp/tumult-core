@@ -15,6 +15,10 @@ For now, the repository remains available, and we encourage users to continue en
 Unreleased
 ----------
 
+Fixed
+~~~~~
+- When returning intermediate values, :func:`~tmlt.core.measurements.aggregations.create_average_measurement` now names the sum column correctly by default (was previously `sum(None)`).
+
 Changed
 ~~~~~~~
 - Dropped support for Python 3.9, as it has reached end-of-life.
@@ -22,6 +26,8 @@ Changed
 - Removed ``pytest`` and ``parameterized`` as dependencies.
   :mod:`tmlt.core.utils.testing` can now only be imported when the ``testing`` extra is installed;
   for most users, this module will not be used, and so the extra does not need to be installed.
+- When returning intermediate values, the measurement creation functions in :mod:`tmlt.core.measurements.aggregations` now include the midpoints when returning grouped results, and use the user-specified names when returning scalar results.
+
 
 .. _v0.18.2:
 
