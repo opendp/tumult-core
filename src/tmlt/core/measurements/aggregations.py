@@ -886,6 +886,7 @@ def create_average_measurement(
     keep_intermediates: bool = False,
     sum_column: Optional[str] = None,
     count_column: Optional[str] = None,
+    midpoint_column: Optional[str] = None,
 ) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy average measurement.
 
@@ -1003,9 +1004,11 @@ def create_average_measurement(
     if not average_column:
         average_column = f"avg({measure_column})"
     if not sum_column:
-        sum_column = f"avg({sum_column})"
+        sum_column = f"sod({measure_column})"
     if not count_column:
         count_column = "count"
+    if not midpoint_column:
+        midpoint_column = f"midpoint({measure_column})"
     midpoint_of_measure_column, exact_midpoint_of_measure_column = get_midpoint(
         lower=lower,
         upper=upper,
@@ -1072,11 +1075,15 @@ def create_average_measurement(
             sod, count = answers
             average = sod / max(1, count) + midpoint_of_measure_column
             if keep_intermediates:
+                assert average_column is not None
+                assert sum_column is not None
+                assert count_column is not None
+                assert midpoint_column is not None
                 return {
-                    "average": average,
-                    "sum_of_deviations": sod,
-                    "count": count,
-                    "midpoint_of_deviations": midpoint_of_measure_column,
+                    average_column: average,
+                    sum_column: sod,
+                    count_column: count,
+                    midpoint_column: midpoint_of_measure_column,
                 }
             return average
 
@@ -1173,7 +1180,10 @@ def create_average_measurement(
             + sf.lit(midpoint_of_measure_column),
         )
         if keep_intermediates:
-            return df_with_all_columns
+            assert midpoint_column is not None
+            return df_with_all_columns.withColumn(
+                midpoint_column, sf.lit(midpoint_of_measure_column)
+            )
         return df_with_all_columns.drop(sum_column, count_column)
 
     average_measurement = PostProcess(
@@ -1200,6 +1210,8 @@ def create_variance_measurement(
     sum_of_deviations_column: Optional[str] = None,
     sum_of_squared_deviations_column: Optional[str] = None,
     count_column: Optional[str] = None,
+    midpoint_column: Optional[str] = None,
+    midpoint_of_squares_column: Optional[str] = None,
 ) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy variance measurement.
 
@@ -1327,6 +1339,10 @@ def create_variance_measurement(
         count_column = "count"
     if variance_column is None:
         variance_column = f"var({measure_column})"
+    if not midpoint_column:
+        midpoint_column = f"midpoint({measure_column})"
+    if not midpoint_of_squares_column:
+        midpoint_of_squares_column = f"midpoint_of_squared({measure_column})"
 
     lower = ExactNumber(lower)
     upper = ExactNumber(upper)
@@ -1449,13 +1465,19 @@ def create_variance_measurement(
                         / 4,
                     )
             if keep_intermediates:
+                assert variance_column is not None
+                assert sum_of_deviations_column is not None
+                assert sum_of_squared_deviations_column is not None
+                assert count_column is not None
+                assert midpoint_column is not None
+                assert midpoint_of_squares_column is not None
                 return {
-                    "variance": variance,
-                    "sum_of_deviations": sod,
-                    "sum_of_squared_deviations": sos,
-                    "count": count,
-                    "midpoint_deviations": midpoint_of_measure_column,
-                    "midpoint_squared_deviations": midpoint_of_squared_measure_column,
+                    variance_column: variance,
+                    sum_of_deviations_column: sod,
+                    sum_of_squared_deviations_column: sos,
+                    count_column: count,
+                    midpoint_column: midpoint_of_measure_column,
+                    midpoint_of_squares_column: midpoint_of_squared_measure_column,
                 }
             return variance
 
@@ -1617,7 +1639,14 @@ def create_variance_measurement(
         )
 
         if keep_intermediates:
-            return df_with_all_columns
+            assert midpoint_column is not None
+            assert midpoint_of_squares_column is not None
+            return df_with_all_columns.withColumn(
+                midpoint_column, sf.lit(midpoint_of_measure_column)
+            ).withColumn(
+                midpoint_of_squares_column,
+                sf.lit(midpoint_of_squared_measure_column),
+            )
         return df_with_all_columns.drop(
             sum_of_deviations_column, sum_of_squared_deviations_column, count_column
         )
@@ -1646,6 +1675,8 @@ def create_standard_deviation_measurement(
     sum_of_deviations_column: Optional[str] = None,
     sum_of_squared_deviations_column: Optional[str] = None,
     count_column: Optional[str] = None,
+    midpoint_column: Optional[str] = None,
+    midpoint_of_squares_column: Optional[str] = None,
 ) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy standard deviation measurement.
 
@@ -1732,6 +1763,8 @@ def create_standard_deviation_measurement(
                     sum_of_deviations_column=sum_of_deviations_column,
                     sum_of_squared_deviations_column=sum_of_squared_deviations_column,
                     count_column=count_column,
+                    midpoint_column=midpoint_column,
+                    midpoint_of_squares_column=midpoint_of_squares_column,
                 )
             )
         elif noise_mechanism in (
@@ -1769,6 +1802,7 @@ def create_standard_deviation_measurement(
     upper = ExactNumber(upper)
     d_in = ExactNumber(d_in)
     if not standard_deviation_column:
+        print(standard_deviation_column)
         standard_deviation_column = f"stddev({measure_column})"
     variance_measurement = create_variance_measurement(
         input_domain=input_domain,
@@ -1786,6 +1820,8 @@ def create_standard_deviation_measurement(
         sum_of_squared_deviations_column=sum_of_squared_deviations_column,
         count_column=count_column,
         output_measure=output_measure,
+        midpoint_column=midpoint_column,
+        midpoint_of_squares_column=midpoint_of_squares_column,
     )
 
     if groupby_transformation is None:
@@ -1795,8 +1831,9 @@ def create_standard_deviation_measurement(
         ) -> Union[Dict[str, ArrayLike], ArrayLike]:
             """Computes variance from noisy standard deviation."""
             if isinstance(answer, dict):
-                answer["standard-deviation"] = np.sqrt(answer["variance"])
-                del answer["variance"]
+                answer[standard_deviation_column] = np.sqrt(
+                    answer[standard_deviation_column]
+                )
                 return answer
             return np.sqrt(answer)
 
