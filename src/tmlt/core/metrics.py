@@ -1047,10 +1047,15 @@ class IfGroupedBy(ExactNumberMetric):
         """Constructor.
 
         Args:
-            column: Column that the DataFrame shall be grouped by.
+            columns: Columns that the DataFrame shall be grouped by.
             inner_metric: Metric to be applied to corresponding groups in
                 the DataFrame.
         """
+        if not columns:
+            raise ValueError(
+                "Cannot instantiate an IfGroupedBy with empty columns, but got: "
+                f"{columns}"
+            )
         self._columns = tuple(columns)
         self._inner_metric = inner_metric
 

@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import pytest
 import sympy as sp
 from parameterized import parameterized
 from pyspark.sql.session import SparkSession
@@ -49,9 +50,11 @@ from tmlt.core.metrics import (
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.testing import (
+    Case,
     PySparkTest,
     assert_property_immutability,
     get_all_props,
+    parametrize,
 )
 
 
@@ -1974,6 +1977,20 @@ class TestIfGroupedBy(TestCase):
         value1 = spark.createDataFrame(df1, schema=domain.spark_schema)
         value2 = spark.createDataFrame(df2, schema=domain.spark_schema)
         self.assertEqual(metric.distance(value1, value2, domain), distance)
+
+
+@parametrize(
+    Case("empty columns")(
+        columns=[],
+        inner_metric=SymmetricDifference(),
+        error_type=ValueError,
+        message="empty columns",
+    )
+)
+def test_ifgroupedby_initialization_errors(columns, inner_metric, error_type, message):
+    """Check that IfGroupedBy's constructor does validation."""
+    with pytest.raises(error_type, match=message):
+        IfGroupedBy(columns, inner_metric)
 
 
 class TestDictMetric(TestCase):
