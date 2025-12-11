@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
+from collections.abc import Sequence
 from typing import List, Tuple
 
 from pyspark.sql import DataFrame, Window
@@ -89,7 +90,7 @@ def _hash_columns(df: DataFrame, columns: List[str]) -> Tuple[DataFrame, str]:
 
 
 def truncate_large_groups(
-    df: DataFrame, grouping_columns: List[str], threshold: int
+    df: DataFrame, grouping_columns: Sequence[str], threshold: int
 ) -> DataFrame:
     """Order rows by a hash function and keep at most ``threshold`` rows for each group.
 
@@ -226,7 +227,10 @@ def drop_large_groups(
 
 
 def limit_keys_per_group(
-    df: DataFrame, grouping_columns: List[str], key_columns: List[str], threshold: int
+    df: DataFrame,
+    grouping_columns: Sequence[str],
+    key_columns: Sequence[str],
+    threshold: int,
 ) -> DataFrame:
     """Order keys by a hash function and keep at most ``threshold`` keys for each group.
 
@@ -298,7 +302,7 @@ def limit_keys_per_group(
         key_columns: Column defining the keys.
         threshold: Maximum number of keys to include for each group.
     """
-    df, hash_column = _hash_columns(df, grouping_columns + key_columns)
+    df, hash_column = _hash_columns(df, list(grouping_columns) + list(key_columns))
     shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(
         hash_column, *key_columns
     )

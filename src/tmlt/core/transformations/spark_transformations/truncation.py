@@ -2,7 +2,8 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
-from typing import List, Union
+from collections.abc import Sequence
+from typing import Tuple, Union
 
 from pyspark.sql import DataFrame
 from typeguard import typechecked
@@ -107,7 +108,7 @@ class LimitRowsPerGroup(Transformation):
         self,
         input_domain: SparkDataFrameDomain,
         output_metric: Union[SymmetricDifference, IfGroupedBy],
-        grouping_columns: List[str],
+        grouping_columns: Sequence[str],
         threshold: int,
     ):
         """Constructor.
@@ -145,9 +146,9 @@ class LimitRowsPerGroup(Transformation):
         )
 
     @property
-    def grouping_columns(self) -> List[str]:
+    def grouping_columns(self) -> Tuple[str, ...]:
         """Returns the column defining the groups to truncate."""
-        return list(self._grouping_columns)
+        return self._grouping_columns
 
     @property
     def threshold(self) -> int:
@@ -273,7 +274,7 @@ class LimitKeysPerGroup(Transformation):
         self,
         input_domain: SparkDataFrameDomain,
         output_metric: IfGroupedBy,
-        grouping_columns: List[str],
+        grouping_columns: Sequence[str],
         key_column: str,
         threshold: int,
     ):
@@ -328,9 +329,9 @@ class LimitKeysPerGroup(Transformation):
         )
 
     @property
-    def grouping_columns(self) -> List[str]:
+    def grouping_columns(self) -> Tuple[str, ...]:
         """Returns the column defining the groups to truncate."""
-        return list(self._grouping_columns)
+        return self._grouping_columns
 
     @property
     def key_column(self) -> str:
@@ -472,7 +473,7 @@ class LimitRowsPerKeyPerGroup(Transformation):
         self,
         input_domain: SparkDataFrameDomain,
         input_metric: IfGroupedBy,
-        grouping_columns: List[str],
+        grouping_columns: Sequence[str],
         key_column: str,
         threshold: int,
     ):
@@ -532,9 +533,9 @@ class LimitRowsPerKeyPerGroup(Transformation):
         )
 
     @property
-    def grouping_columns(self) -> List[str]:
+    def grouping_columns(self) -> Tuple[str, ...]:
         """Returns the column defining the groups to truncate."""
-        return list(self._grouping_columns)
+        return self._grouping_columns
 
     @property
     def key_column(self) -> str:
@@ -567,5 +568,5 @@ class LimitRowsPerKeyPerGroup(Transformation):
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns a truncated dataframe."""
         return truncate_large_groups(
-            sdf, self.grouping_columns + [self.key_column], self.threshold
+            sdf, self.grouping_columns + (self.key_column,), self.threshold
         )
