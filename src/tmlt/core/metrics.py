@@ -1041,7 +1041,7 @@ class IfGroupedBy(ExactNumberMetric):
     @typechecked
     def __init__(
         self,
-        columns: List[str],
+        columns: Sequence[str],
         inner_metric: Union[SumOf, RootSumOfSquared, SymmetricDifference],
     ):
         """Constructor.
@@ -1051,11 +1051,11 @@ class IfGroupedBy(ExactNumberMetric):
             inner_metric: Metric to be applied to corresponding groups in
                 the DataFrame.
         """
-        self._columns = columns
+        self._columns = tuple(columns)
         self._inner_metric = inner_metric
 
     @property
-    def columns(self) -> List[str]:
+    def columns(self) -> Tuple[str, ...]:
         """Column that DataFrame shall be grouped by."""
         return self._columns
 
@@ -1115,7 +1115,9 @@ class IfGroupedBy(ExactNumberMetric):
         assert isinstance(domain, SparkDataFrameDomain)
 
         groupby_keys = (
-            value1.select(self.columns).union(value2.select(self.columns)).distinct()
+            value1.select(list(self.columns))
+            .union(value2.select(list(self.columns)))
+            .distinct()
         )
         # Constructing a GroupedDataFrame with empty rows but nonempty columns is not
         # allowed, so the distance is hardcoded to zero when there are no groups.

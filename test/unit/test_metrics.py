@@ -1791,7 +1791,7 @@ class TestIfGroupedBy(TestCase):
                 )
             ),
             (
-                "IfGroupedBy(column=['A'], "
+                "IfGroupedBy(column=('A',), "
                 "inner_metric=RootSumOfSquared(inner_metric=SymmetricDifference()))"
             ),
         )
@@ -1802,14 +1802,14 @@ class TestIfGroupedBy(TestCase):
                 )
             ),
             (
-                "IfGroupedBy(column=['A'], "
+                "IfGroupedBy(column=('A',), "
                 "inner_metric=RootSumOfSquared(inner_metric=AbsoluteDifference()))"
             ),
         )
         self.assertEqual(
             repr(IfGroupedBy(columns=["A"], inner_metric=SumOf(AbsoluteDifference()))),
             (
-                "IfGroupedBy(column=['A'], "
+                "IfGroupedBy(column=('A',), "
                 "inner_metric=SumOf(inner_metric=AbsoluteDifference()))"
             ),
         )

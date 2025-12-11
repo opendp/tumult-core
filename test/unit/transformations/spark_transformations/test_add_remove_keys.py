@@ -513,7 +513,7 @@ class TestTransformValue(PySparkTest):
             (
                 (
                     "Transformation's input metric must have a single grouping"
-                    " column, but found ['A', 'B']"
+                    " column, but found ('A', 'B')"
                 ),
                 ValueError,
                 {},
@@ -524,7 +524,7 @@ class TestTransformValue(PySparkTest):
             (
                 (
                     "Transformation's output metric must have a single grouping"
-                    " column, but found ['A', 'B']"
+                    " column, but found ('A', 'B')"
                 ),
                 ValueError,
                 {},

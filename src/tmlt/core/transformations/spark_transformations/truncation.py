@@ -126,7 +126,7 @@ class LimitRowsPerGroup(Transformation):
         self._threshold = threshold
         if isinstance(output_metric, IfGroupedBy):
             if (
-                output_metric.columns != grouping_columns
+                list(output_metric.columns) != grouping_columns
                 or output_metric.inner_metric != SymmetricDifference()
             ):
                 raise UnsupportedMetricError(
