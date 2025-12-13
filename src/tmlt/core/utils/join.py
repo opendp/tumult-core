@@ -434,6 +434,7 @@ def _rename_columns(
         right: Right dataframe.
         on: Columns to join on. If None, join on all columns with the same
             name.
+        how: Join type. Must be one of "left", "right", "inner", "outer", "left_anti".
 
     Returns:
         A tuple containing
