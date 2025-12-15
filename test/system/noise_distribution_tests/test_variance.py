@@ -85,9 +85,6 @@ def _get_var_stddev_test_cases(
             d_out=budget,
             groupby_transformation=dataset.groupby(noise_mechanism),
             keep_intermediates=True,
-            sum_of_deviations_column="sod",
-            sum_of_squared_deviations_column="sos",
-            count_column="count",
         )
 
         true_answers: Dict[str, Union[float, int]] = {
@@ -115,11 +112,11 @@ def _get_var_stddev_test_cases(
             """Postprocess the output to pull out the original measurements."""
             return (
                 df.withColumn(
-                    "sum", sf.col("sod") + (sf.lit(count) * sf.lit(midpoint_sod))
+                    "sum", sf.col("sod(B)") + (sf.lit(count) * sf.lit(midpoint_sod))
                 )
                 .withColumn(
                     "sum_of_squares",
-                    sf.col("sos") + (sf.lit(count) * sf.lit(midpoint_sos)),
+                    sf.col("sos(B)") + (sf.lit(count) * sf.lit(midpoint_sos)),
                 )
                 .select("count", "sum", "sum_of_squares")
             )

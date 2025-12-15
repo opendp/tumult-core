@@ -884,9 +884,6 @@ def create_average_measurement(
     groupby_transformation: Optional[GroupBy] = None,
     average_column: Optional[str] = None,
     keep_intermediates: bool = False,
-    sum_column: Optional[str] = None,
-    count_column: Optional[str] = None,
-    midpoint_column: Optional[str] = None,
 ) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy average measurement.
 
@@ -935,28 +932,9 @@ def create_average_measurement(
             If a groupby transformation is provided, and the measurement returns a
             DataFrame, these values will be appended as extra columns. If there is no
             groupby transformation, the measurement will return a dictionary including
-            result and the intermediate values. Key/column names are determined by the
-            values of the ``average_column``, ``sum_column``, ``count_column``, and
-            ``midpoint_column`` parameters.
-        sum_column: If ``keep_intermediates`` is True and a ``groupby_transformation``
-            is supplied, this is the column name to be used for noisy sum of deviations
-            in the DataFrame output by the measurement. If ``keep_intermediates`` is
-            true and no ``groupby_transformation`` is supplied this will be the key
-            for the noisy sum of deviations in the dictionary output by the
-            measurement. If None, this column will be named "sod(<measure_column>)".
-        count_column: If ``keep_intermediates`` is True and a ``groupby_transformation``
-            is supplied, this is the column name to be used for noisy count
-            in the DataFrame output by the measurement. If ``keep_intermediates`` is
-            true and no ``groupby_transformation`` is supplied this will be the key
-            for the noisy count in the dictionary output by the
-            measurement. If None, this column will be named "count".
-        midpoint_column: If ``keep_intermediates`` is True and a
-            ``groupby_transformation`` is supplied, this is the column name to be used
-            for midpoint (included as a column containing a single value) in the
-            DataFrame output by the measurement. If ``keep_intermediates`` is true and
-            no ``groupby_transformation`` is  supplied this will be the key for the
-            midpoint in the dictionary output by the measurement. If None, this
-            column will be named "midpoint(<measure_column)".
+            result and the intermediate values. Key/column names are
+            ``average_column``, "sod(<measure_column>)", "count", and
+            "midpoint(<measure_column>)".
     """
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
@@ -983,8 +961,6 @@ def create_average_measurement(
                     groupby_transformation=groupby_transformation,
                     average_column=average_column,
                     keep_intermediates=keep_intermediates,
-                    sum_column=sum_column,
-                    count_column=count_column,
                 )
             )
         elif noise_mechanism in (
@@ -1023,12 +999,9 @@ def create_average_measurement(
     assert isinstance(output_measure, (PureDP, RhoZCDP))
     if not average_column:
         average_column = f"avg({measure_column})"
-    if not sum_column:
-        sum_column = f"sod({measure_column})"
-    if not count_column:
-        count_column = "count"
-    if not midpoint_column:
-        midpoint_column = f"midpoint({measure_column})"
+    sum_column = f"sod({measure_column})"
+    count_column = "count"
+    midpoint_column = f"midpoint({measure_column})"
     midpoint_of_measure_column, exact_midpoint_of_measure_column = get_midpoint(
         lower=lower,
         upper=upper,
@@ -1227,11 +1200,6 @@ def create_variance_measurement(
     groupby_transformation: Optional[GroupBy] = None,
     variance_column: Optional[str] = None,
     keep_intermediates: bool = False,
-    sum_of_deviations_column: Optional[str] = None,
-    sum_of_squared_deviations_column: Optional[str] = None,
-    count_column: Optional[str] = None,
-    midpoint_column: Optional[str] = None,
-    midpoint_of_squares_column: Optional[str] = None,
 ) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy variance measurement.
 
@@ -1281,45 +1249,10 @@ def create_variance_measurement(
             transformation is provided, and the measurement returns a DataFrame, these
             values will be appended as extra columns. If there is no groupby
             transformation, the measurement will return a dictionary including
-            result and the intermediate values. Key/column names are determined by the
-            values of the ``variance_column``, ``sum_of_deviations_column``,
-            ``sum_of_squared_deviations_column``, and ``count_column``,
-            ``midpoint_column``, and ``midpoint_of_squares_column`` parameters.
-        sum_of_deviations_column: If ``keep_intermediates`` is True and a
-            ``groupby_transformation`` is supplied, this is the column name to be used
-            for noisy sum of deviations in the DataFrame output by the measurement. If
-            ``keep_intermediates`` is true and no ``groupby_transformation`` is
-            supplied this will be the key for the noisy sum of deviations in the
-            dictionary output by the measurement. If None, this column will be named
-            "sod(<measure_column>)".
-        sum_of_squared_deviations_column: If ``keep_intermediates`` is True and a
-            ``groupby_transformation`` is supplied, this is the column name to be used
-            for noisy sum of deviations of squares in the DataFrame output by the
-            measurement. If ``keep_intermediates`` is true and no
-            ``groupby_transformation`` is supplied this will be the key for the noisy
-            sum of deviations in the dictionary output by the measurement. If None,
-            this column will be named "sos(<measure_column>)".
-        count_column: If ``keep_intermediates`` is True and a ``groupby_transformation``
-            is supplied, this is the column name to be used for noisy count
-            in the DataFrame output by the measurement. If ``keep_intermediates`` is
-            true and no ``groupby_transformation`` is supplied this will be the key
-            for the noisy count in the dictionary output by the
-            measurement. If None, this column will be named "count".
-        midpoint_column: If ``keep_intermediates`` is True and a
-            ``groupby_transformation`` is supplied, this is the column name to be used
-            for the midpoint (included as a column containing a single value) in the
-            DataFrame output by the measurement. If ``keep_intermediates`` is true and
-            no ``groupby_transformation`` is  supplied this will be the key for the
-            midpoint in the dictionary output by the measurement. If None, this
-            column will be named "midpoint(<measure_column)".
-        midpoint_of_squares_column: If ``keep_intermediates`` is True and a
-            ``groupby_transformation`` is supplied, this is the column name to be used
-            for the midpoint of the squared measure column (included as a column
-            containing a single value) in the DataFrame output by the measurement.
-            If ``keep_intermediates`` is true and no ``groupby_transformation`` is
-            supplied this will be the key for the midpoint of the squared measure
-            column in the dictionary output by the measurement. If None, this
-            column will be named "midpoint_of_squared(<measure_column)".
+            result and the intermediate values. Key/column names are
+            ``variance_column``, "sod(<measure_column>)", "sos(<measure_column>)"
+            "count", "midpoint(<measure_column>)", and
+            "midpoint_of_squares(<measure_column>)".
     """
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
@@ -1346,9 +1279,6 @@ def create_variance_measurement(
                     groupby_transformation=groupby_transformation,
                     variance_column=variance_column,
                     keep_intermediates=keep_intermediates,
-                    sum_of_deviations_column=sum_of_deviations_column,
-                    sum_of_squared_deviations_column=sum_of_squared_deviations_column,
-                    count_column=count_column,
                 )
             )
         elif noise_mechanism in (
@@ -1383,18 +1313,13 @@ def create_variance_measurement(
     # help mypy
     assert isinstance(output_measure, (PureDP, RhoZCDP))
 
-    if sum_of_deviations_column is None:
-        sum_of_deviations_column = f"sod({measure_column})"
-    if sum_of_squared_deviations_column is None:
-        sum_of_squared_deviations_column = f"sos({measure_column})"
-    if count_column is None:
-        count_column = "count"
     if variance_column is None:
         variance_column = f"var({measure_column})"
-    if not midpoint_column:
-        midpoint_column = f"midpoint({measure_column})"
-    if not midpoint_of_squares_column:
-        midpoint_of_squares_column = f"midpoint_of_squared({measure_column})"
+    sum_of_deviations_column = f"sod({measure_column})"
+    sum_of_squared_deviations_column = f"sos({measure_column})"
+    count_column = "count"
+    midpoint_column = f"midpoint({measure_column})"
+    midpoint_of_squares_column = f"midpoint_of_squared({measure_column})"
 
     lower = ExactNumber(lower)
     upper = ExactNumber(upper)
@@ -1724,11 +1649,6 @@ def create_standard_deviation_measurement(
     groupby_transformation: Optional[GroupBy] = None,
     standard_deviation_column: Optional[str] = None,
     keep_intermediates: bool = False,
-    sum_of_deviations_column: Optional[str] = None,
-    sum_of_squared_deviations_column: Optional[str] = None,
-    count_column: Optional[str] = None,
-    midpoint_column: Optional[str] = None,
-    midpoint_of_squares_column: Optional[str] = None,
 ) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy standard deviation measurement.
 
@@ -1779,45 +1699,10 @@ def create_standard_deviation_measurement(
             groupby transformation is provided, and the measurement returns a
             DataFrame, these values will be appended as extra columns. If there is no
             groupby transformation, the measurement will return a dictionary including
-            result and the intermediate values. Key/column names are determined by the
-            values of the ``standard_deviation_column``, ``sum_of_deviations_column``,
-            ``sum_of_squared_deviations_column``, ``count_column``,
-            ``midpoint_column``, and ``midpoint_of_squares_column`` parameters.
-        sum_of_deviations_column: If ``keep_intermediates`` is True and a
-            ``groupby_transformation`` is supplied, this is the column name to be used
-            for noisy sum of deviations in the DataFrame output by the measurement. If
-            ``keep_intermediates`` is true and no ``groupby_transformation`` is
-            supplied this will be the key for the noisy sum of deviations in the
-            dictionary output by the measurement. If None, this column will be named
-            "sod(<measure_column>)".
-        sum_of_squared_deviations_column: If ``keep_intermediates`` is True and a
-            ``groupby_transformation`` is supplied, this is the column name to be used
-            for noisy sum of deviations of squares in the DataFrame output by the
-            measurement. If ``keep_intermediates`` is true and no
-            ``groupby_transformation`` is supplied this will be the key for the noisy
-            sum of deviations in the dictionary output by the measurement. If None,
-            this column will be named "sos(<measure_column>)".
-        count_column: If ``keep_intermediates`` is True and a ``groupby_transformation``
-            is supplied, this is the column name to be used for noisy count
-            in the DataFrame output by the measurement. If ``keep_intermediates`` is
-            true and no ``groupby_transformation`` is supplied this will be the key
-            for the noisy count in the dictionary output by the
-            measurement. If None, this column will be named "count".
-        midpoint_column: If ``keep_intermediates`` is True and a
-            ``groupby_transformation`` is supplied, this is the column name to be used
-            for the midpoint (included as a column containing a single value) in the
-            DataFrame output by the measurement. If ``keep_intermediates`` is true and
-            no ``groupby_transformation`` is  supplied this will be the key for the
-            midpoint in the dictionary output by the measurement. If None, this
-            column will be named "midpoint(<measure_column)".
-        midpoint_of_squares_column: If ``keep_intermediates`` is True and a
-            ``groupby_transformation`` is supplied, this is the column name to be used
-            for the midpoint of the squared measure column (included as a column
-            containing a single value) in the DataFrame output by the measurement.
-            If ``keep_intermediates`` is true and no ``groupby_transformation`` is
-            supplied this will be the key for the midpoint of the squared measure
-            column in the dictionary output by the measurement. If None, this
-            column will be named "midpoint_of_squared(<measure_column)".
+            result and the intermediate values. Key/column names are
+            ``standard_deviation_column``, "sod(<measure_column>)",
+            "sos(<measure_column>)", "count", "midpoint(<measure_column>)", and
+            "midpoint_of_squares(<measure_column>)".
     """
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
@@ -1844,11 +1729,6 @@ def create_standard_deviation_measurement(
                     groupby_transformation=groupby_transformation,
                     standard_deviation_column=standard_deviation_column,
                     keep_intermediates=keep_intermediates,
-                    sum_of_deviations_column=sum_of_deviations_column,
-                    sum_of_squared_deviations_column=sum_of_squared_deviations_column,
-                    count_column=count_column,
-                    midpoint_column=midpoint_column,
-                    midpoint_of_squares_column=midpoint_of_squares_column,
                 )
             )
         elif noise_mechanism in (
@@ -1886,7 +1766,6 @@ def create_standard_deviation_measurement(
     upper = ExactNumber(upper)
     d_in = ExactNumber(d_in)
     if not standard_deviation_column:
-        print(standard_deviation_column)
         standard_deviation_column = f"stddev({measure_column})"
     variance_measurement = create_variance_measurement(
         input_domain=input_domain,
@@ -1900,12 +1779,7 @@ def create_standard_deviation_measurement(
         groupby_transformation=groupby_transformation,
         variance_column=standard_deviation_column,
         keep_intermediates=keep_intermediates,
-        sum_of_deviations_column=sum_of_deviations_column,
-        sum_of_squared_deviations_column=sum_of_squared_deviations_column,
-        count_column=count_column,
         output_measure=output_measure,
-        midpoint_column=midpoint_column,
-        midpoint_of_squares_column=midpoint_of_squares_column,
     )
 
     if groupby_transformation is None:
