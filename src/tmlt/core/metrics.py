@@ -754,9 +754,7 @@ class RootSumOfSquared(AggregationMetric):
         Args:
             distances: The list of distances to aggregate.
         """
-        return ExactNumber(
-            sp.sqrt(sum((d**2 for d in distances), ExactNumber(0)).expr)
-        )
+        return ExactNumber(sp.sqrt(sum((d**2 for d in distances), ExactNumber(0)).expr))
 
 
 class OnColumn(ExactNumberMetric):
@@ -1142,6 +1140,16 @@ class IfGroupedBy(ExactNumberMetric):
             f"{self.__class__.__name__}("
             f"column={self.columns}, inner_metric={self.inner_metric})"
         )
+
+    def __eq__(self, other) -> bool:
+        """We want to make sure column order is ignored when computing equality."""
+        if not type(other) is IfGroupedBy:  # pylint: disable=C0123
+            return False
+        if self.inner_metric != other.inner_metric:
+            return False
+        if sorted(self.columns) != sorted(other.columns):
+            return False
+        return True
 
 
 class DictMetric(Metric):

@@ -1779,6 +1779,15 @@ class TestIfGroupedBy(TestCase):
                 "not a metric",
                 False,
             ),
+            (
+                IfGroupedBy(
+                    columns=["A", "B"], inner_metric=SumOf(AbsoluteDifference())
+                ),
+                IfGroupedBy(
+                    columns=["B", "A"], inner_metric=SumOf(AbsoluteDifference())
+                ),
+                True,
+            ),
         ]
     )
     def test_eq(self, value1: IfGroupedBy, value2: Any, expected: bool):
