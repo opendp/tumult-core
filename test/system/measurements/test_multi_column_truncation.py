@@ -24,6 +24,8 @@ def test_multi_column_truncation(spark: SparkSession):
     input_data = spark.createDataFrame(
         [
             ("id1", "a", "a", 1),
+            ("id1", "a", "a", 1),
+            ("id1", "a", "b", 1),
             ("id1", "a", "b", 1),
             ("id1", "b", "a", 1),
             ("id1", "b", "b", 1),

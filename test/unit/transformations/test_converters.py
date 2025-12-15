@@ -78,6 +78,19 @@ class TestUnwrapIfGroupedBy(TestComponent):
                 False,
             ),
             (IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())), 4, 4, True),
+            (IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())), 4, 4 - 1, False),
+            (
+                IfGroupedBy(["A", "B"], RootSumOfSquared(SymmetricDifference())),
+                4,
+                16,
+                True,
+            ),
+            (
+                IfGroupedBy(["A", "B"], RootSumOfSquared(SymmetricDifference())),
+                4,
+                16 - 1,
+                False,
+            ),
         ]
     )
     def test_stability_relation(

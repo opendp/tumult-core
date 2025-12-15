@@ -993,13 +993,13 @@ class OnColumns(Metric):
 
 
 class IfGroupedBy(ExactNumberMetric):
-    """Distance between two DataFrames that shall be grouped by a given attribute.
+    """Distance between two DataFrames that shall be grouped by a given set of columns.
 
     This metric is an upper bound on the distance for any fixed set of grouping keys.
     This assumes that the distance between two empty groups is zero, and the inner
     metric must satisfy this property.
 
-    The grouping column cannot contain floating point values.
+    The grouping columns cannot contain floating point values.
 
     Examples:
         >>> import pandas as pd
@@ -1016,7 +1016,7 @@ class IfGroupedBy(ExactNumberMetric):
         ...         "C": SparkIntegerColumnDescriptor(),
         ...     },
         ... )
-        >>> metric = IfGroupedBy("C", RootSumOfSquared(SymmetricDifference()))
+        >>> metric = IfGroupedBy(["C"], RootSumOfSquared(SymmetricDifference()))
         >>> value1 = spark.createDataFrame(
         ...     pd.DataFrame({"A": [1, 1, 3], "B": [2, 1, 4], "C": [1, 1, 2]}),
         ... )
@@ -1025,7 +1025,7 @@ class IfGroupedBy(ExactNumberMetric):
         ... )
         >>> metric.distance(value1, value2, domain)
         sqrt(5)
-        >>> metric = IfGroupedBy("C", SymmetricDifference())
+        >>> metric = IfGroupedBy(["C"], SymmetricDifference())
         >>> value1 = spark.createDataFrame(
         ...     pd.DataFrame({"A": [1, 1, 3], "B": [2, 1, 4], "C": [1, 1, 2]}),
         ... )
@@ -1053,6 +1053,18 @@ class IfGroupedBy(ExactNumberMetric):
             raise ValueError(
                 "Cannot instantiate an IfGroupedBy with empty columns, but got: "
                 f"{columns}"
+            )
+        if isinstance(columns, str):
+            raise ValueError(
+                f"IfGroupedBy columns cannot be a single string, but got: {columns}"
+            )
+        duplicate_columns = [
+            column for column, count in Counter(columns).items() if count > 1
+        ]
+        if duplicate_columns:
+            raise ValueError(
+                "IfGroupedBy cannot have duplicate grouping columns, but these "
+                f"appeared multiple times: {duplicate_columns}"
             )
         self._columns = tuple(columns)
         self._inner_metric = inner_metric

@@ -1971,6 +1971,14 @@ class TestIfGroupedBy(TestCase):
                 pd.DataFrame({"A": [1, 1, 2, 3], "B": [1, 2, 2, 3], "C": [9, 9, 9, 8]}),
                 6,
             ),
+            (  # If you group by just A or just B, there are only 3 groups,
+                # 1 of which is identical. Only if you group by A and B do you
+                # get 4 groups, 1 of which is identical.
+                IfGroupedBy(["A", "B"], RootSumOfSquared(SymmetricDifference())),
+                pd.DataFrame({"A": [1, 1, 2, 3], "B": [1, 2, 2, 3], "C": [8, 8, 8, 8]}),
+                pd.DataFrame({"A": [1, 1, 2, 3], "B": [1, 2, 2, 3], "C": [9, 9, 9, 8]}),
+                "sqrt(12)",
+            ),
         ]
     )
     def test_distance(self, metric: Metric, df1: Any, df2: Any, distance: Any):
@@ -1994,7 +2002,19 @@ class TestIfGroupedBy(TestCase):
         inner_metric=SymmetricDifference(),
         error_type=ValueError,
         message="empty columns",
-    )
+    ),
+    Case("duplicate columns")(
+        columns=["A", "A"],
+        inner_metric=SymmetricDifference(),
+        error_type=ValueError,
+        message="duplicate grouping columns",
+    ),
+    Case("bare string")(
+        columns="A",
+        inner_metric=SymmetricDifference(),
+        error_type=ValueError,
+        message="string",
+    ),
 )
 def test_ifgroupedby_initialization_errors(columns, inner_metric, error_type, message):
     """Check that IfGroupedBy's constructor does validation."""

@@ -44,9 +44,11 @@ from tmlt.core.transformations.spark_transformations.groupby import (
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.misc import get_fullname
 from tmlt.core.utils.testing import (
+    Case,
     PySparkTest,
     assert_property_immutability,
     get_all_props,
+    parametrize,
 )
 
 
@@ -186,39 +188,6 @@ class TestGroupBy(PySparkTest):
                 ),
             )
 
-    def test_stability_function(self):
-        """Tests that stability function is correct."""
-        groupby_transformation = GroupBy(
-            input_domain=self.domain,
-            input_metric=SymmetricDifference(),
-            use_l2=True,
-            group_keys=self.group_keys,
-        )
-        self.assertTrue(groupby_transformation.stability_function(1), 1)
-        groupby_hamming_to_symmetric = GroupBy(
-            input_domain=self.domain,
-            input_metric=HammingDistance(),
-            use_l2=False,
-            group_keys=self.group_keys,
-        )
-        self.assertTrue(groupby_hamming_to_symmetric.stability_function(1) == 2)
-        groupby_ifgroupbedby_to_symmetric = GroupBy(
-            input_domain=self.domain,
-            input_metric=IfGroupedBy(["A"], SumOf(SymmetricDifference())),
-            use_l2=False,
-            group_keys=self.group_keys,
-        )
-        self.assertTrue(groupby_ifgroupbedby_to_symmetric.stability_function(1) == 1)
-        groupby_ifgroupbedby_multicolumn_to_symmetric = GroupBy(
-            input_domain=self.domain,
-            input_metric=IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
-            use_l2=False,
-            group_keys=self.group_keys.withColumn("B", lit("B")),
-        )
-        self.assertTrue(
-            groupby_ifgroupbedby_multicolumn_to_symmetric.stability_function(1) == 1
-        )
-
     def test_correctness(self):
         """Tests that GroupBy transformation works correctly."""
         groupby_transformation = GroupBy(
@@ -254,6 +223,67 @@ class TestGroupBy(PySparkTest):
         self.assert_frame_equal_with_sort(
             grouped_dataframe.group_keys.toPandas(), pd.DataFrame()
         )
+
+
+@parametrize(
+    Case("symmetric distance")(
+        input_metric=SymmetricDifference(),
+        use_l2=True,
+        group_keys=pd.DataFrame({"A": [1, 2, 3]}),
+        expected_distance=1,
+    ),
+    Case("hamming distance")(
+        input_metric=HammingDistance(),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3]}),
+        expected_distance=2,
+    ),
+    Case("ifgroupedby single column")(
+        input_metric=IfGroupedBy(["A"], SumOf(SymmetricDifference())),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3]}),
+        expected_distance=1,
+    ),
+    Case("ifgroupedby multi column")(
+        input_metric=IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]}),
+        expected_distance=1,
+    ),
+    Case("ifgroupedby single column subset")(
+        input_metric=IfGroupedBy(["A"], SumOf(SymmetricDifference())),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]}),
+        expected_distance=1,
+    ),
+    Case("ifgroupedby multi column subset")(
+        input_metric=IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6], "C": [7, 8, 9]}),
+        expected_distance=1,
+    ),
+)
+def test_stability_function(
+    spark,
+    input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
+    use_l2: bool,
+    group_keys: pd.DataFrame,
+    expected_distance,
+):
+    """Tests that stability function is correct."""
+    groupby_transformation = GroupBy(
+        input_domain=SparkDataFrameDomain(
+            {
+                "A": SparkIntegerColumnDescriptor(),
+                "B": SparkIntegerColumnDescriptor(),
+                "C": SparkIntegerColumnDescriptor(),
+            }
+        ),
+        input_metric=input_metric,
+        use_l2=use_l2,
+        group_keys=spark.createDataFrame(group_keys),
+    )
+    assert groupby_transformation.stability_function(1) == expected_distance
 
 
 class TestDerivedTransformations(PySparkTest):

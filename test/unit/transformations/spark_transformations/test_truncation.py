@@ -2,8 +2,10 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
+import re
 from typing import Dict, List, Type, Union
 
+import pyspark.sql.functions as sf
 from parameterized import parameterized
 
 from tmlt.core.domains.spark_domains import (
@@ -86,6 +88,10 @@ class TestLimitRowsPerGroup(PySparkTest):
         actual_df = transformation(self.df)
         expected_df = truncate_large_groups(self.df, grouping_columns, threshold)
         assert_dataframe_equal(actual_df, expected_df)
+        rows_per_group = actual_df.groupby(grouping_columns).count()
+        self.assertTrue(
+            all([row["count"] <= threshold for row in rows_per_group.collect()])
+        )
 
     @parameterized.expand(
         [
@@ -123,14 +129,18 @@ class TestLimitRowsPerGroup(PySparkTest):
             (
                 {"output_metric": IfGroupedBy(["notA"], SymmetricDifference())},
                 ValueError,
-                r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(\['A'\],"
-                r" SymmetricDifference\(\)\)`",
+                re.escape(
+                    "Output metric must be `SymmetricDifference()` or "
+                    "`IfGroupedBy(['A'], SymmetricDifference())`"
+                ),
             ),
             (
                 {"output_metric": IfGroupedBy(["A"], SumOf(SymmetricDifference()))},
                 ValueError,
-                r"Output metric must be `SymmetricDifference\(\)` or `IfGroupedBy\(\['A'\],"
-                r" SymmetricDifference\(\)\)`",
+                re.escape(
+                    "Output metric must be `SymmetricDifference()` or "
+                    "`IfGroupedBy(['A'], SymmetricDifference())`"
+                ),
             ),
         ]
     )
@@ -240,6 +250,12 @@ class TestLimitKeysPerGroup(PySparkTest):
         actual_df = transformation(df)
         expected_df = limit_keys_per_group(df, grouping_columns, ["C"], threshold)
         assert_dataframe_equal(actual_df, expected_df)
+        keys_per_group = actual_df.groupby(grouping_columns).agg(
+            sf.count_distinct("C").alias("count")
+        )
+        self.assertTrue(
+            all([row["count"] <= threshold for row in keys_per_group.collect()])
+        )
 
     @parameterized.expand(
         [
@@ -448,6 +464,10 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         actual_df = transformation(df)
         expected_df = truncate_large_groups(df, grouping_columns + ["C"], threshold)
         assert_dataframe_equal(actual_df, expected_df)
+        rows_per_key_per_group = actual_df.groupby(grouping_columns + ["C"]).count()
+        assert all(
+            [row["count"] <= threshold for row in rows_per_key_per_group.collect()]
+        )
 
     @parameterized.expand(
         [
