@@ -248,7 +248,15 @@ class TestPartitionByKeys(TestComponent):
                 IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
                 ["A"],
                 [("a1",), ("a2",)],
-                SumOf(IfGroupedBy(["A", "B"], SumOf(SymmetricDifference()))),
+                SumOf(IfGroupedBy(["B"], SumOf(SymmetricDifference()))),
+                2,
+                2,
+            ),
+            (
+                IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+                ["A", "C"],
+                [("a1", "c1"), ("a2", "c2")],
+                SumOf(IfGroupedBy(["B"], SumOf(SymmetricDifference()))),
                 2,
                 2,
             ),
@@ -275,7 +283,11 @@ class TestPartitionByKeys(TestComponent):
         use_l2 = isinstance(expected_output_metric, RootSumOfSquared)
         partition_op = PartitionByKeys(
             input_domain=SparkDataFrameDomain(
-                {"A": SparkStringColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                    "C": SparkStringColumnDescriptor(),
+                }
             ),
             input_metric=input_metric,
             use_l2=use_l2,
