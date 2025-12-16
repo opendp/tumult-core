@@ -194,6 +194,12 @@ source = ["src/tmlt/core", ".nox/**/site-packages/tmlt/core"]
 # Linter configuration
 
 [tool.ruff.lint]
+# Enable preview rules, but only ones that are explicitly enabled; there are a
+# handful of rules we want that are in preview, but for the most part we can
+# wait for rules to stabilize.
+preview = true
+explicit-preview-rules = true
+
 # A list of all of Ruff's rules can be found at https://docs.astral.sh/ruff/rules/
 select = [
     # Enable Ruff-specific lints plus Pylint, pydocstyle, pyflakes, and pycodestyle.
@@ -201,7 +207,11 @@ select = [
     # because they are overlapping Ruff only implements them in one set of rules.
     "RUF", "PL", "D", "F", "E", "W",
     # Also enable a subset of flake8 rules, for similar reasons to pyflakes/pycodestyle.
-    "ISC", "SLF"
+    "ISC", "SLF",
+
+    # Various preview rules that we want to use
+    "DOC102", # docstring-extraneous-parameter
+    "DOC202", # docstring-extraneous-returns
 ]
 ignore = [
     # too-many-*: These rules are too context-dependent to be generally useful,
@@ -227,7 +237,6 @@ ignore = [
     "PLW0127", # self-assigning-variable
     "PLW0128", # redeclared-assigned-name
     "RUF015",  # unnecessary-iterable-allocation-for-first-element
-    "D417",    # undocumented-param
     "RUF043",  # pytest-raises-ambiguous-pattern
     "D205",    # missing-blank-line-after-summary
     "D102",    # undocumented-public-method
