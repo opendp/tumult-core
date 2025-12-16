@@ -1155,7 +1155,7 @@ class IfGroupedBy(ExactNumberMetric):
             f"column={self.columns}, inner_metric={self.inner_metric})"
         )
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         """We want to make sure column order is ignored when computing equality."""
         if type(other) is not IfGroupedBy:  # pylint: disable=C0123
             return False

@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from parameterized import parameterized, parameterized_class
-from pyspark.sql.functions import lit
 from pyspark.sql.types import (
     DataType,
     DateType,
