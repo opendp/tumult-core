@@ -933,8 +933,8 @@ def create_average_measurement(
             DataFrame, these values will be appended as extra columns. If there is no
             groupby transformation, the measurement will return a dictionary including
             result and the intermediate values. Key/column names are
-            ``average_column``, "sod(<measure_column>)", "count", and
-            "midpoint(<measure_column>)".
+            ``average_column``, ``sod(<measure_column>)``, ``count``, and
+            ``midpoint(<measure_column>)``.
     """
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
