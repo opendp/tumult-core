@@ -757,7 +757,7 @@ class Sum(Transformation):
             raise ValueError("Lower clipping bound should be at least -2^970.")
 
         self._measure_column = measure_column
-        output_domain = output_domain = (
+        output_domain = (
             NumpyFloatDomain() if measure_column_nonintegral else NumpyIntegerDomain()
         )
         super().__init__(
