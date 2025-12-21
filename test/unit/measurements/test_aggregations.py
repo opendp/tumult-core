@@ -56,7 +56,12 @@ from tmlt.core.metrics import (
 from tmlt.core.transformations.spark_transformations.groupby import GroupBy
 from tmlt.core.utils.distributions import double_sided_geometric_cmf_exact
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
-from tmlt.core.utils.testing import Case, PySparkTest, parametrize
+from tmlt.core.utils.testing import (
+    Case,
+    PySparkTest,
+    assert_dataframe_equal,
+    parametrize,
+)
 
 datasets = [
     # Tests with data.
@@ -809,6 +814,317 @@ def test_create_measurement_with_groupby_errors(
             ),
             **extra_args,
         )
+
+
+@parametrize(
+    Case("average_default_names")(
+        measurement_method=create_average_measurement,
+        extra_args={},
+        expected_output={
+            "avg(value)": 2,
+            "sod(value)": -9,
+            "count": 3,
+            "midpoint(value)": 5,
+        },
+    ),
+    Case("variance_default_names")(
+        measurement_method=create_variance_measurement,
+        extra_args={},
+        expected_output={
+            "var(value)": 1,
+            "sod(value)": -9,
+            "sos(value)": -136,
+            "count": 3,
+            "midpoint(value)": 5,
+            "midpoint_of_squared(value)": 50,
+        },
+    ),
+    Case("standard_deviation_default_names")(
+        measurement_method=create_standard_deviation_measurement,
+        extra_args={},
+        expected_output={
+            "stddev(value)": 1,
+            "sod(value)": -9,
+            "sos(value)": -136,
+            "count": 3,
+            "midpoint(value)": 5,
+            "midpoint_of_squared(value)": 50,
+        },
+    ),
+    Case("average_custom_names")(
+        measurement_method=create_average_measurement,
+        extra_args={
+            "average_column": "foo",
+        },
+        expected_output={
+            "foo": 2,
+            "sod(value)": -9,
+            "count": 3,
+            "midpoint(value)": 5,
+        },
+    ),
+    Case("variance_custom_names")(
+        measurement_method=create_variance_measurement,
+        extra_args={
+            "variance_column": "foo",
+        },
+        expected_output={
+            "foo": 1,
+            "sod(value)": -9,
+            "sos(value)": -136,
+            "count": 3,
+            "midpoint(value)": 5,
+            "midpoint_of_squared(value)": 50,
+        },
+    ),
+    Case("standard_deviation_custom_names")(
+        measurement_method=create_standard_deviation_measurement,
+        extra_args={
+            "standard_deviation_column": "foo",
+        },
+        expected_output={
+            "foo": 1,
+            "sod(value)": -9,
+            "sos(value)": -136,
+            "count": 3,
+            "midpoint(value)": 5,
+            "midpoint_of_squared(value)": 50,
+        },
+    ),
+)
+def test_scalar_intermediates(spark, measurement_method, extra_args, expected_output):
+    """Tests the intermediates returned by create_average_measurement."""
+    data = spark.createDataFrame(
+        [
+            (1,),
+            (2,),
+            (3,),
+        ],
+        ["value"],
+    )
+
+    domain = SparkDataFrameDomain(
+        {
+            "value": SparkIntegerColumnDescriptor(),
+        }
+    )
+
+    metric = SymmetricDifference()
+
+    avg = measurement_method(
+        domain,
+        metric,
+        PureDP(),
+        float("inf"),
+        NoiseMechanism.GEOMETRIC,
+        groupby_transformation=None,
+        measure_column="value",
+        lower=0,
+        upper=10,
+        keep_intermediates=True,
+        **extra_args,
+    )
+
+    output = avg(data)
+
+    assert output == expected_output
+
+
+@parametrize(
+    Case("average_default_columns")(
+        measurement_method=create_average_measurement,
+        extra_args={},
+        expected_output=pd.DataFrame(
+            [
+                {
+                    "group": "a",
+                    "avg(value)": 1,
+                    "sod(value)": -12,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                },
+                {
+                    "group": "b",
+                    "avg(value)": 5,
+                    "sod(value)": 0,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                },
+            ]
+        ),
+    ),
+    Case("variance_default_columns")(
+        measurement_method=create_variance_measurement,
+        extra_args={},
+        expected_output=pd.DataFrame(
+            [
+                {
+                    "group": "a",
+                    "var(value)": 1,
+                    "sod(value)": -12,
+                    "sos(value)": -145,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                    "midpoint_of_squared(value)": 50,
+                },
+                {
+                    "group": "b",
+                    "var(value)": 1,
+                    "sod(value)": 0,
+                    "sos(value)": -73,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                    "midpoint_of_squared(value)": 50,
+                },
+            ]
+        ),
+    ),
+    Case("standard_deviation_default_columns")(
+        measurement_method=create_standard_deviation_measurement,
+        extra_args={},
+        expected_output=pd.DataFrame(
+            [
+                {
+                    "group": "a",
+                    "stddev(value)": 1,
+                    "sod(value)": -12,
+                    "sos(value)": -145,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                    "midpoint_of_squared(value)": 50,
+                },
+                {
+                    "group": "b",
+                    "stddev(value)": 1,
+                    "sod(value)": 0,
+                    "sos(value)": -73,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                    "midpoint_of_squared(value)": 50,
+                },
+            ]
+        ),
+    ),
+    Case("average_custom_columns")(
+        measurement_method=create_average_measurement,
+        extra_args={
+            "average_column": "foo",
+        },
+        expected_output=pd.DataFrame(
+            [
+                {
+                    "group": "a",
+                    "foo": 1,
+                    "sod(value)": -12,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                },
+                {
+                    "group": "b",
+                    "foo": 5,
+                    "sod(value)": 0,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                },
+            ]
+        ),
+    ),
+    Case("variance_custom_columns")(
+        measurement_method=create_variance_measurement,
+        extra_args={
+            "variance_column": "foo",
+        },
+        expected_output=pd.DataFrame(
+            [
+                {
+                    "group": "a",
+                    "foo": 1,
+                    "sod(value)": -12,
+                    "sos(value)": -145,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                    "midpoint_of_squared(value)": 50,
+                },
+                {
+                    "group": "b",
+                    "foo": 1,
+                    "sod(value)": 0,
+                    "sos(value)": -73,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                    "midpoint_of_squared(value)": 50,
+                },
+            ]
+        ),
+    ),
+    Case("standard_deviation_custom_columns")(
+        measurement_method=create_standard_deviation_measurement,
+        extra_args={
+            "standard_deviation_column": "foo",
+        },
+        expected_output=pd.DataFrame(
+            [
+                {
+                    "group": "a",
+                    "foo": 1,
+                    "sod(value)": -12,
+                    "sos(value)": -145,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                    "midpoint_of_squared(value)": 50,
+                },
+                {
+                    "group": "b",
+                    "foo": 1,
+                    "sod(value)": 0,
+                    "sos(value)": -73,
+                    "count": 3,
+                    "midpoint(value)": 5,
+                    "midpoint_of_squared(value)": 50,
+                },
+            ]
+        ),
+    ),
+)
+def test_grouped_intermediates(spark, measurement_method, extra_args, expected_output):
+    """Tests the intermediates returned by create_average_measurement."""
+    data = spark.createDataFrame(
+        [("a", 0), ("a", 1), ("a", 2), ("b", 4), ("b", 5), ("b", 6)],
+        ["group", "value"],
+    )
+
+    group_keys = spark.createDataFrame([("a",), ("b",)], ["group"])
+
+    domain = SparkDataFrameDomain(
+        {
+            "group": SparkStringColumnDescriptor(),
+            "value": SparkIntegerColumnDescriptor(),
+        }
+    )
+
+    metric = SymmetricDifference()
+
+    groupby = GroupBy(
+        input_domain=domain, input_metric=metric, use_l2=False, group_keys=group_keys
+    )
+
+    avg = measurement_method(
+        input_domain=domain,
+        input_metric=metric,
+        output_measure=PureDP(),
+        d_out=float("inf"),
+        noise_mechanism=NoiseMechanism.GEOMETRIC,
+        groupby_transformation=groupby,
+        measure_column="value",
+        lower=0,
+        upper=10,
+        keep_intermediates=True,
+        **extra_args,
+    )
+
+    output = avg(data)
+
+    assert_dataframe_equal(output, expected_output)
 
 
 class TestAggregationMeasurement(PySparkTest):
