@@ -67,7 +67,7 @@ class TestLimitRowsPerGroup(PySparkTest):
             transformation.output_domain, SparkDataFrameDomain(self.schema)
         )
         self.assertEqual(transformation.output_metric, SymmetricDifference())
-        self.assertEqual(transformation.grouping_columns, ("A", "B"))
+        self.assertEqual(transformation.grouping_columns, frozenset({"A", "B"}))
         self.assertEqual(transformation.threshold, 2)
 
     @parameterized.expand(
@@ -219,7 +219,7 @@ class TestLimitKeysPerGroup(PySparkTest):
             transformation.output_metric,
             IfGroupedBy(["C"], SumOf(IfGroupedBy(["A", "B"], SymmetricDifference()))),
         )
-        self.assertEqual(transformation.grouping_columns, ("A", "B"))
+        self.assertEqual(transformation.grouping_columns, frozenset({"A", "B"}))
         self.assertEqual(transformation.key_column, "C")
         self.assertEqual(transformation.threshold, 2)
 
@@ -433,7 +433,7 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
             transformation.output_domain, SparkDataFrameDomain(self.schema)
         )
         self.assertEqual(transformation.output_metric, SymmetricDifference())
-        self.assertEqual(transformation.grouping_columns, ("A", "B"))
+        self.assertEqual(transformation.grouping_columns, frozenset({"A", "B"}))
         self.assertEqual(transformation.key_column, "C")
         self.assertEqual(transformation.threshold, 2)
 

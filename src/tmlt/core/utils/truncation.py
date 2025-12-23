@@ -3,8 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
-from collections.abc import Sequence
-from typing import List, Tuple
+from typing import Collection, List, Tuple
 
 from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as sf
@@ -90,7 +89,7 @@ def _hash_columns(df: DataFrame, columns: List[str]) -> Tuple[DataFrame, str]:
 
 
 def truncate_large_groups(
-    df: DataFrame, grouping_columns: Sequence[str], threshold: int
+    df: DataFrame, grouping_columns: Collection[str], threshold: int
 ) -> DataFrame:
     """Order rows by a hash function and keep at most ``threshold`` rows for each group.
 
@@ -228,8 +227,8 @@ def drop_large_groups(
 
 def limit_keys_per_group(
     df: DataFrame,
-    grouping_columns: Sequence[str],
-    key_columns: Sequence[str],
+    grouping_columns: Collection[str],
+    key_columns: Collection[str],
     threshold: int,
 ) -> DataFrame:
     """Order keys by a hash function and keep at most ``threshold`` keys for each group.

@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, ClassVar, List, Mapping, Optional, Sequence
+from typing import Any, ClassVar, Collection, Mapping, Optional, Sequence
 
 import numpy as np
 from pyspark import Row
@@ -35,7 +35,7 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
-from tmlt.core.utils.misc import escape_column_name, get_fullname
+from tmlt.core.utils.misc import ConciseFrozenSet, escape_column_name, get_fullname
 
 
 class SparkColumnDescriptor(ABC):
@@ -495,25 +495,29 @@ class SparkGroupedDataFrameDomain(Domain):
     """Domain of grouped DataFrames."""
 
     @typechecked
-    def __init__(self, schema: SparkColumnsDescriptor, groupby_columns: Sequence[str]):
+    def __init__(
+        self, schema: SparkColumnsDescriptor, groupby_columns: Collection[str]
+    ):
         """Constructor.
 
         Args:
             schema: Mapping from column name to column descriptors for all columns.
             groupby_columns: List of columns used for grouping.
         """
-        if len(groupby_columns) != len(set(groupby_columns)):
+        self._groupby_columns = ConciseFrozenSet(groupby_columns)
+        if len(groupby_columns) != len(self.groupby_columns):
             raise ValueError("groupby_columns contains duplicate column names.")
-        invalid_groupby_columns = set(groupby_columns) - set(schema)
+        invalid_groupby_columns = self.groupby_columns - set(schema)
         if invalid_groupby_columns:
-            raise ValueError(f"Invalid groupby columns: {invalid_groupby_columns}")
+            raise ValueError(
+                f"Invalid groupby columns: {ConciseFrozenSet(invalid_groupby_columns)}"
+            )
 
         for column in groupby_columns:
             if isinstance(schema[column], SparkFloatColumnDescriptor):
                 raise ValueError(f"Can not group by a floating point column: {column}")
 
         self._schema = dict(schema.items())
-        self._groupby_columns = list(groupby_columns)
         # TODO(#2727): Remove this check once we update typeguard to ^3.0.0
         for key, domain in self._schema.items():
             if not isinstance(domain, SparkColumnDescriptor):
@@ -529,9 +533,9 @@ class SparkGroupedDataFrameDomain(Domain):
         return self._schema.copy()
 
     @property
-    def groupby_columns(self) -> List[str]:
+    def groupby_columns(self) -> frozenset[str]:
         """Returns list of columns used for grouping."""
-        return self._groupby_columns.copy()
+        return self._groupby_columns
 
     def __repr__(self) -> str:
         """Return string representation of the object."""

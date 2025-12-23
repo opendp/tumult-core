@@ -2,8 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
-from collections.abc import Sequence
-from typing import Tuple, Union
+from typing import Collection, Union
 
 from pyspark.sql import DataFrame
 from typeguard import typechecked
@@ -13,6 +12,7 @@ from tmlt.core.exceptions import UnsupportedMetricError
 from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.utils.misc import ConciseFrozenSet
 from tmlt.core.utils.truncation import limit_keys_per_group, truncate_large_groups
 
 
@@ -108,7 +108,7 @@ class LimitRowsPerGroup(Transformation):
         self,
         input_domain: SparkDataFrameDomain,
         output_metric: Union[SymmetricDifference, IfGroupedBy],
-        grouping_columns: Sequence[str],
+        grouping_columns: Collection[str],
         threshold: int,
     ):
         """Constructor.
@@ -123,11 +123,11 @@ class LimitRowsPerGroup(Transformation):
         """
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
-        self._grouping_columns = tuple(grouping_columns)
+        self._grouping_columns = ConciseFrozenSet(grouping_columns)
         self._threshold = threshold
         if isinstance(output_metric, IfGroupedBy):
             if (
-                list(output_metric.columns) != grouping_columns
+                output_metric.columns != self.grouping_columns
                 or output_metric.inner_metric != SymmetricDifference()
             ):
                 raise UnsupportedMetricError(
@@ -147,7 +147,7 @@ class LimitRowsPerGroup(Transformation):
         )
 
     @property
-    def grouping_columns(self) -> Tuple[str, ...]:
+    def grouping_columns(self) -> frozenset[str]:
         """Returns the column defining the groups to truncate."""
         return self._grouping_columns
 
@@ -275,7 +275,7 @@ class LimitKeysPerGroup(Transformation):
         self,
         input_domain: SparkDataFrameDomain,
         output_metric: IfGroupedBy,
-        grouping_columns: Sequence[str],
+        grouping_columns: Collection[str],
         key_column: str,
         threshold: int,
     ):
@@ -295,7 +295,7 @@ class LimitKeysPerGroup(Transformation):
             raise ValueError("Threshold must be nonnegative")
         if key_column in grouping_columns:
             raise ValueError("Key column cannot be a grouping column")
-        self._grouping_columns = tuple(grouping_columns)
+        self._grouping_columns = ConciseFrozenSet(grouping_columns)
         self._key_column = key_column
         self._threshold = threshold
         valid_output_metrics = [
@@ -330,7 +330,7 @@ class LimitKeysPerGroup(Transformation):
         )
 
     @property
-    def grouping_columns(self) -> Tuple[str, ...]:
+    def grouping_columns(self) -> frozenset[str]:
         """Returns the column defining the groups to truncate."""
         return self._grouping_columns
 
@@ -474,7 +474,7 @@ class LimitRowsPerKeyPerGroup(Transformation):
         self,
         input_domain: SparkDataFrameDomain,
         input_metric: IfGroupedBy,
-        grouping_columns: Sequence[str],
+        grouping_columns: Collection[str],
         key_column: str,
         threshold: int,
     ):
@@ -494,7 +494,7 @@ class LimitRowsPerKeyPerGroup(Transformation):
             raise ValueError("Threshold must be nonnegative")
         if key_column in grouping_columns:
             raise ValueError("Key column cannot be a grouping column")
-        self._grouping_columns = tuple(grouping_columns)
+        self._grouping_columns = ConciseFrozenSet(grouping_columns)
         self._key_column = key_column
         self._threshold = threshold
 
@@ -534,7 +534,7 @@ class LimitRowsPerKeyPerGroup(Transformation):
         )
 
     @property
-    def grouping_columns(self) -> Tuple[str, ...]:
+    def grouping_columns(self) -> frozenset[str]:
         """Returns the column defining the groups to truncate."""
         return self._grouping_columns
 
@@ -569,5 +569,5 @@ class LimitRowsPerKeyPerGroup(Transformation):
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns a truncated dataframe."""
         return truncate_large_groups(
-            sdf, self.grouping_columns + (self.key_column,), self.threshold
+            sdf, self.grouping_columns | {self.key_column}, self.threshold
         )

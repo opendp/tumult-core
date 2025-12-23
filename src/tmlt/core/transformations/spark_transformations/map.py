@@ -1339,7 +1339,7 @@ class FlatMapByKey(Transformation):
                 "got an IfGroupedBy with multiple columns.",
             )
 
-        self._key_column = metric.columns[0]
+        self._key_column = list(metric.columns)[0]
         output_schema = OrderedDict(row_transformer.output_domain.element_domain.schema)
         if self._key_column in output_schema:
             raise UnsupportedDomainError(

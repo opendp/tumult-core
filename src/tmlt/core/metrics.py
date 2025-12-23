@@ -8,7 +8,17 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import Counter
 from functools import reduce
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Collection,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np  # noqa: F401 -- needed for doctests
 import pandas as pd
@@ -28,6 +38,7 @@ from tmlt.core.domains.spark_domains import (
 from tmlt.core.exceptions import OutOfDomainError, UnsupportedCombinationError
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+from tmlt.core.utils.misc import ConciseFrozenSet
 from tmlt.core.utils.validation import validate_exact_number
 
 
@@ -1041,7 +1052,7 @@ class IfGroupedBy(ExactNumberMetric):
     @typechecked
     def __init__(
         self,
-        columns: Sequence[str],
+        columns: Collection[str],
         inner_metric: Union[SumOf, RootSumOfSquared, SymmetricDifference],
     ):
         """Constructor.
@@ -1068,11 +1079,11 @@ class IfGroupedBy(ExactNumberMetric):
                 "IfGroupedBy cannot have duplicate grouping columns, but these "
                 f"appeared multiple times: {duplicate_columns}"
             )
-        self._columns = tuple(columns)
+        self._columns = ConciseFrozenSet(columns)
         self._inner_metric = inner_metric
 
     @property
-    def columns(self) -> Tuple[str, ...]:
+    def columns(self) -> frozenset[str]:
         """Column that DataFrame shall be grouped by."""
         return self._columns
 
@@ -1161,7 +1172,7 @@ class IfGroupedBy(ExactNumberMetric):
             return False
         if self.inner_metric != other.inner_metric:
             return False
-        if sorted(self.columns) != sorted(other.columns):
+        if self.columns != other.columns:
             return False
         return True
 

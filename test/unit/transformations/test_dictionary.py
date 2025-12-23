@@ -662,7 +662,7 @@ class TestCreateDictFromValue(TestCase):
             (
                 re.escape(
                     "Input metric must have only a single grouping column to use "
-                    "AddRemoveKeys as the output metric, but found ('A', 'B')"
+                    "AddRemoveKeys as the output metric, but found {'A', 'B'}"
                 ),
                 NumpyIntegerDomain(),
                 IfGroupedBy(["A", "B"], SymmetricDifference()),

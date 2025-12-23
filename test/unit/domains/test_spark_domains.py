@@ -678,7 +678,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                             StructField("C", LongType(), True),
                         ]
                     ),
-                    "groupby_columns": _base_groupby_columns,
+                    "groupby_columns": frozenset(_base_groupby_columns),
                 },
             )
         ],
@@ -937,7 +937,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             "SparkGroupedDataFrameDomain(schema={'A': SparkIntegerColumnDescriptor("
             "allow_null=True, size=64), 'B': SparkStringColumnDescriptor(allow_null="
             "True), 'C': SparkIntegerColumnDescriptor(allow_null=True, size=64)},"
-            " groupby_columns=['A', 'B'])"
+            " groupby_columns={'A', 'B'})"
         )
         assert repr(domain) == expected
 
