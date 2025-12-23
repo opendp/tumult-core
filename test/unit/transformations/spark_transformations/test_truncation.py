@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 import re
-from typing import Dict, List, Type, Union
+from typing import Dict, List, Sequence, Type, Union
 
 import pyspark.sql.functions as sf
 from parameterized import parameterized
@@ -72,23 +72,32 @@ class TestLimitRowsPerGroup(PySparkTest):
 
     @parameterized.expand(
         [
-            (grouping_column, threshold)
-            for grouping_column in [["A"], ["B"], ["A", "B"]]
+            (grouping_column, threshold, output_metric)
+            for grouping_column in [["A"], ["B"], ["A", "B"], ("A",)]
             for threshold in [0, 1, 2]
+            for output_metric in [
+                SymmetricDifference(),
+                IfGroupedBy(grouping_column, SymmetricDifference()),
+            ]
         ]
     )
-    def test_correctness(self, grouping_columns: List[str], threshold: int):
+    def test_correctness(
+        self,
+        grouping_columns: Sequence[str],
+        threshold: int,
+        output_metric: Union[SymmetricDifference, IfGroupedBy],
+    ):
         """Tests that LimitRowsPerGroup works correctly."""
         transformation = LimitRowsPerGroup(
             input_domain=SparkDataFrameDomain(self.schema),
-            output_metric=SymmetricDifference(),
+            output_metric=output_metric,
             grouping_columns=grouping_columns,
             threshold=threshold,
         )
         actual_df = transformation(self.df)
         expected_df = truncate_large_groups(self.df, grouping_columns, threshold)
         assert_dataframe_equal(actual_df, expected_df)
-        rows_per_group = actual_df.groupby(grouping_columns).count()
+        rows_per_group = actual_df.groupby(list(grouping_columns)).count()
         self.assertTrue(
             all([row["count"] <= threshold for row in rows_per_group.collect()])
         )

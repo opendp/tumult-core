@@ -134,7 +134,8 @@ class LimitRowsPerGroup(Transformation):
                     output_metric,
                     (
                         "Output metric must be `SymmetricDifference()` or"
-                        f" `IfGroupedBy({grouping_columns}, SymmetricDifference())`"
+                        f" `IfGroupedBy({grouping_columns}, SymmetricDifference())`, "
+                        f"but got: {output_metric}"
                     ),
                 )
         # super init checks that grouping_columns is in the domain
