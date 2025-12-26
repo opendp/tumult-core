@@ -482,7 +482,7 @@ class TestTransformValue(PySparkTest):
             ),
             (
                 re.escape(
-                    "Transformation's input metric must be IfGroupedBy(column,"
+                    "Transformation's input metric must be IfGroupedBy({column},"
                     " SymmetricDifference())"
                 ),
                 ValueError,
@@ -491,7 +491,7 @@ class TestTransformValue(PySparkTest):
             ),
             (
                 re.escape(
-                    "Transformation's output metric must be IfGroupedBy(column,"
+                    "Transformation's output metric must be IfGroupedBy({column},"
                     " SymmetricDifference())"
                 ),
                 ValueError,

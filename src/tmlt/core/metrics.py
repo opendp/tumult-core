@@ -1167,7 +1167,7 @@ class IfGroupedBy(ExactNumberMetric):
         """Returns string representation."""
         return (
             f"{self.__class__.__name__}("
-            f"column={self.columns}, inner_metric={self.inner_metric})"
+            f"columns={self.columns}, inner_metric={self.inner_metric})"
         )
 
     def __eq__(self, other: Any) -> bool:
