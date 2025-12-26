@@ -437,19 +437,19 @@ class TestTransformValue(PySparkTest):
     @parameterized.expand(
         [
             (
-                "'key4' is not one of the input domain's keys",
+                re.escape("'key4' is not one of the input domain's keys"),
                 DomainKeyError,
                 {"key": "key4"},
                 {},
             ),
             (
-                "'key2' is already a key in the input domain",
+                re.escape("'key2' is already a key in the input domain"),
                 ValueError,
                 {"new_key": "key2"},
                 {},
             ),
             (
-                (
+                re.escape(
                     "Input domain's value for 'key1' does not match transformation's"
                     " input domain"
                 ),
@@ -462,7 +462,7 @@ class TestTransformValue(PySparkTest):
                 },
             ),
             (
-                (
+                re.escape(
                     "Output metric AddRemoveKeys(df_to_key_column={'key1': 'A', 'key2':"
                     " 'D', 'key3': 'A'}) and output domain"
                     " DictDomain(key_to_domain={'key1':"
@@ -481,7 +481,7 @@ class TestTransformValue(PySparkTest):
                 {"output_domain": NumpyIntegerDomain()},
             ),
             (
-                (
+                re.escape(
                     "Transformation's input metric must be IfGroupedBy(column,"
                     " SymmetricDifference())"
                 ),
@@ -490,7 +490,7 @@ class TestTransformValue(PySparkTest):
                 {"input_metric": SymmetricDifference()},
             ),
             (
-                (
+                re.escape(
                     "Transformation's output metric must be IfGroupedBy(column,"
                     " SymmetricDifference())"
                 ),
@@ -499,7 +499,7 @@ class TestTransformValue(PySparkTest):
                 {"output_metric": SymmetricDifference()},
             ),
             (
-                (
+                re.escape(
                     "Transformation's input metric grouping column, B, does not"
                     " match the dataframe's key column, A."
                 ),
@@ -511,10 +511,11 @@ class TestTransformValue(PySparkTest):
                 },
             ),
             (
-                (
+                re.escape(
                     "Transformation's input metric must have a single grouping"
-                    " column, but found {'A', 'B'}"
-                ),
+                    " column, but found "
+                )
+                + r"(\{'A', 'B'\}|\{'B', 'A'\})",
                 ValueError,
                 {},
                 {
@@ -522,10 +523,11 @@ class TestTransformValue(PySparkTest):
                 },
             ),
             (
-                (
+                re.escape(
                     "Transformation's output metric must have a single grouping"
-                    " column, but found {'A', 'B'}"
-                ),
+                    " column, but found "
+                )
+                + r"(\{'A', 'B'\}|\{'B', 'A'\})",
                 ValueError,
                 {},
                 {
@@ -559,7 +561,7 @@ class TestTransformValue(PySparkTest):
         mock_value_args["transformation"] = create_mock_transformation(
             **mock_transformation_args  # type: ignore
         )
-        with self.assertRaisesRegex(error_type, re.escape(error_msg)):
+        with self.assertRaisesRegex(error_type, error_msg):
             MockValue(**mock_value_args)  # type: ignore
 
 

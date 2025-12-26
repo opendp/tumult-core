@@ -1142,9 +1142,13 @@ class IfGroupedBy(ExactNumberMetric):
         # help mypy
         assert isinstance(domain, SparkDataFrameDomain)
 
+        ordered_groupby_columns = [
+            column for column in domain.schema.keys() if column in self.columns
+        ]
+
         groupby_keys = (
-            value1.select(list(self.columns))
-            .union(value2.select(list(self.columns)))
+            value1.select(ordered_groupby_columns)
+            .union(value2.select(ordered_groupby_columns))
             .distinct()
         )
         # Constructing a GroupedDataFrame with empty rows but nonempty columns is not

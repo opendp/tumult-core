@@ -586,7 +586,11 @@ class SparkGroupedDataFrameDomain(Domain):
             ) from exception
 
         group_key_domain = SparkDataFrameDomain(
-            {column: self.schema[column] for column in self.groupby_columns}
+            {
+                column: desc
+                for column, desc in self.schema.items()
+                if column in self.groupby_columns
+            }
         )
         try:
             group_key_domain.validate(value.group_keys)
