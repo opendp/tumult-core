@@ -226,6 +226,10 @@ ignore = [
     # eq-without-hash: Core contains several classes with custom __eq__
     #     implementations where we don't care that the class isn't hashable.
     "PLW1641",
+    # lambda-assignment: Core frequently assigns lambdas to variables, for
+    #     example when constructing post-processing steps, and these cases
+    #     aren't always clearer when written as normal function definitions.
+    "E731",
     # ambiguous-variable-name: This tries to warn about variable names that are
     #     easily confused with other symbols (e.g. l vs 1).
     "E741",
@@ -241,7 +245,6 @@ ignore = [
     "D102",    # undocumented-public-method
     "PLW2901", # redefined-loop-name
     "E501",    # line-too-long
-    "E731",    # lambda-assignment
     "RET504",  # unnecessary-assign
 ]
 
