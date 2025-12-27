@@ -234,7 +234,6 @@ ignore = [
     #     either fix/individually disable each instance, or choose to permanently
     #     ignore each one.
     "RUF005",  # collection-literal-concatenation
-    "PLW0127", # self-assigning-variable
     "PLW0128", # redeclared-assigned-name
     "RUF015",  # unnecessary-iterable-allocation-for-first-element
     "RUF043",  # pytest-raises-ambiguous-pattern
