@@ -204,8 +204,8 @@ class PublicJoin(Transformation):
             For
 
             - SymmetricDifference()
-            - IfGroupedBy(column, SumOf(SymmetricDifference()))
-            - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
+            - IfGroupedBy({column}, SumOf(SymmetricDifference()))
+            - IfGroupedBy({column}, RootSumOfSquared(SymmetricDifference()))
 
             :class:`~.PublicJoin`'s :meth:`~.stability_function` returns the ``d_in``
             times the maximum count of any combination of values in the join columns of
@@ -227,7 +227,7 @@ class PublicJoin(Transformation):
 
             For
 
-            - IfGroupedBy(column, SymmetricDifference())
+            - IfGroupedBy({column}, SymmetricDifference())
 
             :class:`~.PublicJoin`'s :meth:`~.stability_function` returns ``d_in``
 
@@ -239,7 +239,7 @@ class PublicJoin(Transformation):
             ...         }
             ...     ),
             ...     public_df=public_dataframe,
-            ...     metric=IfGroupedBy("A", SymmetricDifference()),
+            ...     metric=IfGroupedBy({"A"}, SymmetricDifference()),
             ... ).stability_function(2)
             2
     """

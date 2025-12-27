@@ -331,7 +331,7 @@ class CountGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
         >>> count_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> count_by_A.input_metric
@@ -506,7 +506,7 @@ class CountDistinctGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_distinct_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
         >>> count_distinct_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count_distinct': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> count_distinct_by_A.input_metric
@@ -896,7 +896,7 @@ class SumGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> sum_X_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
         >>> sum_X_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'sum(X)': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> sum_X_by_A.input_metric

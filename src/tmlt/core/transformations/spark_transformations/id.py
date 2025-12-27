@@ -84,7 +84,7 @@ class AddUniqueColumn(Transformation):
             >>> add_unique_column.input_metric
             SymmetricDifference()
             >>> add_unique_column.output_metric
-            IfGroupedBy(column='ID', inner_metric=SymmetricDifference())
+            IfGroupedBy(columns={'ID'}, inner_metric=SymmetricDifference())
 
             Stability Guarantee:
                 :class:`~.AddUniqueColumn`'s :meth:`~.stability_function` returns ``d_in``.

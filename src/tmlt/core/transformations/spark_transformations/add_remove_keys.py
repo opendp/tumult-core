@@ -30,11 +30,11 @@ For example, consider the following example:
 ...         "B": SparkStringColumnDescriptor(),
 ...     }
 ... )
->>> input_metric = IfGroupedBy("A", SymmetricDifference())
+>>> input_metric = IfGroupedBy({"A"}, SymmetricDifference())
 >>> truncate = LimitRowsPerGroup(
 ...     input_domain=input_domain,
 ...     output_metric=SymmetricDifference(),
-...     grouping_column="A",
+...     grouping_columns=["A"],
 ...     threshold=1,
 ... )
 >>> rename = Rename(
@@ -184,7 +184,7 @@ class TransformValue(Transformation):
                 transformation.
             transformation: The DataFrame to DataFrame transformation to
                 apply. Input and output metric must both be
-                ``IfGroupedBy(column, SymmetricDifference())`` using the same
+                ``IfGroupedBy({column}, SymmetricDifference())`` using the same
                 ``column``.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
@@ -219,7 +219,7 @@ class TransformValue(Transformation):
                 transformation.input_metric,
                 (
                     "Transformation's input metric must be "
-                    "IfGroupedBy(column, SymmetricDifference())"
+                    "IfGroupedBy({column}, SymmetricDifference())"
                 ),
             )
         if len(transformation.input_metric.columns) != 1:
@@ -241,7 +241,7 @@ class TransformValue(Transformation):
                 transformation.output_metric,
                 (
                     "Transformation's output metric must be "
-                    "IfGroupedBy(column, SymmetricDifference())"
+                    "IfGroupedBy({column}, SymmetricDifference())"
                 ),
             )
         if len(transformation.output_metric.columns) != 1:

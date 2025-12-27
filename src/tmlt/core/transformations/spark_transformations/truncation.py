@@ -88,7 +88,7 @@ class LimitRowsPerGroup(Transformation):
         >>> truncate.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
         >>> truncate.input_metric
-        IfGroupedBy(column='A', inner_metric=SymmetricDifference())
+        IfGroupedBy(columns={'A'}, inner_metric=SymmetricDifference())
         >>> truncate.output_metric
         SymmetricDifference()
 
@@ -220,7 +220,7 @@ class LimitKeysPerGroup(Transformation):
         ...             "B": SparkStringColumnDescriptor(),
         ...         }
         ...     ),
-        ...     output_metric=IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference()))),
+        ...     output_metric=IfGroupedBy({"B"}, SumOf(IfGroupedBy({"A"}, SymmetricDifference()))),
         ...     grouping_columns=["A"],
         ...     key_column="B",
         ...     threshold=2,
@@ -253,15 +253,15 @@ class LimitKeysPerGroup(Transformation):
         >>> truncate.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
         >>> truncate.input_metric
-        IfGroupedBy(column='A', inner_metric=SymmetricDifference())
+        IfGroupedBy(columns={'A'}, inner_metric=SymmetricDifference())
         >>> truncate.output_metric
-        IfGroupedBy(column='B', inner_metric=SumOf(inner_metric=IfGroupedBy(column='A', inner_metric=SymmetricDifference())))
+        IfGroupedBy(columns={'B'}, inner_metric=SumOf(inner_metric=IfGroupedBy(columns={'A'}, inner_metric=SymmetricDifference())))
 
         Stability Guarantee:
             :class:`~.LimitKeysPerGroup` 's :meth:`~.stability_function` returns
             ``d_in`` if ``output_metric`` is ``IfGroupedBy(grouping_columns, SymmetricDifference())``,
             ``sqrt(threshold) * d_in`` if ``output_metric`` is
-            ``IfGroupedBy([key_column], RootSumOfSquared(IfGroupedBy(grouping_columns, SymmetricDifference())))``,
+            ``IfGroupedBy({key_column}, RootSumOfSquared(IfGroupedBy(grouping_columns, SymmetricDifference())))``,
             and ``threshold * d_in`` otherwise.
 
             >>> truncate.stability_function(1)
@@ -284,8 +284,8 @@ class LimitKeysPerGroup(Transformation):
         Args:
             input_domain: Domain of input DataFrame.
             output_metric: Distance metric for output DataFrames. This should be
-                ``IfGroupedBy([key_column], SumOf(IfGroupedBy(grouping_columns, SymmetricDifference())))`` or
-                ``IfGroupedBy([key_column], RootSumOfSquared(IfGroupedBy(grouping_columns, SymmetricDifference())))``
+                ``IfGroupedBy({key_column}, SumOf(IfGroupedBy(grouping_columns, SymmetricDifference())))`` or
+                ``IfGroupedBy({key_column}, RootSumOfSquared(IfGroupedBy(grouping_columns, SymmetricDifference())))``
                 or ``IfGroupedBy(grouping_columns, SymmetricDifference())``.
             grouping_columns: Names of columns defining the groups to truncate.
             key_column: Name of column defining the keys.
@@ -418,7 +418,7 @@ class LimitRowsPerKeyPerGroup(Transformation):
         ...             "B": SparkStringColumnDescriptor(),
         ...         }
         ...     ),
-        ...     input_metric=IfGroupedBy("B", SumOf(IfGroupedBy("A", SymmetricDifference()))),
+        ...     input_metric=IfGroupedBy({"B"}, SumOf(IfGroupedBy({"A"}, SymmetricDifference()))),
         ...     grouping_columns=["A"],
         ...     key_column="B",
         ...     threshold=2,
@@ -454,7 +454,7 @@ class LimitRowsPerKeyPerGroup(Transformation):
         >>> truncate.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
         >>> truncate.input_metric
-        IfGroupedBy(column='B', inner_metric=SumOf(inner_metric=IfGroupedBy(column='A', inner_metric=SymmetricDifference())))
+        IfGroupedBy(columns={'B'}, inner_metric=SumOf(inner_metric=IfGroupedBy(columns={'A'}, inner_metric=SymmetricDifference())))
         >>> truncate.output_metric
         SymmetricDifference()
 
@@ -483,8 +483,8 @@ class LimitRowsPerKeyPerGroup(Transformation):
         Args:
             input_domain: Domain of input DataFrame.
             input_metric: Distance metric for input DataFrames. This should be
-                ``IfGroupedBy(key_column, SumOf(IfGroupedBy(grouping_columns, SymmetricDifference())))`` or
-                ``IfGroupedBy(key_column, RootSumOfSquared(IfGroupedBy(grouping_columns, SymmetricDifference())))``
+                ``IfGroupedBy({key_column}, SumOf(IfGroupedBy(grouping_columns, SymmetricDifference())))`` or
+                ``IfGroupedBy({key_column}, RootSumOfSquared(IfGroupedBy(grouping_columns, SymmetricDifference())))``
                 or ``IfGroupedBy(grouping_columns, SymmetricDifference())``.
             grouping_columns: Names of columns defining the groups to truncate.
             key_column: Name of column defining the keys.
