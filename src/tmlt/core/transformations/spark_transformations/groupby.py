@@ -1,4 +1,5 @@
 """Transformations for performing groupby on Spark DataFrames."""
+
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -104,7 +105,7 @@ class GroupBy(Transformation):
         >>> groupby_B.input_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
         >>> groupby_B.output_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)}, groupby_columns=['B'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)}, groupby_columns={'B'})
         >>> groupby_B.input_metric
         SymmetricDifference()
         >>> groupby_B.output_metric
@@ -144,11 +145,16 @@ class GroupBy(Transformation):
             else SumOf(SymmetricDifference())
         )
         if isinstance(input_metric, IfGroupedBy):
-            if input_metric.column not in group_keys.columns:
+            missing_metric_columns = [
+                column
+                for column in input_metric.columns
+                if column not in group_keys.columns
+            ]
+            if missing_metric_columns:
                 raise ValueError(
-                    f"Must group by IfGroupedBy metric column: {input_metric.column}"
+                    f"Must group by IfGroupedBy metric columns: {missing_metric_columns}"
                 )
-            expected_input_metric = IfGroupedBy(input_metric.column, output_metric)
+            expected_input_metric = IfGroupedBy(input_metric.columns, output_metric)
             if input_metric != expected_input_metric:
                 raise UnsupportedMetricError(
                     input_metric,
@@ -416,7 +422,7 @@ def compute_full_domain_df(
             List[datetime.date],
             List[Optional[datetime.date]],
         ],
-    ]
+    ],
 ) -> DataFrame:
     """Returns a DataFrame containing the Cartesian product of given column domains."""
     spark = SparkSession.builder.getOrCreate()

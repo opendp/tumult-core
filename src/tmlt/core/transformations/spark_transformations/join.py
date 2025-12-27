@@ -4,7 +4,6 @@ See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/a
 for more information on transformations.
 """
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -205,8 +204,8 @@ class PublicJoin(Transformation):
             For
 
             - SymmetricDifference()
-            - IfGroupedBy(column, SumOf(SymmetricDifference()))
-            - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
+            - IfGroupedBy({column}, SumOf(SymmetricDifference()))
+            - IfGroupedBy({column}, RootSumOfSquared(SymmetricDifference()))
 
             :class:`~.PublicJoin`'s :meth:`~.stability_function` returns the ``d_in``
             times the maximum count of any combination of values in the join columns of
@@ -228,7 +227,7 @@ class PublicJoin(Transformation):
 
             For
 
-            - IfGroupedBy(column, SymmetricDifference())
+            - IfGroupedBy({column}, SymmetricDifference())
 
             :class:`~.PublicJoin`'s :meth:`~.stability_function` returns ``d_in``
 
@@ -240,7 +239,7 @@ class PublicJoin(Transformation):
             ...         }
             ...     ),
             ...     public_df=public_dataframe,
-            ...     metric=IfGroupedBy("A", SymmetricDifference()),
+            ...     metric=IfGroupedBy({"A"}, SymmetricDifference()),
             ... ).stability_function(2)
             2
     """
@@ -318,16 +317,21 @@ class PublicJoin(Transformation):
             how=how,
             nulls_are_equal=join_on_nulls,
         )
-        if (
-            isinstance(metric, IfGroupedBy)
-            and metric.column not in join_cols
-            and metric.column in input_domain.schema
-            and metric.column in public_df_domain.schema
-        ):
-            raise ValueError(
-                f"IfGroupedBy column '{metric.column}' is an overlapping"
-                " column but not a join key."
-            )
+        if isinstance(metric, IfGroupedBy):
+            bad_groupby_columns = [
+                column
+                for column in metric.columns
+                if (
+                    column not in join_cols
+                    and column in input_domain.schema
+                    and column in public_df_domain.schema
+                )
+            ]
+            if bad_groupby_columns:
+                raise ValueError(
+                    f"IfGroupedBy columns {bad_groupby_columns} are overlapping"
+                    " columns but not join keys."
+                )
 
         public_df_join_columns = public_df.select(*join_cols)
         if not join_on_nulls:

@@ -8,7 +8,17 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import Counter
 from functools import reduce
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Collection,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np  # noqa: F401 -- needed for doctests
 import pandas as pd
@@ -28,6 +38,7 @@ from tmlt.core.domains.spark_domains import (
 from tmlt.core.exceptions import OutOfDomainError, UnsupportedCombinationError
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+from tmlt.core.utils.misc import ConciseFrozenSet
 from tmlt.core.utils.validation import validate_exact_number
 
 
@@ -995,13 +1006,13 @@ class OnColumns(Metric):
 
 
 class IfGroupedBy(ExactNumberMetric):
-    """Distance between two DataFrames that shall be grouped by a given attribute.
+    """Distance between two DataFrames that shall be grouped by a given set of columns.
 
     This metric is an upper bound on the distance for any fixed set of grouping keys.
     This assumes that the distance between two empty groups is zero, and the inner
     metric must satisfy this property.
 
-    The grouping column cannot contain floating point values.
+    The grouping columns cannot contain floating point values.
 
     Examples:
         >>> import pandas as pd
@@ -1018,7 +1029,7 @@ class IfGroupedBy(ExactNumberMetric):
         ...         "C": SparkIntegerColumnDescriptor(),
         ...     },
         ... )
-        >>> metric = IfGroupedBy("C", RootSumOfSquared(SymmetricDifference()))
+        >>> metric = IfGroupedBy(["C"], RootSumOfSquared(SymmetricDifference()))
         >>> value1 = spark.createDataFrame(
         ...     pd.DataFrame({"A": [1, 1, 3], "B": [2, 1, 4], "C": [1, 1, 2]}),
         ... )
@@ -1027,7 +1038,7 @@ class IfGroupedBy(ExactNumberMetric):
         ... )
         >>> metric.distance(value1, value2, domain)
         sqrt(5)
-        >>> metric = IfGroupedBy("C", SymmetricDifference())
+        >>> metric = IfGroupedBy(["C"], SymmetricDifference())
         >>> value1 = spark.createDataFrame(
         ...     pd.DataFrame({"A": [1, 1, 3], "B": [2, 1, 4], "C": [1, 1, 2]}),
         ... )
@@ -1041,23 +1052,40 @@ class IfGroupedBy(ExactNumberMetric):
     @typechecked
     def __init__(
         self,
-        column: str,
+        columns: Collection[str],
         inner_metric: Union[SumOf, RootSumOfSquared, SymmetricDifference],
     ):
         """Constructor.
 
         Args:
-            column: Column that the DataFrame shall be grouped by.
+            columns: Columns that the DataFrame shall be grouped by.
             inner_metric: Metric to be applied to corresponding groups in
                 the DataFrame.
         """
-        self._column = column
+        if not columns:
+            raise ValueError(
+                "Cannot instantiate an IfGroupedBy with empty columns, but got: "
+                f"{columns}"
+            )
+        if isinstance(columns, str):
+            raise ValueError(
+                f"IfGroupedBy columns cannot be a single string, but got: {columns}"
+            )
+        duplicate_columns = [
+            column for column, count in Counter(columns).items() if count > 1
+        ]
+        if duplicate_columns:
+            raise ValueError(
+                "IfGroupedBy cannot have duplicate grouping columns, but these "
+                f"appeared multiple times: {duplicate_columns}"
+            )
+        self._columns = ConciseFrozenSet(columns)
         self._inner_metric = inner_metric
 
     @property
-    def column(self) -> str:
+    def columns(self) -> frozenset[str]:
         """Column that DataFrame shall be grouped by."""
-        return self._column
+        return self._columns
 
     @property
     def inner_metric(self) -> Union[SumOf, RootSumOfSquared, SymmetricDifference]:
@@ -1094,11 +1122,12 @@ class IfGroupedBy(ExactNumberMetric):
         Args:
             domain: The domain to check against.
         """
-        if not (
-            isinstance(domain, SparkDataFrameDomain) and self.column in domain.schema
-        ):
+        if not isinstance(domain, SparkDataFrameDomain):
             return False
-        grouped_df_domain = SparkGroupedDataFrameDomain(domain.schema, [self.column])
+        for column in self.columns:
+            if column not in domain.schema:
+                return False
+        grouped_df_domain = SparkGroupedDataFrameDomain(domain.schema, self.columns)
         return self.inner_metric.supports_domain(grouped_df_domain)
 
     def distance(self, value1: Any, value2: Any, domain: Domain) -> ExactNumber:
@@ -1113,8 +1142,14 @@ class IfGroupedBy(ExactNumberMetric):
         # help mypy
         assert isinstance(domain, SparkDataFrameDomain)
 
+        ordered_groupby_columns = [
+            column for column in domain.schema.keys() if column in self.columns
+        ]
+
         groupby_keys = (
-            value1.select(self.column).union(value2.select(self.column)).distinct()
+            value1.select(ordered_groupby_columns)
+            .union(value2.select(ordered_groupby_columns))
+            .distinct()
         )
         # Constructing a GroupedDataFrame with empty rows but nonempty columns is not
         # allowed, so the distance is hardcoded to zero when there are no groups.
@@ -1123,7 +1158,7 @@ class IfGroupedBy(ExactNumberMetric):
         distance = self._inner_metric.distance(
             GroupedDataFrame(value1, groupby_keys),
             GroupedDataFrame(value2, groupby_keys),
-            SparkGroupedDataFrameDomain(domain.schema, [self.column]),
+            SparkGroupedDataFrameDomain(domain.schema, self.columns),
         )
         self.validate(distance)
         return distance
@@ -1132,8 +1167,18 @@ class IfGroupedBy(ExactNumberMetric):
         """Returns string representation."""
         return (
             f"{self.__class__.__name__}("
-            f"column='{self.column}', inner_metric={self.inner_metric})"
+            f"columns={self.columns}, inner_metric={self.inner_metric})"
         )
+
+    def __eq__(self, other: Any) -> bool:
+        """We want to make sure column order is ignored when computing equality."""
+        if type(other) is not IfGroupedBy:  # pylint: disable=C0123
+            return False
+        if self.inner_metric != other.inner_metric:
+            return False
+        if self.columns != other.columns:
+            return False
+        return True
 
 
 class DictMetric(Metric):

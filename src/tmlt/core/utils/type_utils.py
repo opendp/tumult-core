@@ -86,4 +86,5 @@ def get_immutable_types() -> Tuple[Type, ...]:
         Enum,
         type,
         SparkColumnDescriptor,
+        frozenset,
     )

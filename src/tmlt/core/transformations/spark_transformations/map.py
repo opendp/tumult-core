@@ -4,7 +4,6 @@ See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/a
 for more information on transformations.
 """
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -689,8 +688,8 @@ class FlatMap(Transformation):
             For
 
             - SymmetricDifference()
-            - IfGroupedBy(column, SumOf(SymmetricDifference()))
-            - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
+            - IfGroupedBy({column}, SumOf(SymmetricDifference()))
+            - IfGroupedBy({column}, RootSumOfSquared(SymmetricDifference()))
 
             :class:`~.FlatMap`'s :meth:`~.stability_function` returns the ``d_in``
             times :attr:`.max_num_rows`. If :attr:`.max_num_rows` is None, it returns infinity.
@@ -702,7 +701,7 @@ class FlatMap(Transformation):
 
             For
 
-            - IfGroupedBy(column, SymmetricDifference())
+            - IfGroupedBy({column}, SymmetricDifference())
 
             :class:`~.FlatMap`'s :meth:`~.stability_function` returns ``d_in``.
     """
@@ -918,13 +917,13 @@ class GroupingFlatMap(Transformation):
         >>> add_i_flat_map.input_metric
         SymmetricDifference()
         >>> add_i_flat_map.output_metric
-        IfGroupedBy(column='i', inner_metric=RootSumOfSquared(inner_metric=SymmetricDifference()))
+        IfGroupedBy(columns={'i'}, inner_metric=RootSumOfSquared(inner_metric=SymmetricDifference()))
 
         Stability Guarantee:
             :class:`~.GroupingFlatMap` supports two different output metrics:
 
-            - IfGroupedBy(column='new_column', inner_metric=SumOf(SummetricDifference()))
-            - IfGroupedBy(column='new_column', inner_metric=RootSumOfSquared(SymmetricDifference()))
+            - IfGroupedBy(columns={'new_column'}, inner_metric=SumOf(SummetricDifference()))
+            - IfGroupedBy(columns={'new_column'}, inner_metric=RootSumOfSquared(SymmetricDifference()))
 
             The meth:`~.stability_function` is different depending on the output
             metric:
@@ -995,7 +994,7 @@ class GroupingFlatMap(Transformation):
             output_domain=SparkDataFrameDomain(
                 row_transformer.output_domain.element_domain.schema
             ),
-            output_metric=IfGroupedBy(self._grouping_column, output_metric),
+            output_metric=IfGroupedBy([self._grouping_column], output_metric),
         )
 
     @property
@@ -1277,7 +1276,7 @@ class FlatMapByKey(Transformation):
         >>> # sum_by_key_transformation is a RowsToRowsTransformation that sums column v
         >>> # for each ID group.
         >>> sum_by_key = FlatMapByKey(
-        ...     metric=IfGroupedBy("id", SymmetricDifference()),
+        ...     metric=IfGroupedBy({"id"}, SymmetricDifference()),
         ...     row_transformer=sum_by_key_transformation,
         ... )
         >>> # Apply transformation to data
@@ -1300,9 +1299,9 @@ class FlatMapByKey(Transformation):
         >>> sum_by_key.output_domain
         SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'sum': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> sum_by_key.input_metric
-        IfGroupedBy(column='id', inner_metric=SymmetricDifference())
+        IfGroupedBy(columns={'id'}, inner_metric=SymmetricDifference())
         >>> sum_by_key.output_metric
-        IfGroupedBy(column='id', inner_metric=SymmetricDifference())
+        IfGroupedBy(columns={'id'}, inner_metric=SymmetricDifference())
 
         Stability Guarantee:
             :class:`~.FlatMapByKey`'s :meth:`~.stability_function` returns ``d_in``.
@@ -1333,9 +1332,16 @@ class FlatMapByKey(Transformation):
                 metric, "Inner metric for IfGroupedBy must be SymmetricDifference()."
             )
 
-        key_column = metric.column
+        if len(metric.columns) > 1:
+            raise UnsupportedMetricError(
+                metric,
+                "Keys must be contained in a single column, but FlatMapByKey "
+                "got an IfGroupedBy with multiple columns.",
+            )
+
+        self._key_column = list(metric.columns)[0]
         output_schema = OrderedDict(row_transformer.output_domain.element_domain.schema)
-        if key_column in output_schema:
+        if self._key_column in output_schema:
             raise UnsupportedDomainError(
                 row_transformer.output_domain,
                 "Transformer output rows must not contain grouping column.",
@@ -1358,10 +1364,10 @@ class FlatMapByKey(Transformation):
             )
 
         # Add the key column back to the schema, ensuring it is the first column.
-        output_schema[key_column] = row_transformer.input_domain.element_domain.schema[
-            key_column
-        ]
-        output_schema.move_to_end(key_column, last=False)
+        output_schema[
+            self._key_column
+        ] = row_transformer.input_domain.element_domain.schema[self._key_column]
+        output_schema.move_to_end(self._key_column, last=False)
 
         super().__init__(
             input_domain=input_domain,
@@ -1398,7 +1404,6 @@ class FlatMapByKey(Transformation):
         )
 
         spark = SparkSession.builder.getOrCreate()
-        key_col = self.input_metric.column
         transformer_output_schema = (
             self.row_transformer.output_domain.element_domain.schema
         )
@@ -1443,11 +1448,15 @@ class FlatMapByKey(Transformation):
             # PySpark doesn't handle empty rows very gracefully, so if the
             # output rows are empty, don't bother looking at them.
             if len(transformer_output_schema) == 0:
-                return [Row(**{key_col: key}) for _ in transformed_rows]
-            return [Row(**{key_col: key}, **r.asDict()) for r in transformed_rows]
+                return [Row(**{self._key_column: key}) for _ in transformed_rows]
+            return [
+                Row(**{self._key_column: key}, **r.asDict()) for r in transformed_rows
+            ]
 
         grouped_df = (
-            spark.createDataFrame(sdf.rdd.keyBy(lambda r: r[key_col]), ["key", "row"])
+            spark.createDataFrame(
+                sdf.rdd.keyBy(lambda r: r[self._key_column]), ["key", "row"]
+            )
             .groupby("key")
             .agg(sf.collect_list("row"))
         )

@@ -26,8 +26,10 @@ Changed
 - Removed ``pytest`` and ``parameterized`` as dependencies.
   :mod:`tmlt.core.utils.testing` can now only be imported when the ``testing`` extra is installed;
   for most users, this module will not be used, and so the extra does not need to be installed.
-- When returning intermediate values, the measurement creation functions in :mod:`tmlt.core.measurements.aggregations` now include the midpoints when returning grouped results, and use the user-specified names when returning scalar results.
-
+- When returning intermediate values, the measurement creation functions in :mod:`tmlt.core.measurements.aggregations` 
+  now include the midpoints when returning grouped results, and use the user-specified names when returning scalar results.
+- The truncation operations in :mod:`~tmlt.core.transformations.spark_transformations.truncation` support 
+  grouping by multiple columns, and :class:`~tmlt.core.metrics.IfGroupedBy` supports multiple grouping columns.
 
 .. _v0.18.2:
 

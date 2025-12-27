@@ -30,11 +30,11 @@ For example, consider the following example:
 ...         "B": SparkStringColumnDescriptor(),
 ...     }
 ... )
->>> input_metric = IfGroupedBy("A", SymmetricDifference())
+>>> input_metric = IfGroupedBy({"A"}, SymmetricDifference())
 >>> truncate = LimitRowsPerGroup(
 ...     input_domain=input_domain,
 ...     output_metric=SymmetricDifference(),
-...     grouping_column="A",
+...     grouping_columns=["A"],
 ...     threshold=1,
 ... )
 >>> rename = Rename(
@@ -184,7 +184,7 @@ class TransformValue(Transformation):
                 transformation.
             transformation: The DataFrame to DataFrame transformation to
                 apply. Input and output metric must both be
-                ``IfGroupedBy(column, SymmetricDifference())`` using the same
+                ``IfGroupedBy({column}, SymmetricDifference())`` using the same
                 ``column``.
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
@@ -219,7 +219,16 @@ class TransformValue(Transformation):
                 transformation.input_metric,
                 (
                     "Transformation's input metric must be "
-                    "IfGroupedBy(column, SymmetricDifference())"
+                    "IfGroupedBy({column}, SymmetricDifference())"
+                ),
+            )
+        if len(transformation.input_metric.columns) != 1:
+            raise UnsupportedMetricError(
+                transformation.input_metric,
+                (
+                    "Transformation's input metric must have a "
+                    "single grouping column, but found "
+                    f"{transformation.input_metric.columns}"
                 ),
             )
         if not (
@@ -232,17 +241,26 @@ class TransformValue(Transformation):
                 transformation.output_metric,
                 (
                     "Transformation's output metric must be "
-                    "IfGroupedBy(column, SymmetricDifference())"
+                    "IfGroupedBy({column}, SymmetricDifference())"
                 ),
             )
-        input_column = transformation.input_metric.column
+        if len(transformation.output_metric.columns) != 1:
+            raise UnsupportedMetricError(
+                transformation.output_metric,
+                (
+                    "Transformation's output metric must have a "
+                    "single grouping column, but found "
+                    f"{transformation.output_metric.columns}"
+                ),
+            )
+        input_column = list(transformation.input_metric.columns)[0]
         if input_metric.df_to_key_column[key] != input_column:
             raise ValueError(
                 f"Transformation's input metric grouping column, {input_column}, does"
                 " not match the dataframe's key column,"
                 f" {input_metric.df_to_key_column[key]}."
             )
-        output_column = transformation.output_metric.column
+        output_column = list(transformation.output_metric.columns)[0]
         output_metric = AddRemoveKeys(
             {**input_metric.df_to_key_column, new_key: output_column}
         )
@@ -327,8 +345,8 @@ class LimitRowsPerGroupValue(TransformValue):
         grouping_column = input_metric.df_to_key_column[key]
         transformation = LimitRowsPerGroup(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            output_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
-            grouping_column=grouping_column,
+            output_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
+            grouping_columns=[grouping_column],
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -366,8 +384,8 @@ class LimitKeysPerGroupValue(TransformValue):
         grouping_column = input_metric.df_to_key_column[key]
         transformation = LimitKeysPerGroup(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            output_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
-            grouping_column=grouping_column,
+            output_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
+            grouping_columns=[grouping_column],
             key_column=key_column,
             threshold=threshold,
         )
@@ -407,8 +425,8 @@ class LimitRowsPerKeyPerGroupValue(TransformValue):
         grouping_column = input_metric.df_to_key_column[key]
         transformation = LimitRowsPerKeyPerGroup(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            input_metric=IfGroupedBy(grouping_column, SymmetricDifference()),
-            grouping_column=grouping_column,
+            input_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
+            grouping_columns=[grouping_column],
             key_column=key_column,
             threshold=threshold,
         )
@@ -446,7 +464,7 @@ class FilterValue(TransformValue):
         transformation = Filter(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             filter_expr=filter_expr,
         )
@@ -495,7 +513,7 @@ class PublicJoinValue(TransformValue):
         transformation = PublicJoin(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             public_df=public_df,
             public_df_domain=public_df_domain,
@@ -533,7 +551,7 @@ class FlatMapByKeyValue(TransformValue):
         """
         transformation = FlatMapByKey(
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             row_transformer=row_transformer,
         )
@@ -573,7 +591,7 @@ class FlatMapValue(TransformValue):
         """
         transformation = FlatMap(
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             row_transformer=row_transformer,
             max_num_rows=max_num_rows,
@@ -609,7 +627,7 @@ class MapValue(TransformValue):
         """
         transformation = Map(
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             row_transformer=row_transformer,
         )
@@ -645,7 +663,7 @@ class DropInfsValue(TransformValue):
         transformation = DropInfs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             columns=columns,
         )
@@ -681,7 +699,7 @@ class DropNaNsValue(TransformValue):
         transformation = DropNaNs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             columns=columns,
         )
@@ -717,7 +735,7 @@ class DropNullsValue(TransformValue):
         transformation = DropNulls(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             columns=columns,
         )
@@ -756,7 +774,7 @@ class ReplaceInfsValue(TransformValue):
         transformation = ReplaceInfs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             replace_map=replace_map,
         )
@@ -793,7 +811,7 @@ class ReplaceNaNsValue(TransformValue):
         transformation = ReplaceNaNs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             replace_map=replace_map,
         )
@@ -830,7 +848,7 @@ class ReplaceNullsValue(TransformValue):
         transformation = ReplaceNulls(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             replace_map=replace_map,
         )
@@ -864,7 +882,7 @@ class PersistValue(TransformValue):
         transformation = Persist(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -897,7 +915,7 @@ class UnpersistValue(TransformValue):
         transformation = Unpersist(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -930,7 +948,7 @@ class SparkActionValue(TransformValue):
         transformation = SparkAction(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -966,7 +984,7 @@ class RenameValue(TransformValue):
         transformation = Rename(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             rename_mapping=rename_mapping,
         )
@@ -1002,7 +1020,7 @@ class SelectValue(TransformValue):
         transformation = Select(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             ),
             columns=columns,
         )

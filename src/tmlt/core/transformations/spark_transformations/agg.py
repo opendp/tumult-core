@@ -4,7 +4,6 @@ See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/a
 for more information on transformations.
 """
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -332,7 +331,7 @@ class CountGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
         >>> count_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> count_by_A.input_metric
@@ -373,7 +372,7 @@ class CountGrouped(Transformation):
                     f" not {input_metric.inner_metric}."
                 ),
             )
-        if count_column in set(input_domain.groupby_columns):
+        if count_column in input_domain.groupby_columns:
             raise ValueError(
                 f"Invalid count column name: ({count_column}) column already exists"
             )
@@ -507,7 +506,7 @@ class CountDistinctGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_distinct_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
         >>> count_distinct_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count_distinct': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> count_distinct_by_A.input_metric
@@ -548,7 +547,7 @@ class CountDistinctGrouped(Transformation):
                     f" not {input_metric.inner_metric}."
                 ),
             )
-        if count_column in set(input_domain.groupby_columns):
+        if count_column in input_domain.groupby_columns:
             raise ValueError(
                 f"Invalid count column name: ({count_column}) column already exists"
             )
@@ -897,7 +896,7 @@ class SumGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> sum_X_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
         >>> sum_X_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'sum(X)': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> sum_X_by_A.input_metric
@@ -941,8 +940,10 @@ class SumGrouped(Transformation):
         if sum_column is None:
             sum_column = f"sum({measure_column})"
 
-        groupby_columns = input_domain.groupby_columns
-        if measure_column not in set(input_domain.schema) - set(groupby_columns):
+        if (
+            measure_column
+            not in set(input_domain.schema) - input_domain.groupby_columns
+        ):
             raise DomainColumnError(
                 input_domain,
                 measure_column,
@@ -986,7 +987,7 @@ class SumGrouped(Transformation):
                 "Input metric must be SumOf(SymmetricDifference()) or"
                 " RootSumOfSquared(SymmetricDifference())"
             )
-        if sum_column in groupby_columns:
+        if sum_column in input_domain.groupby_columns:
             raise ValueError(f"Invalid sum column name: '{sum_column}' already exists")
 
         groupby_columns_schema = {

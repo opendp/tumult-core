@@ -35,7 +35,7 @@ from tmlt.core.utils.testing import (
 
 def test_properties():
     """FlatMapByKey's properties have the expected values."""
-    metric = IfGroupedBy("k", SymmetricDifference())
+    metric = IfGroupedBy(["k"], SymmetricDifference())
     row_transformer = RowsToRowsTransformation(
         input_domain=ListDomain(
             SparkRowDomain(
@@ -66,7 +66,7 @@ def test_properties():
 def test_property_immutability(prop_name: str):
     """Property is immutable."""
     t = FlatMapByKey(
-        metric=IfGroupedBy("k", SymmetricDifference()),
+        metric=IfGroupedBy(["k"], SymmetricDifference()),
         row_transformer=RowsToRowsTransformation(
             input_domain=ListDomain(
                 SparkRowDomain(
@@ -223,7 +223,7 @@ def test_transformation_correctness(
 ):
     """Transformation works correctly."""
     transformation = FlatMapByKey(
-        metric=IfGroupedBy("k", SymmetricDifference()), row_transformer=transformer
+        metric=IfGroupedBy(["k"], SymmetricDifference()), row_transformer=transformer
     )
     assert transformation.stability_function(1) == 1
     assert transformation.stability_relation(1, 1)
@@ -277,7 +277,7 @@ def test_null_nan_inf(spark):
         f,
     )
     transformation = FlatMapByKey(
-        metric=IfGroupedBy("id", SymmetricDifference()),
+        metric=IfGroupedBy(["id"], SymmetricDifference()),
         row_transformer=transformer,
     )
 
@@ -324,7 +324,7 @@ def test_null_nan_inf(spark):
         output_schema={
             "a": SparkFloatColumnDescriptor(),
         },
-        metric=IfGroupedBy("k", SumOf(SymmetricDifference())),
+        metric=IfGroupedBy(["k"], SumOf(SymmetricDifference())),
         raises=pytest.raises(UnsupportedMetricError),
     ),
     Case("missing-key-column")(
@@ -335,8 +335,19 @@ def test_null_nan_inf(spark):
         output_schema={
             "a": SparkFloatColumnDescriptor(),
         },
-        metric=IfGroupedBy("missing", SymmetricDifference()),
+        metric=IfGroupedBy(["missing"], SymmetricDifference()),
         raises=pytest.raises(UnsupportedCombinationError),
+    ),
+    Case("multiple-grouping-columns")(
+        input_schema={
+            "k": SparkIntegerColumnDescriptor(),
+            "a": SparkFloatColumnDescriptor(),
+        },
+        output_schema={
+            "a": SparkFloatColumnDescriptor(),
+        },
+        metric=IfGroupedBy(["k", "a"], SymmetricDifference()),
+        raises=pytest.raises(UnsupportedMetricError),
     ),
 )
 def test_invalid_metrics(

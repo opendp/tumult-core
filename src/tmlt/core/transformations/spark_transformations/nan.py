@@ -4,7 +4,6 @@ See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/a
 for more information on transformations.
 """
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -160,9 +159,11 @@ class DropInfs(Transformation):
 
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_inf=False)  # type: ignore
-                if column in columns
-                else descriptor
+                column: (
+                    replace(descriptor, allow_inf=False)  # type: ignore
+                    if column in columns
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -338,9 +339,11 @@ class DropNaNs(Transformation):
                 )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_nan=False)  # type: ignore
-                if column in columns
-                else descriptor
+                column: (
+                    replace(descriptor, allow_nan=False)  # type: ignore
+                    if column in columns
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -506,9 +509,11 @@ class DropNulls(Transformation):
             )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_null=False)  # type: ignore
-                if column in columns
-                else descriptor
+                column: (
+                    replace(descriptor, allow_null=False)  # type: ignore
+                    if column in columns
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -686,9 +691,11 @@ class ReplaceInfs(Transformation):
                 )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_inf=False)  # type: ignore
-                if column in replace_map
-                else descriptor
+                column: (
+                    replace(descriptor, allow_inf=False)  # type: ignore
+                    if column in replace_map
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -873,9 +880,11 @@ class ReplaceNaNs(Transformation):
                 )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_nan=False)  # type: ignore
-                if column in replace_map
-                else descriptor
+                column: (
+                    replace(descriptor, allow_nan=False)  # type: ignore
+                    if column in replace_map
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -1039,9 +1048,11 @@ class ReplaceNulls(Transformation):
             )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_null=False)  # type: ignore
-                if column in replace_map
-                else descriptor
+                column: (
+                    replace(descriptor, allow_null=False)  # type: ignore
+                    if column in replace_map
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -1059,9 +1070,13 @@ class ReplaceNulls(Transformation):
                     RuntimeWarning,
                 )
         if isinstance(metric, IfGroupedBy):
-            if metric.column in replace_map:
+            replaced_groupby_columns = [
+                column for column in metric.columns if column in replace_map
+            ]
+            if replaced_groupby_columns:
                 raise ValueError(
-                    "Cannot replace values in the grouping column for IfGroupedBy."
+                    "Cannot replace values in the grouping columns for IfGroupedBy, "
+                    f"but {replaced_groupby_columns} were selected."
                 )
         super().__init__(
             input_domain=input_domain,

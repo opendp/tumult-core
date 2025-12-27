@@ -4,7 +4,6 @@ See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/arch
 for more information.
 """
 
-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2025
 
@@ -276,7 +275,7 @@ class ApplyInPandas(SparkMeasurement):
 
         # Check that the input domain is compatible with the aggregation
         # function's input domain.
-        available_columns = set(input_domain.schema) - set(input_domain.groupby_columns)
+        available_columns = set(input_domain.schema) - input_domain.groupby_columns
         needed_columns = set(aggregation_function.input_domain.schema)
         if not needed_columns <= available_columns:
             raise ValueError(

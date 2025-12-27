@@ -281,17 +281,21 @@ class TestPublicJoin(TestComponent):
     @parameterized.expand(
         [
             (SymmetricDifference(), 2),
-            (IfGroupedBy("B", SumOf(SymmetricDifference())), 2),
-            (IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())), 2),
-            (IfGroupedBy("B", SymmetricDifference()), 1),
+            (IfGroupedBy(["B"], SumOf(SymmetricDifference())), 2),
+            (IfGroupedBy(["B"], RootSumOfSquared(SymmetricDifference())), 2),
+            (IfGroupedBy(["B"], SymmetricDifference()), 1),
+            (IfGroupedBy(["A", "B"], SymmetricDifference()), 1),
         ]
     )
     def test_public_join_correctness(
         self, metric: Union[SymmetricDifference, IfGroupedBy], d_out: int
     ):
         """Tests that public join works correctly."""
+        domain = SparkDataFrameDomain(
+            {"A": SparkStringColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+        )
         public_join_transformation = PublicJoin(
-            input_domain=self.input_domain,
+            input_domain=domain,
             public_df=self.public_df,
             metric=metric,
             join_cols=["B"],
@@ -303,7 +307,16 @@ class TestPublicJoin(TestComponent):
         )
         self.assertEqual(public_join_transformation.stability_function(1), d_out)
         self.assertTrue(public_join_transformation.stability_relation(1, d_out))
-        joined_df = public_join_transformation(self.private_df)
+        private_df = self.spark.createDataFrame(
+            [("Y", "X")],
+            schema=st.StructType(
+                [
+                    st.StructField("A", st.StringType(), nullable=False),
+                    st.StructField("B", st.StringType(), nullable=False),
+                ]
+            ),
+        )
+        joined_df = public_join_transformation(private_df)
         self.assertEqual(
             joined_df.schema,
             cast(
@@ -312,7 +325,7 @@ class TestPublicJoin(TestComponent):
         )
         actual = joined_df.toPandas()
         expected = pd.DataFrame(
-            [[1.2, "X", 10.0], [1.2, "X", 11.0]], columns=["A", "B", "C"]
+            [["Y", "X", 10.0], ["Y", "X", 11.0]], columns=["A", "B", "C"]
         )
         self.assert_frame_equal_with_sort(actual, expected)
 
@@ -341,25 +354,38 @@ class TestPublicJoin(TestComponent):
             (
                 ["B", "C"],
                 ["B"],
-                "C",
-                "'C' is an overlapping column but not a join key",
+                ["C"],
+                re.escape("['C'] are overlapping columns but not join keys"),
+                SymmetricDifference(),
+            ),
+            (
+                ["B", "C"],
+                ["B"],
+                ["B", "C"],
+                re.escape("['C'] are overlapping columns but not join keys"),
                 SymmetricDifference(),
             ),
             (
                 ["A", "B"],
                 ["B"],
-                "D",
+                ["D"],
                 "Input metric .* and input domain .* are not compatible",
                 SymmetricDifference(),
             ),
-            (["A", "B"], ["B"], "A", "must be SymmetricDifference", HammingDistance()),
+            (
+                ["A", "B"],
+                ["B"],
+                ["A"],
+                "must be SymmetricDifference",
+                HammingDistance(),
+            ),
         ]
     )
     def test_if_grouped_by_metric_invalid_parameters(
         self,
         private_cols: List[str],
         join_cols: List[str],
-        groupby_col: str,
+        groupby_cols: List[str],
         error_msg: str,
         inner_metric: Union[SymmetricDifference, HammingDistance],
     ):
@@ -374,7 +400,7 @@ class TestPublicJoin(TestComponent):
                         {"X": ["a1", "a2"], "C": ["z1", "z2"], "B": ["1", "2"]}
                     )
                 ),
-                metric=IfGroupedBy(groupby_col, SumOf(inner_metric)),
+                metric=IfGroupedBy(groupby_cols, SumOf(inner_metric)),
                 join_cols=join_cols,
             )
 

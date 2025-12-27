@@ -678,7 +678,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                             StructField("C", LongType(), True),
                         ]
                     ),
-                    "groupby_columns": _base_groupby_columns,
+                    "groupby_columns": frozenset(_base_groupby_columns),
                 },
             )
         ],
@@ -845,7 +845,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                         "Invalid group keys: Columns are not as expected. "
                         "DataFrame and Domain must contain the same columns in the "
                         "same order.\nDataFrame columns: \\[\\]\nDomain "
-                        "columns: \\['A', 'B'\\]"
+                        "columns: (\\['A', 'B'\\]|\\['B', 'A'\\])"
                     ),
                 ),
                 {
@@ -937,9 +937,10 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             "SparkGroupedDataFrameDomain(schema={'A': SparkIntegerColumnDescriptor("
             "allow_null=True, size=64), 'B': SparkStringColumnDescriptor(allow_null="
             "True), 'C': SparkIntegerColumnDescriptor(allow_null=True, size=64)},"
-            " groupby_columns=['A', 'B'])"
+            f" groupby_columns={groupby_str})"
+            for groupby_str in ["{'A', 'B'}", "{'B', 'A'}"]
         )
-        assert repr(domain) == expected
+        assert repr(domain) in expected
 
     @pytest.mark.parametrize(
         "domain, expected, expectation, exception_properties",
