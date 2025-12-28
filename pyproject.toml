@@ -239,7 +239,6 @@ ignore = [
     #     ignore each one.
     "RUF005",  # collection-literal-concatenation
     "PLW0128", # redeclared-assigned-name
-    "RUF015",  # unnecessary-iterable-allocation-for-first-element
     "RUF043",  # pytest-raises-ambiguous-pattern
     "D205",    # missing-blank-line-after-summary
     "D102",    # undocumented-public-method

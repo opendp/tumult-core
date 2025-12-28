@@ -79,7 +79,7 @@ class CreateDictFromValue(Transformation):
                         f"{input_metric.columns}"
                     ),
                 )
-            output_metric = AddRemoveKeys({key: list(input_metric.columns)[0]})
+            output_metric = AddRemoveKeys({key: next(iter(input_metric.columns))})
         else:
             output_metric = DictMetric({key: input_metric})
         super().__init__(

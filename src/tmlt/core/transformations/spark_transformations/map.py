@@ -984,7 +984,7 @@ class GroupingFlatMap(Transformation):
                 "Inner metric for output metric must be SymmetricDifference.",
             )
 
-        self._grouping_column = list(additional_columns)[0]
+        self._grouping_column = next(iter(additional_columns))
         self._max_num_rows = max_num_rows
         self._row_transformer = row_transformer
 
@@ -1339,7 +1339,7 @@ class FlatMapByKey(Transformation):
                 "got an IfGroupedBy with multiple columns.",
             )
 
-        self._key_column = list(metric.columns)[0]
+        self._key_column = next(iter(metric.columns))
         output_schema = OrderedDict(row_transformer.output_domain.element_domain.schema)
         if self._key_column in output_schema:
             raise UnsupportedDomainError(
