@@ -240,11 +240,11 @@ def create_count_measurement(
     count_aggregation: Transformation
     if groupby_transformation is None:
         if isinstance(input_metric, IfGroupedBy):
-            raise TypeError(
+            raise UnsupportedMetricError(
                 input_metric,
                 (
-                    "Cannot use IfGroupedBy input metric if no groupby_transformation"
-                    " is provided"
+                    "Cannot use IfGroupedBy input metric if no "
+                    "groupby_transformation is provided."
                 ),
             )
         count_aggregation = create_count_aggregation(
@@ -478,7 +478,7 @@ def create_count_distinct_measurement(
             raise UnsupportedMetricError(
                 input_metric,
                 (
-                    "Cannot use IfGroupedBy input metric if no"
+                    "Cannot use IfGroupedBy input metric if no "
                     "groupby_transformation is provided."
                 ),
             )
@@ -742,8 +742,8 @@ def create_sum_measurement(
             raise UnsupportedMetricError(
                 input_metric,
                 (
-                    "IfGroupedBy must be accompanied by an appropriate groupby "
-                    "transformation."
+                    "Cannot use IfGroupedBy input metric if no "
+                    "groupby_transformation is provided."
                 ),
             )
         sum_aggregation = create_sum_aggregation(
@@ -1904,8 +1904,8 @@ def create_quantile_measurement(
             raise UnsupportedMetricError(
                 input_metric,
                 (
-                    "IfGroupedBy must be accompanied by an appropriate groupby "
-                    "transformation."
+                    "Cannot use IfGroupedBy input metric if no "
+                    "groupby_transformation is provided."
                 ),
             )
         spark = SparkSession.builder.getOrCreate()
@@ -2238,8 +2238,8 @@ def create_bounds_measurement(
             raise UnsupportedMetricError(
                 input_metric,
                 (
-                    "IfGroupedBy must be accompanied by an appropriate groupby "
-                    "transformation."
+                    "Cannot use IfGroupedBy input metric if no "
+                    "groupby_transformation is provided."
                 ),
             )
         input_or_constructed_groupby_transformation = GroupBy(
