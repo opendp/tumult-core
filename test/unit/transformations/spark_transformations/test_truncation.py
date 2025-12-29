@@ -471,9 +471,9 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
             threshold=threshold,
         )
         actual_df = transformation(df)
-        expected_df = truncate_large_groups(df, grouping_columns + ["C"], threshold)
+        expected_df = truncate_large_groups(df, [*grouping_columns, "C"], threshold)
         assert_dataframe_equal(actual_df, expected_df)
-        rows_per_key_per_group = actual_df.groupby(grouping_columns + ["C"]).count()
+        rows_per_key_per_group = actual_df.groupby([*grouping_columns, "C"]).count()
         assert all(
             [row["count"] <= threshold for row in rows_per_key_per_group.collect()]
         )

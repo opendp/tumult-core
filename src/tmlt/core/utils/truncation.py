@@ -27,7 +27,7 @@ def _hash_column(df: DataFrame, column: str) -> Tuple[DataFrame, str]:
     Returns:
         The updated DataFrame and the name of the new column.
     """
-    new_column = get_nonconflicting_string(df.columns + [column])
+    new_column = get_nonconflicting_string([*df.columns, column])
     dataType = df.schema[column].dataType
     if (
         dataType == IntegerType()
@@ -147,7 +147,7 @@ def truncate_large_groups(
         *starting_columns
     )
     df = df.withColumn(row_index_column, sf.row_number().over(distinct_row_partitions))
-    df, hash_column = _hash_columns(df, starting_columns + [row_index_column])
+    df, hash_column = _hash_columns(df, [*starting_columns, row_index_column])
     shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(
         hash_column, *starting_columns
     )

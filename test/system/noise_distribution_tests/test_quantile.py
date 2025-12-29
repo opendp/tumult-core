@@ -87,7 +87,7 @@ def _get_quantile_probabilities(
     epsilon = min(epsilon, sys.float_info.max / (n + 1))
     target_rank = quantile * n
 
-    data = [lower] + cast(List[float], data) + [upper]
+    data = [lower, *cast(List[float], data), upper]
     indexed_intervals = enumerate(itertools.pairwise(data))
     weights = np.array(
         [
