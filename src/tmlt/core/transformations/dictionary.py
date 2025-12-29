@@ -476,7 +476,7 @@ def create_rename(
         transformation=Identity(domain=input_domain[key], metric=input_metric[key]),
         hint=lambda d_in, _: d_in,
     )
-    subset_keys = list(input_domain.key_to_domain) + [new_key]
+    subset_keys = [*input_domain.key_to_domain, new_key]
     subset_keys.remove(key)
     rename = ChainTT(
         transformation1=copy_and_transform_value,

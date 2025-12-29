@@ -2037,7 +2037,7 @@ def _create_map_to_compute_deviations(
 
     deviations_column = get_nonconflicting_string(list(input_domain.schema))
     squared_deviations_column = get_nonconflicting_string(
-        list(input_domain.schema) + [deviations_column]
+        [*input_domain.schema, deviations_column]
     )
 
     return (
@@ -2276,7 +2276,7 @@ def create_bounds_measurement(
 
     # Create map transformation.
     rank_column = get_nonconflicting_string(list(input_domain.schema))
-    count_column = get_nonconflicting_string(list(input_domain.schema) + [rank_column])
+    count_column = get_nonconflicting_string([*input_domain.schema, rank_column])
     element_type = input_domain[measure_column]
 
     bucket_group_keys = spark.createDataFrame(

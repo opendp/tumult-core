@@ -670,14 +670,12 @@ class TestPandasDataFrameDomain(DomainTests):
                 ),
                 does_not_raise(),
             ),
-        ]
-        + [
             # Failure cases
             (
                 {"A": np.dtype("int32"), "B": np.dtype([("f1", np.int16)])},
                 None,
                 pytest.raises(KeyError),
-            )
+            ),
         ],
     )
     def test_from_numpy_types(

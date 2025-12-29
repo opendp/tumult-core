@@ -864,7 +864,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
             .filter(sf.col(row_number) == 1)
         )
 
-        return df.select(self.grouping_columns + [self.rank_column])
+        return df.select([*self.grouping_columns, self.rank_column])
 
 
 def _get_sanitized_df(sdf: DataFrame) -> DataFrame:

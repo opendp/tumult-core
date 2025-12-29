@@ -187,7 +187,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(count_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = count_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
-        self.assertEqual(answer.columns, self.groupby_columns + ["test_count"])
+        self.assertEqual(answer.columns, [*self.groupby_columns, "test_count"])
 
     @parameterized.expand(
         [
@@ -256,7 +256,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         )
         answer = count_distinct_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
-        self.assertEqual(answer.columns, self.groupby_columns + ["test_count"])
+        self.assertEqual(answer.columns, [*self.groupby_columns, "test_count"])
 
     @parameterized.expand(
         [
@@ -326,7 +326,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(sum_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = sum_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
-        self.assertEqual(answer.columns, self.groupby_columns + ["sumC"])
+        self.assertEqual(answer.columns, [*self.groupby_columns, "sumC"])
 
     @parameterized.expand(
         [
@@ -396,7 +396,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(average_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = average_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
-        self.assertEqual(answer.columns, self.groupby_columns + ["AVG(C)"])
+        self.assertEqual(answer.columns, *[self.groupby_columns, "AVG(C)"])
 
     @parameterized.expand(
         [
@@ -474,7 +474,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertIsInstance(answer, DataFrame)
         if not output_column:
             output_column = "stddev(C)"
-        self.assertEqual(answer.columns, self.groupby_columns + [output_column])
+        self.assertEqual(answer.columns, [*self.groupby_columns, output_column])
         answer.first()
 
     @parameterized.expand(
@@ -551,7 +551,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertIsInstance(answer, DataFrame)
         if not output_column:
             output_column = "var(C)"
-        self.assertEqual(answer.columns, self.groupby_columns + [output_column])
+        self.assertEqual(answer.columns, [*self.groupby_columns, output_column])
         answer.first()
 
     @parameterized.expand(
@@ -608,7 +608,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(quantile_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = quantile_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
-        self.assertEqual(answer.columns, self.groupby_columns + ["MEDIAN(C)"])
+        self.assertEqual(answer.columns, [*self.groupby_columns, "MEDIAN(C)"])
         df = answer.toPandas()
         self.assertTrue(((df["MEDIAN(C)"] <= 10) & (df["MEDIAN(C)"] >= 0)).all())
 
@@ -663,9 +663,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(bounds_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = bounds_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
-        self.assertEqual(
-            set(answer.columns), set(self.groupby_columns + ["lower", "upper"])
-        )
+        self.assertEqual(set(answer.columns), {*self.groupby_columns, "lower", "upper"})
         for row in answer.collect():
             assert row.upper > 0
             assert row.lower < 0
