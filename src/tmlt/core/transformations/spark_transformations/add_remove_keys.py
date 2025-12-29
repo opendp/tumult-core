@@ -253,14 +253,14 @@ class TransformValue(Transformation):
                     f"{transformation.output_metric.columns}"
                 ),
             )
-        input_column = list(transformation.input_metric.columns)[0]
+        input_column = next(iter(transformation.input_metric.columns))
         if input_metric.df_to_key_column[key] != input_column:
             raise ValueError(
                 f"Transformation's input metric grouping column, {input_column}, does"
                 " not match the dataframe's key column,"
                 f" {input_metric.df_to_key_column[key]}."
             )
-        output_column = list(transformation.output_metric.columns)[0]
+        output_column = next(iter(transformation.output_metric.columns))
         output_metric = AddRemoveKeys(
             {**input_metric.df_to_key_column, new_key: output_column}
         )
