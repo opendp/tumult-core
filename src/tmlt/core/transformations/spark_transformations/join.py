@@ -5,7 +5,7 @@ for more information on transformations.
 """
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union

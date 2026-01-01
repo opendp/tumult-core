@@ -1,7 +1,7 @@
 """Domains for NumPy datatypes."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from dataclasses import dataclass
 from typing import Any

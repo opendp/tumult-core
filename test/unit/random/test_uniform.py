@@ -1,7 +1,7 @@
 """Tests for :mod:`~tmlt.core.random.uniform`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from tmlt.core.random.uniform import uniform_inverse_cdf
 from tmlt.core.utils.arb import Arb

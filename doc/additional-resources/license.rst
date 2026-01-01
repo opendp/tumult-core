@@ -5,9 +5,9 @@ License
 
 ..
     SPDX-License-Identifier: CC-BY-SA-4.0
-    Copyright Tumult Labs 2025
+    Copyright Tumult Labs 2026
 
-Copyright Tumult Labs 2025
+Copyright Tumult Labs 2026
 
 The Tumult Core source code is licensed under the Apache License, version 2.0 (`Apache-2.0 <https://github.com/opendp/tumult-core/blob/main/LICENSE>`_).
 

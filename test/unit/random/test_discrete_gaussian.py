@@ -1,7 +1,7 @@
 """Tests for :mod:`~tmlt.core.random.discrete_gaussian`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from fractions import Fraction
 from typing import Union
