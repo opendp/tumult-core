@@ -31,7 +31,7 @@ def evaluate_runtime(
     input_domain: SparkDataFrameDomain,
     input_metric: Metric,
     output_measure: Measure,
-) -> Tuple[float, float, float]:
+) -> Tuple[float, float]:
     """Returns the runtimes for a count with the given parameters."""
     count = create_count_measurement(
         input_domain=input_domain,
@@ -66,14 +66,14 @@ def evaluate_runtime(
         sum_meas(dataframe)
     sum_time = sum_timer.elapsed
 
-    return round(count_time, 3), round(sum_time, 3)
+    return count_time, sum_time
 
 
 def main(trial_name: str = ""):
     """Evaluate count and sum runtimes for different group counts and sizes."""
     spark = SparkSession.builder.getOrCreate()
-    count_column = f"count_time_{trial_name} (s)"
-    sum_column = f"sum_time_{trial_name} (s)"
+    count_column = f"count_time{f'_{trial_name}' if trial_name else ''} (s)"
+    sum_column = f"sum_time{f'_{trial_name}' if trial_name else ''} (s)"
     benchmark_result = pd.DataFrame(
         [],
         columns=[
@@ -108,15 +108,21 @@ def main(trial_name: str = ""):
         sum_times.pop(0)
         row = {
             "num_records": num_rows,
-            count_column: statistics.mean(count_times),
-            sum_column: statistics.mean(sum_times),
+            count_column: round(statistics.mean(count_times), 3),
+            sum_column: round(statistics.mean(sum_times), 3),
         }
         benchmark_result = pd.concat(
             [benchmark_result, pd.DataFrame([row])], ignore_index=True
         )
 
-    write_as_html(benchmark_result, f"count_sum_scalar_{trial_name}.html")
-    write_as_csv(benchmark_result, f"count_sum_scalar_{trial_name}.csv")
+    write_as_html(
+        benchmark_result,
+        f"count_sum_scalar{f'_{trial_name}' if trial_name else ''}.html",
+    )
+    write_as_csv(
+        benchmark_result,
+        f"count_sum_scalar{f'_{trial_name}' if trial_name else ''}.csv",
+    )
 
 
 if __name__ == "__main__":

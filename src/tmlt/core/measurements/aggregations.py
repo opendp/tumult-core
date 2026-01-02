@@ -132,6 +132,31 @@ class NoiseMechanism(Enum):
         return self.name.lower().capitalize().replace("_", " ")
 
 
+def _total_groupby_for_scalar(
+    input_domain: SparkDataFrameDomain,
+    input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
+    noise_mechanism: NoiseMechanism,
+) -> GroupBy:
+    """Validate metric, and build a total aggregation groupby."""
+    if isinstance(input_metric, IfGroupedBy):
+        raise UnsupportedMetricError(
+            input_metric,
+            (
+                "Cannot use IfGroupedBy input metric if no "
+                "groupby_transformation is provided."
+            ),
+        )
+    spark = SparkSession.builder.getOrCreate()
+    empty_df = spark.createDataFrame([], schema=StructType([]))
+    return GroupBy(
+        input_domain=input_domain,
+        input_metric=input_metric,
+        use_l2=noise_mechanism
+        in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN],
+        group_keys=empty_df,
+    )
+
+
 @typechecked
 def create_count_measurement(
     input_domain: SparkDataFrameDomain,
@@ -182,23 +207,7 @@ def create_count_measurement(
             None, this column will be named "count".
     """
     if groupby_transformation is None:
-        if isinstance(input_metric, IfGroupedBy):
-            raise UnsupportedMetricError(
-                input_metric,
-                (
-                    "Cannot use IfGroupedBy input metric if no "
-                    "groupby_transformation is provided."
-                ),
-            )
-        spark = SparkSession.builder.getOrCreate()
-        empty_df = spark.createDataFrame([], schema=StructType([]))
-        groupby = GroupBy(
-            input_domain=input_domain,
-            input_metric=input_metric,
-            use_l2=noise_mechanism
-            in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN],
-            group_keys=empty_df,
-        )
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
         grouped_count = create_count_measurement(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -396,23 +405,7 @@ def create_count_distinct_measurement(
             measurement. If None, this column will be named "count_distinct".
     """
     if groupby_transformation is None:
-        if isinstance(input_metric, IfGroupedBy):
-            raise UnsupportedMetricError(
-                input_metric,
-                (
-                    "Cannot use IfGroupedBy input metric if no "
-                    "groupby_transformation is provided."
-                ),
-            )
-        spark = SparkSession.builder.getOrCreate()
-        empty_df = spark.createDataFrame([], schema=StructType([]))
-        groupby = GroupBy(
-            input_domain=input_domain,
-            input_metric=input_metric,
-            use_l2=noise_mechanism
-            in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN],
-            group_keys=empty_df,
-        )
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
         groupby_count = create_count_distinct_measurement(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -627,23 +620,7 @@ def create_sum_measurement(
             None, this column will be named "sum(<measure_column>)".
     """
     if groupby_transformation is None:
-        if isinstance(input_metric, IfGroupedBy):
-            raise UnsupportedMetricError(
-                input_metric,
-                (
-                    "Cannot use IfGroupedBy input metric if no "
-                    "groupby_transformation is provided."
-                ),
-            )
-        spark = SparkSession.builder.getOrCreate()
-        empty_df = spark.createDataFrame([], schema=StructType([]))
-        groupby = GroupBy(
-            input_domain=input_domain,
-            input_metric=input_metric,
-            use_l2=noise_mechanism
-            in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN],
-            group_keys=empty_df,
-        )
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
         grouped_sum = create_sum_measurement(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -874,23 +851,7 @@ def create_average_measurement(
     midpoint_column = f"midpoint({measure_column})"
 
     if groupby_transformation is None:
-        if isinstance(input_metric, IfGroupedBy):
-            raise UnsupportedMetricError(
-                input_metric,
-                (
-                    "Cannot use IfGroupedBy input metric if no "
-                    "groupby_transformation is provided."
-                ),
-            )
-        spark = SparkSession.builder.getOrCreate()
-        empty_df = spark.createDataFrame([], schema=StructType([]))
-        groupby = GroupBy(
-            input_domain=input_domain,
-            input_metric=input_metric,
-            use_l2=noise_mechanism
-            in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN],
-            group_keys=empty_df,
-        )
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
         groupby_average = create_average_measurement(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -1229,23 +1190,7 @@ def create_variance_measurement(
     midpoint_column = f"midpoint({measure_column})"
     midpoint_of_squares_column = f"midpoint_of_squared({measure_column})"
     if groupby_transformation is None:
-        if isinstance(input_metric, IfGroupedBy):
-            raise UnsupportedMetricError(
-                input_metric,
-                (
-                    "Cannot use IfGroupedBy input metric if no "
-                    "groupby_transformation is provided."
-                ),
-            )
-        spark = SparkSession.builder.getOrCreate()
-        empty_df = spark.createDataFrame([], schema=StructType([]))
-        groupby = GroupBy(
-            input_domain=input_domain,
-            input_metric=input_metric,
-            use_l2=noise_mechanism
-            in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN],
-            group_keys=empty_df,
-        )
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
         groupby_variance = create_variance_measurement(
             input_domain=input_domain,
             input_metric=input_metric,
