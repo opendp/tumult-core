@@ -1,7 +1,7 @@
 """Common utility functions for benchmarking scripts."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import time
 import pandas as pd

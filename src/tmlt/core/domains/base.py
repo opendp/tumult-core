@@ -1,7 +1,7 @@
 """Base class for input/output domains."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

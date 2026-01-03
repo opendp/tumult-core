@@ -1,7 +1,7 @@
 """Transformations for truncating Spark DataFrames."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 from typing import Collection, Union
 
 from pyspark.sql import DataFrame

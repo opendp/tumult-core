@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright Tumult Labs 2025 */
+/* Copyright Tumult Labs 2026 */
 
 function injectBanner(content) {
   var body = document.getElementsByClassName('bd-article')[0];

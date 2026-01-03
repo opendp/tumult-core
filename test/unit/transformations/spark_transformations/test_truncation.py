@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.truncation`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 import re
 from typing import Dict, List, Sequence, Type, Union
 

@@ -3,7 +3,7 @@ Tumult Core documentation
 
 ..
     SPDX-License-Identifier: CC-BY-SA-4.0
-    Copyright Tumult Labs 2025
+    Copyright Tumult Labs 2026
 
 .. toctree::
    :hidden:
