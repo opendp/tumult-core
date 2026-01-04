@@ -400,7 +400,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         self.assertEqual(average_measurement.privacy_function(sp.Integer(1)), d_out)
         answer = average_measurement(self.sdf)
         self.assertIsInstance(answer, DataFrame)
-        self.assertEqual(answer.columns, *[self.groupby_columns, "AVG(C)"])
+        self.assertEqual(answer.columns, [*self.groupby_columns, "AVG(C)"])
 
     @parameterized.expand(
         [
