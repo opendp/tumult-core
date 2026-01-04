@@ -270,6 +270,27 @@ class TestGroupedDataFrame(PySparkTest):
         )
         self.assert_frame_equal_with_sort(expected, actual)
 
+    def test_total_agg_fill_value(self):
+        """Tests that agg fills correct value for missing keys."""
+        expected = pd.DataFrame({"sum(Y)": [10]})
+        actual = (
+            GroupedDataFrame(
+                dataframe=self.spark.createDataFrame(
+                    [],
+                    schema=StructType(
+                        [
+                            StructField("X", IntegerType()),
+                            StructField("Y", IntegerType()),
+                        ]
+                    ),
+                ),
+                group_keys=self.spark.createDataFrame([], schema=StructType()),
+            )
+            .agg(func=sf.sum(sf.col("Y")).alias("sum(Y)"), fill_value=10)
+            .toPandas()
+        )
+        self.assert_frame_equal_with_sort(expected, actual)
+
     def test_agg_does_not_override_valid_nulls(self):
         """Tests that agg does not replace nulls associated with existing keys."""
         expected = pd.DataFrame({"X": ["A", "B", "C"], "sum(Y)": [1, None, 0]})
