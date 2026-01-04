@@ -2184,14 +2184,19 @@ def create_bounds_measurement(
     # help mypy
     assert isinstance(maybe_unwrap.output_domain, SparkDataFrameDomain)
     assert isinstance(maybe_unwrap.output_metric, SymmetricDifference)
+    group_keys = (
+        bucket_group_keys
+        if not input_or_constructed_groupby_transformation.group_keys
+        else input_or_constructed_groupby_transformation.group_keys.join(
+            bucket_group_keys, how="outer"
+        )
+    )
     # Redefine groupby transformation to include the bucket.
     augmented_groupby = GroupBy(
         input_domain=maybe_unwrap.output_domain,
         input_metric=maybe_unwrap.output_metric,
         use_l2=False,
-        group_keys=input_or_constructed_groupby_transformation.group_keys.join(
-            bucket_group_keys, how="outer"
-        ),
+        group_keys=group_keys,
     )
 
     # Define count transformation.

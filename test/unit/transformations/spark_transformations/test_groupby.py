@@ -201,6 +201,7 @@ class TestGroupBy(PySparkTest):
             grouped_dataframe.dataframe.toPandas(),
             self.df.toPandas(),
         )
+        assert grouped_dataframe.group_keys is not None
         self.assert_frame_equal_with_sort(
             grouped_dataframe.group_keys.toPandas(), self.group_keys.toPandas()
         )
@@ -219,9 +220,7 @@ class TestGroupBy(PySparkTest):
             grouped_dataframe.dataframe.toPandas(),
             self.df.toPandas(),
         )
-        self.assert_frame_equal_with_sort(
-            grouped_dataframe.group_keys.toPandas(), pd.DataFrame()
-        )
+        assert grouped_dataframe.group_keys is None
 
     def test_total_on_none(self):
         """Tests that GroupBy transformation works correctly with none group keys."""
@@ -237,9 +236,7 @@ class TestGroupBy(PySparkTest):
             grouped_dataframe.dataframe.toPandas(),
             self.df.toPandas(),
         )
-        self.assert_frame_equal_with_sort(
-            grouped_dataframe.group_keys.toPandas(), pd.DataFrame()
-        )
+        assert grouped_dataframe.group_keys is None
 
 
 @parametrize(
@@ -338,7 +335,7 @@ class TestDerivedTransformations(PySparkTest):
                 {"A": ["x1", "x2"]},
                 pd.DataFrame({"A": ["x1", "x2"]}),
             ),
-            (HammingDistance(), True, {}, pd.DataFrame()),
+            (HammingDistance(), True, {}, None),
         ]
     )
     def test_create_groupby_from_column_domains(
@@ -355,12 +352,16 @@ class TestDerivedTransformations(PySparkTest):
         self.assertEqual(groupby_transformation.use_l2, use_l2)
         # If there are no columns, toPandas removes all rows, so this check is also
         # needed.
-        self.assertEqual(
-            groupby_transformation.group_keys.count(), len(expected_group_keys)
-        )
-        self.assert_frame_equal_with_sort(
-            groupby_transformation.group_keys.toPandas(), expected_group_keys
-        )
+        if expected_group_keys is None:
+            assert groupby_transformation.group_keys is None
+        else:
+            assert groupby_transformation.group_keys is not None
+            self.assertEqual(
+                groupby_transformation.group_keys.count(), len(expected_group_keys)
+            )
+            self.assert_frame_equal_with_sort(
+                groupby_transformation.group_keys.toPandas(), expected_group_keys
+            )
 
     @parameterized.expand(
         [
@@ -386,10 +387,14 @@ class TestDerivedTransformations(PySparkTest):
         )
         self.assertEqual(groupby.input_metric, input_metric)
         self.assertEqual(groupby.use_l2, use_l2)
-        expected_group_keys = pd.DataFrame(data=group_keys, columns=groupby_columns)
-        self.assert_frame_equal_with_sort(
-            groupby.group_keys.toPandas(), expected_group_keys
-        )
+        if group_keys:
+            assert groupby.group_keys is not None
+            expected_group_keys = pd.DataFrame(data=group_keys, columns=groupby_columns)
+            self.assert_frame_equal_with_sort(
+                groupby.group_keys.toPandas(), expected_group_keys
+            )
+        else:
+            assert groupby.group_keys is None
 
 
 class TestComputeFullDomainDF(PySparkTest):

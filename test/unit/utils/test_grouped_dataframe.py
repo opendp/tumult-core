@@ -58,6 +58,7 @@ class TestGroupedDataFrame(PySparkTest):
             group_keys=self.spark.createDataFrame([(1,), (1,)], schema=["A"]),
         )
         expected_group_keys = pd.DataFrame({"A": [1]})
+        assert grouped_dataframe.group_keys is not None
         self.assert_frame_equal_with_sort(
             expected_group_keys, grouped_dataframe.group_keys.toPandas()
         )
