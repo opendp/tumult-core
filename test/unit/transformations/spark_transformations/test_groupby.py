@@ -223,6 +223,24 @@ class TestGroupBy(PySparkTest):
             grouped_dataframe.group_keys.toPandas(), pd.DataFrame()
         )
 
+    def test_total_on_none(self):
+        """Tests that GroupBy transformation works correctly with none group keys."""
+        groupby_transformation = GroupBy(
+            input_domain=self.domain,
+            input_metric=SymmetricDifference(),
+            use_l2=True,
+            group_keys=None,
+        )
+        grouped_dataframe = groupby_transformation(self.df)
+        self.assertTrue(isinstance(grouped_dataframe, GroupedDataFrame))
+        self.assert_frame_equal_with_sort(
+            grouped_dataframe.dataframe.toPandas(),
+            self.df.toPandas(),
+        )
+        self.assert_frame_equal_with_sort(
+            grouped_dataframe.group_keys.toPandas(), pd.DataFrame()
+        )
+
 
 @parametrize(
     Case("symmetric distance")(
