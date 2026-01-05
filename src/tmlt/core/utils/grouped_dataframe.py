@@ -101,12 +101,18 @@ class GroupedDataFrame:
             fill_value: Output value for empty groups.
         """
         if self._total_aggregation:
-            result = self._dataframe.agg(func)
-            assert len(result.columns) == 1
-            column = result.columns[0]
-            if not self._dataframe.first():  # empty dataframe
-                return result.withColumn(column, sf.lit(fill_value))
-            return result
+            nonconflicting_name = str(func) + "A"
+            result = self._dataframe.agg(
+                func, sf.count(sf.expr("*")).alias(nonconflicting_name)
+            ).cache()
+            agg_column = result.columns[0]
+            result_row = result.first()
+            assert result_row is not None
+            df_empty = result_row[nonconflicting_name] == 0
+            result = result.drop(nonconflicting_name)
+            if df_empty:
+                return result.withColumn(agg_column, sf.lit(fill_value)).cache()
+            return result.cache()
         nonempty_groups_output = self._dataframe.groupBy(self.groupby_columns).agg(func)
         agg_output_columns = set(nonempty_groups_output.columns) - set(
             self.groupby_columns
