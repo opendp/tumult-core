@@ -146,14 +146,12 @@ def _total_groupby_for_scalar(
                 "groupby_transformation is provided."
             ),
         )
-    spark = SparkSession.builder.getOrCreate()
-    empty_df = spark.createDataFrame([], schema=StructType([]))
     return GroupBy(
         input_domain=input_domain,
         input_metric=input_metric,
         use_l2=noise_mechanism
         in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN],
-        group_keys=empty_df,
+        group_keys=None,
     )
 
 
@@ -1753,12 +1751,11 @@ def create_quantile_measurement(
                     "groupby_transformation is provided."
                 ),
             )
-        spark = SparkSession.builder.getOrCreate()
         groupby_transformation = GroupBy(
             input_domain=input_domain,
             input_metric=input_metric,
             use_l2=False,
-            group_keys=spark.createDataFrame([], schema=StructType([])),
+            group_keys=None,
         )
         # Postprocess to obtain the answer if no groupby transformation
         postprocess = lambda df: df.collect()[0][measure_column]
@@ -2091,7 +2088,7 @@ def create_bounds_measurement(
             input_domain=input_domain,
             input_metric=input_metric,
             use_l2=False,
-            group_keys=spark.createDataFrame([], schema=StructType([])),
+            group_keys=None,
         )
     else:
         input_or_constructed_groupby_transformation = groupby_transformation
