@@ -42,6 +42,9 @@ from tmlt.core.utils.validation import validate_groupby_domains
 class GroupBy(Transformation):
     """Groups a Spark DataFrame by given group keys.
 
+    Can also perform a "total aggregation", which puts the entire DataFrame into
+    a single group.
+
     Example:
         ..
             >>> from pyspark.sql import SparkSession
