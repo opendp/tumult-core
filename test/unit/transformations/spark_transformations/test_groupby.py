@@ -350,12 +350,12 @@ class TestDerivedTransformations(PySparkTest):
         )
         self.assertEqual(groupby_transformation.input_metric, input_metric)
         self.assertEqual(groupby_transformation.use_l2, use_l2)
-        # If there are no columns, toPandas removes all rows, so this check is also
-        # needed.
         if expected_group_keys is None:
             assert groupby_transformation.group_keys is None
         else:
             assert groupby_transformation.group_keys is not None
+            # If there are no columns, toPandas removes all rows, so this check is also
+            # needed.
             self.assertEqual(
                 groupby_transformation.group_keys.count(), len(expected_group_keys)
             )
