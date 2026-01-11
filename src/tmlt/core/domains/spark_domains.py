@@ -592,12 +592,20 @@ class SparkGroupedDataFrameDomain(Domain):
                 if column in self.groupby_columns
             }
         )
-        try:
-            group_key_domain.validate(value.group_keys)
-        except OutOfDomainError as exception:
-            raise OutOfDomainError(
-                self, value, f"Invalid group keys: {exception}"
-            ) from exception
+        if value.group_keys is None:
+            if group_key_domain.schema:
+                raise OutOfDomainError(
+                    self,
+                    value,
+                    "Invalid group keys: expected groups, but got total aggregation",
+                )
+        else:
+            try:
+                group_key_domain.validate(value.group_keys)
+            except OutOfDomainError as exception:
+                raise OutOfDomainError(
+                    self, value, f"Invalid group keys: {exception}"
+                ) from exception
 
     def get_group_domain(self) -> SparkDataFrameDomain:
         """Return the domain for one of the groups."""

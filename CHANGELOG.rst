@@ -30,6 +30,9 @@ Changed
   now include the midpoints when returning grouped results, and use the user-specified names when returning scalar results.
 - The truncation operations in :mod:`~tmlt.core.transformations.spark_transformations.truncation` support 
   grouping by multiple columns, and :class:`~tmlt.core.metrics.IfGroupedBy` supports multiple grouping columns.
+- :class:`~tmlt.core.transformations.spark_transformations.groupby.GroupBy` and :class:`tmlt.core.utils.grouped_dataframe.GroupedDataFrame`
+  now accept None groupby keys to trigger a total aggregation. Empty dataframes can still be passed in, but when accessing the group keys
+  they will always be null for a total aggregation (regardless of the way the object was constructed).
 
 .. _v0.18.2:
 

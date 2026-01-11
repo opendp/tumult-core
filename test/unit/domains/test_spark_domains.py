@@ -837,14 +837,17 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                         "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
                         "schema": ["A", "B", "C"],
                     },
-                    "group_keys": _empty_group_key_args,
+                    "group_keys": {
+                        "data": [(1,)],
+                        "schema": StructType([StructField("A", IntegerType())]),
+                    },
                 },
                 pytest.raises(
                     OutOfDomainError,
                     match=(
                         "Invalid group keys: Columns are not as expected. "
                         "DataFrame and Domain must contain the same columns in the "
-                        "same order.\nDataFrame columns: \\[\\]\nDomain "
+                        "same order.\nDataFrame columns: \\['A'\\]\nDomain "
                         "columns: (\\['A', 'B'\\]|\\['B', 'A'\\])"
                     ),
                 ),
@@ -857,7 +860,39 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                             "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
                             "schema": ["A", "B", "C"],
                         },
-                        "group_keys": _empty_group_key_args,
+                        "group_keys": {
+                            "data": [(1,)],
+                            "schema": StructType([StructField("A", IntegerType())]),
+                        },
+                    },
+                },
+            ),
+            (  # No columns in group_keys
+                SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns),
+                {
+                    "dataframe": {
+                        "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    "group_keys": _empty_group_key_args,
+                },
+                pytest.raises(
+                    OutOfDomainError,
+                    match=(
+                        "Invalid group keys: expected groups, but got total "
+                        "aggregation"
+                    ),
+                ),
+                {
+                    "domain": SparkGroupedDataFrameDomain(
+                        _base_schema, _base_groupby_columns
+                    ),
+                    "value": {
+                        "dataframe": {
+                            "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
+                            "schema": ["A", "B", "C"],
+                        },
+                        "group_keys": None,
                     },
                 },
             ),
@@ -900,9 +935,12 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             exception_properties["value"]["dataframe"] = self.spark.createDataFrame(
                 **exception_properties["value"]["dataframe"]
             )
-            exception_properties["value"]["group_keys"] = self.spark.createDataFrame(
-                **exception_properties["value"]["group_keys"]
-            )
+            if exception_properties["value"]["group_keys"]:
+                exception_properties["value"][
+                    "group_keys"
+                ] = self.spark.createDataFrame(
+                    **exception_properties["value"]["group_keys"]
+                )
             exception_properties["value"] = GroupedDataFrame(
                 **exception_properties["value"]
             )
@@ -924,9 +962,13 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             exception_properties["value"].dataframe,
             core_exception.value.dataframe,
         )
-        assert_frame_equal_with_sort(
-            exception_properties["value"].group_keys, core_exception.value.group_keys
-        )
+        if exception_properties["value"].group_keys is None:
+            assert core_exception.value.group_keys is None
+        else:
+            assert_frame_equal_with_sort(
+                exception_properties["value"].group_keys,
+                core_exception.value.group_keys,
+            )
 
     @pytest.mark.parametrize(
         "domain", [SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns)]

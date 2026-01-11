@@ -42,6 +42,9 @@ from tmlt.core.utils.validation import validate_groupby_domains
 class GroupBy(Transformation):
     """Groups a Spark DataFrame by given group keys.
 
+    Can also perform a "total aggregation", which puts the entire DataFrame into
+    a single group.
+
     Example:
         ..
             >>> from pyspark.sql import SparkSession
@@ -125,7 +128,7 @@ class GroupBy(Transformation):
         input_domain: SparkDataFrameDomain,
         input_metric: Union[HammingDistance, SymmetricDifference, IfGroupedBy],
         use_l2: bool,
-        group_keys: DataFrame,
+        group_keys: Optional[DataFrame],
     ):
         """Constructor.
 
@@ -134,7 +137,8 @@ class GroupBy(Transformation):
             input_metric: Input metric.
             use_l2: If True, use :class:`~.RootSumOfSquared` instead of :class:`~.SumOf`
                 in the output metric.
-            group_keys: DataFrame where rows correspond to group keys.
+            group_keys: DataFrame where rows correspond to group keys. None triggers a
+                total aggregation.
 
         Note:
             ``group_keys`` must be public.
@@ -144,11 +148,12 @@ class GroupBy(Transformation):
             if use_l2
             else SumOf(SymmetricDifference())
         )
+        self._groupby_columns = group_keys.columns if group_keys else []
         if isinstance(input_metric, IfGroupedBy):
             missing_metric_columns = [
                 column
                 for column in input_metric.columns
-                if column not in group_keys.columns
+                if column not in self.groupby_columns
             ]
             if missing_metric_columns:
                 raise ValueError(
@@ -164,14 +169,20 @@ class GroupBy(Transformation):
                     ),
                 )
         output_domain = SparkGroupedDataFrameDomain(
-            schema=input_domain.schema, groupby_columns=group_keys.columns
+            schema=input_domain.schema, groupby_columns=self.groupby_columns
         )
-        for groupby_column in group_keys.columns:
+        for groupby_column in self.groupby_columns:
+            assert group_keys is not None
             input_domain[groupby_column].validate_column(group_keys, groupby_column)
 
         self._group_keys = group_keys
+        if group_keys is not None and not group_keys.columns:
+            if group_keys.count() > 0:
+                raise ValueError("Groupby keys cannot have records without columns.")
+            # empty groupkeys means total aggregation
+            self._group_keys = None
         self._use_l2 = use_l2
-        self._groupby_columns = group_keys.columns
+
         super().__init__(
             input_domain=input_domain,
             input_metric=input_metric,
@@ -185,8 +196,8 @@ class GroupBy(Transformation):
         return self._use_l2
 
     @property
-    def group_keys(self) -> DataFrame:
-        """Returns DataFrame containing group keys."""
+    def group_keys(self) -> Optional[DataFrame]:
+        """Returns DataFrame containing group keys, or None if it's a total aggregation."""
         return self._group_keys
 
     @property
