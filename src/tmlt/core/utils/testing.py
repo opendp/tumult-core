@@ -137,12 +137,24 @@ def assert_dataframe_equal(
         assertDataFrameEqual(actual, expected)
         return
 
-    if isinstance(actual, DataFrame):
-        actual = actual.toPandas()
-    if isinstance(expected, DataFrame):
-        expected = expected.toPandas()
+    actual_pd = actual.toPandas() if isinstance(actual, DataFrame) else actual
+    expected_pd = expected.toPandas() if isinstance(expected, DataFrame) else expected
 
-    _assert_pd_dataframe_equal_with_sort(actual, expected)
+    if len(actual.columns) == 0 and len(expected.columns) == 0:
+        # When converting a dataframe with no columns to Pandas, all of its rows
+        # are dropped; in this case, check the row count of the original
+        # dataframes explicitly to ensure they actually have the same number of
+        # rows.
+        actual_count = actual.count() if isinstance(actual, DataFrame) else len(actual)
+        expected_count = (
+            expected.count() if isinstance(expected, DataFrame) else len(expected)
+        )
+        assert actual_count == expected_count, (
+            "Dataframes do not have the same number of rows, "
+            f"actual {actual_count} vs. expected {expected_count}"
+        )
+
+    _assert_pd_dataframe_equal_with_sort(actual_pd, expected_pd)
 
 
 def pandas_to_spark_dataframe(
