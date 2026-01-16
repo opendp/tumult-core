@@ -389,7 +389,7 @@ class TestSparkDataFrameDomain(DomainTests):
                 pytest.raises(
                     OutOfDomainError,
                     match="Found invalid value in column 'C': Column contains null "
-                    "values.",
+                    "values",
                 ),
                 {
                     "domain": SparkDataFrameDomain(
@@ -543,7 +543,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             # _base_schema does not have column "D"
             (
                 {"schema": _base_schema, "groupby_columns": ["D"]},
-                pytest.raises(ValueError, match="Invalid groupby columns: {'D'}"),
+                pytest.raises(ValueError, match=r"Invalid groupby columns: \{'D'\}"),
                 None,
             ),
             # Invalid schema
@@ -751,8 +751,8 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                 pytest.raises(
                     OutOfDomainError,
                     match=(
-                        "Invalid inner DataFrame: Found invalid value in column"
-                        " 'C': Column contains null values."
+                        "Invalid inner DataFrame: Found invalid value in column 'C': "
+                        "Column contains null values"
                     ),
                 ),
                 {
@@ -783,7 +783,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                     OutOfDomainError,
                     match=(
                         "Invalid group keys: Found invalid value in column 'B': "
-                        "Column contains null values."
+                        "Column contains null values"
                     ),
                 ),
                 {
@@ -811,9 +811,9 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                 pytest.raises(
                     OutOfDomainError,
                     match=(
-                        "Invalid inner DataFrame: Columns are not as expected. "
+                        "Invalid inner DataFrame: Columns are not as expected\\. "
                         "DataFrame and Domain must contain the same columns in the "
-                        "same order.\nDataFrame columns: \\['A', 'B'\\]\nDomain "
+                        "same order\\.\nDataFrame columns: \\['A', 'B'\\]\nDomain "
                         "columns: \\['A', 'B', 'C'\\]"
                     ),
                 ),
@@ -845,10 +845,10 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                 pytest.raises(
                     OutOfDomainError,
                     match=(
-                        "Invalid group keys: Columns are not as expected. "
+                        "Invalid group keys: Columns are not as expected\\. "
                         "DataFrame and Domain must contain the same columns in the "
-                        "same order.\nDataFrame columns: \\['A'\\]\nDomain "
-                        "columns: (\\['A', 'B'\\]|\\['B', 'A'\\])"
+                        "same order\\.\nDataFrame columns: \\['A'\\]\nDomain "
+                        "columns: \\['A', 'B'\\]"
                     ),
                 ),
                 {
@@ -879,8 +879,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                 pytest.raises(
                     OutOfDomainError,
                     match=(
-                        "Invalid group keys: expected groups, but got total "
-                        "aggregation"
+                        "Invalid group keys: expected groups, but got total aggregation"
                     ),
                 ),
                 {
@@ -1345,20 +1344,20 @@ class TestSparkColumnDescriptors:
                 SparkIntegerColumnDescriptor(allow_null=True),
                 pytest.raises(
                     RuntimeError,
-                    match="Nullable column does not have corresponding NumPy domain.",
+                    match="Nullable column does not have corresponding NumPy domain",
                 ),
             ),
             (
                 SparkDateColumnDescriptor(),
                 pytest.raises(
-                    RuntimeError, match="NumPy does not have support for date types."
+                    RuntimeError, match="NumPy does not have support for date types"
                 ),
             ),
             (
                 SparkTimestampColumnDescriptor(),
                 pytest.raises(
                     RuntimeError,
-                    match="NumPy does not have support for timestamp types.",
+                    match="NumPy does not have support for timestamp types",
                 ),
             ),
         ],

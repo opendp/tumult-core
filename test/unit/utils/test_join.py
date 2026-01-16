@@ -215,7 +215,7 @@ JOIN_VALIDATION_CASES: Any = [
         ),
         [],
         "inner",
-        pytest.raises(ValueError, match="Join must involve at least one column."),
+        pytest.raises(ValueError, match="Join must involve at least one column"),
     ),
     (
         StructType(
@@ -228,7 +228,7 @@ JOIN_VALIDATION_CASES: Any = [
         StructType([StructField("d", LongType())]),
         None,
         "inner",
-        pytest.raises(ValueError, match="Join must involve at least one column."),
+        pytest.raises(ValueError, match="Join must involve at least one column"),
     ),
     (
         StructType(
@@ -246,7 +246,7 @@ JOIN_VALIDATION_CASES: Any = [
         ),
         ["d"],
         "inner",
-        pytest.raises(ValueError, match="Join column 'd' not in the left table."),
+        pytest.raises(ValueError, match="Join column 'd' not in the left table"),
     ),
     (
         StructType(
@@ -264,7 +264,7 @@ JOIN_VALIDATION_CASES: Any = [
         ),
         ["b"],
         "inner",
-        pytest.raises(ValueError, match="Join column 'b' not in the right table."),
+        pytest.raises(ValueError, match="Join column 'b' not in the right table"),
     ),
     (
         StructType(
@@ -284,7 +284,7 @@ JOIN_VALIDATION_CASES: Any = [
         ["a", "a"],
         "inner",
         pytest.raises(
-            ValueError, match=re.escape("Join columns (`on`) contain duplicates.")
+            ValueError, match=re.escape("Join columns (`on`) contain duplicates")
         ),
     ),
     (
@@ -472,7 +472,7 @@ ANTI_JOIN_VALIDATION_CASES: Any = [
         ),
         [],
         "left_anti",
-        pytest.raises(ValueError, match="Join must involve at least one column."),
+        pytest.raises(ValueError, match="Join must involve at least one column"),
     ),
     (
         StructType(
@@ -485,7 +485,7 @@ ANTI_JOIN_VALIDATION_CASES: Any = [
         StructType([StructField("d", LongType())]),
         None,
         "left_anti",
-        pytest.raises(ValueError, match="Join must involve at least one column."),
+        pytest.raises(ValueError, match="Join must involve at least one column"),
     ),
     (
         StructType(
@@ -503,7 +503,7 @@ ANTI_JOIN_VALIDATION_CASES: Any = [
         ),
         ["d"],
         "left_anti",
-        pytest.raises(ValueError, match="Join column 'd' not in the left table."),
+        pytest.raises(ValueError, match="Join column 'd' not in the left table"),
     ),
     (
         StructType(
@@ -521,7 +521,7 @@ ANTI_JOIN_VALIDATION_CASES: Any = [
         ),
         ["b"],
         "left_anti",
-        pytest.raises(ValueError, match="Join column 'b' not in the right table."),
+        pytest.raises(ValueError, match="Join column 'b' not in the right table"),
     ),
     (
         StructType(

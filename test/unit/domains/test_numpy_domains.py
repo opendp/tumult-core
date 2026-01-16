@@ -515,7 +515,7 @@ class TestNumpyFloatDomain(DomainTests):
             (
                 domain,
                 np.float64(float("inf")),
-                pytest.raises(OutOfDomainError, match="Value is infinite."),
+                pytest.raises(OutOfDomainError, match="Value is infinite"),
                 {"domain": domain, "value": np.float64(float("inf"))},
             )
             for domain in [NumpyFloatDomain(), NumpyFloatDomain(allow_nan=True)]
@@ -525,7 +525,7 @@ class TestNumpyFloatDomain(DomainTests):
             (
                 domain,
                 np.float64(-float("inf")),
-                pytest.raises(OutOfDomainError, match="Value is infinite."),
+                pytest.raises(OutOfDomainError, match="Value is infinite"),
                 {"domain": domain, "value": np.float64(-float("inf"))},
             )
             for domain in [NumpyFloatDomain(), NumpyFloatDomain(allow_nan=True)]
@@ -535,7 +535,7 @@ class TestNumpyFloatDomain(DomainTests):
             (
                 domain,
                 np.float64(float("nan")),
-                pytest.raises(OutOfDomainError, match="Value is NaN."),
+                pytest.raises(OutOfDomainError, match="Value is NaN"),
                 # nan != nan, so we ignore the value
                 {"domain": domain},  # , "value": np.float64(float("nan"))},
             )
@@ -769,7 +769,7 @@ class TestNumpyStringDomain(DomainTests):
             (
                 NumpyStringDomain(allow_null=False),
                 None,
-                pytest.raises(OutOfDomainError, match="Value is null."),
+                pytest.raises(OutOfDomainError, match="Value is null"),
                 {"domain": NumpyStringDomain(allow_null=False), "value": None},
             ),
             (NumpyStringDomain(allow_null=False), "ABC", does_not_raise(), None),
