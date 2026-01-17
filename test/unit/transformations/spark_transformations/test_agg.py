@@ -181,9 +181,7 @@ class TestCountDistinct(PySparkTest):
         ]
     )
     def test_correctness(self, rows: List[Tuple], expected: int):
-        """Tests that the CountDistinct transformation returns the expected
-        result.
-        """
+        """CountDistinct transformation returns the expected result."""
         transformation = CountDistinct(
             input_domain=SparkDataFrameDomain(
                 {
