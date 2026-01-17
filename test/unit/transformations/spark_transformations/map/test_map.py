@@ -254,7 +254,7 @@ def test_metrics(
         augment=True,
         raises=pytest.raises(
             UnsupportedCombinationError,
-            match="Input metric .* and input domain .* are not compatible",
+            match=r"Input metric .* and input domain .* are not compatible",
         ),
     ),
     Case("non-augmenting")(
