@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 import sympy as sp
 from parameterized import parameterized, parameterized_class
-from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import DataFrame
 from pyspark.sql.types import LongType, StringType, StructField, StructType
 
 from tmlt.core.domains.spark_domains import (
@@ -1831,21 +1831,21 @@ datasets = [
 ]
 
 
-# request is of class "FixtureRequest", which is imported from _pytest.fixtures
-# using type "Any" to avoid protected access.
 @pytest.fixture(
     scope="module", params=datasets, ids=["One Row", f"{big_test_size} Rows"]
 )
 def spark_data(
-    request: Any,
-) -> Generator[Tuple[SparkSession, DataFrame, pd.DataFrame, Any], None, None]:
-    """This sets up a Spark session and dataset for testing each measurement to an
-    equivalent Pandas aggregation.
+    request: pytest.FixtureRequest, spark
+) -> Generator[Tuple[DataFrame, pd.DataFrame, StructType], None, None]:
+    """Fixture producing matching Spark and Pandas dataframes.
 
-    Args:
-        request: A Pandas DataFrame.
+    The fixture parameter is expected to be a Pandas dataframe with the schema
+    "A: string, B: long".
+
+    Yields: A 3-tuple (spark_df, pandas_df, schema), where spark_df is a Spark
+        dataframe created from pandas_df, and schema is the schema of that
+        dataframe.
     """
-    spark = SparkSession.builder.getOrCreate()
     spark_df = spark.createDataFrame(request.param)
     df_schema = StructType(
         [
@@ -1853,12 +1853,12 @@ def spark_data(
             StructField("B", LongType(), nullable=False),
         ]
     )
-    yield spark, spark_df, request.param, df_schema
+    yield spark_df, request.param, df_schema
 
 
 def test_std(spark_data):
     """Tests that the Pandas std equals Core's std measurement."""
-    _, spark_df, pd_df, df_schema = spark_data
+    spark_df, pd_df, df_schema = spark_data
 
     input_domain = SparkDataFrameDomain.from_spark_schema(df_schema)
     expected = pd_df["B"].std()
@@ -1883,9 +1883,9 @@ def test_std(spark_data):
         assert np.isnan(measurement_output)
 
 
-def test_groupbystd(spark_data):
+def test_groupbystd(spark_data, spark):
     """Tests that the Pandas groupby std equals Core's groupby std measurement."""
-    spark, spark_df, pd_df, df_schema = spark_data
+    spark_df, pd_df, df_schema = spark_data
 
     input_domain = SparkDataFrameDomain.from_spark_schema(df_schema)
     expected = pd_df.groupby(["A"]).agg({"B": "std"})
@@ -1930,7 +1930,7 @@ def test_groupbystd(spark_data):
 
 def test_var(spark_data):
     """Tests that the Pandas var equals Core's var measurement."""
-    _, spark_df, pd_df, df_schema = spark_data
+    spark_df, pd_df, df_schema = spark_data
 
     input_domain = SparkDataFrameDomain.from_spark_schema(df_schema)
     expected = pd_df["B"].var()
@@ -1955,9 +1955,9 @@ def test_var(spark_data):
         assert np.isnan(measurement_output)
 
 
-def test_groupbyvar(spark_data):
+def test_groupbyvar(spark_data, spark):
     """Tests that the Pandas groupby var equals Core's groupby var measurement."""
-    spark, spark_df, pd_df, df_schema = spark_data
+    spark_df, pd_df, df_schema = spark_data
 
     input_domain = SparkDataFrameDomain.from_spark_schema(df_schema)
     expected = pd_df.groupby(["A"]).agg({"B": "var"})
