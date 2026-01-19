@@ -56,6 +56,7 @@ class TestCleanup(PySparkTest):
         p.rmdir()
 
     def tearDown(self):
+        """Cleanup."""
         self.spark.sql(f"DROP DATABASE IF EXISTS `{Config.temp_db_name()}` CASCADE;")
         for d in self._get_warehouse_path().glob(f"*{Config.temp_db_name()}*"):
             self._recursive_remove(d)
