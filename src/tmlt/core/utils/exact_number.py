@@ -130,7 +130,7 @@ Examples:
     -sqrt(2)
     >>> 2 / ExactNumber(6)
     1/3
-"""
+"""  # noqa: E501
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026

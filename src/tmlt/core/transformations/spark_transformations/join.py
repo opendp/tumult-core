@@ -242,7 +242,7 @@ class PublicJoin(Transformation):
             ...     metric=IfGroupedBy({"A"}, SymmetricDifference()),
             ... ).stability_function(2)
             2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -264,8 +264,8 @@ class PublicJoin(Transformation):
             public_df_domain: Domain of public DataFrame to join with. If this domain
                 indicates that a float column does not allow nans (or infs), all rows
                 in ``public_df`` containing a nan (or an inf) in that column will be
-                dropped. If None, domain is inferred from the schema of ``public_df`` and
-                any float column will be marked as allowing inf and nan values.
+                dropped. If None, domain is inferred from the schema of ``public_df``
+                and any float column will be marked as allowing inf and nan values.
             join_cols: Names of columns to join on. If None, a natural join is
                 performed.
             join_on_nulls: If True, null values on corresponding join columns of the
@@ -585,7 +585,7 @@ class PrivateJoin(Transformation):
             8
             >>> private_join.stability_function({"left": 1, "right": 1})
             8
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -664,7 +664,8 @@ class PrivateJoin(Transformation):
             and right_truncation_threshold != float("inf")
         ):
             raise ValueError(
-                "The left/right_truncation_threshold must be infinite if the left/right_truncation_strategy is NO_TRUNCATION."
+                "The left/right_truncation_threshold must be infinite if the "
+                "left/right_truncation_strategy is NO_TRUNCATION."
             )
 
         output_domain = domain_after_join(
@@ -932,14 +933,17 @@ class PrivateJoinOnKey(Transformation):
         This join works similarly to :class:`~.PublicJoin`, see it for more examples.
 
     .. Note:
-        Unlike :class:`~.PrivateJoin`, this join allows for other dataframes to be present in the input dictionary, and
-        will output a dictionary containing all of the input dataframes along with the joined dataframe.
-        This is because of the stability analysis for AddRemoveKeys. See :mod:`~.add_remove_keys` for more details.
+        Unlike :class:`~.PrivateJoin`, this join allows for other dataframes to
+        be present in the input dictionary, and will output a dictionary
+        containing all of the input dataframes along with the joined dataframe.
+        This is because of the stability analysis for AddRemoveKeys. See
+        :mod:`~.add_remove_keys` for more details.
 
     Transformation Contract:
-        * Input domain - :class:`~.DictDomain` containing two or more SparkDataFrame domains.
-        * Output domain - The same as the input :class:`~.DictDomain` with the addition of a new
-          :class:`~.SparkDataFrameDomain` for the joined table.
+        * Input domain - :class:`~.DictDomain` containing two or more
+          SparkDataFrame domains.
+        * Output domain - The same as the input :class:`~.DictDomain` with the addition
+          of a new :class:`~.SparkDataFrameDomain` for the joined table.
         * Input metric - :class:`~.AddRemoveKeys`
         * Output metric - :class:`~.AddRemoveKeys`
 
@@ -959,7 +963,7 @@ class PrivateJoinOnKey(Transformation):
         1
         >>> private_join.stability_function(2)
         2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(

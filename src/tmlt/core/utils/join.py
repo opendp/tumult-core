@@ -91,7 +91,7 @@ def columns_after_join(
             name.
         how: Join type. Must be one of "left", "right", "inner", "outer", "left_anti".
             This defaults to "inner".
-    """
+    """  # noqa: E501
     if on is None:
         on = natural_join_columns(left_columns, right_columns)
 
@@ -443,7 +443,7 @@ def _rename_columns(
             * Right dataframe with renamed columns.
             * Mapping from output column name to
               (left column name, right column name). See :func:`columns_after_join`.
-    """
+    """  # noqa: E501
     output_columns = columns_after_join(
         left_columns=left.columns, right_columns=right.columns, on=on, how=how
     )

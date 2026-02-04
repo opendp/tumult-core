@@ -154,12 +154,12 @@ class AddNoiseToColumn(SparkMeasurement):
         PureDP()
 
         Privacy Guarantee:
-            :class:`~.AddNoiseToColumn`'s :meth:`~.privacy_function` returns the output of
-            privacy function on the :class:`~.AddNoiseToSeries` measurement.
+            :class:`~.AddNoiseToColumn`'s :meth:`~.privacy_function` returns the output
+            of privacy function on the :class:`~.AddNoiseToSeries` measurement.
 
             >>> add_laplace_noise_to_column.privacy_function(1)
             2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -178,8 +178,8 @@ class AddNoiseToColumn(SparkMeasurement):
 
         Note:
             The input metric of this measurement is derived from the ``measure_column``
-            and the input metric of the ``measurement`` to be applied. In particular, the
-            input metric of this measurement is ``measurement.input_metric`` on the
+            and the input metric of the ``measurement`` to be applied. In particular,
+            the input metric of this measurement is ``measurement.input_metric`` on the
             specified ``measure_column``.
         """
         measure_column_domain = input_domain[measure_column].to_numpy_domain()
@@ -209,7 +209,7 @@ class AddNoiseToColumn(SparkMeasurement):
 
     @property
     def measurement(self) -> AddNoiseToSeries:
-        """Returns the :class:`~.AddNoiseToSeries` measurement to apply to measure column."""
+        """The :class:`~.AddNoiseToSeries` measurement to apply to measure column."""
         return self._measurement
 
     @typechecked
@@ -224,7 +224,8 @@ class AddNoiseToColumn(SparkMeasurement):
 
         Raises:
             NotImplementedError: If the :meth:`~.Measurement.privacy_function` of the
-                :class:`~.AddNoiseToSeries` measurement raises :class:`NotImplementedError`.
+                :class:`~.AddNoiseToSeries` measurement
+                raises :class:`NotImplementedError`.
         """
         self.input_metric.validate(d_in)
         return self.measurement.privacy_function(d_in)
@@ -459,7 +460,7 @@ class GeometricPartitionSelection(SparkMeasurement):
             2
             >>> delta.to_float(round_up=True)
             5.664238400088129e-21
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -668,8 +669,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
         Privacy Guarantee:
             For :math:`d_{in} = 0`, returns :math:`0`
 
-            For :math:`d_{in} \ge 1`, returns
-            :math:`(4 / \alpha) \cdot d_{in}`
+            For :math:`d_{in} \ge 1`, returns :math:`(4 / \alpha) \cdot d_{in}`
 
             where:
 
@@ -679,7 +679,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
             4
             >>> measurement.privacy_function(2)
             8
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(

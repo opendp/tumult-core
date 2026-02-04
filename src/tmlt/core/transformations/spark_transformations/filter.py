@@ -87,7 +87,7 @@ class Filter(Transformation):
             1
             >>> filter_transformation.stability_function(123)
             123
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -99,12 +99,12 @@ class Filter(Transformation):
         """Constructor.
 
         Args:
-            filter_expr: A string of SQL expression specifying the filter to apply to the
-                data. The language is the same as the one used by
+            filter_expr: A string of SQL expression specifying the filter to apply to
+                the data. The language is the same as the one used by
                 :meth:`pyspark.sql.DataFrame.filter`.
             domain: Domain of the input/output Spark DataFrames.
-            metric: Distance metric for the input and output Spark DataFrames. If the metric
-                is :class:`~.IfGroupedBy`, the innermost metric must be
+            metric: Distance metric for the input and output Spark DataFrames. If
+                the metric is :class:`~.IfGroupedBy`, the innermost metric must be
                 :class:`~.SymmetricDifference`.
         """
         spark = SparkSession.builder.getOrCreate()

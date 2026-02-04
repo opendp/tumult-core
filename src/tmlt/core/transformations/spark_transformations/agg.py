@@ -109,7 +109,7 @@ class Count(Transformation):
 
              >>> count_dataframe.stability_function(1)
              1
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -214,7 +214,7 @@ class CountDistinct(Transformation):
 
             >>> count_distinct_dataframe.stability_function(1)
             1
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -344,7 +344,7 @@ class CountGrouped(Transformation):
 
             >>> count_by_A.stability_function(1)
             1
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -429,7 +429,7 @@ class CountGrouped(Transformation):
 
 
 class CountDistinctGrouped(Transformation):
-    r"""Counts the number of distinct records in each group in a :class:`~.GroupedDataFrame`.
+    r"""Counts distinct records in each group of a :class:`~.GroupedDataFrame`.
 
     Example:
         ..
@@ -515,11 +515,12 @@ class CountDistinctGrouped(Transformation):
         OnColumn(column='count_distinct', metric=SumOf(inner_metric=AbsoluteDifference()))
 
         Stability Guarantee:
-            :class:`~.CountDistinctGrouped`'s :meth:`~.stability_function` returns ``d_in``.
+            :class:`~.CountDistinctGrouped`'s :meth:`~.stability_function` returns
+            ``d_in``.
 
             >>> count_distinct_by_A.stability_function(1)
             1
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -680,8 +681,8 @@ class Sum(Transformation):
         AbsoluteDifference()
 
         Stability Guarantee:
-            :class:`~.Sum`'s :meth:`~.stability_function` returns ``d_in`` times sensitivity of
-            the sum. (See below for more information).
+            :class:`~.Sum`'s :meth:`~.stability_function` returns ``d_in`` times
+            sensitivity of the sum. (See below for more information.)
 
             >>> sum_X.stability_function(1)
             4
@@ -692,7 +693,7 @@ class Sum(Transformation):
               :class:`~.SymmetricDifference`
             * :math:`h - \ell` if the input metric is
               :class:`~.HammingDistance`
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -708,7 +709,8 @@ class Sum(Transformation):
         Args:
             input_domain: Domain of input DataFrames.
             input_metric: Metric on input DataFrames.
-            measure_column: Name of the column to be summed. This must be a numeric column.
+            measure_column: Name of the column to be summed. This must be
+                a numeric column.
             lower: Lower clipping bound for measure column.
             upper: Upper clipping bound for measure column.
         """
@@ -905,7 +907,8 @@ class SumGrouped(Transformation):
         OnColumn(column='sum(X)', metric=SumOf(inner_metric=AbsoluteDifference()))
 
         Stability Guarantee:
-            :class:`~.SumGrouped`'s :meth:`~.stability_function` returns ``d_in`` * sensitivity of the sum.
+            :class:`~.SumGrouped`'s :meth:`~.stability_function` returns ``d_in`` times
+            the sensitivity of the sum.
 
             >>> sum_X_by_A.stability_function(1)
             4
@@ -913,7 +916,7 @@ class SumGrouped(Transformation):
             The sensitivity of the sum is:
 
             * :math:`\max(|h|, |\ell|)`
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -1156,7 +1159,7 @@ def create_count_distinct_aggregation(
     input_metric: Union[SymmetricDifference, HammingDistance, SumOf, RootSumOfSquared],
     count_column: Optional[str] = None,
 ) -> Union[CountDistinct, CountDistinctGrouped]:
-    """Returns a :class:`~.CountDistinct` or :class:`~.CountDistinctGrouped` transformation.
+    """Create a :class:`~.CountDistinct` or :class:`~.CountDistinctGrouped`.
 
     Args:
         input_domain: Domain of input DataFrames or GroupedDataFrames.

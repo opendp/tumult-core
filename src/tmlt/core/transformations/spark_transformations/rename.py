@@ -102,7 +102,7 @@ class Rename(Transformation):
             1
             >>> rename_b_to_c.stability_function(2)
             2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(

@@ -101,7 +101,7 @@ class DropInfs(Transformation):
                 1
                 >>> drop_b_infs.stability_function(2)
                 2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -278,7 +278,7 @@ class DropNaNs(Transformation):
                 1
                 >>> drop_b_nans.stability_function(2)
                 2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -455,7 +455,7 @@ class DropNulls(Transformation):
                 1
                 >>> drop_b_nulls.stability_function(2)
                 2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -609,8 +609,10 @@ class ReplaceInfs(Transformation):
         Transformation Contract:
             * Input domain - :class:`~.SparkDataFrameDomain`
             * Output domain - :class:`~.SparkDataFrameDomain`
-            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
-            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
+            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
+            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
 
             >>> replace_infs.input_domain
             SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=True, size=64)})
@@ -628,7 +630,7 @@ class ReplaceInfs(Transformation):
                 1
                 >>> replace_infs.stability_function(2)
                 2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -803,8 +805,10 @@ class ReplaceNaNs(Transformation):
         Transformation Contract:
             * Input domain - :class:`~.SparkDataFrameDomain`
             * Output domain - :class:`~.SparkDataFrameDomain`
-            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
-            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
+            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
+            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
 
             >>> replace_nans.input_domain
             SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True, size=64)})
@@ -822,7 +826,7 @@ class ReplaceNaNs(Transformation):
                 1
                 >>> replace_nans.stability_function(2)
                 2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -984,8 +988,10 @@ class ReplaceNulls(Transformation):
         Transformation Contract:
             * Input domain - :class:`~.SparkDataFrameDomain`
             * Output domain - :class:`~.SparkDataFrameDomain`
-            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
-            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
+            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
+            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
 
             >>> replace_nulls.input_domain
             SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True, size=64)})
@@ -1003,7 +1009,7 @@ class ReplaceNulls(Transformation):
                 1
                 >>> replace_nulls.stability_function(2)
                 2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(

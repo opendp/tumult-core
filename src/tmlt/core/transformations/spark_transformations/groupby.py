@@ -116,11 +116,12 @@ class GroupBy(Transformation):
 
         Stability Guarantee:
             :class:`~.GroupBy`'s :meth:`~stability_function` returns the ``d_in`` if the
-            ``input_metric`` is :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`, otherwise it returns ``d_in`` times ``2``.
+            ``input_metric`` is :class:`~.SymmetricDifference` or
+            :class:`~.IfGroupedBy`, otherwise it returns ``d_in`` times ``2``.
 
             >>> groupby_B.stability_function(1)
             1
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -157,7 +158,8 @@ class GroupBy(Transformation):
             ]
             if missing_metric_columns:
                 raise ValueError(
-                    f"Must group by IfGroupedBy metric columns: {missing_metric_columns}"
+                    "Must group by IfGroupedBy metric columns: "
+                    f"{missing_metric_columns}"
                 )
             expected_input_metric = IfGroupedBy(input_metric.columns, output_metric)
             if input_metric != expected_input_metric:
@@ -197,7 +199,7 @@ class GroupBy(Transformation):
 
     @property
     def group_keys(self) -> Optional[DataFrame]:
-        """Returns DataFrame containing group keys, or None if it's a total aggregation."""
+        """Returns DataFrame containing group keys, or None for a total aggregation."""
         return self._group_keys
 
     @property

@@ -148,7 +148,7 @@ class RowToRowTransformation(Transformation):
                 :class:`~.RowToRowsTransformation` is not stable! Its
                 :meth:`~.stability_relation` always returns False, and its
                 :meth:`~.stability_function` always raises :class:`NotImplementedError`.
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -338,7 +338,7 @@ class RowToRowsTransformation(Transformation):
                 :class:`~.RowToRowsTransformation` is not stable! Its
                 :meth:`~.stability_relation` always returns False, and its
                 :meth:`~.stability_function` always raises :class:`NotImplementedError`.
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -512,7 +512,7 @@ class RowsToRowsTransformation(Transformation):
                 :class:`~.RowsToRowsTransformation` is not stable! Its
                 :meth:`~.stability_relation` always returns False, and its
                 :meth:`~.stability_function` always raises :class:`NotImplementedError`.
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -692,7 +692,8 @@ class FlatMap(Transformation):
             - IfGroupedBy({column}, RootSumOfSquared(SymmetricDifference()))
 
             :class:`~.FlatMap`'s :meth:`~.stability_function` returns the ``d_in``
-            times :attr:`.max_num_rows`. If :attr:`.max_num_rows` is None, it returns infinity.
+            times :attr:`.max_num_rows`. If :attr:`.max_num_rows` is None, it
+            returns infinity.
 
             >>> duplicate_flat_map.stability_function(1)
             2
@@ -704,7 +705,7 @@ class FlatMap(Transformation):
             - IfGroupedBy({column}, SymmetricDifference())
 
             :class:`~.FlatMap`'s :meth:`~.stability_function` returns ``d_in``.
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -718,10 +719,10 @@ class FlatMap(Transformation):
         Args:
             metric: Distance metric for input and output DataFrames.
             row_transformer: Transformation to apply to each row.
-            max_num_rows: The maximum number of rows to allow from ``row_transformer``. If
-                more rows are output, the additional rows are suppressed. If this value
-                is None, the transformation will not impose a limit on the number of
-                rows. None is only allowed if the metric is
+            max_num_rows: The maximum number of rows to allow from ``row_transformer``.
+                If more rows are output, the additional rows are suppressed. If this
+                value is None, the transformation will not impose a limit on the number
+                of rows. None is only allowed if the metric is
                 ``IfGroupedBy(SymmetricDifference())``.
         """
         if max_num_rows is not None and max_num_rows < 0:
@@ -932,12 +933,13 @@ class GroupingFlatMap(Transformation):
 
                 ``d_in * self.max_num_rows``
 
-            If the inner metric is ``RootSumOfSquared(SymmetricDifference())``, we
-            can use the added structure of the ``row_transformer`` to achieve a
-            tighter analysis. We know that for each input row, the function will
-            produce at most one output row per value of the new column, so in total
-            we can produce up to ``d_in`` rows for each of up to ``self.max_num_rows``
-            values of the new column. Therefore, under ``RootSumOfSquared``, ``d_out`` is
+            If the inner metric is ``RootSumOfSquared(SymmetricDifference())``,
+            we can use the added structure of the ``row_transformer`` to achieve
+            a tighter analysis. We know that for each input row, the function
+            will produce at most one output row per value of the new column, so
+            in total we can produce up to ``d_in`` rows for each of up to
+            ``self.max_num_rows`` values of the new column. Therefore, under
+            ``RootSumOfSquared``, ``d_out`` is
 
                 ``d_in * sqrt(self.max_num_rows)``
 
@@ -945,7 +947,7 @@ class GroupingFlatMap(Transformation):
             sqrt(3)
             >>> add_i_flat_map.stability_function(2)
             2*sqrt(3)
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -1150,7 +1152,7 @@ class Map(Transformation):
             1
             >>> rename_b_to_c_map.stability_function(2)
             2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -1305,7 +1307,7 @@ class FlatMapByKey(Transformation):
 
         Stability Guarantee:
             :class:`~.FlatMapByKey`'s :meth:`~.stability_function` returns ``d_in``.
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
