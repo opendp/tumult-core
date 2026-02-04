@@ -1134,8 +1134,7 @@ class PrivacyAccountant:
                 :meth:`~.Transformation.stability_function`.
 
         Raises:
-            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant`
-            is not ACTIVE.
+            InactiveAccountantError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
         """
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError(
@@ -1267,8 +1266,7 @@ class PrivacyAccountant:
                 :meth:`~.Measurement.privacy_function`.
 
         Raises:
-            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant`
-            is not ACTIVE.
+            InactiveAccountantError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
         """  # noqa: E501
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError(
@@ -1512,8 +1510,7 @@ class PrivacyAccountant:
                a :meth:`~.Transformation.stability_function`.
 
         Raises:
-            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is
-            not ACTIVE.
+            InactiveAccountantError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
         """  # noqa: E501
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError("PrivacyAccountant must be ACTIVE")
