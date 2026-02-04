@@ -163,7 +163,7 @@ class PartitionByKeys(Partition):
             1
             >>> partition.stability_function(2)
             2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(

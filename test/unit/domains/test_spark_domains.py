@@ -1382,7 +1382,7 @@ class TestSparkColumnDescriptors:
                         ValueError,
                         match="Column must be "
                         f"{get_fullname(_type_to_spark_type[col_type])}; got "
-                        f"{get_fullname(_type_to_spark_type[_col_name_to_type[col_name]])} "
+                        f"{get_fullname(_type_to_spark_type[_col_name_to_type[col_name]])} "  # noqa: E501
                         "instead",
                     )
                 ),

@@ -94,14 +94,14 @@ class LimitRowsPerGroup(Transformation):
 
         Stability Guarantee:
             :class:`~.LimitRowsPerGroup` 's :meth:`~.stability_function` returns
-            ``threshold * d_in`` if ``output_metric`` is ``SymmetricDifference()`` and ``d_in``
-            otherwise.
+            ``threshold * d_in`` if ``output_metric`` is ``SymmetricDifference()`` and
+            ``d_in`` otherwise.
 
             >>> truncate.stability_function(1)
             2
             >>> truncate.stability_function(2)
             4
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -243,10 +243,10 @@ class LimitKeysPerGroup(Transformation):
         * Input metric - :class:`~.IfGroupedBy` on the grouping column, with inner
           metric :class:`~.SymmetricDifference`
         * Output metric - :class:`~.IfGroupedBy` on the grouping column, with inner
-          metric :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy` on the key column, with inner
-          metric as a :class:`~.SumOf` or :class:`~.RootSumOfSquared` over a
-          :class:`~.IfGroupedBy` on the grouping column, with inner metric
-          :class:`~.SymmetricDifference`
+          metric :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy` on the
+          key column, with inner metric as a :class:`~.SumOf` or
+          :class:`~.RootSumOfSquared` over a :class:`~.IfGroupedBy` on the grouping
+          column, with inner metric :class:`~.SymmetricDifference`
 
         >>> truncate.input_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
@@ -268,7 +268,7 @@ class LimitKeysPerGroup(Transformation):
             2
             >>> truncate.stability_function(2)
             4
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -290,7 +290,7 @@ class LimitKeysPerGroup(Transformation):
             grouping_columns: Names of columns defining the groups to truncate.
             key_column: Name of column defining the keys.
             threshold: The maximum number of keys per group after truncation.
-        """
+        """  # noqa: E501
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
         if key_column in grouping_columns:
@@ -440,9 +440,9 @@ class LimitRowsPerKeyPerGroup(Transformation):
         * Input domain - :class:`~.SparkDataFrameDomain`
         * Output domain - :class:`~.SparkDataFrameDomain` (matches input domain)
         * Input metric - :class:`~.IfGroupedBy` on the grouping column, with inner
-          metric :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy` on the key column, with inner
-          metric as a :class:`~.SumOf` or :class:`~.RootSumOfSquared` over a
-          :class:`~.IfGroupedBy` on the grouping column, with inner metric
+          metric :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy` on the key
+          column, with inner metric as a :class:`~.SumOf` or :class:`~.RootSumOfSquared`
+          over a :class:`~.IfGroupedBy` on the grouping column, with inner metric
           :class:`~.SymmetricDifference`
         * Output metric - :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`
           on the key column, with inner metric as a :class:`~.RootSumOfSquared`,
@@ -460,14 +460,15 @@ class LimitRowsPerKeyPerGroup(Transformation):
 
         Stability Guarantee:
             :class:`~.LimitRowsPerKeyPerGroup` 's :meth:`~.stability_function` returns
-            ``d_in`` if ``input_metric`` is ``IfGroupedBy(grouping_columns, SymmetricDifference())``
+            ``d_in`` if ``input_metric`` is
+            ``IfGroupedBy(grouping_columns, SymmetricDifference())``
             and ``threshold * d_in`` otherwise.
 
             >>> truncate.stability_function(1)
             2
             >>> truncate.stability_function(2)
             4
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -488,8 +489,9 @@ class LimitRowsPerKeyPerGroup(Transformation):
                 or ``IfGroupedBy(grouping_columns, SymmetricDifference())``.
             grouping_columns: Names of columns defining the groups to truncate.
             key_column: Name of column defining the keys.
-            threshold: The maximum number of rows each unique (key, grouping column value) pair may appear in after truncation.
-        """
+            threshold: The maximum number of rows each unique (key, grouping column value)
+                pair may appear in after truncation.
+        """  # noqa: E501
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
         if key_column in grouping_columns:
@@ -545,7 +547,7 @@ class LimitRowsPerKeyPerGroup(Transformation):
 
     @property
     def threshold(self) -> int:
-        """Returns the maximum number of rows each unique (key, grouping column value) pair may appear in after truncation."""
+        """The maximum number of rows per (key, group value) pair after truncation."""
         return self._threshold
 
     @typechecked

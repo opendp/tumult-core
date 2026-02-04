@@ -1229,10 +1229,7 @@ class TestPrivateJoin(PySparkTest):
 
 
 class TestPrivateJoinOnKey(PySparkTest):
-    """Tests for class PrivateJoinOnKey.
-
-    Tests :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnKey`.
-    """
+    """Tests for PrivateJoinOnKey."""
 
     def setUp(self):
         """Setup."""

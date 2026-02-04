@@ -422,7 +422,7 @@ class Arb:
         return Arb(x)
 
     def __contains__(self, value: Any) -> bool:
-        """Returns True if value is contained in the interval represented by ``self``."""
+        """Returns True if the interval represented by ``self`` contains ``value``."""
         if isinstance(value, Arb):
             return arblib.arb_contains(self._ptr, value._ptr) != 0
         return False

@@ -87,13 +87,14 @@ class AddUniqueColumn(Transformation):
             IfGroupedBy(columns={'ID'}, inner_metric=SymmetricDifference())
 
             Stability Guarantee:
-                :class:`~.AddUniqueColumn`'s :meth:`~.stability_function` returns ``d_in``.
+                :class:`~.AddUniqueColumn`'s :meth:`~.stability_function` returns
+                ``d_in``.
 
                 >>> add_unique_column.stability_function(1)
                 1
                 >>> add_unique_column.stability_function(2)
                 2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(self, input_domain: SparkDataFrameDomain, column: str):

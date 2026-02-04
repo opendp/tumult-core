@@ -1134,7 +1134,7 @@ class PrivacyAccountant:
                 :meth:`~.Transformation.stability_function`.
 
         Raises:
-            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
+            InactiveAccountantError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
         """
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError(
@@ -1196,8 +1196,8 @@ class PrivacyAccountant:
         * this :class:`~.PrivacyAccountant`'s :attr:`~.privacy_budget` must be greater
           than or equal to the ``measurement``'s d_out
 
-            - if ``measurement`` implements a :meth:`~.Measurement.privacy_function`, its
-              d_out is the output of its privacy function on this
+            - if ``measurement`` implements a :meth:`~.Measurement.privacy_function`,
+              its d_out is the output of its privacy function on this
               :class:`~.PrivacyAccountant`'s :attr:`~.d_in`
             - otherwise it is the argument ``d_out``
 
@@ -1266,8 +1266,8 @@ class PrivacyAccountant:
                 :meth:`~.Measurement.privacy_function`.
 
         Raises:
-            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
-        """
+            InactiveAccountantError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
+        """  # noqa: E501
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError(
                 f"PrivacyAccountant must be ACTIVE not {(self.state)}."
@@ -1346,10 +1346,10 @@ class PrivacyAccountant:
 
         Requirements to split:
 
-        * ``splitting_transformation``'s :attr:`~.Transformation.input_domain` must match
-          this :class:`~.PrivacyAccountant`'s :attr:`~.input_domain`
-        * ``splitting_transformation``'s :attr:`~.Transformation.input_metric` must match
-          this :class:`~.PrivacyAccountant`'s :attr:`~.input_metric`
+        * ``splitting_transformation``'s :attr:`~.Transformation.input_domain` must
+          match this :class:`~.PrivacyAccountant`'s :attr:`~.input_domain`
+        * ``splitting_transformation``'s :attr:`~.Transformation.input_metric` must
+           match this :class:`~.PrivacyAccountant`'s :attr:`~.input_metric`
         * if ``d_out`` is provided, ``splitting_transformation``'s
           :meth:`~.Transformation.stability_relation` must hold for this
           :class:`~.PrivacyAccountant`'s :attr:`~.d_in` and ``d_out``
@@ -1365,9 +1365,10 @@ class PrivacyAccountant:
 
         * this :class:`~.PrivacyAccountant`'s :attr:`~.privacy_budget` will decrease by
           ``privacy_budget``
-        * this :class:`~.PrivacyAccountant`'s :attr:`~.children` will be a list with the new
-          :class:`~.PrivacyAccountant`\ s
-        * this :class:`~.PrivacyAccountant`'s :attr:`~.state` will become WAITING_FOR_CHILDREN
+        * this :class:`~.PrivacyAccountant`'s :attr:`~.children` will be a list with the
+          new :class:`~.PrivacyAccountant`\ s
+        * this :class:`~.PrivacyAccountant`'s :attr:`~.state` will become
+          WAITING_FOR_CHILDREN
         * the new :class:`~.PrivacyAccountant`\ s' :attr:`~.input_domain` will be the
           element domain of ``splitting_transformation``'s :class:`~.ListDomain`
         * the new :class:`~.PrivacyAccountant`\ s' :attr:`~.input_metric` will be the
@@ -1390,8 +1391,8 @@ class PrivacyAccountant:
           will be WAITING_FOR_SIBLING.
 
         .. note::
-            After creating children, the :attr:`~.state` will change to WAITING_FOR_CHILDREN,
-            until the children are all RETIRED.
+            After creating children, the :attr:`~.state` will change
+            to WAITING_FOR_CHILDREN until the children are all RETIRED.
 
         Example:
             ..
@@ -1504,12 +1505,13 @@ class PrivacyAccountant:
             privacy_budget: The privacy budget to allocate to the new
                 :class:`~.PrivacyAccountant`\ s.
             d_out: An optional value for the :attr:`~.Transformation.output_metric` for
-               ``splitting_transformation``. It is only used if ``splitting_transformation``
-               does not implement a :meth:`~.Transformation.stability_function`.
+               ``splitting_transformation``. It is only used if
+               ``splitting_transformation`` does not implement
+               a :meth:`~.Transformation.stability_function`.
 
         Raises:
-            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
-        """
+            InactiveAccountantError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
+        """  # noqa: E501
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError("PrivacyAccountant must be ACTIVE")
         if self._queryable is None:
@@ -1698,7 +1700,7 @@ class PrivacyAccountant:
     def queue_transformation(
         self, transformation: Transformation, d_out: Optional[Any] = None
     ) -> None:
-        """Queue ``transformation`` to be executed when this :class:`~.PrivacyAccountant` becomes ACTIVE.
+        """Queue ``transformation`` to be executed when this accountant becomes ACTIVE.
 
         If this :class:`~.PrivacyAccountant` is ACTIVE, this has
         the same behavior as :meth:`~.transform_in_place`.

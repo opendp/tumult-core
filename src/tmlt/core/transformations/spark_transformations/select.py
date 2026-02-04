@@ -99,7 +99,7 @@ class Select(Transformation):
             1
             >>> drop_b.stability_function(2)
             2
-    """
+    """  # noqa: E501
 
     @typechecked
     def __init__(
