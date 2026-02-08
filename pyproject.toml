@@ -233,11 +233,6 @@ ignore = [
     # ambiguous-variable-name: This tries to warn about variable names that are
     #     easily confused with other symbols (e.g. l vs 1).
     "E741",
-
-    # TODO: This disables every lint that is currently failing; go through and
-    #     either fix/individually disable each instance, or choose to permanently
-    #     ignore each one.
-    "RET504",  # unnecessary-assign
 ]
 
 # Ruff's RUF001-003 rules disallow certain Unicode characters that are easily
