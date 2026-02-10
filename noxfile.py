@@ -149,23 +149,22 @@ BENCHMARKS = [
 ]
 
 
-@session
 @install_group("build")
-def build(session):
+def build(sess):
     """Build packages for distribution.
 
     Positional arguments given to nox are passed to the cibuildwheel command,
     allowing it to be run outside of the CI if needed.
     """
-    session.run("cibuildwheel", "--output-dir", "dist/", *session.posargs)
-    session.run("uv", "build", "--sdist", external=True)
+    sess.run("cibuildwheel", "--output-dir", "dist/", *sess.posargs)
+    sess.run("uv", "build", "--sdist", external=True)
 
 
 sm = SessionManager(
     package=PACKAGE_NAME,
     package_github=PACKAGE_GITHUB,
     directory=CWD,
-    default_python_version= "3.10",
+    default_python_version="3.10",
     custom_build=build,
     smoketest_script=SMOKETEST_SCRIPT,
     parallel_tests=False,
