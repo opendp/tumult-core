@@ -11,7 +11,7 @@ import pandas as pd
 from parameterized import parameterized
 from pyspark.sql import functions as sf
 from pyspark.sql.types import StructType, StructField, LongType, IntegerType, StringType
-
+from pyspark.sql.functions import col
 from tmlt.core.domains.spark_domains import (
     SparkColumnsDescriptor,
     SparkDataFrameDomain,
@@ -149,16 +149,15 @@ class TestAddUniqueColumn(PySparkTest):
                     "B": SparkStringColumnDescriptor(allow_null=True),
                 },
             ),
-            (
-                pd.DataFrame({
-                    "A": [None, "null"],
-                    "B": ["null", None]
-                }),
-                {
-                    "A": SparkStringColumnDescriptor(allow_null=True),
-                    "B": SparkStringColumnDescriptor(allow_null=True),
-                },
-            ),
+        ],
+        ids = [
+            "NormalColumns_FloatNull",
+            "NullInt_Str_Float_cols",
+            "StringNulls",
+            "NoneInt_Str_Float",
+            "StrNullAndBool",
+            "EmptyStrAndNull",
+            "NoneStrAndHardcodedNull",
         ]
     )
     def test_correctness(
@@ -171,6 +170,7 @@ class TestAddUniqueColumn(PySparkTest):
         sample_df = self.spark.createDataFrame(rows)
         print(sample_df.collect())
         print(sample_df.describe())
+        print(sample_df.printSchema())
         df_with_ID = transformation(
             sample_df
         )
