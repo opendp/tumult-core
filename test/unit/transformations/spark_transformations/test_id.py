@@ -168,9 +168,6 @@ class TestAddUniqueColumn(PySparkTest):
             input_domain=SparkDataFrameDomain(schema), column="ID"
         )
         sample_df = self.spark.createDataFrame(rows)
-        print(sample_df.collect())
-        print(sample_df.describe())
-        print(sample_df.printSchema())
         df_with_ID = transformation(
             sample_df
         )
@@ -185,7 +182,7 @@ class TestAddUniqueColumn(PySparkTest):
                 [(1, "X"), (2, "Y"), (None, None), (4, "Z")],
                 [(1, "X"), (2, "Y"), (None, None)],
             ),
-            ([(1, "X"), (-102, "Y"), (90, None), (None, "ZZZ")], [(1, "AZX"), (6, "Y")]),
+            ([(1, "X"), (-102, "Y"), (90, None), (None, "Z")], [(1, "AZX"), (6, "Y")]),
             (
                 [(1, "X"), (2, "Y"), (None, None), (4, "Z")],
                 [(1, "X"), (2, "Y"), (None, None), (4, "Z")],
@@ -200,7 +197,7 @@ class TestAddUniqueColumn(PySparkTest):
         """
         domain = SparkDataFrameDomain(
             {
-                "A": SparkIntegerColumnDescriptor(allow_null=True),
+                "A": SparkIntegerColumnDescriptor(allow_null=True, size=32),
                 "B": SparkStringColumnDescriptor(allow_null=True),
             }
         )
@@ -210,11 +207,13 @@ class TestAddUniqueColumn(PySparkTest):
         ])
         transformation = AddUniqueColumn(input_domain=domain, column="ID")
         df1 = self.spark.createDataFrame(df1_rows, schema=simple_sdf_schema)
-        print(df1.describe())
-        df1 = df1.withColumn("A", df1.A.cast(LongType()))
         # assert df1.A IS THE RIGHT TYPE
         # Ask the question: Has this DF been created with correct types?
         df2 = self.spark.createDataFrame(df2_rows, schema=simple_sdf_schema)
+        df1.printSchema()
+        print(f"{transformation.output_domain=}")
+        print(f"{domain=}")
+        # SymmetricDifference().distance(df1, df2, domain)
         self.assertEqual(
             transformation.stability_function(
                 SymmetricDifference().distance(df1, df2, domain)
