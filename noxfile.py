@@ -80,7 +80,7 @@ DEPENDENCY_MATRIX = [
              "pyspark[sql]": "==3.4.0" if not is_mac() else "==3.5.0",
              "sympy": "==1.8",
              "pandas": "==1.5.0",
-             "numpy": "==1.26.0",
+             "numpy": "==1.23.2",
              "scipy": "==1.9.2",
              "randomgen": "==1.26.0",
              "pyarrow": "==14.0.1",

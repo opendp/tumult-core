@@ -1984,8 +1984,8 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "numpy", specifier = ">=1.26.0,<2" },
-    { name = "pandas", specifier = ">=1.5.0,<3" },
+    { name = "numpy", specifier = ">=1.23.2,<2" },
+    { name = "pandas", specifier = ">=1.4.0,<3" },
     { name = "parameterized", specifier = ">=0.7.4,<0.8" },
     { name = "pyarrow", specifier = ">=18.0.0,<19" },
     { name = "pyspark", extras = ["sql"], specifier = "==4.0.1" },
