@@ -64,7 +64,6 @@ class Metric(ABC):
                 (self, domain), f"{repr(self)} does not support domain {repr(domain)}."
             )
         try:
-            print(f"{value1=}")
             domain.validate(value1)
         except OutOfDomainError as exception:
             raise OutOfDomainError(
