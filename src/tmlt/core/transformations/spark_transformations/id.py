@@ -148,6 +148,10 @@ class AddUniqueColumn(Transformation):
 
         sdf = sdf.withColumn(rank_column, sf.row_number().over(shuffled_partitions))
 
+        # Force all columns to be the same type before hex.
+        for column in sdf.columns:
+            sdf = sdf.withColumn(column, sf.col(column).cast("string"))
+
         return sdf.withColumn(
             self.column, sf.hex(sf.to_json(sf.array(*sdf.columns)).cast("string"))
         ).drop(rank_column)
