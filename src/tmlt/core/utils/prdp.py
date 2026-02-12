@@ -1,7 +1,7 @@
 """Floating-point safe utility functions for per-record diffential privacy."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from tmlt.core.random.continuous_gaussian import gaussian_inverse_cdf
 from tmlt.core.random.inverse_cdf import construct_inverse_sampler
@@ -106,7 +106,7 @@ def square_root_gaussian_inverse_cdf(x: Arb, sigma: Arb, prec: int) -> Arb:
             \end{cases}
         \end{equation}
 
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
     if x == Arb.from_float(0.5):
         return Arb.from_int(0)
 
@@ -197,7 +197,7 @@ def exponential_polylogarithmic_inverse_cdf(
                 0 & x = \frac{1}{2}
             \end{cases}
 
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
     if x == Arb.from_float(0.5):
         return Arb.from_int(0)
 

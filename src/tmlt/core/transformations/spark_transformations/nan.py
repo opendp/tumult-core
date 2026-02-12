@@ -1,13 +1,11 @@
-# pylint: disable=line-too-long
 """Transformations to drop or replace NaNs, nulls, and infs in Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import warnings
 from dataclasses import replace
@@ -35,7 +33,6 @@ from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
 class DropInfs(Transformation):
-    # pylint: disable=line-too-long
     """Drops rows containing +inf or -inf in one or more specified columns.
 
     Examples:
@@ -104,8 +101,7 @@ class DropInfs(Transformation):
                 1
                 >>> drop_b_infs.stability_function(2)
                 2
-    """
-    # pylint: enable=line-too-long
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -124,8 +120,10 @@ class DropInfs(Transformation):
             columns: Columns to drop +inf and -inf from.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -161,9 +159,11 @@ class DropInfs(Transformation):
 
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_inf=False)  # type: ignore
-                if column in columns
-                else descriptor
+                column: (
+                    replace(descriptor, allow_inf=False)  # type: ignore
+                    if column in columns
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -180,7 +180,6 @@ class DropInfs(Transformation):
         """Returns the columns to check for +inf and -inf."""
         return self._columns.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -191,7 +190,6 @@ class DropInfs(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -283,7 +281,7 @@ class DropNaNs(Transformation):
                 1
                 >>> drop_b_nans.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -303,8 +301,10 @@ class DropNaNs(Transformation):
             columns: Columns to drop NaNs from.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -342,9 +342,11 @@ class DropNaNs(Transformation):
                 )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_nan=False)  # type: ignore
-                if column in columns
-                else descriptor
+                column: (
+                    replace(descriptor, allow_nan=False)  # type: ignore
+                    if column in columns
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -361,7 +363,6 @@ class DropNaNs(Transformation):
         """Returns the columns to check for NaNs."""
         return self._columns.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -372,13 +373,11 @@ class DropNaNs(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Drops rows containing NaNs in ``self.columns``."""
-        # pylint: disable=no-member
         return sdf.filter(
             reduce(
                 lambda exp, column: exp & ~sf.isnan(sf.col(column)),
@@ -459,7 +458,7 @@ class DropNulls(Transformation):
                 1
                 >>> drop_b_nulls.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -479,8 +478,10 @@ class DropNulls(Transformation):
             columns: Columns to drop nulls from.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -511,9 +512,11 @@ class DropNulls(Transformation):
             )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_null=False)  # type: ignore
-                if column in columns
-                else descriptor
+                column: (
+                    replace(descriptor, allow_null=False)  # type: ignore
+                    if column in columns
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -530,7 +533,6 @@ class DropNulls(Transformation):
         """Returns the columns to check for nulls."""
         return self._columns.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -541,7 +543,6 @@ class DropNulls(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -557,7 +558,6 @@ class DropNulls(Transformation):
 
 
 class ReplaceInfs(Transformation):
-    # pylint: disable=line-too-long
     """Replaces +inf and -inf in one or more specified columns.
 
     Examples:
@@ -612,8 +612,10 @@ class ReplaceInfs(Transformation):
         Transformation Contract:
             * Input domain - :class:`~.SparkDataFrameDomain`
             * Output domain - :class:`~.SparkDataFrameDomain`
-            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
-            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
+            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
+            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
 
             >>> replace_infs.input_domain
             SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=True, size=64)})
@@ -631,8 +633,7 @@ class ReplaceInfs(Transformation):
                 1
                 >>> replace_infs.stability_function(2)
                 2
-    """
-    # pylint: enable=line-too-long
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -652,8 +653,10 @@ class ReplaceInfs(Transformation):
                 in that column.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -693,9 +696,11 @@ class ReplaceInfs(Transformation):
                 )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_inf=False)  # type: ignore
-                if column in replace_map
-                else descriptor
+                column: (
+                    replace(descriptor, allow_inf=False)  # type: ignore
+                    if column in replace_map
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -718,7 +723,6 @@ class ReplaceInfs(Transformation):
         """Returns mapping used to replace infinite values."""
         return self._replace_map.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -729,7 +733,6 @@ class ReplaceInfs(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -805,8 +808,10 @@ class ReplaceNaNs(Transformation):
         Transformation Contract:
             * Input domain - :class:`~.SparkDataFrameDomain`
             * Output domain - :class:`~.SparkDataFrameDomain`
-            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
-            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
+            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
+            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
 
             >>> replace_nans.input_domain
             SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True, size=64)})
@@ -824,7 +829,7 @@ class ReplaceNaNs(Transformation):
                 1
                 >>> replace_nans.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -842,8 +847,10 @@ class ReplaceNaNs(Transformation):
                 replacing NaNs in that column.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -880,9 +887,11 @@ class ReplaceNaNs(Transformation):
                 )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_nan=False)  # type: ignore
-                if column in replace_map
-                else descriptor
+                column: (
+                    replace(descriptor, allow_nan=False)  # type: ignore
+                    if column in replace_map
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -904,7 +913,6 @@ class ReplaceNaNs(Transformation):
         """Returns mapping used to replace NaNs and nulls."""
         return self._replace_map.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -915,13 +923,11 @@ class ReplaceNaNs(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns DataFrame with NaNs replaced in specified columns."""
-        # pylint: disable=no-member
         for column, replacement in self.replace_map.items():
             sdf = sdf.withColumn(
                 column,
@@ -985,8 +991,10 @@ class ReplaceNulls(Transformation):
         Transformation Contract:
             * Input domain - :class:`~.SparkDataFrameDomain`
             * Output domain - :class:`~.SparkDataFrameDomain`
-            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
-            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`, or :class:`~.IfGroupedBy`
+            * Input metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
+            * Output metric - :class:`~.SymmetricDifference`, :class:`~.HammingDistance`,
+              or :class:`~.IfGroupedBy`
 
             >>> replace_nulls.input_domain
             SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True, size=64)})
@@ -1004,7 +1012,7 @@ class ReplaceNulls(Transformation):
                 1
                 >>> replace_nulls.stability_function(2)
                 2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -1022,8 +1030,10 @@ class ReplaceNulls(Transformation):
                 replacing nulls in that column.
         """
         if isinstance(metric, IfGroupedBy) and not (
-            isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
-            and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            (
+                isinstance(metric.inner_metric, (SumOf, RootSumOfSquared))
+                and isinstance(metric.inner_metric.inner_metric, SymmetricDifference)
+            )
             or isinstance(metric.inner_metric, SymmetricDifference)
         ):
             raise UnsupportedMetricError(
@@ -1047,9 +1057,11 @@ class ReplaceNulls(Transformation):
             )
         output_domain = SparkDataFrameDomain(
             {
-                column: replace(descriptor, allow_null=False)  # type: ignore
-                if column in replace_map
-                else descriptor
+                column: (
+                    replace(descriptor, allow_null=False)  # type: ignore
+                    if column in replace_map
+                    else descriptor
+                )
                 for column, descriptor in input_domain.schema.items()
             }
         )
@@ -1067,9 +1079,13 @@ class ReplaceNulls(Transformation):
                     RuntimeWarning,
                 )
         if isinstance(metric, IfGroupedBy):
-            if metric.column in replace_map:
+            replaced_groupby_columns = [
+                column for column in metric.columns if column in replace_map
+            ]
+            if replaced_groupby_columns:
                 raise ValueError(
-                    "Cannot replace values in the grouping column for IfGroupedBy."
+                    "Cannot replace values in the grouping columns for IfGroupedBy, "
+                    f"but {replaced_groupby_columns} were selected."
                 )
         super().__init__(
             input_domain=input_domain,
@@ -1084,7 +1100,6 @@ class ReplaceNulls(Transformation):
         """Returns mapping used to replace nulls."""
         return self._replace_map.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -1095,13 +1110,11 @@ class ReplaceNulls(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns DataFrame with nulls replaced in specified columns."""
-        # pylint: disable=no-member
         for column, replacement in self.replace_map.items():
             sdf = sdf.withColumn(
                 column,

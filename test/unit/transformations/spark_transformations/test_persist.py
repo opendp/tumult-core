@@ -1,8 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.persist`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
-
+# Copyright Tumult Labs 2026
 
 from parameterized import parameterized
 
@@ -86,13 +85,19 @@ class TestSparkAction(PySparkTest):
 
     def test_correctness(self):
         """SparkAction makes Spark evaluate and persist a DataFrame immediately."""
-        # pylint: disable=protected-access
         df = self.spark.createDataFrame([(1,)], schema=["A"]).persist()
         assert df.is_cached
         # this will assert that the list is empty
-        assert not list(self.spark.sparkContext._jsc.sc().getRDDStorageInfo())
+        assert not list(
+            self.spark.sparkContext._jsc.sc().getRDDStorageInfo()  # noqa: SLF001
+        )
         df = self.transformation(df)
         self.assertEqual(
-            len(list(self.spark.sparkContext._jsc.sc().getRDDStorageInfo())), 1
+            len(
+                list(
+                    self.spark.sparkContext._jsc.sc().getRDDStorageInfo()  # noqa: SLF001
+                )
+            ),
+            1,
         )
         df.unpersist()

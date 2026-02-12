@@ -1,7 +1,7 @@
 """Tests for transformations.spark_transformations.map.FlatMap."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import math
 from typing import Any, Dict, Optional, cast
@@ -41,7 +41,7 @@ from tmlt.core.utils.testing import (
 @parametrize(
     Case("symmetric-difference")(metric=SymmetricDifference()),
     Case("if-grouped-by-symmetric-difference")(
-        metric=IfGroupedBy("a", SymmetricDifference())
+        metric=IfGroupedBy(["a"], SymmetricDifference())
     ),
 )
 @parametrize(
@@ -166,7 +166,7 @@ def test_property_immutability(prop_name: str):
         expected_df=pd.DataFrame({"b": [0, 1, 0, 1]}),
     ),
     Case("grouped")(
-        metric=IfGroupedBy("a", SumOf(SymmetricDifference())),
+        metric=IfGroupedBy(["a"], SumOf(SymmetricDifference())),
         transformer=RowToRowsTransformation(
             input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
             output_domain=ListDomain(
@@ -265,7 +265,7 @@ def test_transformation_correctness_keys(
 ):
     """Transformation works correctly."""
     transformation = FlatMap(
-        metric=IfGroupedBy("a", SymmetricDifference()),
+        metric=IfGroupedBy(["a"], SymmetricDifference()),
         row_transformer=transformer,
         max_num_rows=max_num_rows,
     )
@@ -277,7 +277,6 @@ def test_transformation_correctness_keys(
 
 def test_null_nan_inf(spark):
     """Transformation handles null/NaN/inf inputs and outputs correctly."""
-
     # Do not use Pandas in this test! Anything passing through a Pandas
     # dataframe could silently modify the NaNs/nulls and invalidate the
     # test.
@@ -329,9 +328,9 @@ def test_null_nan_inf(spark):
 
 @parametrize(
     Case("SymmetricDifference")(metric=SymmetricDifference()),
-    Case("IfGroupedBy-SumOf")(metric=IfGroupedBy("a", SumOf(SymmetricDifference()))),
+    Case("IfGroupedBy-SumOf")(metric=IfGroupedBy(["a"], SumOf(SymmetricDifference()))),
     Case("IfGroupedBy-RootSumOfSquared")(
-        metric=IfGroupedBy("a", RootSumOfSquared(SymmetricDifference()))
+        metric=IfGroupedBy(["a"], RootSumOfSquared(SymmetricDifference()))
     ),
 )
 def test_infinite_stability(spark, metric):
@@ -361,21 +360,21 @@ def test_infinite_stability(spark, metric):
     Case("IfGroupedBy-nonaugmenting")(
         input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
         output_domain=ListDomain(SparkRowDomain({"a": SparkIntegerColumnDescriptor()})),
-        metric=IfGroupedBy("a", SymmetricDifference()),
+        metric=IfGroupedBy(["a"], SymmetricDifference()),
         augment=False,
         raises=pytest.raises(ValueError, match="Transformer must be augmenting"),
     ),
     Case("IfGroupedBy-missing-column")(
         input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
         output_domain=ListDomain(SparkRowDomain({"a": SparkIntegerColumnDescriptor()})),
-        metric=IfGroupedBy("b", SymmetricDifference()),
+        metric=IfGroupedBy(["b"], SymmetricDifference()),
         augment=True,
         raises=pytest.raises(UnsupportedCombinationError),
     ),
     Case("IfGroupedBy-invalid-inner-metric")(
         input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
         output_domain=ListDomain(SparkRowDomain({"a": SparkIntegerColumnDescriptor()})),
-        metric=IfGroupedBy("a", SumOf(HammingDistance())),
+        metric=IfGroupedBy(["a"], SumOf(HammingDistance())),
         augment=True,
         raises=pytest.raises(UnsupportedMetricError),
     ),

@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.id`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import pandas as pd
 from parameterized import parameterized
@@ -53,7 +53,7 @@ class TestAddUniqueColumn(PySparkTest):
         self.assertEqual(transformation.input_domain, self.input_domain)
         self.assertEqual(transformation.input_metric, SymmetricDifference())
         self.assertEqual(
-            transformation.output_metric, IfGroupedBy("ID", SymmetricDifference())
+            transformation.output_metric, IfGroupedBy(["ID"], SymmetricDifference())
         )
         expected_output_domain = SparkDataFrameDomain(
             {**self.input_domain.schema, "ID": SparkStringColumnDescriptor()}

@@ -10,7 +10,7 @@ from tmlt.core.utils.configuration import Config
 from tmlt.core.utils.testing import PySparkTest
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 
 class TestCleanup(PySparkTest):
@@ -48,7 +48,7 @@ class TestCleanup(PySparkTest):
 
     @staticmethod
     def _recursive_remove(p: Path):
-        """Recursively remove a path (just like `rm -r`)"""
+        """Recursively remove a path (just like `rm -r`)."""
         if not p.is_dir():
             p.unlink()
         for f in p.iterdir():
@@ -56,6 +56,7 @@ class TestCleanup(PySparkTest):
         p.rmdir()
 
     def tearDown(self):
+        """Cleanup."""
         self.spark.sql(f"DROP DATABASE IF EXISTS `{Config.temp_db_name()}` CASCADE;")
         for d in self._get_warehouse_path().glob(f"*{Config.temp_db_name()}*"):
             self._recursive_remove(d)

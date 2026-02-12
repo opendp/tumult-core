@@ -1,11 +1,11 @@
 """Derived measurements for computing noisy aggregates on spark DataFrames."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from enum import Enum
 from math import ceil, log2
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import sympy as sp
@@ -132,6 +132,29 @@ class NoiseMechanism(Enum):
         return self.name.lower().capitalize().replace("_", " ")
 
 
+def _total_groupby_for_scalar(
+    input_domain: SparkDataFrameDomain,
+    input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
+    noise_mechanism: NoiseMechanism,
+) -> GroupBy:
+    """Validate metric, and build a total aggregation groupby."""
+    if isinstance(input_metric, IfGroupedBy):
+        raise UnsupportedMetricError(
+            input_metric,
+            (
+                "Cannot use IfGroupedBy input metric if no "
+                "groupby_transformation is provided."
+            ),
+        )
+    return GroupBy(
+        input_domain=input_domain,
+        input_metric=input_metric,
+        use_l2=noise_mechanism
+        in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN],
+        group_keys=None,
+    )
+
+
 @typechecked
 def create_count_measurement(
     input_domain: SparkDataFrameDomain,
@@ -181,6 +204,21 @@ def create_count_measurement(
             name to be used for counts in the dataframe output by the measurement. If
             None, this column will be named "count".
     """
+    if groupby_transformation is None:
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
+        grouped_count = create_count_measurement(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            output_measure=output_measure,
+            d_out=d_out,
+            noise_mechanism=noise_mechanism,
+            d_in=d_in,
+            groupby_transformation=groupby,
+            count_column=count_column,
+        )
+        column = "count" if not count_column else count_column
+        return PostProcess(grouped_count, lambda x: x.head()[column])
+
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
@@ -238,68 +276,25 @@ def create_count_measurement(
     assert isinstance(output_measure, (PureDP, RhoZCDP))
     noise_mechanism.check_output_measure(output_measure)
     count_aggregation: Transformation
-    if groupby_transformation is None:
-        if isinstance(input_metric, IfGroupedBy):
-            raise TypeError(
-                input_metric,
-                (
-                    "Cannot use IfGroupedBy input metric if no groupby_transformation"
-                    " is provided"
-                ),
-            )
-        count_aggregation = create_count_aggregation(
-            input_domain=input_domain,
-            input_metric=input_metric,
-            count_column=count_column,
-        )
-        d_mid = count_aggregation.stability_function(d_in)
-        noise_scale = calculate_noise_scale(
-            d_in=d_mid, d_out=d_out, output_measure=output_measure
-        )
-        add_noise_to_number: Measurement
-        if noise_mechanism == NoiseMechanism.LAPLACE:
-            add_noise_to_number = AddLaplaceNoise(
-                scale=noise_scale, input_domain=NumpyIntegerDomain()
-            )
-        elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-            add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
-        elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
-            add_noise_to_number = AddDiscreteGaussianNoise(
-                sigma_squared=noise_scale**2
-            )
-        elif noise_mechanism == NoiseMechanism.GAUSSIAN:
-            add_noise_to_number = AddGaussianNoise(
-                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
-            )
-        else:
-            raise UnsupportedNoiseMechanismError(
-                noise_mechanism,
-                (
-                    f"Unrecognized noise mechanism {noise_mechanism}. "
-                    "Supported noise mechanisms are LAPLACE, "
-                    "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
-                ),
-            )
-        count_measurement: Measurement = count_aggregation | add_noise_to_number
-        if (
-            output_measure == RhoZCDP()
-            and PureDP() in noise_mechanism.supported_output_measure()
-        ):
-            # count_measurement has output_measure PureDP and needs to be wrapped in a
-            # converter.
-            count_measurement = PureDPToRhoZCDP(count_measurement)
-        assert count_measurement.privacy_function(d_in) == d_out
-        return count_measurement
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
     assert isinstance(groupby_transformation.output_domain, SparkGroupedDataFrameDomain)
 
-    if isinstance(input_metric, IfGroupedBy):
-        if input_metric.column not in groupby_transformation.group_keys.columns:
-            raise ValueError(
-                "The input_metric column must be in the groupby_transformation "
-                f"group_keys columns. Got input_metric column = {input_metric.column},"
-                f" group_keys columns = {groupby_transformation.group_keys.columns}",
-            )
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
 
     count_aggregation = create_count_aggregation(
         input_domain=groupby_transformation.output_domain,
@@ -405,8 +400,22 @@ def create_count_distinct_measurement(
             the noisy count of distinct items.
         count_column: If a ``groupby_transformation`` is provided, this is the
             column name to be used for counts in the dataframe output by the
-            measurement. If None, this column will be named "count".
+            measurement. If None, this column will be named "count_distinct".
     """
+    if groupby_transformation is None:
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
+        groupby_count = create_count_distinct_measurement(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            output_measure=output_measure,
+            d_out=d_out,
+            noise_mechanism=noise_mechanism,
+            d_in=d_in,
+            groupby_transformation=groupby,
+            count_column=count_column,
+        )
+        column = "count_distinct" if not count_column else count_column
+        return PostProcess(groupby_count, lambda x: x.head()[column])
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
@@ -464,61 +473,6 @@ def create_count_distinct_measurement(
     assert isinstance(output_measure, (PureDP, RhoZCDP))
     noise_mechanism.check_output_measure(output_measure)
     count_distinct_aggregation: Transformation
-    if groupby_transformation is None:
-        if isinstance(input_metric, IfGroupedBy):
-            raise UnsupportedMetricError(
-                input_metric,
-                (
-                    "Cannot use IfGroupedBy input metric if no"
-                    "groupby_transformation is provided."
-                ),
-            )
-        count_distinct_aggregation = create_count_distinct_aggregation(
-            input_domain=input_domain,
-            input_metric=input_metric,
-            count_column=count_column,
-        )
-        d_mid = count_distinct_aggregation.stability_function(d_in)
-        noise_scale = calculate_noise_scale(
-            d_in=d_mid, d_out=d_out, output_measure=output_measure
-        )
-        add_noise_to_number: Measurement
-        if noise_mechanism == NoiseMechanism.LAPLACE:
-            add_noise_to_number = AddLaplaceNoise(
-                scale=noise_scale, input_domain=NumpyIntegerDomain()
-            )
-        elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-            add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
-        elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
-            add_noise_to_number = AddDiscreteGaussianNoise(
-                sigma_squared=noise_scale**2
-            )
-        elif noise_mechanism == NoiseMechanism.GAUSSIAN:
-            add_noise_to_number = AddGaussianNoise(
-                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
-            )
-        else:
-            raise UnsupportedNoiseMechanismError(
-                noise_mechanism,
-                (
-                    f"Unrecognized noise mechanism {noise_mechanism}. "
-                    "Supported noise mechanisms are LAPLACE, "
-                    "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
-                ),
-            )
-
-        count_distinct_measurement: Measurement = (
-            count_distinct_aggregation | add_noise_to_number
-        )
-        if (
-            output_measure == RhoZCDP()
-            and PureDP() in noise_mechanism.supported_output_measure()
-        ):
-            # the measurement created above has output_measure PureDP,
-            # so it needs to be converted
-            count_distinct_measurement = PureDPToRhoZCDP(count_distinct_measurement)
-        assert count_distinct_measurement.privacy_function(d_in) == d_out
-        return count_distinct_measurement
     if not isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared)):
         raise UnsupportedMetricError(
             groupby_transformation.output_metric,
@@ -537,6 +491,24 @@ def create_count_distinct_measurement(
                 "output domain of SparkGroupedDataFrameDomain."
             ),
         )
+
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
+
     count_distinct_aggregation = create_count_distinct_aggregation(
         input_domain=groupby_transformation.output_domain,
         input_metric=groupby_transformation.output_metric,
@@ -645,6 +617,23 @@ def create_sum_measurement(
             name to be used for sums in the DataFrame output by the measurement. If
             None, this column will be named "sum(<measure_column>)".
     """
+    if groupby_transformation is None:
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
+        grouped_sum = create_sum_measurement(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            output_measure=output_measure,
+            d_out=d_out,
+            noise_mechanism=noise_mechanism,
+            measure_column=measure_column,
+            lower=lower,
+            upper=upper,
+            d_in=d_in,
+            groupby_transformation=groupby,
+            sum_column=sum_column,
+        )
+        column = f"sum({measure_column})" if not sum_column else sum_column
+        return PostProcess(grouped_sum, lambda x: x.head()[column])
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
@@ -710,65 +699,27 @@ def create_sum_measurement(
     measure_column_domain = input_domain[measure_column].to_numpy_domain()
     if not isinstance(measure_column_domain, (NumpyIntegerDomain, NumpyFloatDomain)):
         raise ValueError(f"Measure column must be numeric, not {measure_column_domain}")
-    if groupby_transformation is None:
-        if isinstance(input_metric, IfGroupedBy):
-            raise UnsupportedMetricError(
-                input_metric,
-                (
-                    "IfGroupedBy must be accompanied by an appropriate groupby "
-                    "transformation."
-                ),
-            )
-        sum_aggregation = create_sum_aggregation(
-            input_domain=input_domain,
-            input_metric=input_metric,
-            measure_column=measure_column,
-            upper=upper,
-            lower=lower,
-            sum_column=sum_column,
-        )
-        d_mid = sum_aggregation.stability_function(d_in)
-        noise_scale = calculate_noise_scale(
-            d_in=d_mid, d_out=d_out, output_measure=output_measure
-        )
-        add_noise_to_number: Measurement
-        if noise_mechanism == NoiseMechanism.LAPLACE:
-            add_noise_to_number = AddLaplaceNoise(
-                scale=noise_scale, input_domain=measure_column_domain
-            )
-        elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-            add_noise_to_number = AddGeometricNoise(alpha=noise_scale)
-
-        elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
-            add_noise_to_number = AddDiscreteGaussianNoise(
-                sigma_squared=noise_scale**2
-            )
-        elif noise_mechanism == NoiseMechanism.GAUSSIAN:
-            add_noise_to_number = AddGaussianNoise(
-                sigma_squared=noise_scale**2, input_domain=measure_column_domain
-            )
-        else:
-            raise UnsupportedNoiseMechanismError(
-                noise_mechanism,
-                (
-                    f"Unrecognized noise mechanism {noise_mechanism}. "
-                    "Supported noise mechanisms are LAPLACE, "
-                    "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
-                ),
-            )
-        sum_measurement: Measurement = sum_aggregation | add_noise_to_number
-        if (
-            output_measure == RhoZCDP()
-            and PureDP() in noise_mechanism.supported_output_measure()
-        ):
-            # sum_measurement has output_measure PureDP and needs to be wrapped in a
-            # converter.
-            sum_measurement = PureDPToRhoZCDP(sum_measurement)
-        assert sum_measurement.privacy_function(d_in) == d_out
-        return sum_measurement
     add_noise_to_series: AddNoiseToSeries
     assert isinstance(groupby_transformation.output_domain, SparkGroupedDataFrameDomain)
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
+
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
+
     sum_aggregation = create_sum_aggregation(
         input_domain=groupby_transformation.output_domain,
         input_metric=groupby_transformation.output_metric,
@@ -839,8 +790,6 @@ def create_average_measurement(
     groupby_transformation: Optional[GroupBy] = None,
     average_column: Optional[str] = None,
     keep_intermediates: bool = False,
-    sum_column: Optional[str] = None,
-    count_column: Optional[str] = None,
 ) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy average measurement.
 
@@ -880,18 +829,44 @@ def create_average_measurement(
             If None, this measurement outputs a single number - the noisy average.
         average_column: If a ``groupby_transformation`` is supplied, this is the column
             name to be used for noisy average in the DataFrame output by the
-            measurement. If None, this column will be named "avg(<measure_column>)".
-        keep_intermediates: If True, intermediates (noisy sum of deviations and noisy
-            count) will also be output in addition to the noisy average.
-        sum_column: If a ``groupby_transformation`` is supplied and
-            ``keep_intermediates`` is True, this is the column name to be used
-            for intermediate sums in the DataFrame output by the measurement. If
-            None, this column will be named "sum(<measure_column>)".
-        count_column: If a ``groupby_transformation`` is supplied and
-            ``keep_intermediates`` is True, this is the column name to be used
-            for intermediate counts in the DataFrame output by the
-            measurement. If None, this column will be named "count".
+            measurement. If no ``groupby_transformation`` is supplied, but
+            ``keep_intermediates`` is set, this will be the key for the noisy average
+            in the dictionary output by the measurement. If None, this column will be
+            named "avg(<measure_column>)".
+        keep_intermediates: If True, intermediates (noisy sum of deviations, noisy
+            count, and midpoint) will also be output in addition to the noisy average.
+            If a groupby transformation is provided, and the measurement returns a
+            DataFrame, these values will be appended as extra columns. If there is no
+            groupby transformation, the measurement will return a dictionary including
+            result and the intermediate values. Key/column names are
+            ``average_column``, ``sod(<measure_column>)``, ``count``, and
+            ``midpoint(<measure_column>)``.
     """
+    if not average_column:
+        average_column = f"avg({measure_column})"
+    sum_column = f"sod({measure_column})"
+    count_column = "count"
+    midpoint_column = f"midpoint({measure_column})"
+
+    if groupby_transformation is None:
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
+        groupby_average = create_average_measurement(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            output_measure=output_measure,
+            d_out=d_out,
+            noise_mechanism=noise_mechanism,
+            measure_column=measure_column,
+            lower=lower,
+            upper=upper,
+            d_in=d_in,
+            groupby_transformation=groupby,
+            average_column=average_column,
+            keep_intermediates=keep_intermediates,
+        )
+        if keep_intermediates:
+            return PostProcess(groupby_average, lambda df: df.head().asDict())
+        return PostProcess(groupby_average, lambda x: x.head()[average_column])
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
@@ -917,8 +892,6 @@ def create_average_measurement(
                     groupby_transformation=groupby_transformation,
                     average_column=average_column,
                     keep_intermediates=keep_intermediates,
-                    sum_column=sum_column,
-                    count_column=count_column,
                 )
             )
         elif noise_mechanism in (
@@ -955,12 +928,6 @@ def create_average_measurement(
     upper = ExactNumber(upper)
     # help mypy
     assert isinstance(output_measure, (PureDP, RhoZCDP))
-    if not average_column:
-        average_column = f"avg({measure_column})"
-    if not sum_column:
-        sum_column = f"avg({sum_column})"
-    if not count_column:
-        count_column = "count"
     midpoint_of_measure_column, exact_midpoint_of_measure_column = get_midpoint(
         lower=lower,
         upper=upper,
@@ -1027,11 +994,15 @@ def create_average_measurement(
             sod, count = answers
             average = sod / max(1, count) + midpoint_of_measure_column
             if keep_intermediates:
+                assert average_column is not None
+                assert sum_column is not None
+                assert count_column is not None
+                assert midpoint_column is not None
                 return {
-                    "average": average,
-                    "sum_of_deviations": sod,
-                    "count": count,
-                    "midpoint_of_deviations": midpoint_of_measure_column,
+                    average_column: average,
+                    sum_column: sod,
+                    count_column: count,
+                    midpoint_column: midpoint_of_measure_column,
                 }
             return average
 
@@ -1041,9 +1012,29 @@ def create_average_measurement(
         assert average_measurement.privacy_function(d_in) == d_out
         return average_measurement
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
+    assert isinstance(
+        groupby_transformation.input_metric,
+        (HammingDistance, SymmetricDifference, IfGroupedBy),
+    )
     groupby = GroupBy(
         input_domain=deviations_map.output_domain,
-        input_metric=input_metric,
+        input_metric=groupby_transformation.input_metric,
         use_l2=groupby_transformation.use_l2,
         group_keys=groupby_transformation.group_keys,
     )
@@ -1108,7 +1099,10 @@ def create_average_measurement(
             + sf.lit(midpoint_of_measure_column),
         )
         if keep_intermediates:
-            return df_with_all_columns
+            assert midpoint_column is not None
+            return df_with_all_columns.withColumn(
+                midpoint_column, sf.lit(midpoint_of_measure_column)
+            )
         return df_with_all_columns.drop(sum_column, count_column)
 
     average_measurement = PostProcess(
@@ -1132,9 +1126,6 @@ def create_variance_measurement(
     groupby_transformation: Optional[GroupBy] = None,
     variance_column: Optional[str] = None,
     keep_intermediates: bool = False,
-    sum_of_deviations_column: Optional[str] = None,
-    sum_of_squared_deviations_column: Optional[str] = None,
-    count_column: Optional[str] = None,
 ) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy variance measurement.
 
@@ -1172,26 +1163,49 @@ def create_variance_measurement(
         groupby_transformation: If provided, this measurement returns a DataFrame with
             a noisy variance for each group obtained from the groupby transformation.
             If None, this measurement outputs a single number - the noisy variance.
-        variance_column: If a ``groupby_transformation`` is supplied, this is
-            the column name to be used for noisy variance in the DataFrame
-            output by the measurement. If None, this column will be named
-            "var(<measure_column>)".
+        variance_column: If a ``groupby_transformation`` is supplied, this is the column
+            name to be used for noisy variance in the DataFrame output by the
+            measurement. If no ``groupby_transformation`` is supplied, but
+            ``keep_intermediates`` is set, this will be the key for the noisy variance
+            in the dictionary output by the measurement. If None, this column will be
+            named "var(<measure_column>)".
         keep_intermediates: If True, intermediates (noisy sum of deviations, noisy sum
-            of squared deviations and noisy count) will also be output in addition to
-            the noisy variance.
-        sum_of_deviations_column: If a ``groupby_transformation`` is supplied and
-            ``keep_intermediates`` is True, this is the column name to be used for
-            intermediate sums of deviations in the DataFrame output by the measurement.
-            If None, this column will be named "sod(<measure_column>)".
-        sum_of_squared_deviations_column: If a ``groupby_transformation`` is supplied
-            and ``keep_intermediates`` is True, this is the column name to be used for
-            intermediate sums of squared deviations in the DataFrame output by the
-            measurement. If None, this column will be named "sos(<measure_column>)".
-        count_column: If a ``groupby_transformation`` is supplied and
-            ``keep_intermediates`` is True, this is the column name to be used
-            for intermediate counts in the DataFrame output by the measurement.
-            If None, this column will be named "count".
+            of deviations of squares, noisy count, midpoint, and midpoint of squares)
+            will also be output in addition to the noisy variance. If a groupby
+            transformation is provided, and the measurement returns a DataFrame, these
+            values will be appended as extra columns. If there is no groupby
+            transformation, the measurement will return a dictionary including
+            result and the intermediate values. Key/column names are
+            ``variance_column``, "sod(<measure_column>)", "sos(<measure_column>)"
+            "count", "midpoint(<measure_column>)", and
+            "midpoint_of_squares(<measure_column>)".
     """
+    if variance_column is None:
+        variance_column = f"var({measure_column})"
+    sum_of_deviations_column = f"sod({measure_column})"
+    sum_of_squared_deviations_column = f"sos({measure_column})"
+    count_column = "count"
+    midpoint_column = f"midpoint({measure_column})"
+    midpoint_of_squares_column = f"midpoint_of_squared({measure_column})"
+    if groupby_transformation is None:
+        groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
+        groupby_variance = create_variance_measurement(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            output_measure=output_measure,
+            d_out=d_out,
+            noise_mechanism=noise_mechanism,
+            measure_column=measure_column,
+            lower=lower,
+            upper=upper,
+            d_in=d_in,
+            groupby_transformation=groupby,
+            variance_column=variance_column,
+            keep_intermediates=keep_intermediates,
+        )
+        if keep_intermediates:
+            return PostProcess(groupby_variance, lambda df: df.head().asDict())
+        return PostProcess(groupby_variance, lambda x: x.head()[variance_column])
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
         if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
@@ -1217,9 +1231,6 @@ def create_variance_measurement(
                     groupby_transformation=groupby_transformation,
                     variance_column=variance_column,
                     keep_intermediates=keep_intermediates,
-                    sum_of_deviations_column=sum_of_deviations_column,
-                    sum_of_squared_deviations_column=sum_of_squared_deviations_column,
-                    count_column=count_column,
                 )
             )
         elif noise_mechanism in (
@@ -1253,15 +1264,6 @@ def create_variance_measurement(
         assert False
     # help mypy
     assert isinstance(output_measure, (PureDP, RhoZCDP))
-
-    if sum_of_deviations_column is None:
-        sum_of_deviations_column = f"sod({measure_column})"
-    if sum_of_squared_deviations_column is None:
-        sum_of_squared_deviations_column = f"sos({measure_column})"
-    if count_column is None:
-        count_column = "count"
-    if variance_column is None:
-        variance_column = f"var({measure_column})"
 
     lower = ExactNumber(lower)
     upper = ExactNumber(upper)
@@ -1304,103 +1306,24 @@ def create_variance_measurement(
         deviations_map.output_metric,
         (SymmetricDifference, HammingDistance, IfGroupedBy),
     )
-    if groupby_transformation is None:
-        sod_measurement = create_sum_measurement(
-            input_domain=deviations_map.output_domain,
-            input_metric=deviations_map.output_metric,
-            measure_column=deviations_column,
-            lower=lower - exact_midpoint_of_measure_column,
-            upper=upper - exact_midpoint_of_measure_column,
-            noise_mechanism=noise_mechanism,
-            d_in=d_in,
-            d_out=d_out / 3,
-            groupby_transformation=None,
-            sum_column=None,
-            output_measure=output_measure,
-        )
-        sos_measurement = create_sum_measurement(
-            input_domain=deviations_map.output_domain,
-            input_metric=deviations_map.output_metric,
-            measure_column=squared_deviations_column,
-            lower=lower_after_squaring - exact_midpoint_of_squared_measure_column,
-            upper=upper_after_squaring - exact_midpoint_of_squared_measure_column,
-            noise_mechanism=noise_mechanism,
-            d_in=d_in,
-            d_out=d_out / 3,
-            groupby_transformation=None,
-            sum_column=None,
-            output_measure=output_measure,
-        )
-        count_measurement = create_count_measurement(
-            input_domain=deviations_map.output_domain,
-            input_metric=deviations_map.output_metric,
-            noise_mechanism=noise_mechanism,
-            d_in=d_in,
-            d_out=d_out / 3,
-            groupby_transformation=None,
-            count_column=None,
-            output_measure=output_measure,
-        )
-        sums_and_count = deviations_map | Composition(
-            measurements=[sod_measurement, sos_measurement, count_measurement]
-        )
-
-        def postprocess_sums_and_count(
-            answers: List[Union[np.int64, np.float64]],
-        ) -> Union[
-            np.int64,
-            np.float64,
-            Dict[str, Union[Union[float, np.int64], Union[int, np.float64]]],
-        ]:
-            """Computes variance from noisy count and sums of deviations."""
-            sod, sos, count = answers
-            variance: Any
-            if count <= 1:
-                variance = np.nan
-            else:
-                # The midpoint_of* variables are used to lower noise in the variance
-                # calculation. By normalizing the values based on the top and bottom of
-                # the measurement, the stability is reduced.
-
-                # This calculates sample variance, which is why all values are
-                # proportional to n-1 (ie. count - 1) instead of n.
-
-                variance = (
-                    sos / (count - 1)
-                    + (count / (count - 1)) * midpoint_of_squared_measure_column
-                ) - (sod / count + midpoint_of_measure_column) ** 2 * (
-                    count / (count - 1)
-                )
-                if variance < 0:
-                    variance = 0
-                else:
-                    variance = min(
-                        variance,
-                        (
-                            ExactNumber(upper).to_float(round_up=False)
-                            - ExactNumber(lower).to_float(round_up=True)
-                        )
-                        ** 2
-                        / 4,
-                    )
-            if keep_intermediates:
-                return {
-                    "variance": variance,
-                    "sum_of_deviations": sod,
-                    "sum_of_squared_deviations": sos,
-                    "count": count,
-                    "midpoint_deviations": midpoint_of_measure_column,
-                    "midpoint_squared_deviations": midpoint_of_squared_measure_column,
-                }
-            return variance
-
-        variance_measurement = PostProcess(
-            measurement=sums_and_count, f=postprocess_sums_and_count
-        )
-        assert variance_measurement.privacy_function(d_in) == d_out
-        return variance_measurement
     assert isinstance(groupby_transformation, GroupBy)
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
+    if groupby_transformation.input_metric != input_metric:
+        raise MetricMismatchError(
+            (groupby_transformation.input_metric, input_metric),
+            (
+                "Input metric must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_metric}), actual: ({input_metric})"
+            ),
+        )
+    if groupby_transformation.input_domain != input_domain:
+        raise DomainMismatchError(
+            (groupby_transformation.input_domain, input_domain),
+            (
+                "Input domain must match with groupby transformation. Expected:"
+                f" ({groupby_transformation.input_domain}), actual: ({input_domain})"
+            ),
+        )
     groupby = GroupBy(
         input_domain=deviations_map.output_domain,
         input_metric=deviations_map.output_metric,
@@ -1518,7 +1441,7 @@ def create_variance_measurement(
             ),
         ).withColumn(
             variance_column,
-            sf.when(sf.col(variance_column) == np.nan, np.nan)
+            sf.when(sf.isnan(sf.col(variance_column)), np.nan)
             .when(sf.col(variance_column) < 0.0, 0.0)
             .otherwise(
                 sf.least(
@@ -1536,7 +1459,14 @@ def create_variance_measurement(
         )
 
         if keep_intermediates:
-            return df_with_all_columns
+            assert midpoint_column is not None
+            assert midpoint_of_squares_column is not None
+            return df_with_all_columns.withColumn(
+                midpoint_column, sf.lit(midpoint_of_measure_column)
+            ).withColumn(
+                midpoint_of_squares_column,
+                sf.lit(midpoint_of_squared_measure_column),
+            )
         return df_with_all_columns.drop(
             sum_of_deviations_column, sum_of_squared_deviations_column, count_column
         )
@@ -1562,9 +1492,6 @@ def create_standard_deviation_measurement(
     groupby_transformation: Optional[GroupBy] = None,
     standard_deviation_column: Optional[str] = None,
     keep_intermediates: bool = False,
-    sum_of_deviations_column: Optional[str] = None,
-    sum_of_squared_deviations_column: Optional[str] = None,
-    count_column: Optional[str] = None,
 ) -> Union[PostProcess, PureDPToApproxDP]:
     """Returns a noisy standard deviation measurement.
 
@@ -1603,25 +1530,22 @@ def create_standard_deviation_measurement(
             noisy standard deviations for each group obtained by applying the groupby
             transformation. If None, this measurement outputs a single number - the
             noisy standard deviation of ``measure_column``.
-        standard_deviation_column: If a ``groupby_transformation`` is supplied, this is
-            the column name to be used for noisy standard deviation in the DataFrame
-            output by the measurement. If None, this column will be named
-            "stddev(<measure_column>)".
+        standard_deviation_column: If a ``groupby_transformation`` is supplied, this
+            is the column name to be used for noisy standard deviation in the
+            DataFrame output by the measurement. If no ``groupby_transformation``
+            is supplied, but ``keep_intermediates`` is set, this will be the key for
+            the noisy standar deviation in the dictionary output by the measurement.
+            If None, this column will be named "std(<measure_column>)".
         keep_intermediates: If True, intermediates (noisy sum of deviations, noisy sum
-            of squared deviations noisy count) will also be output in addition to the
-            noisy standard deviation.
-        sum_of_deviations_column: If a ``groupby_transformation`` is supplied and
-            ``keep_intermediates`` is True, this is the column name to be used for
-            intermediate sums of deviations in the DataFrame output by the measurement.
-            If None, this column will be named "sod(<measure_column>)".
-        sum_of_squared_deviations_column: If a ``groupby_transformation`` is supplied
-            and ``keep_intermediates`` is True, this is the column name to be used for
-            intermediate sums of squared_deviations in the DataFrame output by the
-            measurement. If None, this column will be named "sos(<measure_column>)".
-        count_column: If a ``groupby_transformation`` is supplied and
-            ``keep_intermediates`` is True, this is the column name to be used
-            for intermediate counts in the DataFrame output by the measurement.
-            If None, this column will be named "count".
+            of deviations of squares, noisy count, midpoint, and midpoint of squares)
+            will also be output in addition to the noisy standard deviation. If a
+            groupby transformation is provided, and the measurement returns a
+            DataFrame, these values will be appended as extra columns. If there is no
+            groupby transformation, the measurement will return a dictionary including
+            result and the intermediate values. Key/column names are
+            ``standard_deviation_column``, "sod(<measure_column>)",
+            "sos(<measure_column>)", "count", "midpoint(<measure_column>)", and
+            "midpoint_of_squares(<measure_column>)".
     """
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
@@ -1648,9 +1572,6 @@ def create_standard_deviation_measurement(
                     groupby_transformation=groupby_transformation,
                     standard_deviation_column=standard_deviation_column,
                     keep_intermediates=keep_intermediates,
-                    sum_of_deviations_column=sum_of_deviations_column,
-                    sum_of_squared_deviations_column=sum_of_squared_deviations_column,
-                    count_column=count_column,
                 )
             )
         elif noise_mechanism in (
@@ -1701,9 +1622,6 @@ def create_standard_deviation_measurement(
         groupby_transformation=groupby_transformation,
         variance_column=standard_deviation_column,
         keep_intermediates=keep_intermediates,
-        sum_of_deviations_column=sum_of_deviations_column,
-        sum_of_squared_deviations_column=sum_of_squared_deviations_column,
-        count_column=count_column,
         output_measure=output_measure,
     )
 
@@ -1714,8 +1632,9 @@ def create_standard_deviation_measurement(
         ) -> Union[Dict[str, ArrayLike], ArrayLike]:
             """Computes variance from noisy standard deviation."""
             if isinstance(answer, dict):
-                answer["standard-deviation"] = np.sqrt(answer["variance"])
-                del answer["variance"]
+                answer[standard_deviation_column] = np.sqrt(
+                    answer[standard_deviation_column]
+                )
                 return answer
             return np.sqrt(answer)
 
@@ -1828,16 +1747,15 @@ def create_quantile_measurement(
             raise UnsupportedMetricError(
                 input_metric,
                 (
-                    "IfGroupedBy must be accompanied by an appropriate groupby "
-                    "transformation."
+                    "Cannot use IfGroupedBy input metric if no "
+                    "groupby_transformation is provided."
                 ),
             )
-        spark = SparkSession.builder.getOrCreate()
         groupby_transformation = GroupBy(
             input_domain=input_domain,
             input_metric=input_metric,
             use_l2=False,
-            group_keys=spark.createDataFrame([], schema=StructType([])),
+            group_keys=None,
         )
         # Postprocess to obtain the answer if no groupby transformation
         postprocess = lambda df: df.collect()[0][measure_column]
@@ -1961,7 +1879,7 @@ def _create_map_to_compute_deviations(
 
     deviations_column = get_nonconflicting_string(list(input_domain.schema))
     squared_deviations_column = get_nonconflicting_string(
-        list(input_domain.schema) + [deviations_column]
+        [*input_domain.schema, deviations_column]
     )
 
     return (
@@ -2162,15 +2080,15 @@ def create_bounds_measurement(
             raise UnsupportedMetricError(
                 input_metric,
                 (
-                    "IfGroupedBy must be accompanied by an appropriate groupby "
-                    "transformation."
+                    "Cannot use IfGroupedBy input metric if no "
+                    "groupby_transformation is provided."
                 ),
             )
         input_or_constructed_groupby_transformation = GroupBy(
             input_domain=input_domain,
             input_metric=input_metric,
             use_l2=False,
-            group_keys=spark.createDataFrame([], schema=StructType([])),
+            group_keys=None,
         )
     else:
         input_or_constructed_groupby_transformation = groupby_transformation
@@ -2200,13 +2118,15 @@ def create_bounds_measurement(
 
     # Create map transformation.
     rank_column = get_nonconflicting_string(list(input_domain.schema))
-    count_column = get_nonconflicting_string(list(input_domain.schema) + [rank_column])
+    count_column = get_nonconflicting_string([*input_domain.schema, rank_column])
     element_type = input_domain[measure_column]
 
     bucket_group_keys = spark.createDataFrame(
-        [(i,) for i in range(element_type.size - 1)]
-        if isinstance(element_type, SparkIntegerColumnDescriptor)
-        else [(i,) for i in range(-100, 101)],
+        (
+            [(i,) for i in range(element_type.size - 1)]
+            if isinstance(element_type, SparkIntegerColumnDescriptor)
+            else [(i,) for i in range(-100, 101)]
+        ),
         schema=StructType([StructField(rank_column, IntegerType(), False)]),
     )
 
@@ -2216,9 +2136,11 @@ def create_bounds_measurement(
 
         return {
             rank_column: clamp(
-                -100
-                if row[measure_column] == 0
-                else ceil(log2(abs(row[measure_column]))),
+                (
+                    -100
+                    if row[measure_column] == 0
+                    else ceil(log2(abs(row[measure_column])))
+                ),
                 -100 if isinstance(element_type, SparkFloatColumnDescriptor) else 0,
                 100,
             )
@@ -2259,14 +2181,19 @@ def create_bounds_measurement(
     # help mypy
     assert isinstance(maybe_unwrap.output_domain, SparkDataFrameDomain)
     assert isinstance(maybe_unwrap.output_metric, SymmetricDifference)
+    group_keys = (
+        bucket_group_keys
+        if not input_or_constructed_groupby_transformation.group_keys
+        else input_or_constructed_groupby_transformation.group_keys.join(
+            bucket_group_keys, how="outer"
+        )
+    )
     # Redefine groupby transformation to include the bucket.
     augmented_groupby = GroupBy(
         input_domain=maybe_unwrap.output_domain,
         input_metric=maybe_unwrap.output_metric,
         use_l2=False,
-        group_keys=input_or_constructed_groupby_transformation.group_keys.join(
-            bucket_group_keys, how="outer"
-        ),
+        group_keys=group_keys,
     )
 
     # Define count transformation.

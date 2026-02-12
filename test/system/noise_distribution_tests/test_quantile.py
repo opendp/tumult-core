@@ -1,9 +1,10 @@
 """Tests that Quantile measurement adds noise sample from the correct distributions."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 
+import itertools
 import math
 import sys
 from typing import List, Tuple, Union, cast
@@ -86,8 +87,8 @@ def _get_quantile_probabilities(
     epsilon = min(epsilon, sys.float_info.max / (n + 1))
     target_rank = quantile * n
 
-    data = [lower] + cast(List[float], data) + [upper]
-    indexed_intervals = enumerate(zip(data[:-1], data[1:]))
+    data = [lower, *cast(List[float], data), upper]
+    indexed_intervals = enumerate(itertools.pairwise(data))
     weights = np.array(
         [
             (

@@ -1,9 +1,21 @@
-"""Utilities for testing."""
+"""Utilities for testing.
+
+This module can only be imported if Core is installed with the ``testing``
+extra, e.g. via ``pip install tmlt.core[testing]``.
+"""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 # TODO(#1218): Move dummy aggregate class back to the test.
+
+try:
+    import pytest
+except ImportError as e:
+    raise ImportError(
+        "tmlt.core.utils.testing requires the 'testing' extra, which can be "
+        "installed with: pip install tmlt.core[testing]"
+    ) from e
 
 import logging
 import math
@@ -26,7 +38,6 @@ from unittest.mock import Mock, create_autospec
 
 import numpy as np
 import pandas as pd
-import pytest
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
@@ -126,12 +137,24 @@ def assert_dataframe_equal(
         assertDataFrameEqual(actual, expected)
         return
 
-    if isinstance(actual, DataFrame):
-        actual = actual.toPandas()
-    if isinstance(expected, DataFrame):
-        expected = expected.toPandas()
+    actual_pd = actual.toPandas() if isinstance(actual, DataFrame) else actual
+    expected_pd = expected.toPandas() if isinstance(expected, DataFrame) else expected
 
-    _assert_pd_dataframe_equal_with_sort(actual, expected)
+    if len(actual.columns) == 0 and len(expected.columns) == 0:
+        # When converting a dataframe with no columns to Pandas, all of its rows
+        # are dropped; in this case, check the row count of the original
+        # dataframes explicitly to ensure they actually have the same number of
+        # rows.
+        actual_count = actual.count() if isinstance(actual, DataFrame) else len(actual)
+        expected_count = (
+            expected.count() if isinstance(expected, DataFrame) else len(expected)
+        )
+        assert actual_count == expected_count, (
+            "Dataframes do not have the same number of rows, "
+            f"actual {actual_count} vs. expected {expected_count}"
+        )
+
+    _assert_pd_dataframe_equal_with_sort(actual_pd, expected_pd)
 
 
 def pandas_to_spark_dataframe(
@@ -571,7 +594,6 @@ class Case:
     For usage information, see :func:`~tmlt.core.utils.testing.parametrize`.
     """
 
-    # pylint: disable-next=redefined-builtin
     def __init__(self, id: Optional[str] = None, **kwargs: Any):
         """Constructor.
 

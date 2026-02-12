@@ -5,7 +5,7 @@
 # TODO(#1023): Handle clamping bounds approximation.
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import math
 from abc import abstractmethod
@@ -256,7 +256,7 @@ class AddNoiseToSeries(Measurement):
             noise_measurement: Noise Measurement to be applied to each element
                 in input pandas Series.
         """
-        if not noise_measurement.output_measure in [PureDP(), RhoZCDP()]:
+        if noise_measurement.output_measure not in [PureDP(), RhoZCDP()]:
             raise AssertionError(
                 "This is probably a bug; please let us know so we can fix it!"
             )
@@ -303,9 +303,7 @@ class AddNoiseToSeries(Measurement):
 
     def __call__(self, values: pd.Series) -> pd.Series:
         """Adds noise to each number in the input Series."""
-        return values.apply(
-            lambda x: self.noise_measurement(x)  # pylint: disable=unnecessary-lambda
-        )
+        return values.apply(lambda x: self.noise_measurement(x))
 
 
 class _RankedInterval(NamedTuple):
@@ -383,7 +381,7 @@ def _select_quantile_interval(
             :math:`log(x_j - x_i) - |rank - target| * \frac{epsilon}{2 \cdot \Delta U} + G`
             where :math:`G` is a sampled from the standard Gumbel distribution.
         - Returns the interval with the highest noisy score.
-    """  # pylint:disable=line-too-long
+    """  # noqa: E501
     arb_q = Arb.from_float(float(q))
     prec = 53
     # target_rank = arb_q * len(values)
@@ -432,8 +430,8 @@ def _select_quantile_interval(
 
         gumbels = [-arb_log(-arb_log(p, prec), prec) for p in probabilities]
 
+        # arb.log(u - l) - ((abs(rank - target_rank) * epsilon) / (2 * delta_u)) + noise
         noisy_scores = [
-            # arb.log(u - l) - ((abs(rank - target_rank) * epsilon) / (2 * delta_u)) + noise
             arb_add(
                 arb_sub(
                     arb_log(arb_sub(u, l, prec), prec),
@@ -456,13 +454,13 @@ def _select_quantile_interval(
 
         # try to get a noisy score which is above most others
         approx_max = Arb.from_float(float("-inf"))
-        # pylint: disable=consider-using-max-builtin
-        # Unclear if max works correctly with Arb
+
+        # Unclear if max works correctly with Arb, and arb_max performs a
+        # somewhat different operation than this comparison.
         for noisy_score in noisy_scores:
-            if noisy_score > approx_max:
+            if noisy_score > approx_max:  # noqa: PLR1730
                 # only if noisy_score.lower > approx_max.upper
                 approx_max = noisy_score
-        # pylint: enable=consider-using-max-builtin
 
         # do another pass to eliminate other intervals
         new_gumbel_p_bits = []

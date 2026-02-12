@@ -1,7 +1,7 @@
 """Benchmarking script for spark-based count and sum aggregations."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from math import log
 from random import randint
@@ -113,7 +113,7 @@ def main():
 
     # Single Groupby Column of varying domain sizes (1 row/group)
     for domain_size in [100, 400, 10000, 40000, 160000, 640000]:
-        df = spark.createDataFrame(  # pylint: disable=no-member
+        df = spark.createDataFrame(
             spark.sparkContext.parallelize(
                 [(i, randint(0, 1)) for i in range(domain_size)]
             ),
@@ -140,7 +140,7 @@ def main():
 
     # Single groupby column, group size = 1M
     for size in [100000, 900000, 10000000]:
-        df = spark.createDataFrame(  # pylint: disable=no-member
+        df = spark.createDataFrame(
             spark.sparkContext.parallelize(
                 [
                     (i, randint(0, 1))
@@ -171,7 +171,7 @@ def main():
 
     # Group size = 10K
     for size in [10000, 100000, 1000000, 10000000]:
-        df = spark.createDataFrame(  # pylint: disable=no-member
+        df = spark.createDataFrame(
             spark.sparkContext.parallelize(
                 [
                     (i, randint(0, 1))
@@ -202,7 +202,7 @@ def main():
 
     # Group size = 100
     for size in [10000, 40000, 160000, 640000, 2560000]:
-        df = spark.createDataFrame(  # pylint: disable=no-member
+        df = spark.createDataFrame(
             spark.sparkContext.parallelize(
                 [(i, randint(0, 1)) for j in range(100) for i in range(int(size / 100))]
             ),
@@ -244,7 +244,7 @@ def main():
                 for i in range(num_cols)
             ]
         )
-        sdf = spark.createDataFrame(  # pylint: disable=no-member
+        sdf = spark.createDataFrame(
             spark.sparkContext.parallelize(
                 np.repeat(
                     np.transpose(
@@ -296,7 +296,7 @@ def main():
                 for i in range(num_cols)
             ]
         )
-        sdf = spark.createDataFrame(  # pylint: disable=no-member
+        sdf = spark.createDataFrame(
             spark.sparkContext.parallelize(
                 np.repeat(
                     np.transpose(

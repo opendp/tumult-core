@@ -1,7 +1,7 @@
 """Wrappers for changing a transformation's output metric."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from typing import Any
 
@@ -32,11 +32,14 @@ class UnwrapIfGroupedBy(Transformation):
             domain: Domain of input DataFrames.
             input_metric: IfGroupedBy metric on input DataFrames.
         """
-        if not input_metric.column in domain.schema:
+        missing_metric_columns = [
+            column for column in input_metric.columns if column not in domain.schema
+        ]
+        if missing_metric_columns:
             raise DomainColumnError(
                 domain,
-                input_metric.column,
-                f"Invalid IfGroupedBy metric: {input_metric.column} not in domain",
+                missing_metric_columns,
+                f"Invalid IfGroupedBy metric: {missing_metric_columns} not in domain",
             )
         if not isinstance(input_metric.inner_metric, (SumOf, RootSumOfSquared)):
             raise UnsupportedMetricError(

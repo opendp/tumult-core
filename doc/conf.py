@@ -1,7 +1,5 @@
-# pylint: skip-file
-
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import datetime
 import logging
@@ -151,7 +149,7 @@ html_theme_options = {
         "json_url": "https://docs.tmlt.dev/core/versions.json",
         "version_match": version,
     },
-    "gitlab_url": "https://gitlab.com/tumult-labs/core",
+    "github_url": "https://github.com/opendp/tumult-core",
 }
 html_context = {
     "default_mode": "light",
@@ -173,7 +171,7 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/1.18/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/version/1.2.0/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
-    "pyspark": ("https://spark.apache.org/docs/3.5.1/api/python/", None),
+    "pyspark": ("https://downloads.apache.org/spark/docs/3.5.7/api/python/", None),
 }
 
 # The ACM website seems to have some sort of protection that foils the linkchecker.

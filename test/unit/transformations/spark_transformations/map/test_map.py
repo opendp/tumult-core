@@ -1,7 +1,7 @@
 """Tests for transformations.spark_transformations.map.Map."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import math
 from typing import Union
@@ -39,7 +39,7 @@ from tmlt.core.utils.testing import (
 
 @parametrize(
     Case()(metric=SymmetricDifference()),
-    Case()(metric=IfGroupedBy("a", SymmetricDifference())),
+    Case()(metric=IfGroupedBy(["a"], SymmetricDifference())),
 )
 def test_properties(metric):
     """Map's properties have the expected values."""
@@ -127,7 +127,7 @@ def test_property_immutability(prop_name: str):
         expected_df=pd.DataFrame({"a": [1, 1]}),
     ),
     Case("grouped")(
-        metric=IfGroupedBy("a", SymmetricDifference()),
+        metric=IfGroupedBy(["a"], SymmetricDifference()),
         transformer=RowToRowTransformation(
             input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
             output_domain=SparkRowDomain(
@@ -163,7 +163,6 @@ def test_transformation_correctness(
 
 def test_null_nan_inf(spark):
     """Transformation handles null/NaN/inf inputs and outputs correctly."""
-
     # Do not use Pandas in this test! Anything passing through a Pandas
     # dataframe could silently modify the NaNs/nulls and invalidate the
     # test.
@@ -217,13 +216,13 @@ def test_null_nan_inf(spark):
     Case("SymmetricDifference")(metric=SymmetricDifference()),
     Case("HammingDistance")(metric=HammingDistance()),
     Case("IfGroupedBy-SumOf-SymmetricDifference")(
-        metric=IfGroupedBy("a", SumOf(SymmetricDifference()))
+        metric=IfGroupedBy(["a"], SumOf(SymmetricDifference()))
     ),
     Case("IfGroupedBy-RootSumOfSquared-SymmetricDifference")(
-        metric=IfGroupedBy("a", RootSumOfSquared(SymmetricDifference()))
+        metric=IfGroupedBy(["a"], RootSumOfSquared(SymmetricDifference()))
     ),
     Case("IfGroupedBy-SymmetricDifference")(
-        metric=IfGroupedBy("a", SymmetricDifference())
+        metric=IfGroupedBy(["a"], SymmetricDifference())
     ),
 )
 def test_metrics(
@@ -255,7 +254,7 @@ def test_metrics(
         augment=True,
         raises=pytest.raises(
             UnsupportedCombinationError,
-            match="Input metric .* and input domain .* are not compatible",
+            match=r"Input metric .* and input domain .* are not compatible",
         ),
     ),
     Case("non-augmenting")(
@@ -281,7 +280,7 @@ def test_if_grouped_by_metric_invalid_parameters(
     schema = {"a": SparkIntegerColumnDescriptor()}
     with raises:
         Map(
-            metric=IfGroupedBy(groupby_column, inner_metric),
+            metric=IfGroupedBy([groupby_column], inner_metric),
             row_transformer=RowToRowTransformation(
                 input_domain=SparkRowDomain(schema),
                 output_domain=SparkRowDomain(schema),

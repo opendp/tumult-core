@@ -1,7 +1,7 @@
 """Measurements that allow interactively submitting queries to a private dataset."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -877,8 +877,6 @@ class PrivacyAccountant:
     :class:`~.PrivacyAccountantState` for more information.
     """
 
-    # pylint: disable=protected-access
-
     @typechecked
     def __init__(
         self,
@@ -1136,8 +1134,8 @@ class PrivacyAccountant:
                 :meth:`~.Transformation.stability_function`.
 
         Raises:
-            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
-        """  # pylint: disable=line-too-long
+            InactiveAccountantError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
+        """
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError(
                 f"PrivacyAccountant must be ACTIVE not {self.state}. To queue a"
@@ -1198,8 +1196,8 @@ class PrivacyAccountant:
         * this :class:`~.PrivacyAccountant`'s :attr:`~.privacy_budget` must be greater
           than or equal to the ``measurement``'s d_out
 
-            - if ``measurement`` implements a :meth:`~.Measurement.privacy_function`, its
-              d_out is the output of its privacy function on this
+            - if ``measurement`` implements a :meth:`~.Measurement.privacy_function`,
+              its d_out is the output of its privacy function on this
               :class:`~.PrivacyAccountant`'s :attr:`~.d_in`
             - otherwise it is the argument ``d_out``
 
@@ -1268,8 +1266,8 @@ class PrivacyAccountant:
                 :meth:`~.Measurement.privacy_function`.
 
         Raises:
-            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
-        """  # pylint: disable=line-too-long
+            InactiveAccountantError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
+        """  # noqa: E501
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError(
                 f"PrivacyAccountant must be ACTIVE not {(self.state)}."
@@ -1348,10 +1346,10 @@ class PrivacyAccountant:
 
         Requirements to split:
 
-        * ``splitting_transformation``'s :attr:`~.Transformation.input_domain` must match
-          this :class:`~.PrivacyAccountant`'s :attr:`~.input_domain`
-        * ``splitting_transformation``'s :attr:`~.Transformation.input_metric` must match
-          this :class:`~.PrivacyAccountant`'s :attr:`~.input_metric`
+        * ``splitting_transformation``'s :attr:`~.Transformation.input_domain` must
+          match this :class:`~.PrivacyAccountant`'s :attr:`~.input_domain`
+        * ``splitting_transformation``'s :attr:`~.Transformation.input_metric` must
+           match this :class:`~.PrivacyAccountant`'s :attr:`~.input_metric`
         * if ``d_out`` is provided, ``splitting_transformation``'s
           :meth:`~.Transformation.stability_relation` must hold for this
           :class:`~.PrivacyAccountant`'s :attr:`~.d_in` and ``d_out``
@@ -1367,9 +1365,10 @@ class PrivacyAccountant:
 
         * this :class:`~.PrivacyAccountant`'s :attr:`~.privacy_budget` will decrease by
           ``privacy_budget``
-        * this :class:`~.PrivacyAccountant`'s :attr:`~.children` will be a list with the new
-          :class:`~.PrivacyAccountant`\ s
-        * this :class:`~.PrivacyAccountant`'s :attr:`~.state` will become WAITING_FOR_CHILDREN
+        * this :class:`~.PrivacyAccountant`'s :attr:`~.children` will be a list with the
+          new :class:`~.PrivacyAccountant`\ s
+        * this :class:`~.PrivacyAccountant`'s :attr:`~.state` will become
+          WAITING_FOR_CHILDREN
         * the new :class:`~.PrivacyAccountant`\ s' :attr:`~.input_domain` will be the
           element domain of ``splitting_transformation``'s :class:`~.ListDomain`
         * the new :class:`~.PrivacyAccountant`\ s' :attr:`~.input_metric` will be the
@@ -1392,8 +1391,8 @@ class PrivacyAccountant:
           will be WAITING_FOR_SIBLING.
 
         .. note::
-            After creating children, the :attr:`~.state` will change to WAITING_FOR_CHILDREN,
-            until the children are all RETIRED.
+            After creating children, the :attr:`~.state` will change
+            to WAITING_FOR_CHILDREN until the children are all RETIRED.
 
         Example:
             ..
@@ -1506,12 +1505,13 @@ class PrivacyAccountant:
             privacy_budget: The privacy budget to allocate to the new
                 :class:`~.PrivacyAccountant`\ s.
             d_out: An optional value for the :attr:`~.Transformation.output_metric` for
-               ``splitting_transformation``. It is only used if ``splitting_transformation``
-               does not implement a :meth:`~.Transformation.stability_function`.
+               ``splitting_transformation``. It is only used if
+               ``splitting_transformation`` does not implement
+               a :meth:`~.Transformation.stability_function`.
 
         Raises:
-            :exc:`InactiveAccountantError`: If this :class:`~.PrivacyAccountant` is not ACTIVE.
-        """  # pylint: disable=line-too-long
+            InactiveAccountantError: If this :class:`~.PrivacyAccountant` is not ACTIVE.
+        """  # noqa: E501
         if self.state != PrivacyAccountantState.ACTIVE:
             raise InactiveAccountantError("PrivacyAccountant must be ACTIVE")
         if self._queryable is None:
@@ -1639,7 +1639,7 @@ class PrivacyAccountant:
                 raise AssertionError(
                     "This is probably a bug; please let us know so we can fix it!"
                 )
-            self.parent._retire_preceding_siblings(self)
+            self.parent._retire_preceding_siblings(self)  # noqa: SLF001
         self._execute_pending_transformation()
 
     def retire(self, force: bool = False) -> None:
@@ -1695,13 +1695,12 @@ class PrivacyAccountant:
             # This activates the "next" Privacy Accountant.
             # If this is last child of its parent, the parent is activated; otherwise,
             # the next sibling is activated.
-            self.parent._activate_next(self)
+            self.parent._activate_next(self)  # noqa: SLF001
 
     def queue_transformation(
         self, transformation: Transformation, d_out: Optional[Any] = None
     ) -> None:
-        # pylint: disable=line-too-long
-        """Queue ``transformation`` to be executed when this :class:`~.PrivacyAccountant` becomes ACTIVE.
+        """Queue ``transformation`` to be executed when this accountant becomes ACTIVE.
 
         If this :class:`~.PrivacyAccountant` is ACTIVE, this has
         the same behavior as :meth:`~.transform_in_place`.
@@ -1721,8 +1720,6 @@ class PrivacyAccountant:
                 only used if ``transformation`` does not implement a
                 :meth:`~.Transformation.stability_function`.
         """
-        # pylint: enable=line-too-long
-
         if self.state == PrivacyAccountantState.RETIRED:
             raise RuntimeError(
                 "You cannot queue transformations on a "
@@ -1846,10 +1843,12 @@ class PrivacyAccountant:
             raise AssertionError(
                 "This is probably a bug; please let us know so we can fix it!"
             )
-        self.children[index]._state = PrivacyAccountantState.ACTIVE
-        self.children[index]._queryable = self._parallel_queryable(IndexQuery(index))
+        self.children[index]._state = PrivacyAccountantState.ACTIVE  # noqa: SLF001
+        self.children[index]._queryable = self._parallel_queryable(  # noqa: SLF001
+            IndexQuery(index)
+        )
         self._active_child_index = index
-        self.children[index]._execute_pending_transformation()
+        self.children[index]._execute_pending_transformation()  # noqa: SLF001
 
 
 @typechecked

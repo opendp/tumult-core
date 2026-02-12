@@ -1,7 +1,7 @@
 """System tests for :mod:`~tmlt.core.measurements.interactive_measurements`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
@@ -14,7 +14,7 @@ from tmlt.core.measurements.interactive_measurements import (
     SequentialComposition,
 )
 from tmlt.core.measures import PureDP
-from tmlt.core.metrics import SumOf, SymmetricDifference
+from tmlt.core.metrics import SymmetricDifference
 from tmlt.core.transformations.dictionary import CreateDictFromValue
 from tmlt.core.transformations.spark_transformations.partition import PartitionByKeys
 from tmlt.core.utils.testing import PySparkTest
@@ -79,9 +79,7 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(self.accountant.input_domain, transformed_domain)
         self.assertEqual(self.accountant.input_metric, transformed_metric)
         self.assertEqual(self.accountant.d_in, transformed_d_in)
-        self.assertIsNotNone(
-            self.accountant._pending_transformation  # pylint: disable=protected-access
-        )
+        self.assertIsNotNone(self.accountant._pending_transformation)  # noqa: SLF001
 
         for c in child_accountants:
             c.retire()
@@ -89,9 +87,7 @@ class TestPrivacyAccountant(PySparkTest):
         # Once the accountant is active again, the transformation should have
         # been run
         self.assertEqual(self.accountant.state, PrivacyAccountantState.ACTIVE)
-        # pylint: disable=protected-access
-        self.assertEqual(self.accountant._input_domain, transformed_domain)
-        self.assertEqual(self.accountant._input_metric, transformed_metric)
-        self.assertEqual(self.accountant._d_in, transformed_d_in)
-        self.assertIsNone(self.accountant._pending_transformation)
-        # pylint: enable=protected-access
+        self.assertEqual(self.accountant.input_domain, transformed_domain)
+        self.assertEqual(self.accountant.input_metric, transformed_metric)
+        self.assertEqual(self.accountant.d_in, transformed_d_in)
+        self.assertIsNone(self.accountant._pending_transformation)  # noqa: SLF001

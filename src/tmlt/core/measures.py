@@ -1,7 +1,7 @@
 """Module containing supported variants for differential privacy."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from __future__ import annotations
 
@@ -184,7 +184,7 @@ class ApproxDP(Measure):
         epsilon2 = ExactNumber(value2[0])
         delta2 = ExactNumber(value2[1])
         value2_is_infinite = not epsilon2.is_finite or delta2 == 1
-        return value2_is_infinite or epsilon1 <= epsilon2 and delta1 <= delta2
+        return value2_is_infinite or (epsilon1 <= epsilon2 and delta1 <= delta2)
 
 
 class RhoZCDP(Measure):

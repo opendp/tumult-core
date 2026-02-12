@@ -39,18 +39,19 @@ dependencies = [
     "scipy >=1.11.2,<2.0.0 ; python_version >= '3.12'",
     "sympy >=1.8,<1.13",
     "typeguard >=4.0.0,<5",
-    # TODO: These should potentially be pulled out into an extra -- normal
-    # operation of Core doesn't depend on them.
-    "parameterized >=0.7.4,<0.8",
-    "pytest >=7.3.1,<8",
     # This works around a bug in some older versions of PySpark. We should
     # determine what versions are affected and, when possible, remove the extra
     # dependency.
     "setuptools >=70.0.0",
 ]
 
+[project.optional-dependencies]
+testing = [
+    "pytest >=7.3.1,<8",
+]
+
 [project.urls]
-documentation = "https://tmlt.dev/core/latest"
+documentation = "https://docs.tmlt.dev/core/latest/"
 repository = "https://github.com/opendp/tumult-core"
 
 [tool.uv]
@@ -59,12 +60,12 @@ default-groups = "all"
 
 [dependency-groups]
 build = ["cibuildwheel >=2,<3"]
+ruff = ["ruff >=0.14.3,<1"]
 black = ["black >=23.3,<24"]
 isort = ["isort >=5.11,<6"]
 mypy = ["mypy >=1.14.0"]
-pylint = ["pylint >=3.2.5"]
-pydocstyle = ["pydocstyle[toml] >=6.3"]
 test = [
+    "parameterized >=0.7.4,<0.8",
     "pytest",
     "pytest-cov >=5.0,<6",
     "pytest-xdist >=3.6,<4",
@@ -80,6 +81,7 @@ docs = [
     "sphinx-reredirects >=0.1.5,<0.2",
     "sphinxcontrib-bibtex >=2.6.2,<3",
     "sphinxcontrib-images >=0.9.4,<0.10",
+    "pytest",
 ]
 docs-examples = [
     "matplotlib >=3.1.0,<4",
@@ -159,7 +161,7 @@ artifacts = [
 build = "cp310-* cp311-* cp312-*"
 skip = "*-musllinux*"
 before-all = """
-if [ -d src/tmlt/core/ext/lib ] && [ ! -z ${CI+x} ]; then 
+if [ -d src/tmlt/core/ext/lib ] && [ ! -z ${CI+x} ]; then
   echo 'Found compiled vendor libraries, but these must be built fresh by cibuildwheel.'
   exit 1
 fi"""
@@ -188,6 +190,57 @@ source = ["src/tmlt/core", ".nox/**/site-packages/tmlt/core"]
 
 ################################################################################
 # Linter configuration
+
+[tool.ruff.lint]
+# Enable preview rules, but only ones that are explicitly enabled; there are a
+# handful of rules we want that are in preview, but for the most part we can
+# wait for rules to stabilize.
+preview = true
+explicit-preview-rules = true
+
+# A list of all of Ruff's rules can be found at https://docs.astral.sh/ruff/rules/
+select = [
+    # Enable Ruff-specific lints plus Pylint, pydocstyle, pyflakes, and pycodestyle.
+    # The latter two cover many lints that we previously used pylint for, but
+    # because they are overlapping Ruff only implements them in one set of rules.
+    "RUF", "PL", "D", "F", "E", "W",
+    # Also enable a subset of flake8 rules, for similar reasons to pyflakes/pycodestyle.
+    "ISC", "SLF",
+
+    # Various preview rules that we want to use
+    "DOC102", # docstring-extraneous-parameter
+    "DOC202", # docstring-extraneous-returns
+]
+ignore = [
+    # too-many-*: These rules are too context-dependent to be generally useful,
+    #     we can evaluate this during code reviews.
+    "PLR09",
+    # magic-value-comparison: This rule flags a lot of constants that don't
+    #     really make sense, we can make this call during code reviews.
+    "PLR2004",
+    # explicit-f-string-type-conversion: we don't generally use the !r syntax in
+    #     f-strings, which this rule enforces.
+    "RUF010",
+    # eq-without-hash: Core contains several classes with custom __eq__
+    #     implementations where we don't care that the class isn't hashable.
+    "PLW1641",
+    # lambda-assignment: Core frequently assigns lambdas to variables, for
+    #     example when constructing post-processing steps, and these cases
+    #     aren't always clearer when written as normal function definitions.
+    "E731",
+    # ambiguous-variable-name: This tries to warn about variable names that are
+    #     easily confused with other symbols (e.g. l vs 1).
+    "E741",
+]
+
+# Ruff's RUF001-003 rules disallow certain Unicode characters that are easily
+# confused with ASCII characters; this makes sense for the most part, but some
+# of our docstrings use Greek letters that fall into that category. This allows
+# those characters.
+allowed-confusables = ['α', 'ρ', '𝝆']
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.black]
 force-exclude = "noxfile.py"
@@ -221,64 +274,3 @@ check_untyped_defs = true
 module = "tmlt.core.utils.arb"
 disallow_untyped_defs = false
 check_untyped_defs = true
-
-[tool.pylint.master]
-# See https://github.com/PyCQA/pylint/issues/1975#issuecomment-387924981
-extension-pkg-whitelist = ['numpy']
-load-plugins = ['pylint.extensions.docparams']
-# Only check param docs in docstrings that contain an Args: section.
-# Set to "no" to show docstrings missing argument documentation.
-accept-no-param-doc = true
-
-[tool.pylint.'MESSAGES CONTROL']
-enable = [
-  # Note: there is a false positive on 'useless-suppression' when you
-  # use 'disable=line-too-long' at the end of a docstring.
-  # See: https://github.com/pylint-dev/pylint/issues/8301
-  'useless-suppression'
-]
-# By default, informational rules like useless-suppression don't cause PyLint to
-# produce an error.
-fail-on = ['useless-suppression']
-disable = [
-  'arguments-differ',
-  'duplicate-code',
-  'fixme',
-  'invalid-name',
-  'logging-format-interpolation',
-  'logging-fstring-interpolation',
-  'missing-raises-doc',
-  'missing-return-doc',
-  'no-else-return',
-  'super-init-not-called',
-  'too-few-public-methods',
-  'too-many-ancestors',
-  'too-many-arguments',
-  'too-many-branches',
-  'too-many-instance-attributes',
-  'too-many-lines',
-  'too-many-locals',
-  'too-many-positional-arguments',
-  'too-many-public-methods',
-  'too-many-return-statements',
-  'too-many-statements',
-  'unbalanced-tuple-unpacking',
-  'unnecessary-lambda-assignment',
-  'unsubscriptable-object',
-  'use-dict-literal',
-  # black and isort group tmlt.core separately from tmlt.analytics,
-  # but pylint thinks they should both be grouped as 'tmlt'.
-  'ungrouped-imports',
-  'wrong-import-order',
-]
-
-[tool.pylint.FORMAT]
-max-line-length = 88
-
-[tool.pydocstyle]
-convention = "google"
-add-ignore = [
-  # `D200: One-line docstring should fit on one line with quotes`
-  # conflicts with pylint's `max-line-length`.
-  "D200",
-]

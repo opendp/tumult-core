@@ -1,13 +1,11 @@
-# pylint: disable=line-too-long
 """Transformations for partitioning Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from typing import List, Optional, Sequence, Tuple, Union
 
@@ -59,7 +57,6 @@ class Partition(Transformation):
         """
         return self._num_partitions
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -70,7 +67,6 @@ class Partition(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -167,9 +163,7 @@ class PartitionByKeys(Partition):
             1
             >>> partition.stability_function(2)
             2
-    """  # pylint: disable=line-too-long,useless-suppression
-
-    # pylint: enable=line-too-long, useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -216,17 +210,31 @@ class PartitionByKeys(Partition):
         if isinstance(input_metric, IfGroupedBy):
             if not (
                 (isinstance(input_metric.inner_metric, RootSumOfSquared) and use_l2)
-                or isinstance(input_metric.inner_metric, SumOf)
-                and not use_l2
+                or (isinstance(input_metric.inner_metric, SumOf) and not use_l2)
             ):
                 raise UnsupportedMetricError(
                     input_metric, "IfGroupedBy inner metric must match use_l2"
                 )
-            if input_metric.column in keys:
+            # Each partition will have only one value in each of its key columns.
+            # If a column only has one value, then grouping by that column is a
+            # no-op. Under those circumstances,
+            # IfGroupedBy((key_column, other_column), ...) is equivalent to
+            # IfGroupedBy((other_column), ...), and we prefer the metric with
+            # fewer columns since it will yield a tighter privacy analysis.
+            remaining_input_metric_columns = [
+                column for column in input_metric.columns if column not in keys
+            ]
+            if not remaining_input_metric_columns:
                 output_metric = input_metric.inner_metric
             else:
+                new_ifgroupedby = IfGroupedBy(
+                    columns=remaining_input_metric_columns,
+                    inner_metric=input_metric.inner_metric,
+                )
                 output_metric = (
-                    RootSumOfSquared(input_metric) if use_l2 else SumOf(input_metric)
+                    RootSumOfSquared(new_ifgroupedby)
+                    if use_l2
+                    else SumOf(new_ifgroupedby)
                 )
         else:
             output_metric = (

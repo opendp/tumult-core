@@ -1,7 +1,7 @@
 """Benchmarking script for Map."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import time
 from random import randint
@@ -94,7 +94,7 @@ def main():
     schema = StructType(
         [StructField("A", IntegerType(), True), StructField("B", IntegerType(), True)]
     )
-    sdf = spark.createDataFrame(  # pylint: disable=no-member
+    sdf = spark.createDataFrame(
         spark.sparkContext.parallelize([(i, randint(0, 1)) for i in range(1250000)]),
         schema=schema,
     )
@@ -102,7 +102,7 @@ def main():
 
     # various rows
     for size in [100, 400, 10000, 40000, 160000, 320000]:
-        sdf = spark.createDataFrame(  # pylint: disable=no-member
+        sdf = spark.createDataFrame(
             spark.sparkContext.parallelize([(i, randint(0, 1)) for i in range(size)]),
             schema=schema,
         )
@@ -161,7 +161,7 @@ def main():
         schema = StructType(
             [StructField(f"Col_{i}", IntegerType(), True) for i in range(size)]
         )
-        sdf = spark.createDataFrame(  # pylint: disable=no-member
+        sdf = spark.createDataFrame(
             spark.sparkContext.parallelize([tuple(range(size))] * 10000), schema=schema
         )
         augment = False
@@ -237,7 +237,7 @@ def main():
                 StructField("B", IntegerType(), True),
             ]
         )
-        sdf = spark.createDataFrame(  # pylint: disable=no-member
+        sdf = spark.createDataFrame(
             spark.sparkContext.parallelize([(i, randint(0, 1)) for i in range(10000)]),
             schema=schema,
         )

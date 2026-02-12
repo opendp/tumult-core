@@ -1,7 +1,7 @@
 """Module for discrete Gaussian sampling."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 # This file is derived from a work authored by Thomas Steinke dgauss@thomas-steinke.net,
 # copyrighted by IBM Corp. 2020, licensed under Apache 2.0, and available at
@@ -118,11 +118,11 @@ def _sample_dlaplace(scale: Union[float, Fraction]) -> int:
 
     In particular, this returns an integer :math:`x` with
     .. math::
-        Pr(x) = exp(-\frac{|x|}{scale}) \cdot \frac{exp(\frac{1}{scale}) - 1}{exp(\frac{1}{xcale}) +1}  # pylint: disable=line-too-long
+        Pr(x) = exp(-\frac{|x|}{scale}) \cdot \frac{exp(\frac{1}{scale}) - 1}{exp(\frac{1}{scale}) + 1}
 
     Args:
         scale: Desired noise scale (>=0).
-    """
+    """  # noqa: E501
     scale_fraction = Fraction(scale)
     if scale_fraction < 0:
         raise ValueError("scale must be nonnegative.")

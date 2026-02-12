@@ -8,7 +8,7 @@ derived transformations (such as :func:`create_copy_and_transform_value`) suppor
 """
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from typing import Any, Callable, Dict, List, Mapping, Union, cast
 
@@ -70,7 +70,16 @@ class CreateDictFromValue(Transformation):
                         "SymmetricDifference to use AddRemoveKeys as the output metric"
                     ),
                 )
-            output_metric = AddRemoveKeys({key: input_metric.column})
+            if len(input_metric.columns) > 1:
+                raise UnsupportedMetricError(
+                    input_metric,
+                    (
+                        "Input metric must have only a single grouping column to use "
+                        "AddRemoveKeys as the output metric, but found "
+                        f"{input_metric.columns}"
+                    ),
+                )
+            output_metric = AddRemoveKeys({key: next(iter(input_metric.columns))})
         else:
             output_metric = DictMetric({key: input_metric})
         super().__init__(
@@ -331,7 +340,7 @@ class GetValue(Transformation):
             output_metric = input_metric[key]
         else:
             output_metric = IfGroupedBy(
-                input_metric.df_to_key_column[key], SymmetricDifference()
+                [input_metric.df_to_key_column[key]], SymmetricDifference()
             )
 
         super().__init__(
@@ -467,7 +476,7 @@ def create_rename(
         transformation=Identity(domain=input_domain[key], metric=input_metric[key]),
         hint=lambda d_in, _: d_in,
     )
-    subset_keys = list(input_domain.key_to_domain) + [new_key]
+    subset_keys = [*input_domain.key_to_domain, new_key]
     subset_keys.remove(key)
     rename = ChainTT(
         transformation1=copy_and_transform_value,

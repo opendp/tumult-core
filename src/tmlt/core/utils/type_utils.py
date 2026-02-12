@@ -1,13 +1,11 @@
 """Helpers for type introspection and type-checking."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from enum import Enum
 from types import FunctionType
 from typing import Any, NoReturn, Sequence, Tuple, Type
-
-# pylint: disable=cyclic-import, import-outside-toplevel
 
 
 def assert_never(x: NoReturn) -> NoReturn:
@@ -53,19 +51,19 @@ def get_immutable_types() -> Tuple[Type, ...]:
     While many of these types are technically mutable in python, we assume that users do
     not mutate their state after creating them or passing them to another object.
     """
-    import numpy as np
-    import pandas as pd
-    import sympy as sp
-    from pyspark.sql import DataFrame
-    from pyspark.sql.types import DataType, StructType
+    import numpy as np  # noqa: PLC0415
+    import pandas as pd  # noqa: PLC0415
+    import sympy as sp  # noqa: PLC0415
+    from pyspark.sql import DataFrame  # noqa: PLC0415
+    from pyspark.sql.types import DataType, StructType  # noqa: PLC0415
 
-    from tmlt.core.domains.base import Domain
-    from tmlt.core.domains.spark_domains import SparkColumnDescriptor
-    from tmlt.core.measurements.base import Measurement
-    from tmlt.core.measures import Measure
-    from tmlt.core.metrics import Metric
-    from tmlt.core.transformations.base import Transformation
-    from tmlt.core.utils.exact_number import ExactNumber
+    from tmlt.core.domains.base import Domain  # noqa: PLC0415
+    from tmlt.core.domains.spark_domains import SparkColumnDescriptor  # noqa: PLC0415
+    from tmlt.core.measurements.base import Measurement  # noqa: PLC0415
+    from tmlt.core.measures import Measure  # noqa: PLC0415
+    from tmlt.core.metrics import Metric  # noqa: PLC0415
+    from tmlt.core.transformations.base import Transformation  # noqa: PLC0415
+    from tmlt.core.utils.exact_number import ExactNumber  # noqa: PLC0415
 
     return (
         ExactNumber,
@@ -88,4 +86,5 @@ def get_immutable_types() -> Tuple[Type, ...]:
         Enum,
         type,
         SparkColumnDescriptor,
+        frozenset,
     )

@@ -1,7 +1,7 @@
 """Tests `create_average_measurement` noise distributions are as expected."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 
 from typing import Dict, List, Union
@@ -77,8 +77,6 @@ def _get_average_test_cases(noise_mechanism: NoiseMechanism) -> List[Dict]:
             d_out=budget,
             groupby_transformation=dataset.groupby(noise_mechanism),
             keep_intermediates=True,
-            count_column="count",
-            sum_column="sod",
         )
 
         true_answers: Dict[str, Union[float, int]] = {
@@ -91,7 +89,7 @@ def _get_average_test_cases(noise_mechanism: NoiseMechanism) -> List[Dict]:
             integer_midpoint=not dataset.float_measure_column,
         )
         postprocessor = lambda df, count=count_loc, midpoint=midpoint: df.withColumn(
-            "sum", sf.col("sod") + sf.lit(count) * sf.lit(midpoint)
+            "sum", sf.col("sod(B)") + sf.lit(count) * sf.lit(midpoint)
         ).select("count", "sum")
         sampler = get_sampler(measurement, dataset, postprocessor)
         noise_scales = get_noise_scales(

@@ -1,8 +1,9 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.groupby`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
+import re
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -42,9 +43,11 @@ from tmlt.core.transformations.spark_transformations.groupby import (
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.misc import get_fullname
 from tmlt.core.utils.testing import (
+    Case,
     PySparkTest,
     assert_property_immutability,
     get_all_props,
+    parametrize,
 )
 
 
@@ -99,13 +102,15 @@ class TestGroupBy(PySparkTest):
         self.assertTrue(isinstance(output_domain, SparkGroupedDataFrameDomain))
         assert isinstance(output_domain, SparkGroupedDataFrameDomain)
         self.assertEqual(output_domain.schema, self.domain.schema)
-        self.assertEqual(output_domain.groupby_columns, ["A"])
+        self.assertEqual(output_domain.groupby_columns, frozenset({"A"}))
         self.assertEqual(groupby.input_metric, SymmetricDifference())
         self.assertEqual(
             groupby.output_metric,
-            RootSumOfSquared(SymmetricDifference())
-            if use_l2
-            else SumOf(SymmetricDifference()),
+            (
+                RootSumOfSquared(SymmetricDifference())
+                if use_l2
+                else SumOf(SymmetricDifference())
+            ),
         )
         self.assertEqual(groupby.use_l2, use_l2)
         self.assertEqual(groupby.groupby_columns, ["A"])
@@ -113,7 +118,7 @@ class TestGroupBy(PySparkTest):
     @parameterized.expand(
         [
             (
-                IfGroupedBy("A", SumOf(SymmetricDifference())),
+                IfGroupedBy(["A"], SumOf(SymmetricDifference())),
                 [("1",), ("2",)],
                 StructType([StructField("A", StringType())]),
                 f"Column must be {get_fullname(LongType)}; got "
@@ -121,7 +126,7 @@ class TestGroupBy(PySparkTest):
                 ValueError,
             ),
             (
-                IfGroupedBy("A", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["A"], RootSumOfSquared(SymmetricDifference())),
                 [(1,), (2,), (3,)],
                 StructType([StructField("A", LongType())]),
                 (
@@ -143,6 +148,20 @@ class TestGroupBy(PySparkTest):
                         "C": SparkFloatColumnDescriptor(),
                     }
                 ),
+            ),
+            (
+                IfGroupedBy(["B"], SumOf(SymmetricDifference())),
+                [(1,), (2,)],
+                StructType([StructField("A", LongType())]),
+                re.escape("Must group by IfGroupedBy metric columns: ['B']"),
+                ValueError,
+            ),
+            (
+                IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+                [(1,), (2,)],
+                StructType([StructField("A", LongType())]),
+                re.escape("Must group by IfGroupedBy metric columns: ['B']"),
+                ValueError,
             ),
         ]
     )
@@ -168,23 +187,6 @@ class TestGroupBy(PySparkTest):
                 ),
             )
 
-    def test_stability_function(self):
-        """Tests that stability function is correct."""
-        groupby_transformation = GroupBy(
-            input_domain=self.domain,
-            input_metric=SymmetricDifference(),
-            use_l2=True,
-            group_keys=self.group_keys,
-        )
-        self.assertTrue(groupby_transformation.stability_function(1), 1)
-        groupby_hamming_to_symmetric = GroupBy(
-            input_domain=self.domain,
-            input_metric=HammingDistance(),
-            use_l2=False,
-            group_keys=self.group_keys,
-        )
-        self.assertTrue(groupby_hamming_to_symmetric.stability_function(1) == 2)
-
     def test_correctness(self):
         """Tests that GroupBy transformation works correctly."""
         groupby_transformation = GroupBy(
@@ -196,9 +198,10 @@ class TestGroupBy(PySparkTest):
         grouped_dataframe = groupby_transformation(self.df)
         self.assertTrue(isinstance(grouped_dataframe, GroupedDataFrame))
         self.assert_frame_equal_with_sort(
-            grouped_dataframe._dataframe.toPandas(),  # pylint: disable=protected-access
+            grouped_dataframe.dataframe.toPandas(),
             self.df.toPandas(),
         )
+        assert grouped_dataframe.group_keys is not None
         self.assert_frame_equal_with_sort(
             grouped_dataframe.group_keys.toPandas(), self.group_keys.toPandas()
         )
@@ -214,12 +217,87 @@ class TestGroupBy(PySparkTest):
         grouped_dataframe = groupby_transformation(self.df)
         self.assertTrue(isinstance(grouped_dataframe, GroupedDataFrame))
         self.assert_frame_equal_with_sort(
-            grouped_dataframe._dataframe.toPandas(),  # pylint: disable=protected-access
+            grouped_dataframe.dataframe.toPandas(),
             self.df.toPandas(),
         )
-        self.assert_frame_equal_with_sort(
-            grouped_dataframe.group_keys.toPandas(), pd.DataFrame()
+        assert grouped_dataframe.group_keys is None
+
+    def test_total_on_none(self):
+        """Tests that GroupBy transformation works correctly with none group keys."""
+        groupby_transformation = GroupBy(
+            input_domain=self.domain,
+            input_metric=SymmetricDifference(),
+            use_l2=True,
+            group_keys=None,
         )
+        grouped_dataframe = groupby_transformation(self.df)
+        self.assertTrue(isinstance(grouped_dataframe, GroupedDataFrame))
+        self.assert_frame_equal_with_sort(
+            grouped_dataframe.dataframe.toPandas(),
+            self.df.toPandas(),
+        )
+        assert grouped_dataframe.group_keys is None
+
+
+@parametrize(
+    Case("symmetric distance")(
+        input_metric=SymmetricDifference(),
+        use_l2=True,
+        group_keys=pd.DataFrame({"A": [1, 2, 3]}),
+        expected_distance=1,
+    ),
+    Case("hamming distance")(
+        input_metric=HammingDistance(),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3]}),
+        expected_distance=2,
+    ),
+    Case("ifgroupedby single column")(
+        input_metric=IfGroupedBy(["A"], SumOf(SymmetricDifference())),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3]}),
+        expected_distance=1,
+    ),
+    Case("ifgroupedby multi column")(
+        input_metric=IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]}),
+        expected_distance=1,
+    ),
+    Case("ifgroupedby single column subset")(
+        input_metric=IfGroupedBy(["A"], SumOf(SymmetricDifference())),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]}),
+        expected_distance=1,
+    ),
+    Case("ifgroupedby multi column subset")(
+        input_metric=IfGroupedBy(["A", "B"], SumOf(SymmetricDifference())),
+        use_l2=False,
+        group_keys=pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6], "C": [7, 8, 9]}),
+        expected_distance=1,
+    ),
+)
+def test_stability_function(
+    spark,
+    input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
+    use_l2: bool,
+    group_keys: pd.DataFrame,
+    expected_distance,
+):
+    """Tests that stability function is correct."""
+    groupby_transformation = GroupBy(
+        input_domain=SparkDataFrameDomain(
+            {
+                "A": SparkIntegerColumnDescriptor(),
+                "B": SparkIntegerColumnDescriptor(),
+                "C": SparkIntegerColumnDescriptor(),
+            }
+        ),
+        input_metric=input_metric,
+        use_l2=use_l2,
+        group_keys=spark.createDataFrame(group_keys),
+    )
+    assert groupby_transformation.stability_function(1) == expected_distance
 
 
 class TestDerivedTransformations(PySparkTest):
@@ -257,7 +335,7 @@ class TestDerivedTransformations(PySparkTest):
                 {"A": ["x1", "x2"]},
                 pd.DataFrame({"A": ["x1", "x2"]}),
             ),
-            (HammingDistance(), True, {}, pd.DataFrame()),
+            (HammingDistance(), True, {}, None),
         ]
     )
     def test_create_groupby_from_column_domains(
@@ -272,14 +350,18 @@ class TestDerivedTransformations(PySparkTest):
         )
         self.assertEqual(groupby_transformation.input_metric, input_metric)
         self.assertEqual(groupby_transformation.use_l2, use_l2)
-        # If there are no columns, toPandas removes all rows, so this check is also
-        # needed.
-        self.assertEqual(
-            groupby_transformation.group_keys.count(), len(expected_group_keys)
-        )
-        self.assert_frame_equal_with_sort(
-            groupby_transformation.group_keys.toPandas(), expected_group_keys
-        )
+        if expected_group_keys is None:
+            assert groupby_transformation.group_keys is None
+        else:
+            assert groupby_transformation.group_keys is not None
+            # If there are no columns, toPandas removes all rows, so this check is also
+            # needed.
+            self.assertEqual(
+                groupby_transformation.group_keys.count(), len(expected_group_keys)
+            )
+            self.assert_frame_equal_with_sort(
+                groupby_transformation.group_keys.toPandas(), expected_group_keys
+            )
 
     @parameterized.expand(
         [
@@ -305,10 +387,14 @@ class TestDerivedTransformations(PySparkTest):
         )
         self.assertEqual(groupby.input_metric, input_metric)
         self.assertEqual(groupby.use_l2, use_l2)
-        expected_group_keys = pd.DataFrame(data=group_keys, columns=groupby_columns)
-        self.assert_frame_equal_with_sort(
-            groupby.group_keys.toPandas(), expected_group_keys
-        )
+        if group_keys:
+            assert groupby.group_keys is not None
+            expected_group_keys = pd.DataFrame(data=group_keys, columns=groupby_columns)
+            self.assert_frame_equal_with_sort(
+                groupby.group_keys.toPandas(), expected_group_keys
+            )
+        else:
+            assert groupby.group_keys is None
 
 
 class TestComputeFullDomainDF(PySparkTest):

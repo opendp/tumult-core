@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.domains.spark_domains`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import copy
 import datetime
@@ -389,7 +389,7 @@ class TestSparkDataFrameDomain(DomainTests):
                 pytest.raises(
                     OutOfDomainError,
                     match="Found invalid value in column 'C': Column contains null "
-                    "values.",
+                    "values",
                 ),
                 {
                     "domain": SparkDataFrameDomain(
@@ -543,7 +543,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             # _base_schema does not have column "D"
             (
                 {"schema": _base_schema, "groupby_columns": ["D"]},
-                pytest.raises(ValueError, match="Invalid groupby columns: {'D'}"),
+                pytest.raises(ValueError, match=r"Invalid groupby columns: \{'D'\}"),
                 None,
             ),
             # Invalid schema
@@ -678,7 +678,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                             StructField("C", LongType(), True),
                         ]
                     ),
-                    "groupby_columns": _base_groupby_columns,
+                    "groupby_columns": frozenset(_base_groupby_columns),
                 },
             )
         ],
@@ -751,8 +751,8 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                 pytest.raises(
                     OutOfDomainError,
                     match=(
-                        "Invalid inner DataFrame: Found invalid value in column"
-                        " 'C': Column contains null values."
+                        "Invalid inner DataFrame: Found invalid value in column 'C': "
+                        "Column contains null values"
                     ),
                 ),
                 {
@@ -783,7 +783,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                     OutOfDomainError,
                     match=(
                         "Invalid group keys: Found invalid value in column 'B': "
-                        "Column contains null values."
+                        "Column contains null values"
                     ),
                 ),
                 {
@@ -811,9 +811,9 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                 pytest.raises(
                     OutOfDomainError,
                     match=(
-                        "Invalid inner DataFrame: Columns are not as expected. "
+                        "Invalid inner DataFrame: Columns are not as expected\\. "
                         "DataFrame and Domain must contain the same columns in the "
-                        "same order.\nDataFrame columns: \\['A', 'B'\\]\nDomain "
+                        "same order\\.\nDataFrame columns: \\['A', 'B'\\]\nDomain "
                         "columns: \\['A', 'B', 'C'\\]"
                     ),
                 ),
@@ -837,14 +837,17 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                         "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
                         "schema": ["A", "B", "C"],
                     },
-                    "group_keys": _empty_group_key_args,
+                    "group_keys": {
+                        "data": [(1,)],
+                        "schema": StructType([StructField("A", IntegerType())]),
+                    },
                 },
                 pytest.raises(
                     OutOfDomainError,
                     match=(
-                        "Invalid group keys: Columns are not as expected. "
+                        "Invalid group keys: Columns are not as expected\\. "
                         "DataFrame and Domain must contain the same columns in the "
-                        "same order.\nDataFrame columns: \\[\\]\nDomain "
+                        "same order\\.\nDataFrame columns: \\['A'\\]\nDomain "
                         "columns: \\['A', 'B'\\]"
                     ),
                 ),
@@ -857,7 +860,38 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                             "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
                             "schema": ["A", "B", "C"],
                         },
-                        "group_keys": _empty_group_key_args,
+                        "group_keys": {
+                            "data": [(1,)],
+                            "schema": StructType([StructField("A", IntegerType())]),
+                        },
+                    },
+                },
+            ),
+            (  # No columns in group_keys
+                SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns),
+                {
+                    "dataframe": {
+                        "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
+                        "schema": ["A", "B", "C"],
+                    },
+                    "group_keys": _empty_group_key_args,
+                },
+                pytest.raises(
+                    OutOfDomainError,
+                    match=(
+                        "Invalid group keys: expected groups, but got total aggregation"
+                    ),
+                ),
+                {
+                    "domain": SparkGroupedDataFrameDomain(
+                        _base_schema, _base_groupby_columns
+                    ),
+                    "value": {
+                        "dataframe": {
+                            "data": [(1, "W", 10), (2, "X", 12), (3, "Y", 13)],
+                            "schema": ["A", "B", "C"],
+                        },
+                        "group_keys": None,
                     },
                 },
             ),
@@ -900,9 +934,12 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             exception_properties["value"]["dataframe"] = self.spark.createDataFrame(
                 **exception_properties["value"]["dataframe"]
             )
-            exception_properties["value"]["group_keys"] = self.spark.createDataFrame(
-                **exception_properties["value"]["group_keys"]
-            )
+            if exception_properties["value"]["group_keys"]:
+                exception_properties["value"][
+                    "group_keys"
+                ] = self.spark.createDataFrame(
+                    **exception_properties["value"]["group_keys"]
+                )
             exception_properties["value"] = GroupedDataFrame(
                 **exception_properties["value"]
             )
@@ -921,14 +958,16 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         # Separate asserts for the frames are required since GroupedDataFrame does not
         # implement __eq__.
         assert_frame_equal_with_sort(
-            exception_properties[  # pylint: disable=protected-access
-                "value"
-            ]._dataframe,
-            core_exception.value._dataframe,  # pylint: disable=protected-access
+            exception_properties["value"].dataframe,
+            core_exception.value.dataframe,
         )
-        assert_frame_equal_with_sort(
-            exception_properties["value"].group_keys, core_exception.value.group_keys
-        )
+        if exception_properties["value"].group_keys is None:
+            assert core_exception.value.group_keys is None
+        else:
+            assert_frame_equal_with_sort(
+                exception_properties["value"].group_keys,
+                core_exception.value.group_keys,
+            )
 
     @pytest.mark.parametrize(
         "domain", [SparkGroupedDataFrameDomain(_base_schema, _base_groupby_columns)]
@@ -939,9 +978,10 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
             "SparkGroupedDataFrameDomain(schema={'A': SparkIntegerColumnDescriptor("
             "allow_null=True, size=64), 'B': SparkStringColumnDescriptor(allow_null="
             "True), 'C': SparkIntegerColumnDescriptor(allow_null=True, size=64)},"
-            " groupby_columns=['A', 'B'])"
+            f" groupby_columns={groupby_str})"
+            for groupby_str in ["{'A', 'B'}", "{'B', 'A'}"]
         )
-        assert repr(domain) == expected
+        assert repr(domain) in expected
 
     @pytest.mark.parametrize(
         "domain, expected, expectation, exception_properties",
@@ -1228,13 +1268,14 @@ class TestSparkColumnDescriptors:
     r"""Tests for subclasses of class SparkColumnDescriptor.
 
     See subclasses of
-    :class:`~tmlt.core.domains.spark_domains.SparkColumnDescriptor`\ s."""
+    :class:`~tmlt.core.domains.spark_domains.SparkColumnDescriptor`\ s.
+    """
 
     spark: SparkSession
 
     @pytest.fixture
     def test_df(self) -> DataFrame:
-        """Get a base DataFrame"""
+        """Get a base DataFrame."""
         return self.spark.createDataFrame(
             [
                 (
@@ -1303,20 +1344,20 @@ class TestSparkColumnDescriptors:
                 SparkIntegerColumnDescriptor(allow_null=True),
                 pytest.raises(
                     RuntimeError,
-                    match="Nullable column does not have corresponding NumPy domain.",
+                    match="Nullable column does not have corresponding NumPy domain",
                 ),
             ),
             (
                 SparkDateColumnDescriptor(),
                 pytest.raises(
-                    RuntimeError, match="NumPy does not have support for date types."
+                    RuntimeError, match="NumPy does not have support for date types"
                 ),
             ),
             (
                 SparkTimestampColumnDescriptor(),
                 pytest.raises(
                     RuntimeError,
-                    match="NumPy does not have support for timestamp types.",
+                    match="NumPy does not have support for timestamp types",
                 ),
             ),
         ],
@@ -1341,7 +1382,7 @@ class TestSparkColumnDescriptors:
                         ValueError,
                         match="Column must be "
                         f"{get_fullname(_type_to_spark_type[col_type])}; got "
-                        f"{get_fullname(_type_to_spark_type[_col_name_to_type[col_name]])} "  # pylint: disable=line-too-long
+                        f"{get_fullname(_type_to_spark_type[_col_name_to_type[col_name]])} "  # noqa: E501
                         "instead",
                     )
                 ),

@@ -1,12 +1,14 @@
 """Tumult Core Module."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import warnings
 
 import pandas as pd
-import setuptools  # TODO(#3258): This import provides a workaround for a bug in PySpark
+
+# TODO(#3258): This import provides a workaround for a bug in PySpark
+import setuptools  # noqa: F401
 import typeguard
 
 # This version file is populated during build -- do not commit it.
@@ -14,6 +16,8 @@ try:
     from ._version import __version__
 except ImportError:
     from tmlt.core._version import __version__
+
+__all__ = ["__version__"]
 
 # By default, typeguard only checks the first element lists, but we want to
 # check the type of every list item.

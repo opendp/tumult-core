@@ -1,13 +1,11 @@
-# pylint: disable=line-too-long
 """Transformations for grouping and aggregating Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from typing import Optional, Union, cast, overload
 
@@ -111,7 +109,7 @@ class Count(Transformation):
 
              >>> count_dataframe.stability_function(1)
              1
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -216,7 +214,7 @@ class CountDistinct(Transformation):
 
             >>> count_distinct_dataframe.stability_function(1)
             1
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -333,7 +331,7 @@ class CountGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
         >>> count_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> count_by_A.input_metric
@@ -346,7 +344,7 @@ class CountGrouped(Transformation):
 
             >>> count_by_A.stability_function(1)
             1
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -374,7 +372,7 @@ class CountGrouped(Transformation):
                     f" not {input_metric.inner_metric}."
                 ),
             )
-        if count_column in set(input_domain.groupby_columns):
+        if count_column in input_domain.groupby_columns:
             raise ValueError(
                 f"Invalid count column name: ({count_column}) column already exists"
             )
@@ -425,14 +423,13 @@ class CountGrouped(Transformation):
 
     def __call__(self, grouped_data: GroupedDataFrame) -> DataFrame:
         """Returns a DataFrame containing counts for each group."""
-        # pylint: disable=no-member
         return grouped_data.agg(
             func=sf.count("*").alias(self.count_column), fill_value=0
         )
 
 
 class CountDistinctGrouped(Transformation):
-    r"""Counts the number of distinct records in each group in a :class:`~.GroupedDataFrame`.
+    r"""Counts distinct records in each group of a :class:`~.GroupedDataFrame`.
 
     Example:
         ..
@@ -509,7 +506,7 @@ class CountDistinctGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_distinct_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
         >>> count_distinct_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count_distinct': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> count_distinct_by_A.input_metric
@@ -518,11 +515,12 @@ class CountDistinctGrouped(Transformation):
         OnColumn(column='count_distinct', metric=SumOf(inner_metric=AbsoluteDifference()))
 
         Stability Guarantee:
-            :class:`~.CountDistinctGrouped`'s :meth:`~.stability_function` returns ``d_in``.
+            :class:`~.CountDistinctGrouped`'s :meth:`~.stability_function` returns
+            ``d_in``.
 
             >>> count_distinct_by_A.stability_function(1)
             1
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -550,7 +548,7 @@ class CountDistinctGrouped(Transformation):
                     f" not {input_metric.inner_metric}."
                 ),
             )
-        if count_column in set(input_domain.groupby_columns):
+        if count_column in input_domain.groupby_columns:
             raise ValueError(
                 f"Invalid count column name: ({count_column}) column already exists"
             )
@@ -683,8 +681,8 @@ class Sum(Transformation):
         AbsoluteDifference()
 
         Stability Guarantee:
-            :class:`~.Sum`'s :meth:`~.stability_function` returns ``d_in`` times sensitivity of
-            the sum. (See below for more information).
+            :class:`~.Sum`'s :meth:`~.stability_function` returns ``d_in`` times
+            sensitivity of the sum. (See below for more information.)
 
             >>> sum_X.stability_function(1)
             4
@@ -695,7 +693,7 @@ class Sum(Transformation):
               :class:`~.SymmetricDifference`
             * :math:`h - \ell` if the input metric is
               :class:`~.HammingDistance`
-    """  # pylint: disable=line-too-long
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -711,7 +709,8 @@ class Sum(Transformation):
         Args:
             input_domain: Domain of input DataFrames.
             input_metric: Metric on input DataFrames.
-            measure_column: Name of the column to be summed. This must be a numeric column.
+            measure_column: Name of the column to be summed. This must be
+                a numeric column.
             lower: Lower clipping bound for measure column.
             upper: Upper clipping bound for measure column.
         """
@@ -760,7 +759,7 @@ class Sum(Transformation):
             raise ValueError("Lower clipping bound should be at least -2^970.")
 
         self._measure_column = measure_column
-        output_domain = output_domain = (
+        output_domain = (
             NumpyFloatDomain() if measure_column_nonintegral else NumpyIntegerDomain()
         )
         super().__init__(
@@ -899,7 +898,7 @@ class SumGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> sum_X_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns=['A'])
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
         >>> sum_X_by_A.output_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'sum(X)': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> sum_X_by_A.input_metric
@@ -908,7 +907,8 @@ class SumGrouped(Transformation):
         OnColumn(column='sum(X)', metric=SumOf(inner_metric=AbsoluteDifference()))
 
         Stability Guarantee:
-            :class:`~.SumGrouped`'s :meth:`~.stability_function` returns ``d_in`` * sensitivity of the sum.
+            :class:`~.SumGrouped`'s :meth:`~.stability_function` returns ``d_in`` times
+            the sensitivity of the sum.
 
             >>> sum_X_by_A.stability_function(1)
             4
@@ -916,7 +916,7 @@ class SumGrouped(Transformation):
             The sensitivity of the sum is:
 
             * :math:`\max(|h|, |\ell|)`
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -943,8 +943,10 @@ class SumGrouped(Transformation):
         if sum_column is None:
             sum_column = f"sum({measure_column})"
 
-        groupby_columns = input_domain.groupby_columns
-        if measure_column not in set(input_domain.schema) - set(groupby_columns):
+        if (
+            measure_column
+            not in set(input_domain.schema) - input_domain.groupby_columns
+        ):
             raise DomainColumnError(
                 input_domain,
                 measure_column,
@@ -988,7 +990,7 @@ class SumGrouped(Transformation):
                 "Input metric must be SumOf(SymmetricDifference()) or"
                 " RootSumOfSquared(SymmetricDifference())"
             )
-        if sum_column in groupby_columns:
+        if sum_column in input_domain.groupby_columns:
             raise ValueError(f"Invalid sum column name: '{sum_column}' already exists")
 
         groupby_columns_schema = {
@@ -1049,7 +1051,6 @@ class SumGrouped(Transformation):
 
     def __call__(self, grouped_dataframe: GroupedDataFrame) -> DataFrame:
         """Returns DataFrame containing sum of specified column for each group."""
-        # pylint: disable=no-member
         lower_ceil = self.lower.to_float(round_up=True)
         upper_floor = (
             lower_ceil
@@ -1153,13 +1154,12 @@ def create_count_distinct_aggregation(
     ...
 
 
-# pylint: disable=line-too-long
 def create_count_distinct_aggregation(
     input_domain: Union[SparkDataFrameDomain, SparkGroupedDataFrameDomain],
     input_metric: Union[SymmetricDifference, HammingDistance, SumOf, RootSumOfSquared],
     count_column: Optional[str] = None,
 ) -> Union[CountDistinct, CountDistinctGrouped]:
-    """Returns a :class:`~.CountDistinct` or :class:`~.CountDistinctGrouped` transformation.
+    """Create a :class:`~.CountDistinct` or :class:`~.CountDistinctGrouped`.
 
     Args:
         input_domain: Domain of input DataFrames or GroupedDataFrames.
@@ -1167,7 +1167,6 @@ def create_count_distinct_aggregation(
         count_column: If ``input_domain`` is a SparkGroupedDataFrameDomain, this is the
             name of the output count column.
     """
-    # pylint: enable=line-too-long
     if isinstance(input_domain, SparkDataFrameDomain):
         assert isinstance(input_metric, (SymmetricDifference, HammingDistance))
         return CountDistinct(input_domain=input_domain, input_metric=input_metric)

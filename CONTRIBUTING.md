@@ -17,7 +17,7 @@ Once you have agreement on the feature or bug, anyone can send us a Pull Request
 
 ### Installation
 
-We use [`uv`](https://docs.astral.sh/uv/) for dependency management during development. To set up your environment, install `uv` by following its [installation instructions](https://docs.astral.sh/uv/getting-started/installation/), then install the prerequisites listed in the [Tumult Core installation instructions](https://opendp.github.io/tumult-docs/core/latest/installation.html#prerequisites), and finally install our dev dependencies by running `uv sync` from the root of this repository.
+We use [`uv`](https://docs.astral.sh/uv/) for dependency management during development. To set up your environment, install `uv` by following its [installation instructions](https://docs.astral.sh/uv/getting-started/installation/), then install the prerequisites listed in the [Tumult Core installation instructions](https://docs.tmlt.dev/core/latest/installation.html#prerequisites), and finally install our dev dependencies by running `uv sync` from the root of this repository.
 
 To minimize compatibility issues, doing development on the oldest supported Python minor version (currently 3.10) is strongly recommended.
 If you are using `uv` to manage your Python installations, running `uv sync` without an existing virtual environment should automatically install and use an appropriate Python version.

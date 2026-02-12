@@ -1,7 +1,7 @@
 """Tests for :mod:`~tmlt.core.random.rng`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from importlib import reload
 from unittest import TestCase
@@ -10,8 +10,6 @@ from unittest.mock import Mock, patch
 from randomgen import UserBitGenerator
 
 import tmlt.core.random.rng
-
-# pylint: disable=import-outside-toplevel, no-name-in-module
 
 
 class TestRNG(TestCase):
@@ -24,7 +22,7 @@ class TestRNG(TestCase):
 
     def test_rdrand_available(self):
         """Rng uses RDRAND if it is available."""
-        from randomgen.rdrand import RDRAND
+        from randomgen.rdrand import RDRAND  # noqa: PLC0415
 
         try:
             RDRAND()

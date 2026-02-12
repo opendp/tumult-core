@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.domains.pandas_domains`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from contextlib import nullcontext as does_not_raise
 from itertools import combinations_with_replacement
@@ -288,7 +288,7 @@ class TestPandasSeriesDomain(DomainTests):
                 PandasSeriesDomain(NumpyIntegerDomain(size=64)),
                 does_not_raise(),
             ),
-            (np.dtype([("f1", np.int16)]), None, pytest.raises(KeyError)),
+            (np.dtype([("f1", np.int16)]), None, pytest.raises(KeyError)),  # type: ignore
         ],
     )
     def test_from_numpy_type(
@@ -670,14 +670,12 @@ class TestPandasDataFrameDomain(DomainTests):
                 ),
                 does_not_raise(),
             ),
-        ]
-        + [
             # Failure cases
             (
                 {"A": np.dtype("int32"), "B": np.dtype([("f1", np.int16)])},
                 None,
                 pytest.raises(KeyError),
-            )
+            ),
         ],
     )
     def test_from_numpy_types(

@@ -1,22 +1,24 @@
 """Arblib wrapper using ctypes."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import ctypes
 import importlib.resources
 import math
 import platform
-from typing import Any, List, Tuple, Union
+from typing import Any, ClassVar, List, Tuple, Union
 
-# pylint: disable=protected-access
+# These bindings use a ton of private member accesses, just squash all lints
+# related to them.
+# ruff: noqa: SLF001
 
 # importlib.resources.path was deprecated in Python 3.11, and then un-deprecated
-# in 3.13, so there's not actually a problem here. It's possible this code will
-# need to be tweaked slightly for 3.13 support, as there were some changes to
-# the API, but they don't obviously affect this code.
+# in 3.13. It's possible this code will need to be tweaked slightly for 3.13
+# support, as there were some changes to the API, but they don't obviously
+# affect this code.
 
-# pylint: disable=deprecated-method
+
 if platform.system() == "Windows":
     with (
         importlib.resources.path("tmlt.core.ext.lib", "libarb.dll") as _arb_path,
@@ -59,7 +61,6 @@ else:
         "Unrecognized platform. Expected platform.system() to be one of"
         f" 'Windows', 'Linux', or 'Darwin' not ({platform.system()})."
     )
-# pylint: enable=deprecated-method
 
 
 class _PtrStruct(ctypes.Structure):
@@ -76,7 +77,10 @@ class _PtrStruct(ctypes.Structure):
         mantissa_ptr_struct;
     """
 
-    _fields_ = [("alloc", ctypes.c_int), ("d", ctypes.POINTER(ctypes.c_ulong))]
+    _fields_: ClassVar = [
+        ("alloc", ctypes.c_int),
+        ("d", ctypes.POINTER(ctypes.c_ulong)),
+    ]
 
 
 class _NoPtrStruct(ctypes.Structure):
@@ -93,7 +97,7 @@ class _NoPtrStruct(ctypes.Structure):
 
     """
 
-    _fields_ = [("d", ctypes.c_ulong * 2)]
+    _fields_: ClassVar = [("d", ctypes.c_ulong * 2)]
 
 
 class _MantissaStruct(ctypes.Union):
@@ -111,7 +115,7 @@ class _MantissaStruct(ctypes.Union):
 
     """
 
-    _fields_ = [("noptr", _NoPtrStruct), ("ptr", _PtrStruct)]
+    _fields_: ClassVar = [("noptr", _NoPtrStruct), ("ptr", _PtrStruct)]
 
 
 class _MagStruct(ctypes.Structure):
@@ -131,7 +135,7 @@ class _MagStruct(ctypes.Structure):
         mag_struct;
     """
 
-    _fields_ = [("exp", ctypes.c_long), ("man", ctypes.c_int)]
+    _fields_: ClassVar = [("exp", ctypes.c_long), ("man", ctypes.c_int)]
 
 
 class _ArfStruct(ctypes.Structure):
@@ -151,7 +155,11 @@ class _ArfStruct(ctypes.Structure):
         arf_struct;
     """
 
-    _fields_ = [("exp", ctypes.c_long), ("size", ctypes.c_int), ("d", _MantissaStruct)]
+    _fields_: ClassVar = [
+        ("exp", ctypes.c_long),
+        ("size", ctypes.c_int),
+        ("d", _MantissaStruct),
+    ]
 
 
 class _ArbStruct(ctypes.Structure):
@@ -168,7 +176,7 @@ class _ArbStruct(ctypes.Structure):
         arb_struct;
     """
 
-    _fields_ = [("mid", _ArfStruct), ("rad", _MagStruct)]
+    _fields_: ClassVar = [("mid", _ArfStruct), ("rad", _MagStruct)]
 
 
 class Arb:
@@ -372,10 +380,10 @@ class Arb:
         x = self._ptr.contents.mid
         # Per the docs, the initializer for ctypes.c_long is optional, but
         # pylint thinks it is required.
-        # pylint: disable=no-value-for-parameter, useless-suppression
+
         man_ptr = ctypes.pointer(ctypes.c_long())
         exp_ptr = ctypes.pointer(ctypes.c_long())
-        # pylint: enable=no-value-for-parameter, useless-suppression
+
         arblib.arf_get_fmpz_2exp(man_ptr, exp_ptr, ctypes.byref(x))
         return _fmpz_t_to_int(man_ptr), _fmpz_t_to_int(exp_ptr)
 
@@ -413,10 +421,8 @@ class Arb:
         arblib.arb_get_rad_arb(x, self._ptr)
         return Arb(x)
 
-    # pylint: disable=line-too-long
     def __contains__(self, value: Any) -> bool:
-        """Returns True if value is contained in the interval represented by ``self``."""
-        # pylint: enable=line-too-long
+        """Returns True if the interval represented by ``self`` contains ``value``."""
         if isinstance(value, Arb):
             return arblib.arb_contains(self._ptr, value._ptr) != 0
         return False
@@ -632,9 +638,8 @@ def _int_to_fmpz_t(val: int) -> "ctypes._PointerLike":
     Args:
         val: Integer to convert.
     """
-    # pylint: disable-next=no-value-for-parameter, useless-suppression
     fmpz_pointer = ctypes.pointer(ctypes.c_long())
-    s = "%x" % int(val)  # pylint: disable=consider-using-f-string
+    s = "%x" % int(val)
     val_c_string = ctypes.c_char_p(s.encode("ascii"))
     flintlib.fmpz_set_str(fmpz_pointer, val_c_string, 16)
     return fmpz_pointer

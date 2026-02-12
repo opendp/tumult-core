@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.transformations.dictionary`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 
 import re
@@ -237,15 +237,15 @@ class TestGetValue(TestCase):
             (
                 DictMetric(
                     {
-                        "key1": IfGroupedBy("A", SymmetricDifference()),
-                        "key2": IfGroupedBy("A", SymmetricDifference()),
+                        "key1": IfGroupedBy(["A"], SymmetricDifference()),
+                        "key2": IfGroupedBy(["A"], SymmetricDifference()),
                     }
                 ),
-                IfGroupedBy("A", SymmetricDifference()),
+                IfGroupedBy(["A"], SymmetricDifference()),
             ),
             (
                 AddRemoveKeys({"key1": "A", "key2": "A"}),
-                IfGroupedBy("A", SymmetricDifference()),
+                IfGroupedBy(["A"], SymmetricDifference()),
             ),
         ]
     )
@@ -334,8 +334,8 @@ class TestGetValue(TestCase):
             (
                 DictMetric(
                     {
-                        "key1": IfGroupedBy("A", SymmetricDifference()),
-                        "key2": IfGroupedBy("A", SymmetricDifference()),
+                        "key1": IfGroupedBy(["A"], SymmetricDifference()),
+                        "key2": IfGroupedBy(["A"], SymmetricDifference()),
                     }
                 ),
                 {"key1": 2, "key2": 3},
@@ -577,7 +577,10 @@ class TestCreateDictFromValue(TestCase):
 
     @parameterized.expand(
         [
-            (False, DictMetric({("X", "Y"): IfGroupedBy("A", SymmetricDifference())})),
+            (
+                False,
+                DictMetric({("X", "Y"): IfGroupedBy(["A"], SymmetricDifference())}),
+            ),
             (True, AddRemoveKeys({("X", "Y"): "A"})),
         ]
     )
@@ -596,13 +599,13 @@ class TestCreateDictFromValue(TestCase):
         )
         transformation = CreateDictFromValue(
             input_domain=input_domain,
-            input_metric=IfGroupedBy("A", SymmetricDifference()),
+            input_metric=IfGroupedBy(["A"], SymmetricDifference()),
             key=("X", "Y"),
             use_add_remove_keys=use_add_remove_keys,
         )
         self.assertEqual(transformation.input_domain, input_domain)
         self.assertEqual(
-            transformation.input_metric, IfGroupedBy("A", SymmetricDifference())
+            transformation.input_metric, IfGroupedBy(["A"], SymmetricDifference())
         )
         self.assertEqual(
             transformation.output_domain, DictDomain({("X", "Y"): input_domain})
@@ -637,7 +640,7 @@ class TestCreateDictFromValue(TestCase):
         )
         transformation = CreateDictFromValue(
             input_domain=input_domain,
-            input_metric=IfGroupedBy("A", SymmetricDifference()),
+            input_metric=IfGroupedBy(["A"], SymmetricDifference()),
             key="X",
             use_add_remove_keys=use_add_remove_keys,
         )
@@ -655,7 +658,18 @@ class TestCreateDictFromValue(TestCase):
                 AbsoluteDifference(),
                 "A",
                 True,
-            )
+            ),
+            (
+                re.escape(
+                    "Input metric must have only a single grouping column to use "
+                    "AddRemoveKeys as the output metric, but found "
+                )
+                + r"(\{'A', 'B'\}|\{'B', 'A'\})",
+                NumpyIntegerDomain(),
+                IfGroupedBy(["A", "B"], SymmetricDifference()),
+                "A",
+                True,
+            ),
         ]
     )
     def test_invalid_arguments_raises_error(

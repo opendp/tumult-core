@@ -1,6 +1,6 @@
 """Benchmarking quantile script for the OpenDP-based privacy framework."""
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import time
 from random import randint
@@ -86,7 +86,6 @@ def wrap_evaluation_multiple_group_counts(
     group_counts: List[int],
     benchmark_result: pd.DataFrame,
 ) -> pd.DataFrame:
-    # pylint: disable=unused-variable
     """Evaluate quantile runtime over multiple sizes = group_counts. Returns the
     resulting benchmarking information as a pandas dataframe.
 
@@ -119,7 +118,7 @@ def wrap_evaluation_multiple_group_counts(
             _ = df.collect()  # Help spark warm up.
         else:
             groupby_domains = {"A": list(range(int(size / group_size)))}
-            df = spark.createDataFrame(  # pylint: disable=no-member
+            df = spark.createDataFrame(
                 spark.sparkContext.parallelize(
                     [
                         (i, randint(lower, upper))
@@ -154,7 +153,6 @@ def wrap_evaluation_multiple_group_counts(
 def benchmark_groupby_quantile(
     spark: SparkSession, quantile: float, epsilon: ExactNumberInput
 ) -> pd.DataFrame:
-    # pylint: disable=unused-variable
     """Evaluate quantile runtime with various params. Return the resulting
     pandas dataframe.
 

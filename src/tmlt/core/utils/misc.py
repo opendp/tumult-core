@@ -1,7 +1,7 @@
 """Miscellaneous helper functions and classes."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import copy
 import re
@@ -106,3 +106,11 @@ def get_materialized_df(sdf: DataFrame, table_name: str) -> DataFrame:
         materialized_df = spark.read.table(table_name).toDF(*col_names)
         spark.catalog.setCurrentDatabase(last_database)
         return materialized_df
+
+
+class ConciseFrozenSet(frozenset):
+    """A frozenset that prints itself like a set."""
+
+    def __repr__(self) -> str:
+        """Print the frozenset as if it were a regular set."""
+        return f"{{{', '.join(repr(item) for item in self)}}}"

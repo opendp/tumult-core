@@ -1,7 +1,7 @@
 """Benchmarking module for PrivateJoin and Truncation transformations."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import itertools
 from random import randint
@@ -189,7 +189,7 @@ def generate_dataframe(
         for i in range(group_count)
         for _ in range(next(group_size_factory) + randint(-fuzz, fuzz))
     ]
-    df = spark.createDataFrame(  # pylint: disable=no-member
+    df = spark.createDataFrame(
         spark.sparkContext.parallelize(data), schema=list(dom.schema)
     )
     return df, dom, len(data)

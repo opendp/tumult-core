@@ -1,13 +1,11 @@
-# pylint: disable=line-too-long
 """Transformations for joining Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
@@ -206,8 +204,8 @@ class PublicJoin(Transformation):
             For
 
             - SymmetricDifference()
-            - IfGroupedBy(column, SumOf(SymmetricDifference()))
-            - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
+            - IfGroupedBy({column}, SumOf(SymmetricDifference()))
+            - IfGroupedBy({column}, RootSumOfSquared(SymmetricDifference()))
 
             :class:`~.PublicJoin`'s :meth:`~.stability_function` returns the ``d_in``
             times the maximum count of any combination of values in the join columns of
@@ -229,7 +227,7 @@ class PublicJoin(Transformation):
 
             For
 
-            - IfGroupedBy(column, SymmetricDifference())
+            - IfGroupedBy({column}, SymmetricDifference())
 
             :class:`~.PublicJoin`'s :meth:`~.stability_function` returns ``d_in``
 
@@ -241,12 +239,10 @@ class PublicJoin(Transformation):
             ...         }
             ...     ),
             ...     public_df=public_dataframe,
-            ...     metric=IfGroupedBy("A", SymmetricDifference()),
+            ...     metric=IfGroupedBy({"A"}, SymmetricDifference()),
             ... ).stability_function(2)
             2
-    """  # pylint: disable=line-too-long,useless-suppression
-
-    # pylint: enable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -268,15 +264,15 @@ class PublicJoin(Transformation):
             public_df_domain: Domain of public DataFrame to join with. If this domain
                 indicates that a float column does not allow nans (or infs), all rows
                 in ``public_df`` containing a nan (or an inf) in that column will be
-                dropped. If None, domain is inferred from the schema of ``public_df`` and
-                any float column will be marked as allowing inf and nan values.
+                dropped. If None, domain is inferred from the schema of ``public_df``
+                and any float column will be marked as allowing inf and nan values.
             join_cols: Names of columns to join on. If None, a natural join is
                 performed.
             join_on_nulls: If True, null values on corresponding join columns of the
                 public and private DataFrames will be considered to be equal.
             how: Type of join to perform. Defaults to "inner". Note that only "inner"
                 and "left" joins are supported.
-        """  # pylint: disable=line-too-long,useless-suppression
+        """
         if isinstance(metric, IfGroupedBy):
             if metric.inner_metric not in (
                 SymmetricDifference(),
@@ -321,16 +317,21 @@ class PublicJoin(Transformation):
             how=how,
             nulls_are_equal=join_on_nulls,
         )
-        if (
-            isinstance(metric, IfGroupedBy)
-            and metric.column not in join_cols
-            and metric.column in input_domain.schema
-            and metric.column in public_df_domain.schema
-        ):
-            raise ValueError(
-                f"IfGroupedBy column '{metric.column}' is an overlapping"
-                " column but not a join key."
-            )
+        if isinstance(metric, IfGroupedBy):
+            bad_groupby_columns = [
+                column
+                for column in metric.columns
+                if (
+                    column not in join_cols
+                    and column in input_domain.schema
+                    and column in public_df_domain.schema
+                )
+            ]
+            if bad_groupby_columns:
+                raise ValueError(
+                    f"IfGroupedBy columns {bad_groupby_columns} are overlapping"
+                    " columns but not join keys."
+                )
 
         public_df_join_columns = public_df.select(*join_cols)
         if not join_on_nulls:
@@ -584,7 +585,7 @@ class PrivateJoin(Transformation):
             8
             >>> private_join.stability_function({"left": 1, "right": 1})
             8
-    """  # pylint: disable=line-too-long
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -663,7 +664,8 @@ class PrivateJoin(Transformation):
             and right_truncation_threshold != float("inf")
         ):
             raise ValueError(
-                "The left/right_truncation_threshold must be infinite if the left/right_truncation_strategy is NO_TRUNCATION."
+                "The left/right_truncation_threshold must be infinite if the "
+                "left/right_truncation_strategy is NO_TRUNCATION."
             )
 
         output_domain = domain_after_join(
@@ -748,7 +750,6 @@ class PrivateJoin(Transformation):
             TruncationStrategy.NO_TRUNCATION: float("inf"),
         }[truncation_strategy]
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: Dict[Any, ExactNumberInput]) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -759,7 +760,6 @@ class PrivateJoin(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         tau_l = self.left_truncation_threshold
         tau_r = self.right_truncation_threshold
@@ -933,14 +933,17 @@ class PrivateJoinOnKey(Transformation):
         This join works similarly to :class:`~.PublicJoin`, see it for more examples.
 
     .. Note:
-        Unlike :class:`~.PrivateJoin`, this join allows for other dataframes to be present in the input dictionary, and
-        will output a dictionary containing all of the input dataframes along with the joined dataframe.
-        This is because of the stability analysis for AddRemoveKeys. See :mod:`~.add_remove_keys` for more details.
+        Unlike :class:`~.PrivateJoin`, this join allows for other dataframes to
+        be present in the input dictionary, and will output a dictionary
+        containing all of the input dataframes along with the joined dataframe.
+        This is because of the stability analysis for AddRemoveKeys. See
+        :mod:`~.add_remove_keys` for more details.
 
     Transformation Contract:
-        * Input domain - :class:`~.DictDomain` containing two or more SparkDataFrame domains.
-        * Output domain - The same as the input :class:`~.DictDomain` with the addition of a new
-          :class:`~.SparkDataFrameDomain` for the joined table.
+        * Input domain - :class:`~.DictDomain` containing two or more
+          SparkDataFrame domains.
+        * Output domain - The same as the input :class:`~.DictDomain` with the addition
+          of a new :class:`~.SparkDataFrameDomain` for the joined table.
         * Input metric - :class:`~.AddRemoveKeys`
         * Output metric - :class:`~.AddRemoveKeys`
 
@@ -960,8 +963,7 @@ class PrivateJoinOnKey(Transformation):
         1
         >>> private_join.stability_function(2)
         2
-    """  # pylint: disable=line-too-long,useless-suppression
-    # pylint: enable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -1076,7 +1078,6 @@ class PrivateJoinOnKey(Transformation):
         """Returns whether to consider null equal to null."""
         return self._join_on_nulls
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -1087,7 +1088,6 @@ class PrivateJoinOnKey(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 

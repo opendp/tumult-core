@@ -1,13 +1,11 @@
-# pylint: disable=line-too-long
 """Measurements on Spark DataFrames.
 
 See `the architecture guide <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information.
 """
-# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import uuid
 from abc import abstractmethod
@@ -20,7 +18,6 @@ from pyspark.sql.types import IntegerType
 from typeguard import typechecked
 
 # cleanup is imported just so its cleanup function runs at exit
-import tmlt.core.utils.cleanup  # pylint: disable=unused-import
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -157,12 +154,12 @@ class AddNoiseToColumn(SparkMeasurement):
         PureDP()
 
         Privacy Guarantee:
-            :class:`~.AddNoiseToColumn`'s :meth:`~.privacy_function` returns the output of
-            privacy function on the :class:`~.AddNoiseToSeries` measurement.
+            :class:`~.AddNoiseToColumn`'s :meth:`~.privacy_function` returns the output
+            of privacy function on the :class:`~.AddNoiseToSeries` measurement.
 
             >>> add_laplace_noise_to_column.privacy_function(1)
             2
-    """  # pylint: disable=line-too-long
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -181,8 +178,8 @@ class AddNoiseToColumn(SparkMeasurement):
 
         Note:
             The input metric of this measurement is derived from the ``measure_column``
-            and the input metric of the ``measurement`` to be applied. In particular, the
-            input metric of this measurement is ``measurement.input_metric`` on the
+            and the input metric of the ``measurement`` to be applied. In particular,
+            the input metric of this measurement is ``measurement.input_metric`` on the
             specified ``measure_column``.
         """
         measure_column_domain = input_domain[measure_column].to_numpy_domain()
@@ -212,7 +209,7 @@ class AddNoiseToColumn(SparkMeasurement):
 
     @property
     def measurement(self) -> AddNoiseToSeries:
-        """Returns the :class:`~.AddNoiseToSeries` measurement to apply to measure column."""
+        """The :class:`~.AddNoiseToSeries` measurement to apply to measure column."""
         return self._measurement
 
     @typechecked
@@ -227,7 +224,8 @@ class AddNoiseToColumn(SparkMeasurement):
 
         Raises:
             NotImplementedError: If the :meth:`~.Measurement.privacy_function` of the
-                :class:`~.AddNoiseToSeries` measurement raises :class:`NotImplementedError`.
+                :class:`~.AddNoiseToSeries` measurement
+                raises :class:`NotImplementedError`.
         """
         self.input_metric.validate(d_in)
         return self.measurement.privacy_function(d_in)
@@ -278,7 +276,7 @@ class ApplyInPandas(SparkMeasurement):
 
         # Check that the input domain is compatible with the aggregation
         # function's input domain.
-        available_columns = set(input_domain.schema) - set(input_domain.groupby_columns)
+        available_columns = set(input_domain.schema) - input_domain.groupby_columns
         needed_columns = set(aggregation_function.input_domain.schema)
         if not needed_columns <= available_columns:
             raise ValueError(
@@ -334,7 +332,6 @@ class ApplyInPandas(SparkMeasurement):
         """Returns input domain."""
         return cast(SparkGroupedDataFrameDomain, super().input_domain)
 
-    # pylint: disable=line-too-long
     @typechecked
     def privacy_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the measurement.
@@ -349,7 +346,6 @@ class ApplyInPandas(SparkMeasurement):
             NotImplementedError: If self.aggregation_function.privacy_function(d_in)
                 raises :class:`NotImplementedError`.
         """
-        # pylint: enable=line-too-long
         return self.aggregation_function.privacy_function(d_in)
 
     def call(self, val: GroupedDataFrame) -> DataFrame:
@@ -464,7 +460,7 @@ class GeometricPartitionSelection(SparkMeasurement):
             2
             >>> delta.to_float(round_up=True)
             5.664238400088129e-21
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -533,7 +529,6 @@ class GeometricPartitionSelection(SparkMeasurement):
         """Returns the count column name."""
         return self._count_column
 
-    # pylint: disable=line-too-long
     @typechecked
     def privacy_function(
         self, d_in: ExactNumberInput
@@ -546,7 +541,6 @@ class GeometricPartitionSelection(SparkMeasurement):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         d_in = ExactNumber(d_in)
         if d_in == 0:
@@ -675,8 +669,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
         Privacy Guarantee:
             For :math:`d_{in} = 0`, returns :math:`0`
 
-            For :math:`d_{in} \ge 1`, returns
-            :math:`(4 / \alpha) \cdot d_{in}`
+            For :math:`d_{in} \ge 1`, returns :math:`(4 / \alpha) \cdot d_{in}`
 
             where:
 
@@ -686,7 +679,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
             4
             >>> measurement.privacy_function(2)
             8
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -871,7 +864,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
             .filter(sf.col(row_number) == 1)
         )
 
-        return df.select(self.grouping_columns + [self.rank_column])
+        return df.select([*self.grouping_columns, self.rank_column])
 
 
 def _get_sanitized_df(sdf: DataFrame) -> DataFrame:

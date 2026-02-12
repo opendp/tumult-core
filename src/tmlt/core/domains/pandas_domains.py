@@ -1,7 +1,7 @@
 """Domains for Pandas datatypes."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -41,7 +41,7 @@ class PandasSeriesDomain(Domain):
         # iterating over a Series implicitly calls item() on the NumPy values
         # retrieving the corresponding python object
         super().validate(value)
-        for i in range(len(value)):  # pylint: disable=consider-using-enumerate
+        for i in range(len(value)):
             try:
                 self.element_domain.validate(value[i])
             except OutOfDomainError as exception:
@@ -128,7 +128,8 @@ class PandasDataFrameDomain(Domain):
     @classmethod
     def from_numpy_types(cls, dtypes: Dict[str, np.dtype]) -> "PandasDataFrameDomain":
         """Returns a Pandas DataFrame domain from a dictionary of NumPy types."""
-        col_to_desc = {}
-        for col in dtypes:
-            col_to_desc[col] = PandasSeriesDomain.from_numpy_type(dtypes[col])
+        col_to_desc = {
+            col: PandasSeriesDomain.from_numpy_type(dtype)
+            for col, dtype in dtypes.items()
+        }
         return PandasDataFrameDomain(col_to_desc)

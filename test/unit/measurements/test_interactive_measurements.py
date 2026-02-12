@@ -1,8 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.measurements.interactive_measurements`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
-
+# Copyright Tumult Labs 2026
 
 import re
 from typing import Any, List, Optional, Tuple, Type, Union
@@ -149,16 +148,22 @@ class TestSequentialComposition(PySparkTest):
 
     def test_correctness(self):
         """SequentialComposition returns the expected Queryable object."""
-        # pylint: disable=protected-access
         actual = self.measurement(self.data)
         self.assertIsInstance(actual, SequentialQueryable)
-        self.assertEqual(actual._input_domain, self.measurement.input_domain)
-        self.assertEqual(actual._input_metric, self.measurement.input_metric)
-        self.assertEqual(actual._output_measure, self.measurement.output_measure)
         self.assertEqual(
-            actual._remaining_budget.value, self.measurement.privacy_budget
+            actual._input_domain, self.measurement.input_domain  # noqa: SLF001
         )
-        self.assertEqual(actual._data, self.data)
+        self.assertEqual(
+            actual._input_metric, self.measurement.input_metric  # noqa: SLF001
+        )
+        self.assertEqual(
+            actual._output_measure, self.measurement.output_measure  # noqa: SLF001
+        )
+        self.assertEqual(
+            actual._remaining_budget.value,  # noqa: SLF001
+            self.measurement.privacy_budget,
+        )
+        self.assertEqual(actual._data, self.data)  # noqa: SLF001
 
 
 @parameterized_class(
@@ -353,12 +358,13 @@ class TestParallelComposition(PySparkTest):
 
     def test_correctness(self):
         """ParallelComposition returns the expected Queryable object."""
-        # pylint: disable=protected-access
         actual = self.measurement(self.data)
         self.assertIsInstance(actual, ParallelQueryable)
-        self.assertEqual(actual._next_index, 0)
-        self.assertEqual(actual._data, self.data)
-        self.assertEqual(actual._measurements, self.composed_measurements)
+        self.assertEqual(actual._next_index, 0)  # noqa: SLF001
+        self.assertEqual(actual._data, self.data)  # noqa: SLF001
+        self.assertEqual(
+            actual._measurements, self.composed_measurements  # noqa: SLF001
+        )
 
 
 class TestMakeInteractive(PySparkTest):
@@ -423,7 +429,7 @@ class TestRetirableQueryable(PySparkTest):
         self.assertIsInstance(actual, RetirableQueryable)
 
         self.assertEqual(
-            actual._inner_queryable,  # pylint: disable=protected-access
+            actual._inner_queryable,  # noqa: SLF001
             returned_queryable,
         )
 
@@ -436,9 +442,7 @@ class TestRetirableQueryable(PySparkTest):
         )
         inner_most_queryable = queryable(None)(None)
         queryable(RetireQuery())
-        self.assertTrue(
-            inner_most_queryable._is_retired  # pylint: disable=protected-access
-        )
+        self.assertTrue(inner_most_queryable._is_retired)  # noqa: SLF001
 
     def test_retire_works_when_descendant_is_retired(self):
         """RetirableQueryable can be retired even when a descendant is retired."""
@@ -521,9 +525,7 @@ class TestSequentialQueryable(PySparkTest):
         )
         d_in["A"] = 1
         d_in["B"] = 2
-        self.assertDictEqual(
-            queryable._d_in, {"A": 2}  # pylint: disable=protected-access
-        )
+        self.assertDictEqual(queryable._d_in, {"A": 2})  # noqa: SLF001
 
     def test_queryable_budget_is_decreased_correctly(self):
         """SequentialQueryable's internal budget is correctly decreased on query."""
@@ -540,7 +542,7 @@ class TestSequentialQueryable(PySparkTest):
             )
         )
         self.assertEqual(
-            queryable._remaining_budget.value,  # pylint: disable=protected-access
+            queryable._remaining_budget.value,  # noqa: SLF001
             self.budget_quarters[3],
         )
 
@@ -672,7 +674,7 @@ class TestSequentialQueryable(PySparkTest):
             )
         )
         self.assertEqual(
-            queryable._remaining_budget.value,  # pylint: disable=protected-access
+            queryable._remaining_budget.value,  # noqa: SLF001
             self.budget_quarters[2],
         )
 
@@ -711,7 +713,7 @@ class TestSequentialQueryable(PySparkTest):
                 d_out=3,
             )
         )
-        self.assertEqual(queryable._d_in, 3)  # pylint: disable=protected-access
+        self.assertEqual(queryable._d_in, 3)  # noqa: SLF001
 
     def test_transformation_query_stability_relation_returns_false(self):
         """SequentialQueryable raises error if stability relation is not True."""
@@ -733,7 +735,6 @@ class TestSequentialQueryable(PySparkTest):
 
     def test_transformation_query(self):
         """SequentialQueryable processes TransformationQuery correctly."""
-        # pylint: disable=protected-access
         queryable = self.construct_queryable()
         transformation = create_mock_transformation(
             return_value=np.float64(100.0),
@@ -743,10 +744,10 @@ class TestSequentialQueryable(PySparkTest):
             stability_function_return_value=20,
         )
         queryable(TransformationQuery(transformation=transformation))
-        self.assertEqual(queryable._d_in, 20)
-        self.assertEqual(queryable._input_domain, NumpyFloatDomain())
-        self.assertEqual(queryable._input_metric, SymmetricDifference())
-        self.assertEqual(queryable._data, np.float64(100.0))
+        self.assertEqual(queryable._d_in, 20)  # noqa: SLF001
+        self.assertEqual(queryable._input_domain, NumpyFloatDomain())  # noqa: SLF001
+        self.assertEqual(queryable._input_metric, SymmetricDifference())  # noqa: SLF001
+        self.assertEqual(queryable._data, np.float64(100.0))  # noqa: SLF001
 
     @parameterized.expand(
         [
@@ -1070,7 +1071,6 @@ class TestPrivacyAccountant(PySparkTest):
     @patch.object(PrivacyAccountant, "__init__", autospec=True, return_value=None)
     def test_launch(self, mock_accountant_init):
         """PrivacyAccountant.launch works as expected."""
-
         mock_queryable = Mock(spec=SequentialQueryable)
         mock_sequential_composition = Mock(
             spec=SequentialComposition, return_value=mock_queryable
@@ -1176,10 +1176,9 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.input_domain, NumpyIntegerDomain())
         self.assertEqual(accountant.input_metric, AbsoluteDifference())
         self.assertEqual(accountant.d_in, 10)
-        # pylint: disable=protected-access
-        self.assertIsNotNone(accountant._queryable)
-        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore
-        # pylint: enable=protected-access
+
+        self.assertIsNotNone(accountant._queryable)  # noqa: SLF001
+        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore # noqa: SLF001
 
     def test_transform_with_explicit_d_out(self):
         """PrivacyAccountant.transform_in_place works with a d_out provided."""
@@ -1204,9 +1203,9 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.input_domain, NumpyIntegerDomain())
         self.assertEqual(accountant.input_metric, AbsoluteDifference())
         self.assertEqual(accountant.d_in, 10)
-        # pylint: disable=protected-access
-        self.assertIsNotNone(accountant._queryable)
-        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore
+
+        self.assertIsNotNone(accountant._queryable)  # noqa: SLF001
+        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore # noqa: SLF001
 
     @parameterized.expand(
         [
@@ -1476,7 +1475,7 @@ class TestPrivacyAccountant(PySparkTest):
             self.assertEqual(child.state, expected_state)
 
     def test_queue_transformation_on_active_accountant(self):
-        """queue_transformation runs immediately on active accountant"""
+        """queue_transformation runs immediately on active accountant."""
         accountant = PrivacyAccountant.launch(
             measurement=self.measurement, data=self.data
         )
@@ -1498,14 +1497,13 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.input_domain, NumpyIntegerDomain())
         self.assertEqual(accountant.input_metric, AbsoluteDifference())
         self.assertEqual(accountant.d_in, 10)
-        # pylint: disable=protected-access
-        self.assertIsNotNone(accountant._queryable)
-        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore
-        self.assertIsNone(accountant._pending_transformation)
-        # pylint: enable=protected-access
+
+        self.assertIsNotNone(accountant._queryable)  # noqa: SLF001
+        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore # noqa: SLF001
+        self.assertIsNone(accountant._pending_transformation)  # noqa: SLF001
 
     def test_queue_transformation_on_inactive_accountant(self):
-        """queue_transformation queues transformations on inactive account"""
+        """queue_transformation queues transformations on inactive account."""
         accountant = PrivacyAccountant.launch(
             measurement=self.measurement, data=self.data
         )
@@ -1546,9 +1544,7 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.input_domain, NumpyIntegerDomain())
         self.assertEqual(accountant.input_metric, AbsoluteDifference())
         self.assertEqual(accountant.d_in, 10)
-        self.assertIsNotNone(
-            accountant._pending_transformation  # pylint: disable=protected-access
-        )
+        self.assertIsNotNone(accountant._pending_transformation)  # noqa: SLF001
 
         for c in child_accountants:
             c.retire()
@@ -1559,11 +1555,10 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant.input_domain, NumpyIntegerDomain())
         self.assertEqual(accountant.input_metric, AbsoluteDifference())
         self.assertEqual(accountant.d_in, 10)
-        # pylint: disable=protected-access
-        self.assertIsNotNone(accountant._queryable)
-        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore
-        self.assertIsNone(accountant._pending_transformation)
-        # pylint: enable=protected-access
+
+        self.assertIsNotNone(accountant._queryable)  # noqa: SLF001
+        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore # noqa: SLF001
+        self.assertIsNone(accountant._pending_transformation)  # noqa: SLF001
 
     @parameterized.expand(
         [
@@ -1701,9 +1696,7 @@ class TestPrivacyAccountant(PySparkTest):
             stability_function_implemented=True,
         )
         accountant.queue_transformation(identity_transformation)
-        self.assertIsNotNone(
-            accountant._pending_transformation  # pylint: disable=protected-access
-        )
+        self.assertIsNotNone(accountant._pending_transformation)  # noqa: SLF001
         with self.assertRaisesRegex(ValueError, error_message):
             accountant.queue_transformation(transformation=transformation, d_out=d_out)
 
@@ -1712,9 +1705,7 @@ class TestPrivacyAccountant(PySparkTest):
         accountant = PrivacyAccountant.launch(
             measurement=self.measurement, data=self.data
         )
-        accountant._state = (  # pylint: disable=protected-access
-            PrivacyAccountantState.RETIRED
-        )
+        accountant._state = PrivacyAccountantState.RETIRED  # noqa: SLF001
         with self.assertRaisesRegex(
             RuntimeError, "Can not activate RETIRED PrivacyAccountant"
         ):
@@ -1765,11 +1756,10 @@ class TestPrivacyAccountant(PySparkTest):
 
     def test_retire_raises_error_appropriately(self):
         """PrivacyAccountant.retire raises error appropriately."""
-        # pylint: disable=protected-access
         accountant = PrivacyAccountant.launch(
             measurement=self.measurement, data=self.data
         )
-        accountant._state = PrivacyAccountantState.WAITING_FOR_CHILDREN
+        accountant._state = PrivacyAccountantState.WAITING_FOR_CHILDREN  # noqa: SLF001
         with self.assertRaisesRegex(
             RuntimeError,
             "Can not retire PrivacyAccountant in WAITING_FOR_CHILDREN state",
@@ -1906,14 +1896,16 @@ class TestDecorateQueryable(TestCase):
 
     def test_correctness(self):
         """SequentialComposition returns the expected Queryable object."""
-        # pylint: disable=protected-access
         actual = self.measurement(np.int64(10))
-        self.assertIsInstance(actual, DecoratedQueryable)
-        self.assertEqual(actual._preprocess_query, self.measurement.preprocess_query)
+        assert isinstance(actual, DecoratedQueryable)
         self.assertEqual(
-            actual._postprocess_answer, self.measurement.postprocess_answer
+            actual._preprocess_query, self.measurement.preprocess_query  # noqa: SLF001
         )
-        self.assertEqual(actual._queryable, self.mock_queryable)
+        self.assertEqual(
+            actual._postprocess_answer,  # noqa: SLF001
+            self.measurement.postprocess_answer,
+        )
+        self.assertEqual(actual._queryable, self.mock_queryable)  # noqa: SLF001
 
 
 @parameterized_class(
@@ -2020,11 +2012,12 @@ class TestCreateAdaptiveComposition(TestCase):
             adaptive_composition.measurement.input_metric, AbsoluteDifference()
         )
         self.assertEqual(adaptive_composition.measurement.d_in, 1)  # type: ignore
-        # pylint: disable=line-too-long
+
         self.assertEqual(
-            adaptive_composition.measurement.privacy_budget, self.privacy_budget  # type: ignore
+            adaptive_composition.measurement.privacy_budget,  # type: ignore
+            self.privacy_budget,
         )
-        # pylint: enable=line-too-long
+
         self.assertEqual(
             adaptive_composition.measurement.output_measure, self.output_measure
         )
@@ -2074,8 +2067,8 @@ class TestCreateAdaptiveComposition(TestCase):
         requested_budget = self.budget_type(self.budget_quarters[3])
         error_message = re.escape(
             (
-                f"The remaining privacy budget is {str(remaining_budget)}, which "
-                f"is insufficient given the requested budget {str(requested_budget)}."
+                f"The remaining privacy budget is {remaining_budget}, which "
+                f"is insufficient given the requested budget {requested_budget}."
             )
         )
         with self.assertRaisesRegex(ValueError, error_message):

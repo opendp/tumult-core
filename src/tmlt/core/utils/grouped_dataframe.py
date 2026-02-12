@@ -1,11 +1,11 @@
 """Grouped DataFrame aware of group keys when performing aggregations."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import functools
 from functools import reduce
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
 from pyspark.sql import Column, DataFrame, Row, SparkSession
@@ -25,40 +25,50 @@ class GroupedDataFrame:
     keys, in which case it will have a single row.
     """
 
-    def __init__(self, dataframe: DataFrame, group_keys: DataFrame):
+    def __init__(self, dataframe: DataFrame, group_keys: Optional[DataFrame]):
         """Constructor.
 
         Args:
             dataframe: DataFrame to perform groupby on.
             group_keys: DataFrame where each row corresponds to a group key. Duplicate
-                rows are silently dropped.
+                rows are silently dropped. None triggers a total aggregation.
         """
         if len(dataframe.columns) != len(set(dataframe.columns)):
             raise ValueError("DataFrame contains duplicate column names")
-        if len(group_keys.columns) != len(set(group_keys.columns)):
-            raise ValueError("Group keys contains duplicate column names")
-        invalid_groupby_columns = set(group_keys.columns) - set(dataframe.columns)
-        if invalid_groupby_columns:
-            raise ValueError(f"Invalid groupby columns: {invalid_groupby_columns}")
-        group_keys = group_keys.distinct()
+        if group_keys is None:
+            self._group_keys = None
+            self._groupby_columns = []
+        else:
+            if len(group_keys.columns) != len(set(group_keys.columns)):
+                raise ValueError("Group keys contains duplicate column names")
+            invalid_groupby_columns = set(group_keys.columns) - set(dataframe.columns)
+            if invalid_groupby_columns:
+                raise ValueError(f"Invalid groupby columns: {invalid_groupby_columns}")
+            group_keys = group_keys.distinct()
+            self._group_keys = group_keys
+            self._groupby_columns = group_keys.columns
+            if not group_keys.columns:
+                if group_keys.count() > 0:
+                    raise ValueError(
+                        "Groupby keys cannot have records without columns."
+                    )
+                # empty groupkeys means total aggregation
+                self._group_keys = None
         self._dataframe = dataframe
-        self._group_keys = group_keys
-        self._total_aggregation = False
-        if not group_keys.columns:
-            if self.group_keys.count() > 0:
-                raise ValueError("Groupby keys cannot have records without columns.")
-            # empty groupkeys
-            self._total_aggregation = True
-        self._groupby_columns = group_keys.columns
 
     @property
-    def group_keys(self) -> DataFrame:
-        """Returns DataFrame containing group keys."""
+    def dataframe(self) -> DataFrame:
+        """Returns the DataFrame being grouped."""
+        return self._dataframe
+
+    @property
+    def group_keys(self) -> Optional[DataFrame]:
+        """Returns DataFrame containing group keys. None means total aggregation."""
         return self._group_keys
 
     @property
     def groupby_columns(self) -> List[str]:
-        """Returns DataFrame containing group keys."""
+        """Returns the columns being grouped on."""
         return self._groupby_columns.copy()
 
     def select(self, columns: List[str]) -> "GroupedDataFrame":
@@ -96,7 +106,8 @@ class GroupedDataFrame:
             func: Function to apply to each group.
             fill_value: Output value for empty groups.
         """
-        if self._total_aggregation:
+        if self.group_keys is None:
+            # Total aggregation
             result = self._dataframe.agg(func)
             assert len(result.columns) == 1
             column = result.columns[0]
@@ -151,7 +162,7 @@ class GroupedDataFrame:
                 aggregation function.
         """
         spark = SparkSession.builder.getOrCreate()
-        if not self.groupby_columns:
+        if self.group_keys is None:
             return spark.createDataFrame(
                 aggregation_function(self._dataframe.toPandas()),
                 schema=aggregation_output_schema,
@@ -187,6 +198,8 @@ class GroupedDataFrame:
 
     def get_groups(self) -> Dict[Row, DataFrame]:
         """Returns the groups as dictionary of DataFrames."""
+        if self.group_keys is None:
+            return {}
         groups = {}
         non_grouping_columns = [
             column

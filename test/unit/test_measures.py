@@ -1,7 +1,7 @@
 """Unit tests for :mod:`tmlt.core.measures`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 import itertools
 import re
 from typing import Any, Tuple, Union
@@ -236,7 +236,7 @@ class TestPureDPBudget(TestCase):
         self.assertEqual(PureDPBudget(value1).subtract(value2), PureDPBudget(expected))
 
     @parameterized.expand(
-        list(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS)) + [(sp.Rational("1.1"),)]
+        [*to_singletons(INVALID_PRIMARY_BUDGET_INPUTS), (sp.Rational("1.1"),)]
     )
     def test_subtract_invalid(self, value):
         """Test that subtract raises an error when passed an invalid value."""
@@ -345,8 +345,11 @@ class TestApproxDPBudget(TestCase):
         )
 
     @parameterized.expand(
-        list(to_singletons(INVALID_APPROX_DP_INPUTS))
-        + [((sp.Rational("1.1"), 0),), (("1", sp.Rational("0.2")),)]
+        [
+            *to_singletons(INVALID_APPROX_DP_INPUTS),
+            ((sp.Rational("1.1"), 0),),
+            (("1", sp.Rational("0.2")),),
+        ]
     )
     def test_subtract_invalid(self, value):
         """Test that subtract raises an error when passed an invalid value."""
@@ -423,7 +426,7 @@ class TestRhoZCDPBudget(TestCase):
         )
 
     @parameterized.expand(
-        list(to_singletons(INVALID_PRIMARY_BUDGET_INPUTS)) + [(sp.Rational("1.1"),)]
+        [*to_singletons(INVALID_PRIMARY_BUDGET_INPUTS), (sp.Rational("1.1"),)]
     )
     def test_subtract_invalid(self, value):
         """Test that subtract raises an error when passed an invalid value."""
@@ -457,7 +460,6 @@ class TestInsufficientBudgetError(TestCase):
         high_budget: Union[ExactNumber, Tuple[ExactNumber, ExactNumber]],
     ):
         """Tests that the error message related to InsufficientBudgetError is useful."""
-
         low = budget_type(low_budget)  # type: ignore
         high = budget_type(high_budget)  # type: ignore
 

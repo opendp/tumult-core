@@ -1,8 +1,7 @@
 """Tests for :module:`tmlt.core.utils.distributions`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
-
+# Copyright Tumult Labs 2026
 
 import unittest
 from typing import Any
@@ -192,7 +191,7 @@ class TestDiscreteGaussian(unittest.TestCase):
                 for i in range(len(k)):
                     if cmf_k[i] in [0.0, 1.0] or cmf_minus_one[i] in [0.0, 1.0]:
                         indices_to_delete.append(i)
-                k = np.delete(k, indices_to_delete)
+                k = np.delete(k, indices_to_delete)  # noqa: PLW2901
                 cmf_k = np.delete(cmf_k, indices_to_delete)
                 cmf_minus_one = np.delete(cmf_minus_one, indices_to_delete)
             weighted_cmf = cmf_k * 0.98 + cmf_minus_one * 0.02

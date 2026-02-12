@@ -1,14 +1,13 @@
-# pylint: disable=line-too-long
 """Transformations for renaming Spark DataFrame columns.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information.
 """
-# pylint: enable=line-too-long
+
 # TODO: Open question regarding "switching" column names.
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from typing import Dict, Union
 
@@ -103,9 +102,7 @@ class Rename(Transformation):
             1
             >>> rename_b_to_c.stability_function(2)
             2
-    """  # pylint: disable=line-too-long,useless-suppression
-
-    # pylint: enable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -147,12 +144,11 @@ class Rename(Transformation):
                         " RootSumOfSquared(SymmetricDifference())"
                     ),
                 )
-            if metric.column in rename_mapping:
-                # If we add support multiple grouping columns, make sure that
-                # two grouping columns can't switch names for FilterValue
-                output_metric = IfGroupedBy(
-                    rename_mapping[metric.column], metric.inner_metric
-                )
+            output_metric_columns = [
+                rename_mapping[column] if column in rename_mapping else column
+                for column in metric.columns
+            ]
+            output_metric = IfGroupedBy(output_metric_columns, metric.inner_metric)
 
         output_columns = {
             rename_mapping.get(column, column): input_domain[column]
@@ -172,7 +168,6 @@ class Rename(Transformation):
         """Returns mapping from old column names to new column names."""
         return self._rename_mapping.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -183,7 +178,6 @@ class Rename(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 
@@ -191,9 +185,11 @@ class Rename(Transformation):
         """Renames columns."""
         return sdf.select(
             [
-                sf.col(c).alias(self._rename_mapping[c])
-                if c in self._rename_mapping
-                else sf.col(c)
+                (
+                    sf.col(c).alias(self._rename_mapping[c])
+                    if c in self._rename_mapping
+                    else sf.col(c)
+                )
                 for c in sdf.columns
             ]
         )

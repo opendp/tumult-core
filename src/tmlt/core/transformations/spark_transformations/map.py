@@ -1,13 +1,11 @@
-# pylint: disable=line-too-long
 """Transformations for applying user defined maps to Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from collections import OrderedDict
 from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
@@ -48,13 +46,13 @@ def _assert_row_matches_domain(row: Dict[str, Any], domain: SparkRowDomain) -> N
             f"but expected {sorted(schema.keys())}.",
         )
 
-    for f in row.keys():
-        if not schema[f].valid_py_value(row[f]):
+    for col, value in row.items():
+        if not schema[col].valid_py_value(value):
             raise OutOfDomainError(
                 domain,
                 row,
-                f"Invalid value in column '{f}' of transformation output, "
-                f"{row[f]} is not a valid value for {schema[f]}.",
+                f"Invalid value in column '{col}' of transformation output, "
+                f"{value} is not a valid value for {schema[col]}.",
             )
 
 
@@ -150,7 +148,7 @@ class RowToRowTransformation(Transformation):
                 :class:`~.RowToRowsTransformation` is not stable! Its
                 :meth:`~.stability_relation` always returns False, and its
                 :meth:`~.stability_function` always raises :class:`NotImplementedError`.
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -340,7 +338,7 @@ class RowToRowsTransformation(Transformation):
                 :class:`~.RowToRowsTransformation` is not stable! Its
                 :meth:`~.stability_relation` always returns False, and its
                 :meth:`~.stability_function` always raises :class:`NotImplementedError`.
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -514,7 +512,7 @@ class RowsToRowsTransformation(Transformation):
                 :class:`~.RowsToRowsTransformation` is not stable! Its
                 :meth:`~.stability_relation` always returns False, and its
                 :meth:`~.stability_function` always raises :class:`NotImplementedError`.
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -690,11 +688,12 @@ class FlatMap(Transformation):
             For
 
             - SymmetricDifference()
-            - IfGroupedBy(column, SumOf(SymmetricDifference()))
-            - IfGroupedBy(column, RootSumOfSquared(SymmetricDifference()))
+            - IfGroupedBy({column}, SumOf(SymmetricDifference()))
+            - IfGroupedBy({column}, RootSumOfSquared(SymmetricDifference()))
 
             :class:`~.FlatMap`'s :meth:`~.stability_function` returns the ``d_in``
-            times :attr:`.max_num_rows`. If :attr:`.max_num_rows` is None, it returns infinity.
+            times :attr:`.max_num_rows`. If :attr:`.max_num_rows` is None, it
+            returns infinity.
 
             >>> duplicate_flat_map.stability_function(1)
             2
@@ -703,10 +702,10 @@ class FlatMap(Transformation):
 
             For
 
-            - IfGroupedBy(column, SymmetricDifference())
+            - IfGroupedBy({column}, SymmetricDifference())
 
             :class:`~.FlatMap`'s :meth:`~.stability_function` returns ``d_in``.
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -720,10 +719,10 @@ class FlatMap(Transformation):
         Args:
             metric: Distance metric for input and output DataFrames.
             row_transformer: Transformation to apply to each row.
-            max_num_rows: The maximum number of rows to allow from ``row_transformer``. If
-                more rows are output, the additional rows are suppressed. If this value
-                is None, the transformation will not impose a limit on the number of
-                rows. None is only allowed if the metric is
+            max_num_rows: The maximum number of rows to allow from ``row_transformer``.
+                If more rows are output, the additional rows are suppressed. If this
+                value is None, the transformation will not impose a limit on the number
+                of rows. None is only allowed if the metric is
                 ``IfGroupedBy(SymmetricDifference())``.
         """
         if max_num_rows is not None and max_num_rows < 0:
@@ -788,9 +787,8 @@ class FlatMap(Transformation):
             self.input_metric.inner_metric, SymmetricDifference
         ):
             return ExactNumber(d_in)
-        else:
-            if self.max_num_rows is None:
-                return ExactNumber(float("inf"))
+        elif self.max_num_rows is None:
+            return ExactNumber(float("inf"))
         # help mypy
         assert self.max_num_rows is not None
         return ExactNumber(d_in) * self.max_num_rows
@@ -920,13 +918,13 @@ class GroupingFlatMap(Transformation):
         >>> add_i_flat_map.input_metric
         SymmetricDifference()
         >>> add_i_flat_map.output_metric
-        IfGroupedBy(column='i', inner_metric=RootSumOfSquared(inner_metric=SymmetricDifference()))
+        IfGroupedBy(columns={'i'}, inner_metric=RootSumOfSquared(inner_metric=SymmetricDifference()))
 
         Stability Guarantee:
             :class:`~.GroupingFlatMap` supports two different output metrics:
 
-            - IfGroupedBy(column='new_column', inner_metric=SumOf(SummetricDifference()))
-            - IfGroupedBy(column='new_column', inner_metric=RootSumOfSquared(SymmetricDifference()))
+            - IfGroupedBy(columns={'new_column'}, inner_metric=SumOf(SummetricDifference()))
+            - IfGroupedBy(columns={'new_column'}, inner_metric=RootSumOfSquared(SymmetricDifference()))
 
             The meth:`~.stability_function` is different depending on the output
             metric:
@@ -935,12 +933,13 @@ class GroupingFlatMap(Transformation):
 
                 ``d_in * self.max_num_rows``
 
-            If the inner metric is ``RootSumOfSquared(SymmetricDifference())``, we
-            can use the added structure of the ``row_transformer`` to achieve a
-            tighter analysis. We know that for each input row, the function will
-            produce at most one output row per value of the new column, so in total
-            we can produce up to ``d_in`` rows for each of up to ``self.max_num_rows``
-            values of the new column. Therefore, under ``RootSumOfSquared``, ``d_out`` is
+            If the inner metric is ``RootSumOfSquared(SymmetricDifference())``,
+            we can use the added structure of the ``row_transformer`` to achieve
+            a tighter analysis. We know that for each input row, the function
+            will produce at most one output row per value of the new column, so
+            in total we can produce up to ``d_in`` rows for each of up to
+            ``self.max_num_rows`` values of the new column. Therefore, under
+            ``RootSumOfSquared``, ``d_out`` is
 
                 ``d_in * sqrt(self.max_num_rows)``
 
@@ -948,7 +947,7 @@ class GroupingFlatMap(Transformation):
             sqrt(3)
             >>> add_i_flat_map.stability_function(2)
             2*sqrt(3)
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -987,7 +986,7 @@ class GroupingFlatMap(Transformation):
                 "Inner metric for output metric must be SymmetricDifference.",
             )
 
-        self._grouping_column = list(additional_columns)[0]
+        self._grouping_column = next(iter(additional_columns))
         self._max_num_rows = max_num_rows
         self._row_transformer = row_transformer
 
@@ -997,7 +996,7 @@ class GroupingFlatMap(Transformation):
             output_domain=SparkDataFrameDomain(
                 row_transformer.output_domain.element_domain.schema
             ),
-            output_metric=IfGroupedBy(self._grouping_column, output_metric),
+            output_metric=IfGroupedBy([self._grouping_column], output_metric),
         )
 
     @property
@@ -1153,7 +1152,7 @@ class Map(Transformation):
             1
             >>> rename_b_to_c_map.stability_function(2)
             2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -1279,7 +1278,7 @@ class FlatMapByKey(Transformation):
         >>> # sum_by_key_transformation is a RowsToRowsTransformation that sums column v
         >>> # for each ID group.
         >>> sum_by_key = FlatMapByKey(
-        ...     metric=IfGroupedBy("id", SymmetricDifference()),
+        ...     metric=IfGroupedBy({"id"}, SymmetricDifference()),
         ...     row_transformer=sum_by_key_transformation,
         ... )
         >>> # Apply transformation to data
@@ -1302,13 +1301,13 @@ class FlatMapByKey(Transformation):
         >>> sum_by_key.output_domain
         SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'sum': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
         >>> sum_by_key.input_metric
-        IfGroupedBy(column='id', inner_metric=SymmetricDifference())
+        IfGroupedBy(columns={'id'}, inner_metric=SymmetricDifference())
         >>> sum_by_key.output_metric
-        IfGroupedBy(column='id', inner_metric=SymmetricDifference())
+        IfGroupedBy(columns={'id'}, inner_metric=SymmetricDifference())
 
         Stability Guarantee:
             :class:`~.FlatMapByKey`'s :meth:`~.stability_function` returns ``d_in``.
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -1335,9 +1334,16 @@ class FlatMapByKey(Transformation):
                 metric, "Inner metric for IfGroupedBy must be SymmetricDifference()."
             )
 
-        key_column = metric.column
+        if len(metric.columns) > 1:
+            raise UnsupportedMetricError(
+                metric,
+                "Keys must be contained in a single column, but FlatMapByKey "
+                "got an IfGroupedBy with multiple columns.",
+            )
+
+        self._key_column = next(iter(metric.columns))
         output_schema = OrderedDict(row_transformer.output_domain.element_domain.schema)
-        if key_column in output_schema:
+        if self._key_column in output_schema:
             raise UnsupportedDomainError(
                 row_transformer.output_domain,
                 "Transformer output rows must not contain grouping column.",
@@ -1360,10 +1366,10 @@ class FlatMapByKey(Transformation):
             )
 
         # Add the key column back to the schema, ensuring it is the first column.
-        output_schema[key_column] = row_transformer.input_domain.element_domain.schema[
-            key_column
-        ]
-        output_schema.move_to_end(key_column, last=False)
+        output_schema[
+            self._key_column
+        ] = row_transformer.input_domain.element_domain.schema[self._key_column]
+        output_schema.move_to_end(self._key_column, last=False)
 
         super().__init__(
             input_domain=input_domain,
@@ -1400,7 +1406,6 @@ class FlatMapByKey(Transformation):
         )
 
         spark = SparkSession.builder.getOrCreate()
-        key_col = self.input_metric.column
         transformer_output_schema = (
             self.row_transformer.output_domain.element_domain.schema
         )
@@ -1445,11 +1450,15 @@ class FlatMapByKey(Transformation):
             # PySpark doesn't handle empty rows very gracefully, so if the
             # output rows are empty, don't bother looking at them.
             if len(transformer_output_schema) == 0:
-                return [Row(**{key_col: key}) for _ in transformed_rows]
-            return [Row(**{key_col: key}, **r.asDict()) for r in transformed_rows]
+                return [Row(**{self._key_column: key}) for _ in transformed_rows]
+            return [
+                Row(**{self._key_column: key}, **r.asDict()) for r in transformed_rows
+            ]
 
         grouped_df = (
-            spark.createDataFrame(sdf.rdd.keyBy(lambda r: r[key_col]), ["key", "row"])
+            spark.createDataFrame(
+                sdf.rdd.keyBy(lambda r: r[self._key_column]), ["key", "row"]
+            )
             .groupby("key")
             .agg(sf.collect_list("row"))
         )

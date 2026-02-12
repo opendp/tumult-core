@@ -1,9 +1,9 @@
 """Functions for truncating Spark DataFrames."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
-from typing import List, Tuple
+from typing import Collection, List, Tuple
 
 from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as sf
@@ -27,7 +27,7 @@ def _hash_column(df: DataFrame, column: str) -> Tuple[DataFrame, str]:
     Returns:
         The updated DataFrame and the name of the new column.
     """
-    new_column = get_nonconflicting_string(df.columns + [column])
+    new_column = get_nonconflicting_string([*df.columns, column])
     dataType = df.schema[column].dataType
     if (
         dataType == IntegerType()
@@ -89,7 +89,7 @@ def _hash_columns(df: DataFrame, columns: List[str]) -> Tuple[DataFrame, str]:
 
 
 def truncate_large_groups(
-    df: DataFrame, grouping_columns: List[str], threshold: int
+    df: DataFrame, grouping_columns: Collection[str], threshold: int
 ) -> DataFrame:
     """Order rows by a hash function and keep at most ``threshold`` rows for each group.
 
@@ -147,7 +147,7 @@ def truncate_large_groups(
         *starting_columns
     )
     df = df.withColumn(row_index_column, sf.row_number().over(distinct_row_partitions))
-    df, hash_column = _hash_columns(df, starting_columns + [row_index_column])
+    df, hash_column = _hash_columns(df, [*starting_columns, row_index_column])
     shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(
         hash_column, *starting_columns
     )
@@ -226,7 +226,10 @@ def drop_large_groups(
 
 
 def limit_keys_per_group(
-    df: DataFrame, grouping_columns: List[str], key_columns: List[str], threshold: int
+    df: DataFrame,
+    grouping_columns: Collection[str],
+    key_columns: Collection[str],
+    threshold: int,
 ) -> DataFrame:
     """Order keys by a hash function and keep at most ``threshold`` keys for each group.
 
@@ -298,7 +301,7 @@ def limit_keys_per_group(
         key_columns: Column defining the keys.
         threshold: Maximum number of keys to include for each group.
     """
-    df, hash_column = _hash_columns(df, grouping_columns + key_columns)
+    df, hash_column = _hash_columns(df, list(grouping_columns) + list(key_columns))
     shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(
         hash_column, *key_columns
     )

@@ -1,14 +1,17 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.rename`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from typing import Dict, Union
 
 import pandas as pd
 from parameterized import parameterized
 
-from tmlt.core.domains.spark_domains import SparkDataFrameDomain
+from tmlt.core.domains.spark_domains import (
+    SparkDataFrameDomain,
+    SparkStringColumnDescriptor,
+)
 from tmlt.core.exceptions import DomainColumnError
 from tmlt.core.metrics import (
     HammingDistance,
@@ -82,19 +85,29 @@ class TestRename(TestComponent):
         [
             (SymmetricDifference(), SymmetricDifference(), {"A": "AA"}),
             (
-                IfGroupedBy("B", SumOf(SymmetricDifference())),
-                IfGroupedBy("B", SumOf(SymmetricDifference())),
+                IfGroupedBy(["B"], SumOf(SymmetricDifference())),
+                IfGroupedBy(["B"], SumOf(SymmetricDifference())),
                 {"A": "AA"},
             ),
             (
-                IfGroupedBy("B", RootSumOfSquared(SymmetricDifference())),
-                IfGroupedBy("BB", RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["B"], RootSumOfSquared(SymmetricDifference())),
+                IfGroupedBy(["BB"], RootSumOfSquared(SymmetricDifference())),
                 {"B": "BB"},
             ),
             (
-                IfGroupedBy("B", SymmetricDifference()),
-                IfGroupedBy("BB", SymmetricDifference()),
+                IfGroupedBy(["B"], SymmetricDifference()),
+                IfGroupedBy(["BB"], SymmetricDifference()),
                 {"B": "BB"},
+            ),
+            (
+                IfGroupedBy(["A", "B"], SymmetricDifference()),
+                IfGroupedBy(["A", "BB"], SymmetricDifference()),
+                {"B": "BB"},
+            ),
+            (
+                IfGroupedBy(["A", "B"], SymmetricDifference()),
+                IfGroupedBy(["AA", "BB"], SymmetricDifference()),
+                {"A": "AA", "B": "BB"},
             ),
         ]
     )
@@ -106,7 +119,12 @@ class TestRename(TestComponent):
     ):
         """Tests that rename transformation works correctly."""
         rename_transformation = Rename(
-            input_domain=SparkDataFrameDomain(self.schema_a),
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
             metric=metric,
             rename_mapping=rename_mapping,
         )
@@ -163,6 +181,6 @@ class TestRename(TestComponent):
         with self.assertRaisesRegex(ValueError, error_msg):
             Rename(
                 input_domain=SparkDataFrameDomain(self.schema_a),
-                metric=IfGroupedBy(groupby_col, inner_metric),
+                metric=IfGroupedBy([groupby_col], inner_metric),
                 rename_mapping=rename_mapping,
             )

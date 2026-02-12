@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.domains.base`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 from unittest.case import TestCase
 from unittest.mock import Mock, patch
 
@@ -11,7 +11,7 @@ from tmlt.core.domains.base import Domain, OutOfDomainError
 
 
 class NewDomain(Domain):
-    """New Domain class that inherits from Domain"""
+    """New Domain class that inherits from Domain."""
 
     @property
     def carrier_type(self) -> type:

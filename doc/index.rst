@@ -3,7 +3,7 @@ Tumult Core documentation
 
 ..
     SPDX-License-Identifier: CC-BY-SA-4.0
-    Copyright Tumult Labs 2025
+    Copyright Tumult Labs 2026
 
 .. toctree::
    :hidden:
@@ -20,7 +20,7 @@ Introduction to Tumult Core
 
 Tumult Core is a collection of composable components for implementing
 algorithms to perform differentially private computations. The design of Tumult Core
-is based on the design proposed in the `OpenDP White Paper <https://projects.iq.harvard.edu/files/opendifferentialprivacy/files/opendp_white_paper_11may2020.pdf>`__,
+is based on the design proposed in the `OpenDP White Paper <https://web.archive.org/web/20250505214711/https://projects.iq.harvard.edu/files/opendp/files/opendp_programming_framework_11may2020_1_01.pdf>`_,
 and can automatically verify the privacy properties of algorithms constructed
 from Tumult Core components. Tumult Core is scalable, includes a wide variety of components,
 and supports multiple privacy definitions.
@@ -95,7 +95,7 @@ Most users should use `Tumult Analytics <https://docs.tmlt.dev/analytics/>`__ ra
 Contact Information
 ^^^^^^^^^^^^^^^^^^^
 The best place to ask questions, file feature requests, or give feedback about Tumult Core
-is our `Slack server <https://tmltdev.slack.com/join/shared_invite/zt-1bky0mh9v-vOB8azKAVoxmzJDUdWd5Wg#>`__.
+is our `Slack server <https://join.slack.com/t/opendp/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w>`__.
 We also use it for announcements of new releases and feature additions.
 
 Documentation License

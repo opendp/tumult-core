@@ -1,18 +1,19 @@
 """Benchmarking module for PublicJoin."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import time
 from random import randint
 from typing import List, Optional, Tuple, Union
 
 import pandas as pd
+from benchmarking_utils import write_as_html
 from pyspark.sql import SparkSession
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import lit
 from pyspark.sql.types import LongType
-from benchmarking_utils import write_as_html
+
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -75,7 +76,7 @@ class BenchmarkSparkPublicJoin:
             domain_size = 2
             rows_in_private = 100
             input_domain = SparkDataFrameDomain(schema=self.schema)
-            private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+            private_df = self.spark.createDataFrame(
                 pd.DataFrame(
                     [[1.2, i] for i in range(domain_size)]
                     * int(rows_in_private / domain_size),
@@ -87,7 +88,7 @@ class BenchmarkSparkPublicJoin:
                     [[i, 2.2] for i in range(domain_size)] * int(rows / domain_size),
                     columns=["B", "C"],
                 )
-                metric = IfGroupedBy("B", SumOf(SymmetricDifference()))
+                metric = IfGroupedBy(["B"], SumOf(SymmetricDifference()))
                 join_cols = ["B"]
                 transform_time, running_time = self.evaluate_runtime(
                     input_domain=input_domain,
@@ -121,14 +122,14 @@ class BenchmarkSparkPublicJoin:
                 columns=["B", "C"],
             )
             for rows in rows_private:
-                private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+                private_df = self.spark.createDataFrame(
                     pd.DataFrame(
                         [[1.2, i] for i in range(domain_size)]
                         * int(rows / domain_size),
                         columns=["A", "B"],
                     )
                 )
-                metric = IfGroupedBy("B", SumOf(SymmetricDifference()))
+                metric = IfGroupedBy(["B"], SumOf(SymmetricDifference()))
                 join_cols = ["B"]
                 transform_time, running_time = self.evaluate_runtime(
                     input_domain=input_domain,
@@ -157,7 +158,7 @@ class BenchmarkSparkPublicJoin:
             rows_in_public = 10000
             rows_in_private = 100
             input_domain = SparkDataFrameDomain(schema=self.schema)
-            private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+            private_df = self.spark.createDataFrame(
                 pd.DataFrame(
                     [[10.0, i] for i in range(domain_size)]
                     * int(rows_in_private / domain_size),
@@ -170,7 +171,7 @@ class BenchmarkSparkPublicJoin:
                     [tuple(range(cols))] * rows_in_public, columns=columns
                 )
                 public_df["B"] = [randint(0, 1) for i in range(rows_in_public)]
-                metric = IfGroupedBy("B", SumOf(SymmetricDifference()))
+                metric = IfGroupedBy(["B"], SumOf(SymmetricDifference()))
                 join_cols = ["B"]
                 transform_time, running_time = self.evaluate_runtime(
                     input_domain=input_domain,
@@ -205,15 +206,17 @@ class BenchmarkSparkPublicJoin:
             )
             for cols in columns_private:
                 schema = {f"Col_{i}": SparkFloatColumnDescriptor() for i in range(cols)}
-                private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+                private_df = self.spark.createDataFrame(
                     pd.DataFrame(
                         [tuple(range(cols))] * rows_in_private, columns=schema.keys()
                     )
                 )
-                private_df = private_df.withColumn("B", lit(randint(0, 1)).cast(LongType()))
+                private_df = private_df.withColumn(
+                    "B", lit(randint(0, 1)).cast(LongType())
+                )
                 schema["B"] = SparkIntegerColumnDescriptor()
                 input_domain = SparkDataFrameDomain(schema=schema)
-                metric = IfGroupedBy("B", SumOf(SymmetricDifference()))
+                metric = IfGroupedBy(["B"], SumOf(SymmetricDifference()))
                 join_cols = ["B"]
                 transform_time, running_time = self.evaluate_runtime(
                     input_domain=input_domain,
@@ -248,7 +251,7 @@ class BenchmarkSparkPublicJoin:
                 schema = {
                     f"Col_{i}": SparkStringColumnDescriptor() for i in range(num_cols)
                 }
-                private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+                private_df = self.spark.createDataFrame(
                     pd.DataFrame(data, columns=columns)
                 )
                 private_df = private_df.withColumn("B", lit("B"))
@@ -281,7 +284,7 @@ class BenchmarkSparkPublicJoin:
             rows, join_columns = 4000, 1
             input_domain = SparkDataFrameDomain(schema=self.schema)
             for size in domain_sizes:
-                private_df = self.spark.createDataFrame(  # pylint: disable=no-member
+                private_df = self.spark.createDataFrame(
                     pd.DataFrame(
                         [[10.0, i] for i in range(size)] * int(rows / size),
                         columns=["A", "B"],

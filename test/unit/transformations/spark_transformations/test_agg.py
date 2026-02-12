@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.transformations.spark_transformations.agg`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from typing import List, Optional, Tuple, Union
 
@@ -181,9 +181,7 @@ class TestCountDistinct(PySparkTest):
         ]
     )
     def test_correctness(self, rows: List[Tuple], expected: int):
-        """Tests that the CountDistinct transformation returns the expected
-        result.
-        """
+        """CountDistinct transformation returns the expected result."""
         transformation = CountDistinct(
             input_domain=SparkDataFrameDomain(
                 {
@@ -1251,11 +1249,10 @@ class TestDerivedTransformations(PySparkTest):
         )
 
         # the "type: ignore" comment makes the next line 2 characters too long.
-        # pylint: disable=line-too-long
+
         count_distinct_transformation = create_count_distinct_aggregation(  # type: ignore
             input_domain=input_domain, input_metric=input_metric
         )
-        # pylint: enable=line-too-long
 
         self.assertTrue(
             isinstance(

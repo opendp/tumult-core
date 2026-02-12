@@ -1,7 +1,7 @@
 """Unit tests for :mod:`~tmlt.core.measurements.spark_measurements`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from fractions import Fraction
 from typing import Dict, List
@@ -187,7 +187,6 @@ class TestApplyInPandas(PySparkTest):
 
     def test_privacy_function_and_relation(self):
         """Test that the privacy function and relation are computed correctly."""
-
         quantile_measurement = NoisyQuantile(
             PandasSeriesDomain(NumpyIntegerDomain()),
             output_measure=PureDP(),
@@ -664,7 +663,6 @@ class TestSparseVectorPrefixSums(PySparkTest):
         self, input_df, threshold_fraction, grouping_columns, expected
     ):
         """Tests that SparseVectorPrefixSums works correctly for various inputs."""
-
         domain = SparkDataFrameDomain(
             {
                 "grouping1": SparkStringColumnDescriptor(allow_null=True),

@@ -1,7 +1,7 @@
 """Tests for transformations.spark_transformations.map.GroupingFlatMap."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import math
 
@@ -60,7 +60,7 @@ def test_properties():
         }
     )
     assert transformation.output_metric == IfGroupedBy(
-        "g", RootSumOfSquared(SymmetricDifference())
+        ["g"], RootSumOfSquared(SymmetricDifference())
     )
     assert transformation.row_transformer == row_transformer
     assert transformation.max_num_rows == 2
@@ -242,7 +242,6 @@ def test_stability(
 
 def test_null_nan_inf(spark):
     """Transformation handles null/NaN/inf inputs and outputs correctly."""
-
     # Do not use Pandas in this test! Anything passing through a Pandas
     # dataframe could silently modify the NaNs/nulls and invalidate the
     # test.

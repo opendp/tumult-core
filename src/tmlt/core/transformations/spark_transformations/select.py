@@ -1,13 +1,11 @@
-# pylint: disable=line-too-long
 """Transformations for selecting columns from Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information.
 """
-# pylint: enable=line-too-long
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from typing import List, Union
 
@@ -101,7 +99,7 @@ class Select(Transformation):
             1
             >>> drop_b.stability_function(2)
             2
-    """  # pylint: disable=line-too-long,useless-suppression
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -128,10 +126,13 @@ class Select(Transformation):
             )
         output_columns = {col: input_domain[col] for col in columns}
         if isinstance(metric, IfGroupedBy):
-            if metric.column not in columns:
+            unselected_metric_columns = [
+                column for column in metric.columns if column not in columns
+            ]
+            if unselected_metric_columns:
                 raise ValueError(
-                    "Column used in IfGroupedBy metric must be"
-                    f" selected: {metric.column}."
+                    "Column used in IfGroupedBy metric must be selected: "
+                    f"{unselected_metric_columns}."
                 )
             if metric.inner_metric not in (
                 SymmetricDifference(),
@@ -159,7 +160,6 @@ class Select(Transformation):
         """Returns columns being selected."""
         return self._columns.copy()
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -170,7 +170,6 @@ class Select(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 

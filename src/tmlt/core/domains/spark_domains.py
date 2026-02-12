@@ -1,14 +1,14 @@
 """Domains for Spark datatypes."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import datetime
 import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, List, Mapping, Optional, Sequence
+from typing import Any, ClassVar, Collection, Mapping, Optional, Sequence
 
 import numpy as np
 from pyspark import Row
@@ -35,7 +35,7 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
-from tmlt.core.utils.misc import escape_column_name, get_fullname
+from tmlt.core.utils.misc import ConciseFrozenSet, escape_column_name, get_fullname
 
 
 class SparkColumnDescriptor(ABC):
@@ -87,10 +87,10 @@ SparkColumnsDescriptor = Mapping[str, SparkColumnDescriptor]
 class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
     """Describes an integer attribute in Spark."""
 
-    SIZE_TO_TYPE = {32: IntegerType(), 64: LongType()}
+    SIZE_TO_TYPE: ClassVar = {32: IntegerType(), 64: LongType()}
     """Mapping from size to Spark type."""
 
-    SIZE_TO_MIN_MAX = {
+    SIZE_TO_MIN_MAX: ClassVar = {
         32: (-2147483648, 2147483647),
         64: (-9223372036854775808, 9223372036854775807),
     }
@@ -133,7 +133,7 @@ class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
 class SparkFloatColumnDescriptor(SparkColumnDescriptor):
     """Describes a float attribute in Spark."""
 
-    SIZE_TO_TYPE = {32: FloatType(), 64: DoubleType()}
+    SIZE_TO_TYPE: ClassVar = {32: FloatType(), 64: DoubleType()}
     """Mapping from size to Spark type."""
 
     allow_nan: bool = False
@@ -495,25 +495,29 @@ class SparkGroupedDataFrameDomain(Domain):
     """Domain of grouped DataFrames."""
 
     @typechecked
-    def __init__(self, schema: SparkColumnsDescriptor, groupby_columns: Sequence[str]):
+    def __init__(
+        self, schema: SparkColumnsDescriptor, groupby_columns: Collection[str]
+    ):
         """Constructor.
 
         Args:
             schema: Mapping from column name to column descriptors for all columns.
             groupby_columns: List of columns used for grouping.
         """
-        if len(groupby_columns) != len(set(groupby_columns)):
+        self._groupby_columns = ConciseFrozenSet(groupby_columns)
+        if len(groupby_columns) != len(self.groupby_columns):
             raise ValueError("groupby_columns contains duplicate column names.")
-        invalid_groupby_columns = set(groupby_columns) - set(schema)
+        invalid_groupby_columns = self.groupby_columns - set(schema)
         if invalid_groupby_columns:
-            raise ValueError(f"Invalid groupby columns: {invalid_groupby_columns}")
+            raise ValueError(
+                f"Invalid groupby columns: {ConciseFrozenSet(invalid_groupby_columns)}"
+            )
 
         for column in groupby_columns:
             if isinstance(schema[column], SparkFloatColumnDescriptor):
                 raise ValueError(f"Can not group by a floating point column: {column}")
 
         self._schema = dict(schema.items())
-        self._groupby_columns = list(groupby_columns)
         # TODO(#2727): Remove this check once we update typeguard to ^3.0.0
         for key, domain in self._schema.items():
             if not isinstance(domain, SparkColumnDescriptor):
@@ -529,9 +533,9 @@ class SparkGroupedDataFrameDomain(Domain):
         return self._schema.copy()
 
     @property
-    def groupby_columns(self) -> List[str]:
+    def groupby_columns(self) -> frozenset[str]:
         """Returns list of columns used for grouping."""
-        return self._groupby_columns.copy()
+        return self._groupby_columns
 
     def __repr__(self) -> str:
         """Return string representation of the object."""
@@ -544,9 +548,7 @@ class SparkGroupedDataFrameDomain(Domain):
     def carrier_type(self) -> type:
         """Returns carrier type for the domain."""
         # avoid circular import
-        from tmlt.core.utils.grouped_dataframe import (  # pylint: disable=import-outside-toplevel
-            GroupedDataFrame,
-        )
+        from tmlt.core.utils.grouped_dataframe import GroupedDataFrame  # noqa: PLC0415
 
         return GroupedDataFrame
 
@@ -571,31 +573,39 @@ class SparkGroupedDataFrameDomain(Domain):
     def validate(self, value: Any) -> None:
         """Raises error if value is not a GroupedDataFrame with matching group_keys."""
         # avoid circular import
-        from tmlt.core.utils.grouped_dataframe import (  # pylint: disable=import-outside-toplevel
-            GroupedDataFrame,
-        )
+        from tmlt.core.utils.grouped_dataframe import GroupedDataFrame  # noqa: PLC0415
 
         super().validate(value)
         assert isinstance(value, GroupedDataFrame)
         inner_df_domain = SparkDataFrameDomain(self.schema)
         try:
-            inner_df_domain.validate(
-                value._dataframe  # pylint: disable=protected-access
-            )
+            inner_df_domain.validate(value.dataframe)
         except OutOfDomainError as exception:
             raise OutOfDomainError(
                 self, value, f"Invalid inner DataFrame: {exception}"
             ) from exception
 
         group_key_domain = SparkDataFrameDomain(
-            {column: self.schema[column] for column in self.groupby_columns}
+            {
+                column: desc
+                for column, desc in self.schema.items()
+                if column in self.groupby_columns
+            }
         )
-        try:
-            group_key_domain.validate(value.group_keys)
-        except OutOfDomainError as exception:
-            raise OutOfDomainError(
-                self, value, f"Invalid group keys: {exception}"
-            ) from exception
+        if value.group_keys is None:
+            if group_key_domain.schema:
+                raise OutOfDomainError(
+                    self,
+                    value,
+                    "Invalid group keys: expected groups, but got total aggregation",
+                )
+        else:
+            try:
+                group_key_domain.validate(value.group_keys)
+            except OutOfDomainError as exception:
+                raise OutOfDomainError(
+                    self, value, f"Invalid group keys: {exception}"
+                ) from exception
 
     def get_group_domain(self) -> SparkDataFrameDomain:
         """Return the domain for one of the groups."""

@@ -1,13 +1,12 @@
-# pylint: disable=line-too-long
 """Transformations for filtering Spark DataFrames.
 
 See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
 for more information on transformations.
 """
-# pylint: enable=line-too-long
+
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from typing import Union
 
@@ -15,7 +14,7 @@ from pyspark.sql import DataFrame, SparkSession
 from typeguard import typechecked
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.exceptions import DomainColumnError, UnsupportedMetricError
+from tmlt.core.exceptions import UnsupportedMetricError
 from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -88,7 +87,7 @@ class Filter(Transformation):
             1
             >>> filter_transformation.stability_function(123)
             123
-    """  # pylint: disable=line-too-long
+    """  # noqa: E501
 
     @typechecked
     def __init__(
@@ -100,12 +99,12 @@ class Filter(Transformation):
         """Constructor.
 
         Args:
-            filter_expr: A string of SQL expression specifying the filter to apply to the
-                data. The language is the same as the one used by
+            filter_expr: A string of SQL expression specifying the filter to apply to
+                the data. The language is the same as the one used by
                 :meth:`pyspark.sql.DataFrame.filter`.
             domain: Domain of the input/output Spark DataFrames.
-            metric: Distance metric for the input and output Spark DataFrames. If the metric
-                is :class:`~.IfGroupedBy`, the innermost metric must be
+            metric: Distance metric for the input and output Spark DataFrames. If
+                the metric is :class:`~.IfGroupedBy`, the innermost metric must be
                 :class:`~.SymmetricDifference`.
         """
         spark = SparkSession.builder.getOrCreate()
@@ -124,12 +123,6 @@ class Filter(Transformation):
                         " RootSumOfSquared(SymmetricDifference())"
                     ),
                 )
-            if metric.column not in domain.schema:
-                raise DomainColumnError(
-                    domain,
-                    metric.column,
-                    f"Invalid IfGroupedBy metric: {metric.column} not in domain.",
-                )
         try:
             test_df.filter(filter_expr)
         except Exception as e:
@@ -147,7 +140,6 @@ class Filter(Transformation):
         """Returns the filter expression."""
         return self._filter_expr
 
-    # pylint: disable=line-too-long
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
@@ -158,7 +150,6 @@ class Filter(Transformation):
         Args:
             d_in: Distance between inputs under input_metric.
         """
-        # pylint: enable=line-too-long
         self.input_metric.validate(d_in)
         return ExactNumber(d_in)
 

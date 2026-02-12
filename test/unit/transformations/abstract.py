@@ -1,13 +1,10 @@
 """Abstract class for testing transformations."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 import copy
-
-# pylint: disable=unused-import
 from abc import ABC, abstractmethod
-from contextlib import nullcontext as does_not_raise
 from test.conftest import assert_frame_equal_with_sort
 from typing import Any, Callable, ContextManager, Dict, Optional, Type
 

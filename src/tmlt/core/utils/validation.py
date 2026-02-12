@@ -1,7 +1,7 @@
 """Utilities for checking the inputs to components."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2025
+# Copyright Tumult Labs 2026
 
 from __future__ import annotations
 
@@ -165,14 +165,12 @@ def validate_exact_number(
         if minimum_is_inclusive:
             if exact_value < exact_minimum:
                 raise ValueError(f"{value} is not greater than or equal to {minimum}")
-        else:
-            if exact_value <= exact_minimum:
-                raise ValueError(f"{value} is not strictly greater than {minimum}")
+        elif exact_value <= exact_minimum:
+            raise ValueError(f"{value} is not strictly greater than {minimum}")
     if maximum is not None:
         exact_maximum = ExactNumber(maximum)
         if maximum_is_inclusive:
             if exact_value > exact_maximum:
                 raise ValueError(f"{value} is not less than or equal to {maximum}")
-        else:
-            if exact_value >= exact_maximum:
-                raise ValueError(f"{value} is not strictly less than {maximum}")
+        elif exact_value >= exact_maximum:
+            raise ValueError(f"{value} is not strictly less than {maximum}")
