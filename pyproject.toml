@@ -93,12 +93,6 @@ scripting = [
     "nox >=2024.03.02",
     "tmlt.nox_utils"
 ]
-dev = [
-    "ruff>=0.5.0", # Added to support numpy migration.
-]
-
-[tool.ruff.lint]
-select = ["NPY201"]
 
 [tool.uv.sources]
 # Switch which of these is commented out to test local changes to nox-utils:
@@ -200,6 +194,7 @@ explicit-preview-rules = true
 
 # A list of all of Ruff's rules can be found at https://docs.astral.sh/ruff/rules/
 select = [
+    "NPY201", # Support numpy migration
     # Enable Ruff-specific lints plus Pylint, pydocstyle, pyflakes, and pycodestyle.
     # The latter two cover many lints that we previously used pylint for, but
     # because they are overlapping Ruff only implements them in one set of rules.
