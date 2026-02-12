@@ -303,7 +303,7 @@ class AddNoiseToSeries(Measurement):
 
     def __call__(self, values: pd.Series) -> pd.Series:
         """Adds noise to each number in the input Series."""
-        return values.apply(lambda x: self.noise_measurement(x))
+        return values.apply(self.noise_measurement)
 
 
 class _RankedInterval(NamedTuple):

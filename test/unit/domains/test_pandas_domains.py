@@ -288,7 +288,7 @@ class TestPandasSeriesDomain(DomainTests):
                 PandasSeriesDomain(NumpyIntegerDomain(size=64)),
                 does_not_raise(),
             ),
-            (np.dtype([("f1", np.int16)]), None, pytest.raises(KeyError)),  # type: ignore
+            (np.dtype([("f1", np.int16)]), None, pytest.raises(KeyError)),
         ],
     )
     def test_from_numpy_type(
