@@ -116,7 +116,7 @@ DEPENDENCY_MATRIX = [
          id="3.12-newest",
          python="3.12",
          packages={
-             "pyspark[sql]": "==4.0.1",
+             "pyspark[sql]": "==4.1.0",
              "sympy": "==1.12",
              "pandas": "==2.3.3",
              "numpy": "==2.2.6",
