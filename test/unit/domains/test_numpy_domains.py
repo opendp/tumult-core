@@ -801,7 +801,7 @@ class TestNumpyStringDomain(DomainTests):
     @pytest.mark.parametrize(
         "dtype, expected, expectation",
         [
-            (np.dtype(np.object0), NumpyStringDomain(), does_not_raise()),  # type: ignore[attr-defined]
+            (np.dtype(np.object_), NumpyStringDomain(), does_not_raise()),
             (
                 np.dtype([("f1", np.int64)]),
                 None,
