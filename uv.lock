@@ -1639,10 +1639,49 @@ wheels = [
 
 [[package]]
 name = "randomgen"
+version = "1.26.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11' and sys_platform != 'darwin'",
+    "python_full_version < '3.11' and sys_platform == 'darwin'",
+]
+dependencies = [
+    { name = "numpy", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/55/f0275dbe399ee209bc23ab9db30220ff20a1cd8597647e6bb67d30af8fc7/randomgen-1.26.0.tar.gz", hash = "sha256:b929ec401e1c029142b6d174522b78d54fac525607540d11f674161af4a35101", size = 1335392, upload-time = "2023-09-21T09:41:50.698Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/57/a1/d93e9e9388004d8d010b0316e74cbc6d632257a3d0b061c380b12a4e89c6/randomgen-1.26.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f50599191bf2ad4e60e01a095c427ca55e130fde5718c55907d2174cf5688250", size = 3341241, upload-time = "2023-09-21T08:47:46.881Z" },
+    { url = "https://files.pythonhosted.org/packages/51/38/e639a2376b53422d80eeb1c970d7b0bd0994bece736c2f85289361f5f594/randomgen-1.26.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:dedead0e934db016301208ea95bf072b10edc8ef52178be081e008b1b2e8c33a", size = 3203646, upload-time = "2023-09-21T08:47:49.333Z" },
+    { url = "https://files.pythonhosted.org/packages/06/e4/df093e8c0e2e5b8e598696e8280c471431f8c4497f669da65eaf178245de/randomgen-1.26.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ed5b81b42bc57fce4ba71e541b7e36fee1b11cbcbe0e355f2adad652777a92ac", size = 3392996, upload-time = "2023-09-21T09:30:41.937Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/78/3ff1254883ff76ef01f890029799ae62980cfcfd08edceb33de6beaae9df/randomgen-1.26.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:421183a535f6ac038dce336e55128022049c958de73530209ffca7f5018dec19", size = 3520801, upload-time = "2023-09-21T09:30:44.544Z" },
+    { url = "https://files.pythonhosted.org/packages/44/68/0b3611dc4d10bcc00c266929341b84419adff871e5a6c2366256cc8669b3/randomgen-1.26.0-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:29fb1a8d7b38baf28cb4adbb18fce503d6679066448ab0a11242e999c559b83c", size = 3543444, upload-time = "2023-09-21T10:38:10.661Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/c5/cf1742bed5343be11850642fc7404973f7306b9cde89c8f51c00303835db/randomgen-1.26.0-cp310-cp310-win_amd64.whl", hash = "sha256:ebc028be3b3b6dd9bb689cb2849a3d58038b7b96b79427daaebc565241808d44", size = 6504595, upload-time = "2023-09-21T08:46:06.383Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/f5/fe2aad45c6477475aad406e7ec046c54e9a28c42a4beda02924b9b23ded5/randomgen-1.26.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:f3938a11c3de3eb29105c0553e664bd45b560f7934288ee6ecef1e63e883cc8c", size = 3348708, upload-time = "2023-09-21T08:50:39.167Z" },
+    { url = "https://files.pythonhosted.org/packages/86/98/a48baa4e755c0b7b94883269a903b9a3b6b1cd6823b90c0a0601ea8f3877/randomgen-1.26.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:a661607fb15deae1d94dc81cdbfc4667e8563db6a585225d52486818ff71c51d", size = 3208922, upload-time = "2023-09-21T08:50:41.121Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/aa/d8f8aeb92aba97046c35d7faa67e93263028b6bfd1b563c38bf39868e08a/randomgen-1.26.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c8377d14b895fd27f39ecbb28e68f1bda8693b770e93de7eec92d5472e41034a", size = 3393869, upload-time = "2023-09-21T09:22:34.184Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/b2/a5caa9bc4ee99c4dd231d334091ff98134f6c6097c043222b16d0aa0dc84/randomgen-1.26.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6d759f30f166663a92cc2372935c498465f2ce2136fa2f607db538d6f987f669", size = 3516894, upload-time = "2023-09-21T09:22:35.657Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/4b/e0de01d4516b85c2d34f70d26619148b01249f0b0d40777c246ca8202bf9/randomgen-1.26.0-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:89026a609e784b1ee1f0f869506ad1d80a210b22ba4f37381db143f5497e3d04", size = 3544165, upload-time = "2023-09-21T10:36:45.828Z" },
+    { url = "https://files.pythonhosted.org/packages/22/b0/454039a0dcf23f5cd12b642ebb9228ca88bf222fea1b6915c5927d540c06/randomgen-1.26.0-cp311-cp311-win_amd64.whl", hash = "sha256:ac2c07983c9eedb8148526ade3bc482cfe816684ba46b1aea193d876e667422f", size = 6510282, upload-time = "2023-09-21T08:43:49.052Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/43/6b911d8caad08377491fc6be262ef7f233d22f3af4de71287fe8cc05d214/randomgen-1.26.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:eedaab007c19d06874cbe11d56cd0378df1c73afae7ed6e9536d3246a52132bb", size = 3291971, upload-time = "2023-09-26T07:25:06.712Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/13/88f2d102c7f26f40c51c7e5d77a5308153b76678f0bbe843dda65389e679/randomgen-1.26.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:a914795d443b83748375969f3f1e90ae70e1d1b5765b5f411724c6e44bd78e94", size = 3192386, upload-time = "2023-09-26T07:25:09.718Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/f7/5a083807a7f48e262415d8a3df72a6a0c54cdfea2bfb166ebe77f35e45e8/randomgen-1.26.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ce9cb06ae28539cbc9cdfa080446a5540dcd498758827af3e9f57d0033a44636", size = 3336513, upload-time = "2023-09-26T08:12:27.727Z" },
+    { url = "https://files.pythonhosted.org/packages/53/c1/ce533d1ac0aa8087b960f1a875d55e7a5a89f3ab45b32982f0e2ec135ef2/randomgen-1.26.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d55f1f0788fc632ef7cbeb3eab32f8521b9583cb3db0a08c121b4a9f32f45e08", size = 3456869, upload-time = "2023-09-26T08:12:30.317Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/2a/fdc884dfeb1d7edccb832fcb4a94a5e73dace2b9391b3f256f1ecd0bafa1/randomgen-1.26.0-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:e857a7ddc4eaf5caad7b7aa31a8efb63b8b787de9b0b73ab9aeb2817558cf4aa", size = 3481319, upload-time = "2023-09-26T08:12:32.729Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/1d/15a6f569c6746e7c5e18925684f4ebae35ee967cf82bb02cd3233e2645b1/randomgen-1.26.0-cp312-cp312-win_amd64.whl", hash = "sha256:3323b8c6bf738200ddaccdcebef06afab33c0c4115fb2b4cb64d3d78b16df8b2", size = 6472018, upload-time = "2023-09-26T07:18:21.137Z" },
+]
+
+[[package]]
+name = "randomgen"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12' and sys_platform == 'darwin'",
+    "python_full_version >= '3.12' and sys_platform != 'darwin'",
+    "python_full_version == '3.11.*' and sys_platform != 'darwin'",
+    "python_full_version == '3.11.*' and sys_platform == 'darwin'",
+]
 dependencies = [
-    { name = "numpy" },
+    { name = "numpy", marker = "python_full_version >= '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/67/6f/18e8db0f28b1a8fd5e8e4f34b0766a3181f72e5982963303b765e9eb456f/randomgen-2.3.0.tar.gz", hash = "sha256:e0de65d79e1346ac406b51df49a79b9e3d8b41a8a1a8e5de088c2fb49b8c89cc", size = 1571005, upload-time = "2025-10-22T16:05:26.742Z" }
 wheels = [
@@ -2075,7 +2114,8 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pyspark", version = "3.5.8", source = { registry = "https://pypi.org/simple" }, extra = ["sql"], marker = "python_full_version < '3.12' or sys_platform == 'darwin'" },
     { name = "pyspark", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, extra = ["sql"], marker = "python_full_version >= '3.12' and sys_platform != 'darwin'" },
-    { name = "randomgen" },
+    { name = "randomgen", version = "1.26.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "randomgen", version = "2.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "setuptools" },
@@ -2151,7 +2191,9 @@ requires-dist = [
     { name = "pyspark", extras = ["sql"], marker = "python_full_version == '3.11.*' and sys_platform != 'darwin'", specifier = ">=3.4.0,<3.6" },
     { name = "pyspark", extras = ["sql"], marker = "python_full_version >= '3.12' and sys_platform != 'darwin'", specifier = ">=4,<5" },
     { name = "pytest", marker = "extra == 'testing'", specifier = ">=7.3.1,<8" },
-    { name = "randomgen", specifier = ">=1.26.0,<=2.3.0" },
+    { name = "randomgen", marker = "python_full_version < '3.10'", specifier = ">=1.20.0,<=1.26.0" },
+    { name = "randomgen", marker = "python_full_version == '3.10.*'", specifier = ">=1.23.0,<=1.26.0" },
+    { name = "randomgen", marker = "python_full_version >= '3.11'", specifier = ">=1.26.0,<=2.3.0" },
     { name = "scipy", marker = "python_full_version < '3.10'", specifier = ">=1.6.0,<2.0.0" },
     { name = "scipy", marker = "python_full_version == '3.10.*'", specifier = ">=1.8.0,<2.0.0" },
     { name = "scipy", marker = "python_full_version == '3.11.*'", specifier = ">=1.9.2,<2.0.0" },
