@@ -195,7 +195,7 @@ class TestAddUniqueColumn(PySparkTest):
             ([(1, ""), (2, "Y"), (2, "Y"), (2, "Y")], [(1, None), (2, "Y"), (2, "Y")]),
         ]
     )
-    def test_consistent_ids(self, df1_rows: pd.DataFrame, df2_rows: pd.DataFrame):
+    def test_consistent_ids(self, df1_rows: list[tuple], df2_rows: list[tuple]):
         """AddUniqueColumn assigns IDs consistently.
 
         This tests that the stability is in fact 1.
