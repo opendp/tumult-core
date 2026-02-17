@@ -66,7 +66,7 @@ DEPENDENCY_MATRIX = [
         packages={
             "pyspark[sql]": "==3.5.8",
             "sympy": "==1.12",
-            "pandas": "==1.5.2",
+            "pandas": "==1.5.3",
             "numpy": "==1.26.4",
             "scipy": "==1.14.1",
             "randomgen": "==2.3.0",
@@ -92,7 +92,7 @@ DEPENDENCY_MATRIX = [
          packages={
              "pyspark[sql]": "==3.5.8",
              "sympy": "==1.12",
-             "pandas": "==1.5.2",
+             "pandas": "==1.5.3",
              "numpy": "==1.26.4",
              "scipy": "==1.14.1",
              "randomgen": "==2.3.0",
@@ -103,7 +103,7 @@ DEPENDENCY_MATRIX = [
          id="3.12-oldest",
          python="3.12",
          packages={
-             "pyspark[sql]": "==3.5.0",
+             "pyspark[sql]": "==4.0.0",
              "sympy": "==1.8",
              "pandas": "==2.2.0",
              "numpy": "==1.26.0",
