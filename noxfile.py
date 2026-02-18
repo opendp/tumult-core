@@ -56,7 +56,7 @@ DEPENDENCY_MATRIX = [
             "pandas": "==1.4.0",
             "numpy": "==1.23.2",
             "scipy": "==1.8.0",
-            "randomgen": "==1.20.0",
+            "randomgen": "==1.23.0",
             "pyarrow": "==14.0.1",
         },
     ),
