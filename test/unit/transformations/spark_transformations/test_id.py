@@ -128,7 +128,7 @@ class TestAddUniqueColumn(PySparkTest):
                 },
             ),
             (
-                pd.DataFrame({"A": ["False", ""], "B": ["", "false"]}),
+                pd.DataFrame({"A": ["false", ""], "B": ["", "false"]}),
                 {
                     "A": SparkStringColumnDescriptor(),
                     "B": SparkStringColumnDescriptor(),
