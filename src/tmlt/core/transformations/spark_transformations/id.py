@@ -137,12 +137,26 @@ class AddUniqueColumn(Transformation):
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns DataFrame with ID column added."""
-        """Returns DataFrame with ID column added."""
         shuffled_partitions = Window.partitionBy(*sdf.columns).orderBy(sdf.columns[0])
         rank_column = get_nonconflicting_string(sdf.columns)
 
         sdf = sdf.withColumn(rank_column, sf.row_number().over(shuffled_partitions))
 
-        return sdf.withColumn(
-            self.column, sf.hex(sf.to_json(sf.array(*sdf.columns)).cast("string"))
-        ).drop(rank_column)
+        # Add a str column that enforces the type for the hex function
+        hex_column = get_nonconflicting_string(sdf.columns)
+        sdf = sdf.withColumn(
+            hex_column,
+            sf.concat_ws(
+                "|",
+                *[
+                    sf.coalesce(sf.col(c).cast("string"), sf.lit(None))
+                    for c in sdf.columns
+                ],
+            ),
+        )
+
+        return (
+            sdf.withColumn(self.column, sf.hex(sf.col(hex_column)))
+            .drop(rank_column)
+            .drop(hex_column)
+        )

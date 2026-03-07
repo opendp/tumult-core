@@ -483,7 +483,6 @@ class PySparkTest(unittest.TestCase):
             .config("spark.sql.warehouse.dir", "/tmp/hive_tables")
             .config("spark.hadoop.fs.defaultFS", "file:///")
             .config("spark.eventLog.enabled", "false")
-            .config("spark.driver.allowMultipleContexts", "true")
             .config("spark.ui.showConsoleProgress", "false")
             .config("spark.sql.execution.arrow.pyspark.enabled", "true")
             .config("spark.default.parallelism", "5")  # TODO(838)

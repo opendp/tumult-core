@@ -1499,23 +1499,21 @@ name = "pyspark"
 version = "3.5.8"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12' and sys_platform == 'darwin'",
     "python_full_version == '3.11.*' and sys_platform != 'darwin'",
     "python_full_version == '3.11.*' and sys_platform == 'darwin'",
     "python_full_version < '3.11' and sys_platform != 'darwin'",
     "python_full_version < '3.11' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "py4j", marker = "python_full_version < '3.12' or sys_platform == 'darwin'" },
+    { name = "py4j", marker = "python_full_version < '3.12'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/80/5a/3806f44eb47387e8af803508cdd6bbc0df784febf4dc010700be04a1ff89/pyspark-3.5.8.tar.gz", hash = "sha256:54cca0767b21b40e3953ad1d30f8601c53abf9cbda763653289cdcfcac52313c", size = 317817299, upload-time = "2026-01-15T11:46:14.487Z" }
 
 [package.optional-dependencies]
 sql = [
-    { name = "numpy", marker = "python_full_version < '3.12' or sys_platform == 'darwin'" },
+    { name = "numpy", marker = "python_full_version < '3.12'" },
     { name = "pandas", version = "1.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform == 'darwin'" },
-    { name = "pyarrow", marker = "python_full_version < '3.12' or sys_platform == 'darwin'" },
+    { name = "pyarrow", marker = "python_full_version < '3.12'" },
 ]
 
 [[package]]
@@ -1523,18 +1521,19 @@ name = "pyspark"
 version = "4.0.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
+    "python_full_version >= '3.12' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and sys_platform != 'darwin'",
 ]
 dependencies = [
-    { name = "py4j", marker = "python_full_version >= '3.12' and sys_platform != 'darwin'" },
+    { name = "py4j", marker = "python_full_version >= '3.12'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ae/40/1414582f16c1d7b051c668c2e19c62d21a18bd181d944cb24f5ddbb2423f/pyspark-4.0.1.tar.gz", hash = "sha256:9d1f22d994f60369228397e3479003ffe2dd736ba79165003246ff7bd48e2c73", size = 434204896, upload-time = "2025-09-06T07:15:57.091Z" }
 
 [package.optional-dependencies]
 sql = [
-    { name = "numpy", marker = "python_full_version >= '3.12' and sys_platform != 'darwin'" },
-    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform != 'darwin'" },
-    { name = "pyarrow", marker = "python_full_version >= '3.12' and sys_platform != 'darwin'" },
+    { name = "numpy", marker = "python_full_version >= '3.12'" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pyarrow", marker = "python_full_version >= '3.12'" },
 ]
 
 [[package]]
@@ -2112,8 +2111,8 @@ dependencies = [
     { name = "pandas", version = "1.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pyarrow" },
-    { name = "pyspark", version = "3.5.8", source = { registry = "https://pypi.org/simple" }, extra = ["sql"], marker = "python_full_version < '3.12' or sys_platform == 'darwin'" },
-    { name = "pyspark", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, extra = ["sql"], marker = "python_full_version >= '3.12' and sys_platform != 'darwin'" },
+    { name = "pyspark", version = "3.5.8", source = { registry = "https://pypi.org/simple" }, extra = ["sql"], marker = "python_full_version < '3.12'" },
+    { name = "pyspark", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, extra = ["sql"], marker = "python_full_version >= '3.12'" },
     { name = "randomgen", version = "1.26.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "randomgen", version = "2.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -2186,10 +2185,10 @@ requires-dist = [
     { name = "pandas", marker = "python_full_version == '3.11.*'", specifier = ">=1.5.0,<2" },
     { name = "pandas", marker = "python_full_version >= '3.12'", specifier = ">=2.2.0,<3" },
     { name = "pyarrow", specifier = ">=18.0.0,<19" },
-    { name = "pyspark", extras = ["sql"], marker = "sys_platform == 'darwin'", specifier = ">=3.5.0,<3.6" },
+    { name = "pyspark", extras = ["sql"], marker = "python_full_version >= '3.12'", specifier = ">=4,<5" },
+    { name = "pyspark", extras = ["sql"], marker = "python_full_version < '3.12' and sys_platform == 'darwin'", specifier = ">=3.5.0,<3.6" },
     { name = "pyspark", extras = ["sql"], marker = "python_full_version < '3.11' and sys_platform != 'darwin'", specifier = ">=3.3.1,<3.6" },
     { name = "pyspark", extras = ["sql"], marker = "python_full_version == '3.11.*' and sys_platform != 'darwin'", specifier = ">=3.4.0,<3.6" },
-    { name = "pyspark", extras = ["sql"], marker = "python_full_version >= '3.12' and sys_platform != 'darwin'", specifier = ">=4,<5" },
     { name = "pytest", marker = "extra == 'testing'", specifier = ">=7.3.1,<8" },
     { name = "randomgen", marker = "python_full_version < '3.11'", specifier = ">=1.23.0,<=1.26.0" },
     { name = "randomgen", marker = "python_full_version >= '3.11'", specifier = ">=1.26.0,<=2.3.0" },

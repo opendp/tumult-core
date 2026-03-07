@@ -47,58 +47,58 @@ def is_arm_mac():
 
 
 DEPENDENCY_MATRIX = [
-    DependencyConfiguration(
-        id="3.10-oldest",
-        python="3.10",
-        packages={
-            "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",
-            "sympy": "==1.8",
-            "pandas": "==1.4.0",
-            "numpy": "==1.23.2",
-            "scipy": "==1.8.0",
-            "randomgen": "==1.23.0",
-            "pyarrow": "==14.0.1",
-        },
-    ),
-    DependencyConfiguration(
-        id="3.10-newest",
-        python="3.10",
-        packages={
-            "pyspark[sql]": "==3.5.8",
-            "sympy": "==1.12",
-            "pandas": "==1.5.3",
-            "numpy": "==1.26.4",
-            "scipy": "==1.14.1",
-            "randomgen": "==2.3.0",
-            "pyarrow": "==16.1.0",
-        },
-    ),
-     DependencyConfiguration(
-         id="3.11-oldest",
-         python="3.11",
-         packages={
-             "pyspark[sql]": "==3.4.0" if not is_mac() else "==3.5.0",
-             "sympy": "==1.8",
-             "pandas": "==1.5.0",
-             "numpy": "==1.23.2",
-             "scipy": "==1.9.2",
-             "randomgen": "==1.26.0",
-             "pyarrow": "==14.0.1",
-         },
-     ),
-     DependencyConfiguration(
-         id="3.11-newest",
-         python="3.11",
-         packages={
-             "pyspark[sql]": "==3.5.8",
-             "sympy": "==1.12",
-             "pandas": "==1.5.3",
-             "numpy": "==1.26.4",
-             "scipy": "==1.14.1",
-             "randomgen": "==2.3.0",
-             "pyarrow": "==16.1.0",
-         },
-     ),
+    # DependencyConfiguration(
+    #     id="3.10-oldest",
+    #     python="3.10",
+    #     packages={
+    #         "pyspark[sql]": "==3.3.1" if not is_mac() else "==3.5.0",
+    #         "sympy": "==1.8",
+    #         "pandas": "==1.4.0",
+    #         "numpy": "==1.23.2",
+    #         "scipy": "==1.8.0",
+    #         "randomgen": "==1.23.0",
+    #         "pyarrow": "==18.0.0",
+    #     },
+    # ),
+    # DependencyConfiguration(
+    #     id="3.10-newest",
+    #     python="3.10",
+    #     packages={
+    #         "pyspark[sql]": "==3.5.8",
+    #         "sympy": "==1.12",
+    #         "pandas": "==1.5.3",
+    #         "numpy": "==1.26.4",
+    #         "scipy": "==1.14.1",
+    #         "randomgen": "==2.3.0",
+    #         "pyarrow": "==18.1.0",
+    #     },
+    # ),
+    #  DependencyConfiguration(
+    #      id="3.11-oldest",
+    #      python="3.11",
+    #      packages={
+    #          "pyspark[sql]": "==3.4.0" if not is_mac() else "==3.5.0",
+    #          "sympy": "==1.8",
+    #          "pandas": "==1.5.0",
+    #          "numpy": "==1.23.2",
+    #          "scipy": "==1.9.2",
+    #          "randomgen": "==1.26.0",
+    #          "pyarrow": "==18.0.0",
+    #      },
+    #  ),
+    #  DependencyConfiguration(
+    #      id="3.11-newest",
+    #      python="3.11",
+    #      packages={
+    #          "pyspark[sql]": "==3.5.8",
+    #          "sympy": "==1.12",
+    #          "pandas": "==1.5.3",
+    #          "numpy": "==1.26.4",
+    #          "scipy": "==1.14.1",
+    #          "randomgen": "==2.3.0",
+    #          "pyarrow": "==18.1.0",
+    #      },
+    #  ),
      DependencyConfiguration(
          id="3.12-oldest",
          python="3.12",
@@ -109,7 +109,7 @@ DEPENDENCY_MATRIX = [
              "numpy": "==1.26.0",
              "scipy": "==1.11.2",
              "randomgen": "==1.26.0",
-             "pyarrow": "==14.0.1",
+             "pyarrow": "==18.0.0",
          },
      ),
      DependencyConfiguration(
@@ -119,10 +119,10 @@ DEPENDENCY_MATRIX = [
              "pyspark[sql]": "==4.1.0",
              "sympy": "==1.12",
              "pandas": "==2.3.3",
-             "numpy": "==2.2.6",
-             "scipy": "==1.14.1",
+             "numpy": "==1.26.4", # NEEDS TO CHANGE
+             "scipy": "==1.17.1",
              "randomgen": "==2.3.0",
-             "pyarrow": "==16.1.0",
+             "pyarrow": "==18.1.0",
          },
      ),
 ]
