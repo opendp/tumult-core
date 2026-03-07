@@ -142,10 +142,12 @@ class AddUniqueColumn(Transformation):
 
         sdf = sdf.withColumn(rank_column, sf.row_number().over(shuffled_partitions))
 
+        # Concat each col and value together, then concat the values across the cols.
         concat_expr = sf.concat_ws(
             "|",
             *[
-                sf.concat(
+                sf.concat_ws(
+                    "|",
                     sf.lit(c),
                     sf.lit(":"),
                     sf.coalesce(sf.col(c).cast("string"), sf.lit(None)),
