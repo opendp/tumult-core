@@ -142,21 +142,16 @@ class AddUniqueColumn(Transformation):
 
         sdf = sdf.withColumn(rank_column, sf.row_number().over(shuffled_partitions))
 
-        # Add a str column that enforces the type for the hex function
-        hex_column = get_nonconflicting_string(sdf.columns)
-        sdf = sdf.withColumn(
-            hex_column,
-            sf.concat_ws(
-                "|",
-                *[
-                    sf.coalesce(sf.col(c).cast("string"), sf.lit(None))
-                    for c in sdf.columns
-                ],
-            ),
+        concat_expr = sf.concat_ws(
+            "|",
+            *[
+                sf.concat(
+                    sf.lit(c),
+                    sf.lit(":"),
+                    sf.coalesce(sf.col(c).cast("string"), sf.lit(None)),
+                )
+                for c in sdf.columns
+            ],
         )
 
-        return (
-            sdf.withColumn(self.column, sf.hex(sf.col(hex_column)))
-            .drop(rank_column)
-            .drop(hex_column)
-        )
+        return sdf.withColumn(self.column, sf.hex(concat_expr)).drop(rank_column)
