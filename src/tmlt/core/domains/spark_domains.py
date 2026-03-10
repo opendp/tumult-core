@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, ClassVar, Collection, Mapping, Optional, Sequence
+from typing import Any, ClassVar, Collection, Mapping, Optional, Sequence, cast
 
 import numpy as np
 from pyspark import Row
@@ -370,7 +370,19 @@ class SparkDataFrameDomain(Domain):
 
     def validate(self, value: Any) -> None:
         """Raises error if value is not a DataFrame with matching schema."""
-        super().validate(value)
+        if not isinstance(value, self.carrier_type):
+            raise OutOfDomainError(
+                self,
+                value,
+                f"Value must be {get_fullname(self.carrier_type)}, instead it is "
+                f"{get_fullname(value.__class__)}.",
+            )
+        # Cast to help mypy understand the type
+        value = cast(DataFrame, value)
+        # NOTE: This replaces super().validate(value) with a less strict class check.
+        # This must be done to pyspark 3 and pyspark 4. Discussion found here:
+        # https://github.com/opendp/tumult-analytics/issues/13#issuecomment-3519571019
+
         value_columns = list(value.schema.fieldNames())
         if len(value_columns) > len(set(value_columns)):
             duplicates = set(
