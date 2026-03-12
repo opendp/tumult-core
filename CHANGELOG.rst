@@ -14,9 +14,13 @@ For now, the repository remains available, and we encourage users to continue en
 
 Unreleased
 ----------
+Added
+~~~~~
+- Added support for PySpark 4 on Python 3.12.
 
 Changed
 ~~~~~~~
+- Updated minimum randomgen version to 1.23 for Python 3.10.
 - Dropped support for Python 3.9, as it has reached end-of-life.
 - Dropped support for pyspark <3.5.0 on Macs after discovering that these configurations frequently crash. Older versions of the library may also be affected.
 - Removed ``pytest`` and ``parameterized`` as dependencies.
