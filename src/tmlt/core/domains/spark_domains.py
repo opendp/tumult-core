@@ -379,7 +379,7 @@ class SparkDataFrameDomain(Domain):
                 self,
                 value,
                 f"Value must be a subclass of {get_fullname(self.carrier_type)}, "
-                f"instead it is{get_fullname(value.__class__)}.",
+                f"instead it is {get_fullname(value.__class__)}.",
             )
         # assertion to help mypy understand the type
         assert isinstance(value, DataFrame)
