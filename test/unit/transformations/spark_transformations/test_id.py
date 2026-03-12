@@ -176,7 +176,6 @@ class TestAddUniqueColumn(PySparkTest):
         )
         sample_df = self.spark.createDataFrame(rows)
         df_with_ID = transformation(sample_df)
-        df_with_ID.collect()
         self.assertEqual(
             df_with_ID.agg(sf.countDistinct(sf.col("ID"))).collect()[0][0], len(rows)
         )
