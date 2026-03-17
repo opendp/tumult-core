@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 
 import pandas as pd
 from pyspark.sql import SparkSession
-from pyspark.sql.dataframe import DataFrame
+from pyspark.sql import DataFrame
 
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,

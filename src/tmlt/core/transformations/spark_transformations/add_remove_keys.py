@@ -66,14 +66,14 @@ For example, consider the following example:
 >>> y1 = transformation(x1)
 >>> y2 = transformation(x2)
 >>> print_sdf(y1)  # Note that the values below are in fact unique (after the 5B226)
-   C  D                           A
-0  a  1  5B2261222C2231222C2231225D
-1  b  2  5B2262222C2232222C2231225D
-2  c  3  5B2263222C2233222C2231225D
+   C  D                                                 A
+0  a  1  7B2243223A2261222C2244223A2231222C224141223A317D
+1  b  2  7B2243223A2262222C2244223A2232222C224141223A317D
+2  c  3  7B2243223A2263222C2244223A2233222C224141223A317D
 >>> print_sdf(y2)
-   C  D                           A
-0  b  2  5B2262222C2232222C2231225D
-1  c  3  5B2263222C2233222C2231225D
+   C  D                                                 A
+0  b  2  7B2243223A2262222C2244223A2232222C224141223A317D
+1  c  3  7B2243223A2263222C2244223A2233222C224141223A317D
 >>> # Check stability
 >>> input_metric.distance(x1, x2, input_domain)
 1

@@ -45,6 +45,10 @@ def pyspark():
         .config("spark.hadoop.fs.defaultFS", "file:///")
         .config("spark.eventLog.enabled", "false")
         .config("spark.driver.allowMultipleContexts", "true")
+        .config("spark.driver.host", "127.0.0.1")  # Force Spark to bind to local host.
+        .config(
+            "spark.driver.bindAddress", "127.0.0.1"
+        )  # Force Spark to bind to local host.
         .config("spark.ui.showConsoleProgress", "false")
         .config("spark.sql.execution.arrow.pyspark.enabled", "true")
         .config("spark.default.parallelism", "5")
@@ -54,7 +58,8 @@ def pyspark():
     )
     # This is to silence pyspark logs.
     spark.sparkContext.setLogLevel("OFF")
-    return spark
+    yield spark
+    spark.stop()
 
 
 @pytest.fixture(scope="class")

@@ -124,5 +124,8 @@ benchmark_output/
 # Emacs
 *~
 
+# VSCode
+.vscode**
+
 # PyCharm
 .idea/

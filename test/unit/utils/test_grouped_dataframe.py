@@ -320,7 +320,7 @@ class TestGroupedDataFrame(PySparkTest):
             .agg(func=sf.sum(sf.col("Y")).alias("sum(Y)"), fill_value=10)
             .toPandas()
         )
-        self.assert_frame_equal_with_sort(expected, actual)
+        self.assert_frame_equal_with_sort(expected, actual, check_dtype=False)
 
     def test_agg_does_not_override_valid_nulls(self):
         """Tests that agg does not replace nulls associated with existing keys."""

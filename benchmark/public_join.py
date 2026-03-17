@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple, Union
 import pandas as pd
 from benchmarking_utils import write_as_html
 from pyspark.sql import SparkSession
-from pyspark.sql.dataframe import DataFrame
+from pyspark.sql import DataFrame
 from pyspark.sql.functions import lit
 from pyspark.sql.types import LongType
 

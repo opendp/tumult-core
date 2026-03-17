@@ -265,7 +265,7 @@ class TestPandasSeriesDomain(DomainTests):
                 PandasSeriesDomain(NumpyIntegerDomain(size=32)),
                 does_not_raise(),
             )
-            for dtype in [np.int8, np.int16, np.int32, np.bool8]  # type: ignore[attr-defined]
+            for dtype in [np.int8, np.int16, np.int32, np.bool_]
         ]
         + [
             (
@@ -279,7 +279,7 @@ class TestPandasSeriesDomain(DomainTests):
                 does_not_raise(),
             ),
             (
-                np.dtype(np.object0),  # type: ignore[attr-defined]
+                np.dtype(np.object_),
                 PandasSeriesDomain(NumpyStringDomain()),
                 does_not_raise(),
             ),
@@ -288,7 +288,7 @@ class TestPandasSeriesDomain(DomainTests):
                 PandasSeriesDomain(NumpyIntegerDomain(size=64)),
                 does_not_raise(),
             ),
-            (np.dtype([("f1", np.int16)]), None, pytest.raises(KeyError)),  # type: ignore
+            (np.dtype([("f1", np.int16)]), None, pytest.raises(KeyError)),
         ],
     )
     def test_from_numpy_type(

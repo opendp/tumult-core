@@ -370,7 +370,20 @@ class SparkDataFrameDomain(Domain):
 
     def validate(self, value: Any) -> None:
         """Raises error if value is not a DataFrame with matching schema."""
-        super().validate(value)
+        # NOTE: Unlike most domains, which only match their exact carrier type, we allow
+        # subclasses of DataFrame. This is to support pyspark 4, which uses internal
+        # DataFrame subclasses.
+        # https://github.com/opendp/tumult-analytics/issues/13#issuecomment-3519571019
+        if not isinstance(value, self.carrier_type):
+            raise OutOfDomainError(
+                self,
+                value,
+                f"Value must be a subclass of {get_fullname(self.carrier_type)}, "
+                f"instead it is {get_fullname(value.__class__)}.",
+            )
+        # assertion to help mypy understand the type
+        assert isinstance(value, DataFrame)
+
         value_columns = list(value.schema.fieldNames())
         if len(value_columns) > len(set(value_columns)):
             duplicates = set(
