@@ -11,7 +11,7 @@ build_dir = Path(__file__).parent
 build_command = ["bash", str(build_dir / "build.sh")]
 
 SUPPORTED_PLATFORMS = ["Linux", "Darwin"]
-SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
+SUPPORTED_ARCHITECTURES = ["x86_64", "arm64", "aarch64"]
 
 
 def check_platform():
