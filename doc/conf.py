@@ -178,6 +178,7 @@ intersphinx_mapping = {
 linkcheck_ignore = [
     r"https://doi.org/10.1145/2382196.2382264",
     r"https://gmplib.org/",
+    r"https://join.slack.com/t/opendp/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w",
 ]
 
 
