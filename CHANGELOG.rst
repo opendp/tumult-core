@@ -3,17 +3,10 @@
 Changelog
 =========
 
-🚨 Important Update: the Tumult Labs Team is Joining LinkedIn 🚨
-----------------------------------------------------------------
-
-The `Tumult Labs team has joined LinkedIn <https://www.linkedin.com/pulse/whats-next-us-tumult-labs-gerome-miklau-zmpye>`__! 🎉 As part of this transition, we are exploring options for the future of Tumult Core, including finding a new home for the project. 🏡
-We greatly appreciate the community’s support and contributions. If your organization is interested in maintaining or adopting Tumult Core, please reach out! 📩
-For now, the repository remains available, and we encourage users to continue engaging with the project. We’ll provide updates as soon as we have more to share.
-
-— The Tumult Labs Team 💙
-
 Unreleased
 ----------
+This release adds support for PySpark 4 on Python 3.12 and truncation over multiple columns. It drops support for Python 3.9 on all platforms and older PySpark versions on Macs.
+
 Added
 ~~~~~
 - Added support for PySpark 4 on Python 3.12.
