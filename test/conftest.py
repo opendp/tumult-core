@@ -4,13 +4,11 @@
 # Copyright Tumult Labs 2026
 
 import logging
-from typing import Any, Optional, Sequence, Union
+from typing import Any
 from unittest.mock import Mock, create_autospec
 
 import numpy as np
-import pandas as pd
 import pytest
-from pyspark.sql import DataFrame as SparkDataFrame
 from pyspark.sql import SparkSession
 
 from tmlt.core.domains.base import Domain
@@ -66,43 +64,6 @@ def pyspark():
 def class_spark(request, spark):
     """Injects spark into class tests that do not accept it as a parameter."""
     request.cls.spark = spark
-
-
-def assert_frame_equal_with_sort(
-    first_df: Union[pd.DataFrame, SparkDataFrame],
-    second_df: Union[pd.DataFrame, SparkDataFrame],
-    sort_columns: Optional[Sequence[str]] = None,
-    **kwargs: Any,
-):
-    """Asserts that the two data frames are equal.
-
-    Wrapper around pandas test function. Both dataframes are sorted
-    since the ordering in Spark is not guaranteed.
-
-    Args:
-        first_df: First dataframe to compare.
-        second_df: Second dataframe to compare.
-        sort_columns: Names of column to sort on. By default sorts by all columns.
-        **kwargs: Keyword arguments that will be passed to assert_frame_equal().
-    """
-    if isinstance(first_df, SparkDataFrame):
-        first_df = first_df.toPandas()
-    if isinstance(second_df, SparkDataFrame):
-        second_df = second_df.toPandas()
-    if sorted(first_df.columns) != sorted(second_df.columns):
-        raise ValueError(
-            "Dataframes must have matching columns. "
-            f"first_df: {sorted(first_df.columns)}. "
-            f"second_df: {sorted(second_df.columns)}."
-        )
-    if first_df.empty and second_df.empty:
-        return
-    if sort_columns is None:
-        sort_columns = list(first_df.columns)
-    if sort_columns:
-        first_df = first_df.set_index(sort_columns).sort_index().reset_index()
-        second_df = second_df.set_index(sort_columns).sort_index().reset_index()
-    pd.testing.assert_frame_equal(first_df, second_df, **kwargs)
 
 
 def create_mock_measurement(

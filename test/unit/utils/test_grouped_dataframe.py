@@ -13,6 +13,7 @@ from pyspark.sql.types import IntegerType, StructField, StructType
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.testing import (
     PySparkTest,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -59,9 +60,7 @@ class TestGroupedDataFrame(PySparkTest):
         )
         expected_group_keys = pd.DataFrame({"A": [1]})
         assert grouped_dataframe.group_keys is not None
-        self.assert_frame_equal_with_sort(
-            expected_group_keys, grouped_dataframe.group_keys.toPandas()
-        )
+        assert_dataframe_equal(expected_group_keys, grouped_dataframe.group_keys)
 
     def test_select_works_correctly(self):
         """Tests that select works correctly."""
@@ -70,8 +69,8 @@ class TestGroupedDataFrame(PySparkTest):
             group_keys=self.spark.createDataFrame([(1,), (1,)], schema=["A"]),
         )
         expected = pd.DataFrame({"A": [1], "B": [2]})
-        actual = grouped_dataframe.select(["A", "B"]).dataframe.toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = grouped_dataframe.select(["A", "B"]).dataframe
+        assert_dataframe_equal(actual, expected)
 
     def test_agg_with_nulls(self) -> None:
         """Test that .agg works correctly with nulls."""
@@ -83,8 +82,8 @@ class TestGroupedDataFrame(PySparkTest):
             ),
         )
         expected = pd.DataFrame({"A": [None, "a0", "a999"], "sum(B)": [1, 4, 0]})
-        actual = grouped_dataframe.agg(sf.sum("B"), fill_value=0).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = grouped_dataframe.agg(sf.sum("B"), fill_value=0)
+        assert_dataframe_equal(actual, expected)
 
     def test_apply_in_pandas_with_nulls(self) -> None:
         """Test that .apply_in_pandas works correctly with nulls."""
@@ -100,8 +99,8 @@ class TestGroupedDataFrame(PySparkTest):
         actual = grouped_dataframe.apply_in_pandas(
             lambda df: pd.DataFrame({"sum(B)": [df["B"].sum()]}),
             StructType([StructField("sum(B)", IntegerType())]),
-        ).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        )
+        assert_dataframe_equal(actual, expected)
 
     def test_agg_from_same_source(self) -> None:
         """Previous implementations would fail when using the same source twice."""
@@ -111,8 +110,8 @@ class TestGroupedDataFrame(PySparkTest):
         group_keys = data.filter("B = 2")
         grouped_dataframe = GroupedDataFrame(dataframe=data, group_keys=group_keys)
         expected = pd.DataFrame({"A": ["1"], "B": [2], "count(1)": [1]})
-        actual = grouped_dataframe.agg(sf.count("*"), fill_value=0).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = grouped_dataframe.agg(sf.count("*"), fill_value=0)
+        assert_dataframe_equal(actual, expected)
 
     def test_apply_in_pandas_from_same_source(self) -> None:
         """Previous implementations would fail when using the same source twice."""
@@ -126,8 +125,8 @@ class TestGroupedDataFrame(PySparkTest):
         actual = grouped_dataframe.apply_in_pandas(
             lambda df: pd.DataFrame({"count": [len(df)]}),
             StructType([StructField("count", IntegerType())]),
-        ).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        )
+        assert_dataframe_equal(actual, expected)
 
     @parameterized.expand(
         [
@@ -147,15 +146,11 @@ class TestGroupedDataFrame(PySparkTest):
         self, df: pd.DataFrame, group_keys: pd.DataFrame, expected: pd.DataFrame
     ):
         """Tests that count aggregation works on GroupedDataFrames."""
-        actual = (
-            GroupedDataFrame(
-                dataframe=self.spark.createDataFrame(df),
-                group_keys=self.spark.createDataFrame(group_keys),
-            )
-            .agg(sf.count("*").alias("count"), fill_value=0)
-            .toPandas()
-        )
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(df),
+            group_keys=self.spark.createDataFrame(group_keys),
+        ).agg(sf.count("*").alias("count"), fill_value=0)
+        assert_dataframe_equal(actual, expected)
 
     @parameterized.expand(
         [
@@ -181,15 +176,11 @@ class TestGroupedDataFrame(PySparkTest):
     ):
         """Tests that agg works as expected."""
         sum_func = sf.sum(sf.col("Y")).alias("sum(Y)")
-        self.assert_frame_equal_with_sort(
-            GroupedDataFrame(
-                dataframe=self.spark.createDataFrame(df),
-                group_keys=self.spark.createDataFrame(group_keys),
-            )
-            .agg(sum_func, fill_value=0)
-            .toPandas(),
-            expected,
-        )
+        actual = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(df),
+            group_keys=self.spark.createDataFrame(group_keys),
+        ).agg(sum_func, fill_value=0)
+        assert_dataframe_equal(actual, expected)
 
     @parameterized.expand(
         [
@@ -215,48 +206,36 @@ class TestGroupedDataFrame(PySparkTest):
     ):
         """Tests that apply_in_pandas works as expected."""
         expected["sum(Y)"] = expected["sum(Y)"].astype("int32")
-        self.assert_frame_equal_with_sort(
-            GroupedDataFrame(
-                dataframe=self.spark.createDataFrame(df),
-                group_keys=self.spark.createDataFrame(group_keys),
-            )
-            .apply_in_pandas(
-                lambda df: pd.DataFrame({"sum(Y)": [df["Y"].sum()]}),
-                StructType([StructField("sum(Y)", IntegerType())]),
-            )
-            .toPandas(),
-            expected,
+        actual = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(df),
+            group_keys=self.spark.createDataFrame(group_keys),
+        ).apply_in_pandas(
+            lambda df: pd.DataFrame({"sum(Y)": [df["Y"].sum()]}),
+            StructType([StructField("sum(Y)", IntegerType())]),
         )
+        assert_dataframe_equal(actual, expected)
 
     def test_empty_agg(self):
         """Tests that agg works for empty group keys."""
         sum_func = sf.sum(sf.col("Y")).alias("sum(Y)")
-        self.assert_frame_equal_with_sort(
-            GroupedDataFrame(
-                dataframe=self.spark.createDataFrame(
-                    pd.DataFrame([("A", 1), ("B", 4)], columns=["X", "Y"])
-                ),
-                group_keys=self.spark.createDataFrame([], schema=StructType()),
-            )
-            .agg(sum_func, fill_value=0)
-            .toPandas(),
-            pd.DataFrame({"sum(Y)": [5]}),
-        )
+        actual = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(
+                pd.DataFrame([("A", 1), ("B", 4)], columns=["X", "Y"])
+            ),
+            group_keys=self.spark.createDataFrame([], schema=StructType()),
+        ).agg(sum_func, fill_value=0)
+        assert_dataframe_equal(actual, pd.DataFrame({"sum(Y)": [5]}))
 
     def test_null_keys_agg(self):
         """Tests that agg works for empty group keys."""
         sum_func = sf.sum(sf.col("Y")).alias("sum(Y)")
-        self.assert_frame_equal_with_sort(
-            GroupedDataFrame(
-                dataframe=self.spark.createDataFrame(
-                    pd.DataFrame([("A", 1), ("B", 4)], columns=["X", "Y"])
-                ),
-                group_keys=None,
-            )
-            .agg(sum_func, fill_value=0)
-            .toPandas(),
-            pd.DataFrame({"sum(Y)": [5]}),
-        )
+        actual = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(
+                pd.DataFrame([("A", 1), ("B", 4)], columns=["X", "Y"])
+            ),
+            group_keys=None,
+        ).agg(sum_func, fill_value=0)
+        assert_dataframe_equal(actual, pd.DataFrame({"sum(Y)": [5]}))
 
     def test_empty_apply_in_pandas(self):
         """Tests that apply_in_pandas works for empty group keys."""
@@ -269,9 +248,9 @@ class TestGroupedDataFrame(PySparkTest):
         actual = grouped_dataframe.apply_in_pandas(
             lambda df: pd.DataFrame({"sum(Y)": [df["Y"].sum()]}),
             StructType([StructField("sum(Y)", IntegerType())]),
-        ).toPandas()
+        )
         expected = pd.DataFrame({"sum(Y)": [5]}, dtype="int32")
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(actual, expected)
 
     def test_null_keys_apply_in_pandas(self):
         """Tests that apply_in_pandas works for empty group keys."""
@@ -284,60 +263,48 @@ class TestGroupedDataFrame(PySparkTest):
         actual = grouped_dataframe.apply_in_pandas(
             lambda df: pd.DataFrame({"sum(Y)": [df["Y"].sum()]}),
             StructType([StructField("sum(Y)", IntegerType())]),
-        ).toPandas()
+        )
         expected = pd.DataFrame({"sum(Y)": [5]}, dtype="int32")
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(actual, expected)
 
     def test_agg_fill_value(self):
         """Tests that agg fills correct value for missing keys."""
         expected = pd.DataFrame({"X": ["A", "B"], "sum(Y)": [1, 10]})
-        actual = (
-            GroupedDataFrame(
-                dataframe=self.spark.createDataFrame([("A", 1)], schema=["X", "Y"]),
-                group_keys=self.spark.createDataFrame([("A",), ("B",)], schema=["X"]),
-            )
-            .agg(func=sf.sum(sf.col("Y")).alias("sum(Y)"), fill_value=10)
-            .toPandas()
-        )
-        self.assert_frame_equal_with_sort(expected, actual)
+        actual = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame([("A", 1)], schema=["X", "Y"]),
+            group_keys=self.spark.createDataFrame([("A",), ("B",)], schema=["X"]),
+        ).agg(func=sf.sum(sf.col("Y")).alias("sum(Y)"), fill_value=10)
+        assert_dataframe_equal(actual, expected)
 
     def test_total_agg_fill_value(self):
         """Tests that agg fills correct value for missing keys."""
         expected = pd.DataFrame({"sum(Y)": [10]})
-        actual = (
-            GroupedDataFrame(
-                dataframe=self.spark.createDataFrame(
-                    [],
-                    schema=StructType(
-                        [
-                            StructField("X", IntegerType()),
-                            StructField("Y", IntegerType()),
-                        ]
-                    ),
+        actual = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(
+                [],
+                schema=StructType(
+                    [
+                        StructField("X", IntegerType()),
+                        StructField("Y", IntegerType()),
+                    ]
                 ),
-                group_keys=self.spark.createDataFrame([], schema=StructType()),
-            )
-            .agg(func=sf.sum(sf.col("Y")).alias("sum(Y)"), fill_value=10)
-            .toPandas()
-        )
-        self.assert_frame_equal_with_sort(expected, actual, check_dtype=False)
+            ),
+            group_keys=self.spark.createDataFrame([], schema=StructType()),
+        ).agg(func=sf.sum(sf.col("Y")).alias("sum(Y)"), fill_value=10)
+        assert_dataframe_equal(actual, expected)
 
     def test_agg_does_not_override_valid_nulls(self):
         """Tests that agg does not replace nulls associated with existing keys."""
         expected = pd.DataFrame({"X": ["A", "B", "C"], "sum(Y)": [1, None, 0]})
-        actual = (
-            GroupedDataFrame(
-                dataframe=self.spark.createDataFrame(
-                    [("A", 1), ("B", None)], schema=["X", "Y"]
-                ),
-                group_keys=self.spark.createDataFrame(
-                    [("A",), ("B",), ("C",)], schema=["X"]
-                ),
-            )
-            .agg(func=sf.sum(sf.col("Y")).alias("sum(Y)"), fill_value=0)
-            .toPandas()
-        )
-        self.assert_frame_equal_with_sort(expected, actual)
+        actual = GroupedDataFrame(
+            dataframe=self.spark.createDataFrame(
+                [("A", 1), ("B", None)], schema=["X", "Y"]
+            ),
+            group_keys=self.spark.createDataFrame(
+                [("A",), ("B",), ("C",)], schema=["X"]
+            ),
+        ).agg(func=sf.sum(sf.col("Y")).alias("sum(Y)"), fill_value=0)
+        assert_dataframe_equal(actual, expected)
 
     def test_get_groups(self):
         """Tests `get_groups` returns correct groups."""
@@ -356,9 +323,7 @@ class TestGroupedDataFrame(PySparkTest):
             None: pd.DataFrame({"Y": [2, 3]}),
         }
         for key, expected_group in expected_groups.items():
-            self.assert_frame_equal_with_sort(
-                expected_group, actual_groups[Row(A=key)].toPandas()
-            )
+            assert_dataframe_equal(actual_groups[Row(A=key)], expected_group)
 
     def test_agg_with_special_chars(self):
         """Tests that agg works for output cols with special characters."""
@@ -372,8 +337,8 @@ class TestGroupedDataFrame(PySparkTest):
             ),
             group_keys=self.spark.createDataFrame([("A",), ("B",)], schema=["group"]),
         )
-        self.assert_frame_equal_with_sort(
-            grouped_df.agg(sum_func, fill_value=0).toPandas(),
+        assert_dataframe_equal(
+            grouped_df.agg(sum_func, fill_value=0),
             pd.DataFrame({"group": ["A", "B"], "sum(Y_grouped._on_A&B)": [2, 16]}),
         )
 

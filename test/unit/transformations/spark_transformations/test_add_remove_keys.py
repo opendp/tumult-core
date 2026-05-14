@@ -51,6 +51,7 @@ from tmlt.core.transformations.spark_transformations.map import (
 )
 from tmlt.core.utils.testing import (
     PySparkTest,
+    assert_dataframe_equal,
     assert_property_immutability,
     create_mock_transformation,
     get_all_props,
@@ -416,15 +417,9 @@ class TestTransformValue(PySparkTest):
         }
         actual_output = self.mock_filter_value(input_data)
         self.assertEqual(list(actual_output), ["key1", "key2", "key3"])
-        self.assert_frame_equal_with_sort(
-            actual_output["key1"].toPandas(), expected_output["key1"].toPandas()
-        )
-        self.assert_frame_equal_with_sort(
-            actual_output["key2"].toPandas(), expected_output["key2"].toPandas()
-        )
-        self.assert_frame_equal_with_sort(
-            actual_output["key3"].toPandas(), expected_output["key3"].toPandas()
-        )
+        assert_dataframe_equal(actual_output["key1"], expected_output["key1"])
+        assert_dataframe_equal(actual_output["key2"], expected_output["key2"])
+        assert_dataframe_equal(actual_output["key3"], expected_output["key3"])
 
     @parameterized.expand([(1, 1), (2, 2), (3, 3)])
     def test_stability_function(self, d_in: int, expected_d_out: int):
@@ -635,12 +630,6 @@ class TestRenameValue(PySparkTest):
         self.assertEqual(
             list(actual_output[new_key].columns), expected_output[new_key].columns
         )
-        self.assert_frame_equal_with_sort(
-            actual_output["key1"].toPandas(), expected_output["key1"].toPandas()
-        )
-        self.assert_frame_equal_with_sort(
-            actual_output["key2"].toPandas(), expected_output["key2"].toPandas()
-        )
-        self.assert_frame_equal_with_sort(
-            actual_output[new_key].toPandas(), expected_output[new_key].toPandas()
-        )
+        assert_dataframe_equal(actual_output["key1"], expected_output["key1"])
+        assert_dataframe_equal(actual_output["key2"], expected_output["key2"])
+        assert_dataframe_equal(actual_output[new_key], expected_output[new_key])

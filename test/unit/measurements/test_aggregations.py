@@ -5,7 +5,6 @@
 import functools
 import random
 import unittest
-from test.conftest import assert_frame_equal_with_sort
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union, cast
 
 import numpy as np
@@ -2231,5 +2230,5 @@ class TestBounds:
         )
         output = measurement(spark_df)
 
-        assert_frame_equal_with_sort(output.toPandas(), expected_df)
+        assert_dataframe_equal(output, expected_df)
         assert measurement.privacy_function(1) == sp.oo

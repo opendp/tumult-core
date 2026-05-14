@@ -7,7 +7,7 @@ from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
 from tmlt.core.metrics import AbsoluteDifference, SymmetricDifference
 from tmlt.core.transformations.identity import Identity
-from tmlt.core.utils.testing import TestComponent
+from tmlt.core.utils.testing import TestComponent, assert_dataframe_equal
 
 
 class TestIdentityTransformation(TestComponent):
@@ -40,7 +40,7 @@ class TestIdentityTransformation(TestComponent):
         )
 
         result = id_transformation(self.df_a)
-        self.assert_frame_equal_with_sort(result.toPandas(), self.df_a.toPandas())
+        assert_dataframe_equal(result, self.df_a)
         self.assertTrue(id_transformation.stability_relation(1, 1))
         self.assertTrue(id_transformation.stability_relation(1, 2))
         self.assertFalse(id_transformation.stability_relation(4, 2))

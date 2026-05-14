@@ -9,7 +9,12 @@ import pandas as pd
 from parameterized import parameterized
 
 from tmlt.core.utils.misc import copy_if_mutable, get_nonconflicting_string
-from tmlt.core.utils.testing import Case, PySparkTest, parametrize
+from tmlt.core.utils.testing import (
+    Case,
+    PySparkTest,
+    assert_dataframe_equal,
+    parametrize,
+)
 
 
 class TestCopyIfMutable(PySparkTest):
@@ -56,12 +61,8 @@ class TestCopyIfMutable(PySparkTest):
         self.assertEqual(list(copied_item), ["key1"])
         self.assertEqual(list(original), ["key1"])
         self.assertEqual(list(reference_copy), ["key1"])
-        self.assert_frame_equal_with_sort(
-            original["key1"].toPandas(), copied_item["key1"].toPandas()
-        )
-        self.assert_frame_equal_with_sort(
-            original["key1"].toPandas(), reference_copy["key1"].toPandas()
-        )
+        assert_dataframe_equal(original["key1"], copied_item["key1"])
+        assert_dataframe_equal(original["key1"], reference_copy["key1"])
 
         original["key2"] = 3
         self.assertEqual(list(copied_item), ["key1"])

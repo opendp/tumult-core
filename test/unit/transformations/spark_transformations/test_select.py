@@ -24,6 +24,7 @@ from tmlt.core.metrics import (
 from tmlt.core.transformations.spark_transformations.select import Select
 from tmlt.core.utils.testing import (
     TestComponent,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -119,8 +120,8 @@ class TestSelect(TestComponent):
         )
         self.assertEqual(select_transformation.stability_function(1), 1)
         self.assertTrue(select_transformation.stability_relation(1, 1))
-        actual_df = select_transformation(self.df_a).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        actual_df = select_transformation(self.df_a)
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand([(["A", "D"],), (["D"],), (["A", "A", "B"],)])
     def test_select_fails_on_bad_columns(self, columns: List[str]):

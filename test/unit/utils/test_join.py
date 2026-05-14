@@ -1619,7 +1619,7 @@ class TestJoin(PySparkTest):
         right = df.filter("B = 2")
         actual = join(left=left, right=right, how="left", nulls_are_equal=True)
         expected = left
-        self.assert_frame_equal_with_sort(actual.toPandas(), expected.toPandas())
+        assert_dataframe_equal(actual, expected)
 
     @parameterized.expand(JOIN_VALIDATION_CASES + ANTI_JOIN_VALIDATION_CASES)
     def test_common_validation(

@@ -26,6 +26,7 @@ from tmlt.core.transformations.converters import UnwrapIfGroupedBy
 from tmlt.core.utils.exact_number import ExactNumberInput
 from tmlt.core.utils.testing import (
     TestComponent,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -118,9 +119,7 @@ class TestUnwrapIfGroupedBy(TestComponent):
             domain=SparkDataFrameDomain(self.schema_a),
             input_metric=IfGroupedBy(["B"], SumOf(SymmetricDifference())),
         )
-        self.assert_frame_equal_with_sort(
-            unwrapper(self.df_a).toPandas(), self.df_a.toPandas()
-        )
+        assert_dataframe_equal(unwrapper(self.df_a), self.df_a)
 
     @parameterized.expand(
         [

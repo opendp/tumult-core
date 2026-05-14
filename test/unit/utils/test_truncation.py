@@ -26,7 +26,7 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from tmlt.core.utils.testing import PySparkTest
+from tmlt.core.utils.testing import PySparkTest, assert_dataframe_equal
 from tmlt.core.utils.truncation import (
     _hash_column,
     drop_large_groups,
@@ -58,11 +58,9 @@ class TestTruncateLargeGroups(PySparkTest):
         """Tests that truncate_large_groups does not truncate randomly across calls."""
         df = self.spark.createDataFrame([(i,) for i in range(1000)], schema=["A"])
 
-        expected_output = truncate_large_groups(df, ["A"], 5).toPandas()
+        expected_output = truncate_large_groups(df, ["A"], 5)
         for _ in range(5):
-            self.assert_frame_equal_with_sort(
-                truncate_large_groups(df, ["A"], 5).toPandas(), expected_output
-            )
+            assert_dataframe_equal(truncate_large_groups(df, ["A"], 5), expected_output)
 
     def test_rows_dropped_consistently(self) -> None:
         """Tests that truncate_large_groups drops that same rows for unchanged keys."""
@@ -75,9 +73,9 @@ class TestTruncateLargeGroups(PySparkTest):
 
         df1_truncated = truncate_large_groups(df1, ["W"], 1)
         df2_truncated = truncate_large_groups(df2, ["W"], 1)
-        self.assert_frame_equal_with_sort(
-            df1_truncated.filter("W='B'").toPandas(),
-            df2_truncated.filter("W='B'").toPandas(),
+        assert_dataframe_equal(
+            df1_truncated.filter("W='B'"),
+            df2_truncated.filter("W='B'"),
         )
 
     def test_hash_truncation_order_agnostic(self) -> None:
@@ -89,7 +87,7 @@ class TestTruncateLargeGroups(PySparkTest):
             df = self.spark.createDataFrame(list(permutation), schema=["W", "X", "Y"])
             truncated_dfs.append(truncate_large_groups(df, ["Y"], 1).toPandas())
         for df in truncated_dfs[1:]:
-            self.assert_frame_equal_with_sort(first_df=truncated_dfs[0], second_df=df)
+            assert_dataframe_equal(truncated_dfs[0], df)
 
     def test_hash_truncation_duplicate_rows_not_clumped(self) -> None:
         """Tests that truncate_large_groups doesn't clump duplicate rows together."""
@@ -130,9 +128,9 @@ class TestDropLargeGroups(PySparkTest):
     ) -> None:
         """Tests that drop_large_groups works correctly."""
         df = self.spark.createDataFrame(input_rows, schema=["A", "B"])
-        actual = drop_large_groups(df, ["A"], threshold).toPandas()
+        actual = drop_large_groups(df, ["A"], threshold)
         expected = pd.DataFrame.from_records(expected, columns=["A", "B"])
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(actual, expected)
 
 
 class TestLimitKeysPerGroup(PySparkTest):

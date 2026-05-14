@@ -46,6 +46,7 @@ from tmlt.core.utils.misc import get_materialized_df
 from tmlt.core.utils.testing import (
     FakeAggregate,
     PySparkTest,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -179,11 +180,11 @@ class TestApplyInPandas(PySparkTest):
             input_domain=input_domain,
             input_metric=SumOf(SymmetricDifference()),
             aggregation_function=FakeAggregate(),
-        )(grouped_dataframe).toPandas()
+        )(grouped_dataframe)
         expected = pd.DataFrame(expected_dict)
         # It looks like python nans get converted to nulls when the return value
         # from a python udf gets converted back to spark land.
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(actual, expected)
 
     def test_privacy_function_and_relation(self):
         """Test that the privacy function and relation are computed correctly."""
@@ -257,8 +258,8 @@ class TestAddNoiseToColumn(PySparkTest):
             measurement=AddNoiseToSeries(AddGeometricNoise(alpha=0)),
             measure_column="count",
         )
-        actual = measurement(sdf).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = measurement(sdf)
+        assert_dataframe_equal(actual, expected)
 
 
 class TestGeometricPartitionSelection(PySparkTest):
@@ -312,8 +313,8 @@ class TestGeometricPartitionSelection(PySparkTest):
                 self.count_column: pd.Series(dtype=int),
             }
         )
-        actual = self.measurement(sdf).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = self.measurement(sdf)
+        assert_dataframe_equal(actual, expected)
 
     def test_negative_threshold(self):
         """Tests that negative thresholds don't cause any issues."""
@@ -330,7 +331,7 @@ class TestGeometricPartitionSelection(PySparkTest):
         expected_without_count = pd.DataFrame({"A": ["a1"], "B": [1]})
         self.assertIsInstance(actual, pd.DataFrame)
         assert isinstance(actual, pd.DataFrame)
-        self.assert_frame_equal_with_sort(actual[["A", "B"]], expected_without_count)
+        assert_dataframe_equal(actual[["A", "B"]], expected_without_count)
         # Threshold -1 should give worse guarantee than for threshold of 0 or 1
         measurement_threshold_0 = GeometricPartitionSelection(
             input_domain=self.input_domain,
@@ -379,8 +380,8 @@ class TestGeometricPartitionSelection(PySparkTest):
         measurement = GeometricPartitionSelection(
             input_domain=self.input_domain, alpha=0, threshold=2
         )
-        actual = measurement(sdf).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = measurement(sdf)
+        assert_dataframe_equal(actual, expected)
 
     def test_privacy_function(self):
         """GeometricPartitionSelection's privacy function is correct."""
@@ -681,9 +682,9 @@ class TestSparseVectorPrefixSums(PySparkTest):
         )
 
         sdf = self.spark.createDataFrame(input_df, schema=domain.spark_schema)
-        result = measurement(sdf).toPandas()
+        result = measurement(sdf)
 
-        self.assert_frame_equal_with_sort(result, expected)
+        assert_dataframe_equal(result, expected)
 
     @patch.object(SparseVectorPrefixSums, "threshold_fraction", new=1.5)
     def test_correctness_high_threshold(self):
@@ -719,9 +720,9 @@ class TestSparseVectorPrefixSums(PySparkTest):
         )
 
         sdf = self.spark.createDataFrame(input_df, schema=domain.spark_schema)
-        result = measurement(sdf).toPandas()
+        result = measurement(sdf)
 
-        self.assert_frame_equal_with_sort(result, expected)
+        assert_dataframe_equal(result, expected)
 
     def test_privacy_function(self):
         """SparseVectorPrefixSums's privacy function is correct."""
@@ -762,7 +763,7 @@ class TestSanitization(PySparkTest):
         sdf = self.spark.createDataFrame(df)
         materialized_df = get_materialized_df(sdf, table_name)
         self.assertEqual(current_db, self.spark.catalog.currentDatabase())
-        self.assert_frame_equal_with_sort(materialized_df.toPandas(), df)
+        assert_dataframe_equal(materialized_df, df)
 
     def test_repartition_works_as_expected(self):
         """Tests that repartitioning randomly works as expected.

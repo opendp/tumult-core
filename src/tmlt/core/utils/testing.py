@@ -22,18 +22,7 @@ import math
 import shutil
 import unittest
 from dataclasses import dataclass, fields, is_dataclass
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-    overload,
-)
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union, overload
 from unittest.mock import Mock, create_autospec
 
 import numpy as np
@@ -507,40 +496,6 @@ class PySparkTest(unittest.TestCase):
         print("Tearing down spark session")
         shutil.rmtree("/tmp/hive_tables", ignore_errors=True)
         cleanup()
-
-    @classmethod
-    def assert_frame_equal_with_sort(
-        cls,
-        first_df: pd.DataFrame,
-        second_df: pd.DataFrame,
-        sort_columns: Optional[Sequence[str]] = None,
-        **kwargs: Any,
-    ) -> None:
-        """Asserts that the two data frames are equal.
-
-        Wrapper around pandas test function. Both dataframes are sorted
-        since the ordering in Spark is not guaranteed.
-
-        Args:
-            first_df: First dataframe to compare.
-            second_df: Second dataframe to compare.
-            sort_columns: Names of column to sort on. By default sorts by all columns.
-            **kwargs: Keyword arguments that will be passed to assert_frame_equal().
-        """
-        if sorted(first_df.columns) != sorted(second_df.columns):
-            raise AssertionError(
-                "Dataframes must have matching columns. "
-                f"first_df: {sorted(first_df.columns)}. "
-                f"second_df: {sorted(second_df.columns)}."
-            )
-        if first_df.empty and second_df.empty:
-            return
-        if sort_columns is None:
-            sort_columns = list(first_df.columns)
-        if sort_columns:
-            first_df = first_df.set_index(sort_columns).sort_index().reset_index()
-            second_df = second_df.set_index(sort_columns).sort_index().reset_index()
-        pd.testing.assert_frame_equal(first_df, second_df, **kwargs)
 
 
 class TestComponent(PySparkTest):
