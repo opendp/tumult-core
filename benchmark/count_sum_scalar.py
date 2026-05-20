@@ -23,7 +23,6 @@ from tmlt.core.measurements.aggregations import (
 )
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
 from tmlt.core.metrics import Metric, SymmetricDifference
-from tmlt.core.utils.testing import PySparkTest
 
 
 def evaluate_runtime(
@@ -129,6 +128,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("trial_name", default="", nargs="?")
     args = parser.parse_args()
-    PySparkTest.setUpClass()
     main(args.trial_name)
-    PySparkTest.tearDownClass()

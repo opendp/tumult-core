@@ -9,12 +9,11 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from pyspark.sql import SparkSession
+from benchmarking_utils import Timer, write_as_html
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as sf
-from pyspark.sql import DataFrame
 from pyspark.sql.types import LongType, StructField, StructType
 
-from benchmarking_utils import Timer, write_as_html
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkIntegerColumnDescriptor,
@@ -28,7 +27,6 @@ from tmlt.core.transformations.spark_transformations.groupby import (
     create_groupby_from_column_domains,
 )
 from tmlt.core.utils.exact_number import ExactNumberInput
-from tmlt.core.utils.testing import PySparkTest
 
 
 def evaluate_runtime(
@@ -109,7 +107,9 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
+        benchmark_result = pd.concat(
+            [benchmark_result, pd.DataFrame([row])], ignore_index=True
+        )
 
     # Single Groupby Column of varying domain sizes (1 row/group)
     for domain_size in [100, 400, 10000, 40000, 160000, 640000]:
@@ -136,7 +136,9 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
+        benchmark_result = pd.concat(
+            [benchmark_result, pd.DataFrame([row])], ignore_index=True
+        )
 
     # Single groupby column, group size = 1M
     for size in [100000, 900000, 10000000]:
@@ -167,7 +169,9 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
+        benchmark_result = pd.concat(
+            [benchmark_result, pd.DataFrame([row])], ignore_index=True
+        )
 
     # Group size = 10K
     for size in [10000, 100000, 1000000, 10000000]:
@@ -198,7 +202,9 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
+        benchmark_result = pd.concat(
+            [benchmark_result, pd.DataFrame([row])], ignore_index=True
+        )
 
     # Group size = 100
     for size in [10000, 40000, 160000, 640000, 2560000]:
@@ -225,13 +231,15 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
+        benchmark_result = pd.concat(
+            [benchmark_result, pd.DataFrame([row])], ignore_index=True
+        )
 
     # Multiple groupby columns
     domain_size = 2
     group_size = 1
     for num_cols in [1, 2, 4, 8, 12, 16, 18, 20]:
-        group_count = domain_size ** num_cols
+        group_count = domain_size**num_cols
         num_records = group_count * group_size
         groupby_columns = ["Col_{}".format(i) for i in range(num_cols)]
         columns = groupby_columns + ["X"]
@@ -239,10 +247,7 @@ def main():
             dict.fromkeys(columns, SparkIntegerColumnDescriptor())
         )
         schema = StructType(
-            [
-                StructField("Col_{}".format(i), LongType(), True)
-                for i in range(num_cols)
-            ]
+            [StructField("Col_{}".format(i), LongType(), True) for i in range(num_cols)]
         )
         sdf = spark.createDataFrame(
             spark.sparkContext.parallelize(
@@ -277,11 +282,13 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
+        benchmark_result = pd.concat(
+            [benchmark_result, pd.DataFrame([row])], ignore_index=True
+        )
 
     # various domain sizes and columns
     group_size = 100
-    group_count = 2 ** 8
+    group_count = 2**8
     num_records = group_count * group_size
     for domain_size in [256, 16, 4, 2]:
         num_cols = int(log(group_count, domain_size))
@@ -291,10 +298,7 @@ def main():
             dict.fromkeys(columns, SparkIntegerColumnDescriptor())
         )
         schema = StructType(
-            [
-                StructField("Col_{}".format(i), LongType(), True)
-                for i in range(num_cols)
-            ]
+            [StructField("Col_{}".format(i), LongType(), True) for i in range(num_cols)]
         )
         sdf = spark.createDataFrame(
             spark.sparkContext.parallelize(
@@ -329,12 +333,12 @@ def main():
             "count_time (s)": count_time,
             "sum_time (s)": sum_time,
         }
-        benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
+        benchmark_result = pd.concat(
+            [benchmark_result, pd.DataFrame([row])], ignore_index=True
+        )
 
     write_as_html(benchmark_result, "count_sum.html")
 
 
 if __name__ == "__main__":
-    PySparkTest.setUpClass()
     main()
-    PySparkTest.tearDownClass()

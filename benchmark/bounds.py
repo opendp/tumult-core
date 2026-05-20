@@ -10,8 +10,8 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 from benchmarking_utils import Timer, write_as_html
-from pyspark.sql import SparkSession, functions as sf
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import functions as sf
 from pyspark.sql.types import LongType, StructField, StructType
 
 from tmlt.core.domains.spark_domains import (
@@ -24,7 +24,6 @@ from tmlt.core.metrics import SymmetricDifference
 from tmlt.core.transformations.spark_transformations.groupby import (
     create_groupby_from_column_domains,
 )
-from tmlt.core.utils.testing import PySparkTest
 
 
 def evaluate_runtime(
@@ -96,17 +95,11 @@ def main() -> None:
             [benchmark_result, pd.DataFrame([row])], ignore_index=True
         )
 
-
     # Single group. Crashes with OOM error for size 10M for a pure pandas
     # implementation, see #3342.
     for size in [100_000, 900_000, 10_000_000]:
         df = spark.createDataFrame(
-            spark.sparkContext.parallelize(
-                [
-                    (0, randint(0, 1))
-                    for i in range(size)
-                ]
-            ),
+            spark.sparkContext.parallelize([(0, randint(0, 1)) for i in range(size)]),
             schema=input_domain.spark_schema,
         )
         time = evaluate_runtime(
@@ -131,11 +124,7 @@ def main() -> None:
     for size in [100_000, 900_000, 10_000_000]:
         df = spark.createDataFrame(
             spark.sparkContext.parallelize(
-                [
-                    (i, randint(0, 1))
-                    for _ in range(int(size/2))
-                    for i in range(2)
-                ]
+                [(i, randint(0, 1)) for _ in range(int(size / 2)) for i in range(2)]
             ),
             schema=input_domain.spark_schema,
         )
@@ -147,7 +136,7 @@ def main() -> None:
         )
         row = {
             "domain_size": 2,
-            "group_size": int(size/2),
+            "group_size": int(size / 2),
             "group_count": 2,
             "num_records": size,
             "num_groupby_columns": 1,
@@ -156,7 +145,6 @@ def main() -> None:
         benchmark_result = pd.concat(
             [benchmark_result, pd.DataFrame([row])], ignore_index=True
         )
-
 
     # Group size = 100
     for size in [10_000, 40_000, 160_000]:
@@ -184,11 +172,8 @@ def main() -> None:
             [benchmark_result, pd.DataFrame([row])], ignore_index=True
         )
 
-
     write_as_html(benchmark_result, "bounds.html")
 
 
 if __name__ == "__main__":
-    PySparkTest.setUpClass()
     main()
-    PySparkTest.tearDownClass()
