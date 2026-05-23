@@ -43,6 +43,7 @@ from tmlt.core.utils.exact_number import ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.testing import (
     PySparkTest,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -292,7 +293,7 @@ class TestCountGrouped(PySparkTest):
                 dataframe=self.spark.createDataFrame(input_df), group_keys=group_keys
             )
         )
-        self.assert_frame_equal_with_sort(actual.toPandas(), expected_counts_df)
+        assert_dataframe_equal(actual, expected_counts_df)
         self.assertIn(actual, count_groups.output_domain)
 
     def test_empty_with_keys(self):
@@ -314,9 +315,9 @@ class TestCountGrouped(PySparkTest):
                 dataframe=self.spark.createDataFrame([], schema="A: long, B: long"),
                 group_keys=group_keys,
             )
-        ).toPandas()
+        )
         expected_counts_df = pd.DataFrame({"A": [1, 2, 3], "C": [0, 0, 0]})
-        self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
+        assert_dataframe_equal(actual_counts_df, expected_counts_df)
 
     def test_empty_with_empty_keys(self):
         """Tests that count grouped works with empty dataframes and keys."""
@@ -337,9 +338,9 @@ class TestCountGrouped(PySparkTest):
                 dataframe=self.spark.createDataFrame([], schema="A: long, B: long"),
                 group_keys=group_keys,
             )
-        ).toPandas()
+        )
         expected_counts_df = pd.DataFrame({"C": [0]}, dtype="int32")
-        self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
+        assert_dataframe_equal(actual_counts_df, expected_counts_df)
 
     def test_empty_keys_but_nonempty_data(self):
         """Tests that count grouped works with empty keys but nonempty data."""
@@ -362,9 +363,9 @@ class TestCountGrouped(PySparkTest):
                 ),
                 group_keys=group_keys,
             )
-        ).toPandas()
+        )
         expected_counts_df = pd.DataFrame({"C": [2]})
-        self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
+        assert_dataframe_equal(actual_counts_df, expected_counts_df)
 
     @parameterized.expand(
         [
@@ -524,8 +525,8 @@ class TestCountDistinctGrouped(PySparkTest):
         )
         expected_counts_df = self.spark.createDataFrame(
             expected_output_rows, schema=["X", "C"]
-        ).toPandas()
-        self.assert_frame_equal_with_sort(actual.toPandas(), expected_counts_df)
+        )
+        assert_dataframe_equal(actual, expected_counts_df)
         self.assertIn(actual, count_distinct_groups.output_domain)
 
     @parameterized.expand(
@@ -587,9 +588,9 @@ class TestCountDistinctGrouped(PySparkTest):
                 dataframe=self.spark.createDataFrame([], schema="A: long, B: long"),
                 group_keys=group_keys,
             )
-        ).toPandas()
+        )
         expected_counts_df = pd.DataFrame({"C": [0]})
-        self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
+        assert_dataframe_equal(actual_counts_df, expected_counts_df)
 
     def test_empty_keys(self):
         """Tests that count distinct grouped works with empty keys."""
@@ -612,9 +613,9 @@ class TestCountDistinctGrouped(PySparkTest):
                 ),
                 group_keys=group_keys,
             )
-        ).toPandas()
+        )
         expected_counts_df = pd.DataFrame({"C": [1]})
-        self.assert_frame_equal_with_sort(actual_counts_df, expected_counts_df)
+        assert_dataframe_equal(actual_counts_df, expected_counts_df)
 
 
 class TestSum(PySparkTest):
@@ -861,7 +862,7 @@ class TestSumGrouped(PySparkTest):
             ),
         )
         actual = self.groupby_A_sum_B(grouped_dataframe)
-        self.assert_frame_equal_with_sort(actual.toPandas(), expected_df)
+        assert_dataframe_equal(actual, expected_df)
         self.assertIn(actual, self.groupby_A_sum_B.output_domain)
 
     @parameterized.expand(
@@ -1008,9 +1009,9 @@ class TestSumGrouped(PySparkTest):
                 ),
                 group_keys=group_keys,
             )
-        ).toPandas()
+        )
         expected_sums_df = pd.DataFrame({"A": [1, 2, 3], "sum": [0.0, 0.0, 0.0]})
-        self.assert_frame_equal_with_sort(actual_counts_df, expected_sums_df)
+        assert_dataframe_equal(actual_counts_df, expected_sums_df)
 
     def test_empty_with_empty_keys(self):
         """Tests that sum grouped works with empty dataframes and keys."""
@@ -1037,9 +1038,9 @@ class TestSumGrouped(PySparkTest):
                 ),
                 group_keys=group_keys,
             )
-        ).toPandas()
+        )
         expected_sums_df = pd.DataFrame({"sum": [0.0]})
-        self.assert_frame_equal_with_sort(actual_sums_df, expected_sums_df)
+        assert_dataframe_equal(actual_sums_df, expected_sums_df)
 
     def test_empty_keys_but_nonempty_data(self):
         """Tests that sum grouped works with empty keys but nonempty data."""
@@ -1067,9 +1068,9 @@ class TestSumGrouped(PySparkTest):
                 ),
                 group_keys=group_keys,
             )
-        ).toPandas()
+        )
         expected_sums_df = pd.DataFrame({"sum": [2.0]})
-        self.assert_frame_equal_with_sort(actual_sums_df, expected_sums_df)
+        assert_dataframe_equal(actual_sums_df, expected_sums_df)
 
 
 class TestDerivedTransformations(PySparkTest):

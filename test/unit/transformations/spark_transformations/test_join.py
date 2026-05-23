@@ -37,6 +37,7 @@ from tmlt.core.utils.exact_number import ExactNumberInput
 from tmlt.core.utils.testing import (
     PySparkTest,
     TestComponent,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -316,18 +317,17 @@ class TestPublicJoin(TestComponent):
                 ]
             ),
         )
-        joined_df = public_join_transformation(private_df)
+        actual = public_join_transformation(private_df)
         self.assertEqual(
-            joined_df.schema,
+            actual.schema,
             cast(
                 SparkDataFrameDomain, public_join_transformation.output_domain
             ).spark_schema,
         )
-        actual = joined_df.toPandas()
         expected = pd.DataFrame(
             [["Y", "X", 10.0], ["Y", "X", 11.0]], columns=["A", "B", "C"]
         )
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(actual, expected)
 
     def test_public_join_overlapping_columns(self):
         """Tests that public join works when columns not used in join overlap."""
@@ -346,8 +346,8 @@ class TestPublicJoin(TestComponent):
             [[1.2, "ABC", "X", 10.0], [1.2, "DEF", "X", 11.0]],
             columns=["A_left", "A_right", "B", "C"],
         )
-        actual_df = public_join_transformation(self.private_df).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        actual_df = public_join_transformation(self.private_df)
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand(
         [
@@ -467,9 +467,8 @@ class TestPublicJoin(TestComponent):
                 {"B": SparkStringColumnDescriptor(), "C": SparkFloatColumnDescriptor()}
             ),
         )
-        actual = public_join.public_df.toPandas()
         expected = pd.DataFrame({"B": ["X"], "C": [1.1]})
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(public_join.public_df, expected)
 
     @parameterized.expand(
         [
@@ -507,8 +506,8 @@ class TestPublicJoin(TestComponent):
         private_df = self.spark.createDataFrame(
             [(1.2, "X"), (0.1, None)], schema=["A", "B"]
         )
-        actual = public_join(private_df).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = public_join(private_df)
+        assert_dataframe_equal(actual, expected)
 
     def test_join_on_nulls_stability(self):
         """Tests that PublicJoin computes stability correctly when joining on nulls."""
@@ -566,9 +565,9 @@ class TestPublicJoin(TestComponent):
             public_df=self.spark.createDataFrame([], schema=self.public_df.schema),
             join_cols=["B"],
         )
-        actual = public_join_transformation(self.private_df).toPandas()
+        actual = public_join_transformation(self.private_df)
         expected = pd.DataFrame({"B": [], "A": [], "C": []})
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(actual, expected)
 
     def test_left_join(self):
         """Tests that PublicJoin works with left join."""
@@ -592,11 +591,11 @@ class TestPublicJoin(TestComponent):
             join_cols=["B"],
             how="left",
         )
-        actual = public_join(private_df).toPandas()
+        actual = public_join(private_df)
         expected = pd.DataFrame(
             [[1.2, "X", 1.1], [0.1, "Y", None]], columns=["A", "B", "C"]
         )
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(actual, expected)
 
     def test_invalid_how(self):
         """Tests that PublicJoin raises error for invalid how."""
@@ -889,8 +888,8 @@ class TestPrivateJoin(PySparkTest):
         )
         left_sdf = self.spark.createDataFrame(left)
         right_sdf = self.spark.createDataFrame(right)
-        actual = private_join({"left": left_sdf, "right": right_sdf}).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = private_join({"left": left_sdf, "right": right_sdf})
+        assert_dataframe_equal(actual, expected)
 
     @parameterized.expand(
         [
@@ -1224,8 +1223,8 @@ class TestPrivateJoin(PySparkTest):
             right_truncation_threshold=10,
             join_on_nulls=join_on_nulls,
         )
-        actual = private_join({"left": left, "right": right}).toPandas()
-        self.assert_frame_equal_with_sort(actual, expected)
+        actual = private_join({"left": left, "right": right})
+        assert_dataframe_equal(actual, expected)
 
 
 class TestPrivateJoinOnKey(PySparkTest):

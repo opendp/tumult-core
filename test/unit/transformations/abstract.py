@@ -5,7 +5,6 @@
 
 import copy
 from abc import ABC, abstractmethod
-from test.conftest import assert_frame_equal_with_sort
 from typing import Any, Callable, ContextManager, Dict, Optional, Type
 
 import pandas as pd
@@ -13,7 +12,11 @@ import pytest
 from pyspark.sql import DataFrame
 
 from tmlt.core.transformations.base import Transformation
-from tmlt.core.utils.testing import assert_property_immutability, get_all_props
+from tmlt.core.utils.testing import (
+    assert_dataframe_equal,
+    assert_property_immutability,
+    get_all_props,
+)
 
 
 class TransformationTests(ABC):
@@ -198,6 +201,6 @@ class TransformationTests(ABC):
         output = transformation(input_data)
         transformation.output_domain.validate(output)
         if isinstance(expected_output, (pd.DataFrame, DataFrame)):
-            assert_frame_equal_with_sort(output, expected_output)
+            assert_dataframe_equal(output, expected_output)
         else:
             assert output == expected_output

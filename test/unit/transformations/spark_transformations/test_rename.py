@@ -23,6 +23,7 @@ from tmlt.core.metrics import (
 from tmlt.core.transformations.spark_transformations.rename import Rename
 from tmlt.core.utils.testing import (
     TestComponent,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -132,12 +133,12 @@ class TestRename(TestComponent):
         self.assertEqual(rename_transformation.output_metric, expected_output_metric)
         self.assertEqual(rename_transformation.stability_function(1), 1)
         self.assertTrue(rename_transformation.stability_relation(1, 1))
-        actual_df = rename_transformation(self.df_a).toPandas()
+        actual_df = rename_transformation(self.df_a)
         expected_df = pd.DataFrame(
             [[1.2, "X"]],
             columns=[rename_mapping.get("A", "A"), rename_mapping.get("B", "B")],
         )
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        assert_dataframe_equal(actual_df, expected_df)
 
     @parameterized.expand([({"D": "E"},), ({"A": "B"},)])
     def test_rename_fails_on_bad_columns(self, rename_mapping: Dict[str, str]):

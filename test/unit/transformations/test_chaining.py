@@ -23,6 +23,7 @@ from tmlt.core.transformations.spark_transformations.map import (
 from tmlt.core.utils.exact_number import ExactNumberInput
 from tmlt.core.utils.testing import (
     TestComponent,
+    assert_dataframe_equal,
     assert_property_immutability,
     create_mock_transformation,
     get_all_props,
@@ -119,8 +120,8 @@ class TestChainTT(TestComponent):
 
         actual_df = ChainTT(
             duplicate_rows, double_a, hint=lambda metric_iv, _: metric_iv * 2
-        )(self.df_a).toPandas()
-        self.assert_frame_equal_with_sort(expected_df, actual_df)
+        )(self.df_a)
+        assert_dataframe_equal(expected_df, actual_df)
 
     @parameterized.expand(
         [

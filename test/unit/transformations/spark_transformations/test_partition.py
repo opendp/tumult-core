@@ -26,6 +26,7 @@ from tmlt.core.metrics import IfGroupedBy, RootSumOfSquared, SumOf, SymmetricDif
 from tmlt.core.transformations.spark_transformations.partition import PartitionByKeys
 from tmlt.core.utils.testing import (
     TestComponent,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -151,7 +152,7 @@ class TestPartitionByKeys(TestComponent):
         columns_descriptor: SparkColumnsDescriptor,
         keys: List[str],
         list_values: List[Tuple],
-        actual_partitions: List[pd.DataFrame],
+        expected_partitions: List[pd.DataFrame],
         output_metric: Union[SumOf, RootSumOfSquared],
     ):
         """Tests that partition by keys works correctly."""
@@ -166,9 +167,9 @@ class TestPartitionByKeys(TestComponent):
         )
         self.assertEqual(partition_op.stability_function(1), 1)
         self.assertTrue(partition_op.stability_relation(1, 1))
-        expected_partitions = partition_op(sdf)
-        for expected, actual in zip(actual_partitions, expected_partitions):
-            self.assert_frame_equal_with_sort(expected, actual.toPandas())
+        actual_partitions = partition_op(sdf)
+        for actual, expected in zip(actual_partitions, expected_partitions):
+            assert_dataframe_equal(actual, expected)
 
     def test_partition_by_special_value_keys(self):
         """PartitionByKeys works when one or more key contains a special value.

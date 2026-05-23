@@ -26,6 +26,7 @@ from tmlt.core.metrics import (
 from tmlt.core.transformations.spark_transformations.filter import Filter
 from tmlt.core.utils.testing import (
     TestComponent,
+    assert_dataframe_equal,
     assert_property_immutability,
     get_all_props,
 )
@@ -77,8 +78,8 @@ class TestFilter(TestComponent):
         )
         self.assertEqual(geq_1_filter.stability_function(1), 1)
         self.assertTrue(geq_1_filter.stability_relation(1, 1))
-        actual_df = geq_1_filter(df).toPandas()
-        self.assert_frame_equal_with_sort(actual_df, expected_df)
+        actual_df = geq_1_filter(df)
+        assert_dataframe_equal(actual_df, expected_df)
 
     def test_empty_df_with_timestamp(self):
         """Tests that filter works correctly when timestamp column is present.
@@ -110,7 +111,7 @@ class TestFilter(TestComponent):
         self.assertEqual(geq_2_filter.stability_function(1), 1)
         self.assertTrue(geq_2_filter.stability_relation(1, 1))
         actual_df = geq_2_filter(df)
-        self.assert_frame_equal_with_sort(actual_df.toPandas(), expected_df)
+        assert_dataframe_equal(actual_df, expected_df)
         expected_dtype = StructType(
             [
                 StructField("A", LongType(), True),
@@ -156,9 +157,9 @@ class TestFilter(TestComponent):
         self.assertTrue(
             negative_filter.input_metric == metric == negative_filter.output_metric
         )
-        actual = negative_filter(self.df_a).toPandas()
+        actual = negative_filter(self.df_a)
         expected = pd.DataFrame([], columns=["A", "B"])
-        self.assert_frame_equal_with_sort(actual, expected)
+        assert_dataframe_equal(actual, expected)
 
     @parameterized.expand(
         [

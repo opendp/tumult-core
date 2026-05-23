@@ -7,7 +7,6 @@ import copy
 import datetime
 from contextlib import nullcontext as does_not_raise
 from itertools import combinations_with_replacement, product
-from test.conftest import assert_frame_equal_with_sort
 from test.unit.domains.abstract import DomainTests
 from typing import Any, Callable, ContextManager, Dict, List, Optional, Type
 
@@ -56,7 +55,7 @@ from tmlt.core.domains.spark_domains import (
 )
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.misc import get_fullname
-from tmlt.core.utils.testing import get_all_props
+from tmlt.core.utils.testing import assert_dataframe_equal, get_all_props
 
 
 @pytest.mark.usefixtures("class_spark")
@@ -445,7 +444,7 @@ class TestSparkDataFrameDomain(DomainTests):
             assert hasattr(exception.value, prop), f"Expected prop was missing: {prop}"
             actual_value = getattr(exception.value, prop)
             if isinstance(actual_value, DataFrame):
-                assert_frame_equal_with_sort(actual_value, expected_value)
+                assert_dataframe_equal(actual_value, expected_value)
                 continue
             assert (
                 actual_value == expected_value
@@ -957,14 +956,14 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         assert hasattr(core_exception, "value"), "Exception has no value attribute"
         # Separate asserts for the frames are required since GroupedDataFrame does not
         # implement __eq__.
-        assert_frame_equal_with_sort(
+        assert_dataframe_equal(
             exception_properties["value"].dataframe,
             core_exception.value.dataframe,
         )
         if exception_properties["value"].group_keys is None:
             assert core_exception.value.group_keys is None
         else:
-            assert_frame_equal_with_sort(
+            assert_dataframe_equal(
                 exception_properties["value"].group_keys,
                 core_exception.value.group_keys,
             )
