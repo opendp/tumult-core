@@ -3,8 +3,14 @@
 Changelog
 =========
 
+
 Unreleased
 ----------
+
+.. _v0.19.0:
+
+0.19.0 - 2026-05-22
+-------------------
 This release adds support for PySpark 4 on Python 3.12 and truncation over multiple columns. It drops support for Python 3.9 on all platforms and older PySpark versions on Macs.
 
 Added
