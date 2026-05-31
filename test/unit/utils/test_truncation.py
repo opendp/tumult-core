@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
+import copy
 import datetime
 import itertools
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 from unittest.mock import patch
 
 import pandas as pd
@@ -25,6 +26,7 @@ from pyspark.sql.types import (
     StructType,
     TimestampType,
 )
+from pyspark.testing import assertSchemaEqual
 
 from tmlt.core.utils.testing import PySparkTest, assert_dataframe_equal
 from tmlt.core.utils.truncation import (
@@ -196,19 +198,23 @@ class TestLimitKeysPerGroup(PySparkTest):
         ),
     ],
 )
-def test_hash_column(test_rows: List[Any], schema: Dict[str, Any]):
+def test_hash_column(test_rows: List[Any], schema: StructType):
     """Smoke test to ensure that expected datatypes are hashed correctly."""
     # Initialize Spark Session
     spark = SparkSession.builder.getOrCreate()
 
     # Create a DataFrame with the specific data types from a schema
-    test_df = spark.createDataFrame(test_rows, schema)  # type: ignore
+    test_df = spark.createDataFrame(test_rows, schema)
 
     for column in test_df.columns:
-        end_df, _ = _hash_column(test_df, column)
-
+        end_df, new_col_name = _hash_column(test_df, column)
         # Triggers Spark's lazy evaluation
         end_df.count()
 
+        # Construct schema to compare to:
+        original_schema_copy = copy.deepcopy(schema)
+        result_schema = original_schema_copy.add(
+            StructField(new_col_name, StringType(), nullable=True)
+        )
         # Check that the end dtype is correct.
-        assert end_df.schema[column] == schema[column]
+        assertSchemaEqual(end_df.schema, result_schema)

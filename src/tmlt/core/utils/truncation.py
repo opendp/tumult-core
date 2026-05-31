@@ -29,13 +29,22 @@ def _hash_column(df: DataFrame, column: str) -> Tuple[DataFrame, str]:
     """
     new_column = get_nonconflicting_string([*df.columns, column])
     dataType = df.schema[column].dataType
-    if (
-        dataType == IntegerType()
-        or dataType == LongType()
-        or dataType == FloatType()
-        or dataType == DoubleType()
-    ):
-        df = df.withColumn(new_column, sf.sha2(sf.bin(column), 256))
+    if dataType == FloatType() or dataType == DoubleType():
+        df = df.withColumn(
+            new_column,
+            sf.sha2(
+                sf.when(sf.col(column) == float("-inf"), "-inf")
+                .when(sf.col(column) == float("inf"), "inf")
+                .when(sf.isnan(column), "nan")
+                .otherwise(sf.col(column).cast("string")),
+                256,
+            ),
+        )
+    elif dataType == IntegerType() or dataType == LongType():
+        df = df.withColumn(
+            new_column,
+            sf.sha2(sf.col(column).cast("string"), 256),
+        )
     elif dataType == BinaryType() or dataType == StringType():
         df = df.withColumn(new_column, sf.sha2(sf.col(column), 256))
     elif dataType == DateType() or dataType == TimestampType():
