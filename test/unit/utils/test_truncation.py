@@ -26,7 +26,6 @@ from pyspark.sql.types import (
     StructType,
     TimestampType,
 )
-from pyspark.testing import assertSchemaEqual
 
 from tmlt.core.utils.testing import PySparkTest, assert_dataframe_equal
 from tmlt.core.utils.truncation import (
@@ -230,14 +229,22 @@ def test_hash_column(test_rows: List[Any], schema: StructType):
     test_df = spark.createDataFrame(test_rows, schema)
 
     for column in test_df.columns:
-        end_df, new_col_name = _hash_column(test_df, column)
+        result_df, new_col_name = _hash_column(test_df, column)
         # Triggers Spark's lazy evaluation
-        end_df.count()
+        result_df.count()
 
         # Construct schema to compare to:
-        original_schema_copy = copy.deepcopy(schema)
-        result_schema = original_schema_copy.add(
+        expected_schema = copy.deepcopy(schema).add(
             StructField(new_col_name, StringType(), nullable=True)
         )
         # Check that the end dtype is correct.
-        assertSchemaEqual(end_df.schema, result_schema)
+        for result, expectation in zip(result_df.schema.fields, expected_schema.fields):
+            assert result.name == expectation.name, (
+                f"Result field name ({result.name}) didn't match "
+                f"expected field name ({expectation.name})."
+            )
+
+            assert result.dataType == expectation.dataType, (
+                f"Result field type ({result.dataType}) didn't match "
+                f"expected field type ({expectation.dataType})."
+            )
