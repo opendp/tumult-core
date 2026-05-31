@@ -171,6 +171,29 @@ class TestLimitKeysPerGroup(PySparkTest):
                 ]
             ),
         ),
+        # Float and Double Edge Types Checked
+        (
+            [
+                (
+                    float("nan"),
+                    float("inf"),
+                    float("-inf"),
+                    float("nan"),
+                    float("inf"),
+                    float("-inf"),
+                )
+            ],
+            StructType(
+                [
+                    StructField("A", DoubleType(), True),
+                    StructField("B", DoubleType(), True),
+                    StructField("C", DoubleType(), True),
+                    StructField("D", FloatType(), True),
+                    StructField("E", FloatType(), True),
+                    StructField("F", FloatType(), True),
+                ]
+            ),
+        ),
         # Binary and String Types Checked
         (
             [("String", bytes("String", "utf-8"))],
