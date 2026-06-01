@@ -525,7 +525,7 @@ class PrivateJoin(Transformation):
         >>> joined_dataframe = private_join(input_dictionary)
         >>> print_sdf(joined_dataframe)
             B   A  X   C
-        0  b1  a1  5  c1
+        0  b1  a1  3  c1
         1  b1  a2 -5  c1
         2  b2  a1 -1  c2
         3  b2  a1 -1  c3

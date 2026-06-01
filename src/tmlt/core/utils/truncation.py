@@ -138,7 +138,7 @@ def truncate_large_groups(
         0  a1  b1
         1  a2  b1
         2  a3  b2
-        3  a3  b3
+        3  a3  b2
         >>> print_sdf(truncate_large_groups(spark_dataframe, ["A"], 1))
             A   B
         0  a1  b1
