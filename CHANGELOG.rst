@@ -7,6 +7,10 @@ Changelog
 Unreleased
 ----------
 
+Fixed
+~~~~~
+- Updated how internal helper functions hash columns to support infinite and nan values in PySpark Double and Float columns.
+
 .. _v0.19.0:
 
 0.19.0 - 2026-05-22

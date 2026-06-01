@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
+import copy
 import datetime
 import itertools
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 from unittest.mock import patch
 
 import pandas as pd
@@ -169,6 +170,29 @@ class TestLimitKeysPerGroup(PySparkTest):
                 ]
             ),
         ),
+        # Float and Double Edge Types Checked
+        (
+            [
+                (
+                    float("nan"),
+                    float("inf"),
+                    float("-inf"),
+                    float("nan"),
+                    float("inf"),
+                    float("-inf"),
+                )
+            ],
+            StructType(
+                [
+                    StructField("A", DoubleType(), True),
+                    StructField("B", DoubleType(), True),
+                    StructField("C", DoubleType(), True),
+                    StructField("D", FloatType(), True),
+                    StructField("E", FloatType(), True),
+                    StructField("F", FloatType(), True),
+                ]
+            ),
+        ),
         # Binary and String Types Checked
         (
             [("String", bytes("String", "utf-8"))],
@@ -196,19 +220,31 @@ class TestLimitKeysPerGroup(PySparkTest):
         ),
     ],
 )
-def test_hash_column(test_rows: List[Any], schema: Dict[str, Any]):
+def test_hash_column(test_rows: List[Any], schema: StructType):
     """Smoke test to ensure that expected datatypes are hashed correctly."""
     # Initialize Spark Session
     spark = SparkSession.builder.getOrCreate()
 
     # Create a DataFrame with the specific data types from a schema
-    test_df = spark.createDataFrame(test_rows, schema)  # type: ignore
+    test_df = spark.createDataFrame(test_rows, schema)
 
     for column in test_df.columns:
-        end_df, _ = _hash_column(test_df, column)
-
+        result_df, new_col_name = _hash_column(test_df, column)
         # Triggers Spark's lazy evaluation
-        end_df.count()
+        result_df.count()
 
+        # Construct schema to compare to:
+        expected_schema = copy.deepcopy(schema).add(
+            StructField(new_col_name, StringType(), nullable=True)
+        )
         # Check that the end dtype is correct.
-        assert end_df.schema[column] == schema[column]
+        for result, expectation in zip(result_df.schema.fields, expected_schema.fields):
+            assert result.name == expectation.name, (
+                f"Result field name ({result.name}) didn't match "
+                f"expected field name ({expectation.name})."
+            )
+
+            assert result.dataType == expectation.dataType, (
+                f"Result field type ({result.dataType}) didn't match "
+                f"expected field type ({expectation.dataType})."
+            )
