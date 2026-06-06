@@ -185,3 +185,14 @@ class TestRename(TestComponent):
                 metric=IfGroupedBy([groupby_col], inner_metric),
                 rename_mapping=rename_mapping,
             )
+
+    def test_format(self):
+        """Rename formats as expected."""
+        transformation = Rename(
+            input_domain=SparkDataFrameDomain(
+                {"A": SparkStringColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+            ),
+            metric=SymmetricDifference(),
+            rename_mapping={"B": "C"},
+        )
+        assert transformation.format() == "Rename rename_mapping={'B': 'C'}"

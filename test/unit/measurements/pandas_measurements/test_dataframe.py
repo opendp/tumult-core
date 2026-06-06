@@ -5,6 +5,7 @@
 
 
 import itertools
+import textwrap
 import unittest
 from typing import Dict, Optional, Union
 from unittest.mock import MagicMock
@@ -154,6 +155,36 @@ class TestAggregateByColumn(unittest.TestCase):
             [StructField("B", DoubleType()), StructField("A", DoubleType())]
         )
         self.assertEqual(expected_schema, measure.output_schema)
+
+    def test_format(self) -> None:
+        """AggregateByColumn formats its aggregations as aligned, labeled siblings."""
+        quantile = NoisyQuantile(
+            PandasSeriesDomain(NumpyIntegerDomain()),
+            output_measure=PureDP(),
+            quantile=0.5,
+            lower=22,
+            upper=29,
+            epsilon=1,
+        )
+        measurement = AggregateByColumn(
+            input_domain=PandasDataFrameDomain(
+                {
+                    "B": PandasSeriesDomain(NumpyIntegerDomain()),
+                    "long_name": PandasSeriesDomain(NumpyIntegerDomain()),
+                }
+            ),
+            column_to_aggregation={"B": quantile, "long_name": quantile},
+        )
+        quantile_fmt = (
+            "NoisyQuantile output_spark_type=DoubleType() quantile=0.5"
+            " lower=22 upper=29 epsilon=1"
+        )
+        assert measurement.format() == textwrap.dedent(
+            f"""\
+            AggregateByColumn
+            * B:         {quantile_fmt}
+            * long_name: {quantile_fmt}"""
+        )
 
     @parameterized.expand(
         [

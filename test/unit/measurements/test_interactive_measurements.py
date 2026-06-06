@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2026
 
 import re
+import textwrap
 from typing import Any, List, Optional, Tuple, Type, Union
 from unittest import TestCase
 from unittest.mock import ANY, MagicMock, Mock, patch
@@ -45,6 +46,7 @@ from tmlt.core.measurements.interactive_measurements import (
     TransformationQuery,
     create_adaptive_composition,
 )
+from tmlt.core.measurements.noise_mechanisms import AddLaplaceNoise
 from tmlt.core.measures import (
     ApproxDP,
     ApproxDPBudget,
@@ -136,6 +138,17 @@ class TestSequentialComposition(PySparkTest):
         self.assertEqual(self.measurement.is_interactive, True)
         self.assertEqual(self.measurement.d_in, 1)
         self.assertEqual(self.measurement.privacy_budget, self.privacy_budget)
+
+    def test_format(self):
+        """SequentialComposition formats as its class name with its inline attrs."""
+        measurement = SequentialComposition(
+            input_domain=NumpyIntegerDomain(),
+            input_metric=AbsoluteDifference(),
+            output_measure=PureDP(),
+            d_in=1,
+            privacy_budget=1,
+        )
+        assert measurement.format() == "SequentialComposition d_in=1 privacy_budget=1"
 
     def test_privacy_function(self):
         """SequentialComposition's privacy function is correct."""
@@ -258,6 +271,30 @@ class TestParallelComposition(PySparkTest):
         )
 
         self.data = [np.int64(10), np.int64(30), np.int64(20)]
+
+    def test_format(self):
+        """ParallelComposition formats its composed measurements as siblings."""
+        measurement = ParallelComposition(
+            input_domain=ListDomain(NumpyIntegerDomain(), length=2),
+            input_metric=SumOf(AbsoluteDifference()),
+            output_measure=PureDP(),
+            measurements=[
+                MakeInteractive(
+                    AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+                ),
+                MakeInteractive(
+                    AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=2)
+                ),
+            ],
+        )
+        assert measurement.format() == textwrap.dedent(
+            """\
+            ParallelComposition
+            * MakeInteractive
+                AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False
+            * MakeInteractive
+                AddLaplaceNoise scale=2 output_type=DoubleType() adds_no_noise=False"""
+        )
 
     @parameterized.expand(get_all_props(ParallelComposition))
     def test_property_immutability(self, prop_name: str):
@@ -398,6 +435,17 @@ class TestMakeInteractive(PySparkTest):
         self.assertIsInstance(queryable, GetAnswerQueryable)
         answer = queryable(None)
         self.assertEqual(answer, 2)
+
+    def test_format(self):
+        """MakeInteractive formats with its wrapped measurement."""
+        measurement = MakeInteractive(
+            AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+        )
+        assert measurement.format() == textwrap.dedent(
+            """\
+            MakeInteractive
+              AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
+        )
 
     def test_properties(self):
         """MakeInteractive's properties have appropriate values."""
@@ -1876,6 +1924,36 @@ class TestDecorateQueryable(TestCase):
             ),
             preprocess_query=lambda x: x,
             postprocess_answer=lambda x: x,
+        )
+
+    def test_format(self):
+        """DecorateQueryable formats with its functions and wrapped measurement."""
+
+        def preprocess(query):
+            return query
+
+        def postprocess(answer):
+            return answer
+
+        measurement = DecorateQueryable(
+            measurement=SequentialComposition(
+                input_domain=NumpyIntegerDomain(),
+                input_metric=AbsoluteDifference(),
+                output_measure=PureDP(),
+                d_in=1,
+                privacy_budget=1,
+            ),
+            preprocess_query=preprocess,
+            postprocess_answer=postprocess,
+        )
+        head = (
+            f"DecorateQueryable preprocess_query=<function {preprocess.__qualname__}>"
+            f" postprocess_answer=<function {postprocess.__qualname__}>"
+        )
+        assert measurement.format() == textwrap.dedent(
+            f"""\
+            {head}
+              SequentialComposition d_in=1 privacy_budget=1"""
         )
 
     @parameterized.expand(get_all_props(DecorateQueryable))

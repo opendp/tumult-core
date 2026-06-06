@@ -40,6 +40,26 @@ class TestPartitionByKeys(TestComponent):
     PartitionByKeys`.
     """
 
+    def test_format(self):
+        """PartitionByKeys formats with num_partitions, keys, and list_values."""
+        transformation = PartitionByKeys(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                    "X": SparkIntegerColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            use_l2=False,
+            keys=["A", "B"],
+            list_values=[("a1", "b1"), ("a1", "b2"), ("a2", "b2")],
+        )
+        assert transformation.format() == (
+            "PartitionByKeys num_partitions=3 keys=['A', 'B'] "
+            "list_values=[('a1', 'b1'), ('a1', 'b2'), ('a2', 'b2')]"
+        )
+
     def test_constructor_mutable_arguments(self):
         """Tests that mutable constructor arguments are copied."""
         partition_keys = ["A"]

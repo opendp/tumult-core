@@ -4,13 +4,18 @@
 # Copyright Tumult Labs 2026
 
 
+import textwrap
 from unittest.mock import MagicMock, call
 
 from parameterized import parameterized
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
-from tmlt.core.measurements.interactive_measurements import Queryable
+from tmlt.core.measurements.interactive_measurements import (
+    Queryable,
+    SequentialComposition,
+)
+from tmlt.core.measurements.noise_mechanisms import AddLaplaceNoise
 from tmlt.core.measurements.postprocess import NonInteractivePostProcess, PostProcess
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
 from tmlt.core.metrics import AbsoluteDifference, Metric
@@ -110,6 +115,22 @@ class TestPostProcess(TestComponent):
         self.assertEqual(
             postprocessed_measurement.privacy_relation(1, 1),
             privacy_relation_return_value,
+        )
+
+    def test_format(self):
+        """PostProcess formats with its postprocessing function and measurement."""
+
+        def post(x):
+            return x
+
+        measurement = PostProcess(
+            measurement=AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1),
+            f=post,
+        )
+        assert measurement.format() == textwrap.dedent(
+            f"""\
+            PostProcess f=<function {post.__qualname__}>
+              AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
         )
 
     def test_postprocess_raises_error_on_interactive_measurements(self):
@@ -229,4 +250,26 @@ class TestNonInteractivePostProcess(TestComponent):
         self.assertEqual(
             postprocessed_measurement.privacy_relation(1, 1),
             privacy_relation_return_value,
+        )
+
+    def test_format(self):
+        """NonInteractivePostProcess formats with its function and measurement."""
+
+        def post(x):
+            return x
+
+        measurement = NonInteractivePostProcess(
+            measurement=SequentialComposition(
+                input_domain=NumpyIntegerDomain(),
+                input_metric=AbsoluteDifference(),
+                output_measure=PureDP(),
+                d_in=1,
+                privacy_budget=1,
+            ),
+            f=post,
+        )
+        assert measurement.format() == textwrap.dedent(
+            f"""\
+            NonInteractivePostProcess f=<function {post.__qualname__}>
+              SequentialComposition d_in=1 privacy_budget=1"""
         )

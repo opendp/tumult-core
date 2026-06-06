@@ -610,6 +610,23 @@ class TestPublicJoin(TestComponent):
                 how="invalid",
             )
 
+    def test_format(self):
+        """Tests that format returns the expected string."""
+        transformation = PublicJoin(
+            input_domain=SparkDataFrameDomain(
+                {"A": SparkFloatColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+            ),
+            metric=SymmetricDifference(),
+            public_df=self.spark.createDataFrame(
+                pd.DataFrame({"B": ["X", "X"], "C": [10.0, 11.0]})
+            ),
+            join_cols=["B"],
+        )
+        assert transformation.format() == (
+            "PublicJoin join_on_nulls=False join_cols=['B'] "
+            "public_df=DataFrame[B: string, C: double] how='inner' stability=2"
+        )
+
 
 class TestPrivateJoin(PySparkTest):
     """Tests for class PrivateJoin.
@@ -1226,6 +1243,41 @@ class TestPrivateJoin(PySparkTest):
         actual = private_join({"left": left, "right": right})
         assert_dataframe_equal(actual, expected)
 
+    def test_format(self):
+        """Tests that format returns the expected string."""
+        transformation = PrivateJoin(
+            input_domain=DictDomain(
+                {
+                    "left": SparkDataFrameDomain(
+                        {
+                            "A": SparkIntegerColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                        }
+                    ),
+                    "right": SparkDataFrameDomain(
+                        {
+                            "B": SparkStringColumnDescriptor(),
+                            "C": SparkStringColumnDescriptor(),
+                        }
+                    ),
+                }
+            ),
+            left_key="left",
+            right_key="right",
+            left_truncation_strategy=TruncationStrategy.TRUNCATE,
+            right_truncation_strategy=TruncationStrategy.TRUNCATE,
+            left_truncation_threshold=1,
+            right_truncation_threshold=1,
+            join_cols=["B"],
+        )
+        assert transformation.format() == (
+            "PrivateJoin left_key='left' right_key='right' "
+            "left_truncation_strategy=TruncationStrategy.TRUNCATE "
+            "right_truncation_strategy=TruncationStrategy.TRUNCATE "
+            "left_truncation_threshold=1 right_truncation_threshold=1 "
+            "join_cols=['B'] join_on_nulls=False"
+        )
+
 
 class TestPrivateJoinOnKey(PySparkTest):
     """Tests for PrivateJoinOnKey."""
@@ -1493,4 +1545,34 @@ class TestPrivateJoinOnKey(PySparkTest):
         self.assertEqual(
             cast(DictDomain, transformation.output_domain).key_to_domain["joined"],
             expected_domain,
+        )
+
+    def test_format(self):
+        """Tests that format returns the expected string."""
+        transformation = PrivateJoinOnKey(
+            input_domain=DictDomain(
+                {
+                    "left": SparkDataFrameDomain(
+                        {
+                            "A": SparkIntegerColumnDescriptor(),
+                            "B": SparkStringColumnDescriptor(),
+                        }
+                    ),
+                    "right": SparkDataFrameDomain(
+                        {
+                            "B": SparkStringColumnDescriptor(),
+                            "C": SparkStringColumnDescriptor(),
+                        }
+                    ),
+                }
+            ),
+            input_metric=AddRemoveKeys({"left": "B", "right": "B"}),
+            left_key="left",
+            right_key="right",
+            new_key="joined",
+            join_cols=["B"],
+        )
+        assert transformation.format() == (
+            "PrivateJoinOnKey left_key='left' right_key='right' new_key='joined' "
+            "join_cols=['B'] join_on_nulls=False"
         )

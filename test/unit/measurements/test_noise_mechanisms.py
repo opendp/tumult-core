@@ -39,6 +39,14 @@ class TestAddLaplaceNoise(MeasurementTests):
         """Returns the type of the measurement to be tested."""
         return AddLaplaceNoise
 
+    def test_format(self):
+        """AddLaplaceNoise formats as its class name with its inline attrs."""
+        measurement = AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+        assert (
+            measurement.format()
+            == "AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"
+        )
+
     @pytest.mark.parametrize(
         "measurement_args, expectation",
         [
@@ -553,6 +561,14 @@ class TestAddGeometricNoise(MeasurementTests):
         """Returns the type of the measurement to be tested."""
         return AddGeometricNoise
 
+    def test_format(self):
+        """AddGeometricNoise formats as its class name with its inline attrs."""
+        measurement = AddGeometricNoise(alpha=1)
+        assert (
+            measurement.format()
+            == "AddGeometricNoise output_type=LongType() alpha=1 adds_no_noise=False"
+        )
+
     @pytest.mark.parametrize(
         "measurement_args, expectation",
         [
@@ -920,6 +936,17 @@ class TestAddGaussianNoise(MeasurementTests):
     def measurement_type(self) -> Type[Measurement]:
         """Returns the type of the measurement to be tested."""
         return AddGaussianNoise
+
+    def test_format(self):
+        """AddGaussianNoise formats as its class name with its inline attrs."""
+        measurement = AddGaussianNoise(
+            input_domain=NumpyIntegerDomain(), sigma_squared=1
+        )
+        assert (
+            measurement.format()
+            == "AddGaussianNoise output_type=DoubleType() sigma_squared=1"
+            " adds_no_noise=False"
+        )
 
     @pytest.mark.parametrize(
         "measurement_args, expectation",
@@ -1393,6 +1420,15 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
     def measurement_type(self) -> Type[Measurement]:
         """Returns the type of the measurement to be tested."""
         return AddDiscreteGaussianNoise
+
+    def test_format(self):
+        """AddDiscreteGaussianNoise formats as its class name with inline attrs."""
+        measurement = AddDiscreteGaussianNoise(sigma_squared=1)
+        assert (
+            measurement.format()
+            == "AddDiscreteGaussianNoise output_type=LongType() sigma_squared=1"
+            " adds_no_noise=False"
+        )
 
     @pytest.mark.parametrize(
         "measurement_args, expectation",

@@ -10,6 +10,7 @@ from typeguard import typechecked
 from tmlt.core.exceptions import DomainMismatchError, MetricMismatchError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.transformations.base import Transformation
+from tmlt.core.utils.format import format_chain, get_chain_children
 
 
 class ChainTM(Measurement):
@@ -140,3 +141,7 @@ class ChainTM(Measurement):
     def __call__(self, data: Any) -> Any:
         """Computes measurement after applying transformation on input data."""
         return self._measurement(self._transformation(data))
+
+    def format(self) -> str:
+        """Return a human-readable multi-line description of this measurement."""
+        return format_chain(get_chain_children(self))

@@ -22,7 +22,10 @@ from tmlt.core.metrics import (
     SumOf,
     SymmetricDifference,
 )
-from tmlt.core.transformations.converters import UnwrapIfGroupedBy
+from tmlt.core.transformations.converters import (
+    HammingDistanceToSymmetricDifference,
+    UnwrapIfGroupedBy,
+)
 from tmlt.core.utils.exact_number import ExactNumberInput
 from tmlt.core.utils.testing import (
     TestComponent,
@@ -154,3 +157,22 @@ class TestUnwrapIfGroupedBy(TestComponent):
                 domain=SparkDataFrameDomain(self.schema_a),
                 input_metric=input_metric,
             )
+
+    def test_format(self):
+        """UnwrapIfGroupedBy formats as just its class name."""
+        unwrapper = UnwrapIfGroupedBy(
+            domain=SparkDataFrameDomain(self.schema_a),
+            input_metric=IfGroupedBy(["B"], SumOf(SymmetricDifference())),
+        )
+        assert unwrapper.format() == "UnwrapIfGroupedBy"
+
+
+class TestHammingDistanceToSymmetricDifference(TestComponent):
+    """Tests for :class:`~.HammingDistanceToSymmetricDifference`."""
+
+    def test_format(self):
+        """HammingDistanceToSymmetricDifference formats as just its class name."""
+        transformation = HammingDistanceToSymmetricDifference(
+            SparkDataFrameDomain(self.schema_a)
+        )
+        assert transformation.format() == "HammingDistanceToSymmetricDifference"

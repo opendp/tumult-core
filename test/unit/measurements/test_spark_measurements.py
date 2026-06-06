@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
+import textwrap
 from fractions import Fraction
 from typing import Dict, List
 from unittest.mock import patch
@@ -83,6 +84,30 @@ class TestApplyInPandas(PySparkTest):
             input_domain=self.domain,
             input_metric=SumOf(SymmetricDifference()),
             aggregation_function=self.aggregation_function,
+        )
+
+    def test_format(self):
+        """ApplyInPandas formats with its aggregation function."""
+        measurement = ApplyInPandas(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkFloatColumnDescriptor(allow_nan=True),
+                },
+                groupby_columns=["A"],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            aggregation_function=FakeAggregate(),
+        )
+        aggregation_fmt = (
+            "FakeAggregate output_schema=StructType("
+            "[StructField('C', DoubleType(), True), "
+            "StructField('C_str', StringType(), True)])"
+        )
+        assert measurement.format() == textwrap.dedent(
+            f"""\
+            ApplyInPandas
+              {aggregation_fmt}"""
         )
 
     @parameterized.expand(get_all_props(ApplyInPandas))
@@ -249,6 +274,22 @@ class TestAddNoiseToColumn(PySparkTest):
         )
         assert_property_immutability(measurement, prop_name)
 
+    def test_format(self):
+        """AddNoiseToColumn formats with its wrapped per-column measurement."""
+        measurement = AddNoiseToColumn(
+            input_domain=self.input_domain,
+            measurement=AddNoiseToSeries(
+                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=sp.Integer(1))
+            ),
+            measure_column="count",
+        )
+        assert measurement.format() == textwrap.dedent(
+            """\
+            AddNoiseToColumn measure_column='count'
+              AddNoiseToSeries output_type=DoubleType()
+                AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
+        )
+
     def test_correctness(self):
         """Tests that AddNoiseToColumn works correctly."""
         expected = pd.DataFrame({"A": [0, 1, 2, 3], "count": [0, 1, 2, 3]})
@@ -297,6 +338,13 @@ class TestGeometricPartitionSelection(PySparkTest):
         self.assertEqual(self.measurement.alpha, self.alpha)
         self.assertEqual(self.measurement.threshold, self.threshold)
         self.assertEqual(self.measurement.count_column, self.count_column)
+
+    def test_format(self):
+        """GeometricPartitionSelection formats as its class name with inline attrs."""
+        assert self.measurement.format() == (
+            "GeometricPartitionSelection alpha=3 threshold=5"
+            " count_column='noisy counts'"
+        )
 
     def test_empty(self):
         """Tests that empty inputs/outputs don't cause any issues."""
@@ -444,6 +492,13 @@ class TestSparseVectorPrefixSums(PySparkTest):
         self.assertEqual(self.measurement.rank_column, "rank")
         self.assertEqual(self.measurement.grouping_columns, ["grouping"])
         self.assertEqual(self.measurement.threshold_fraction, 0.9)
+
+    def test_format(self):
+        """SparseVectorPrefixSums formats as its class name with inline attrs."""
+        assert self.measurement.format() == (
+            "SparseVectorPrefixSums alpha=1 threshold_fraction=0.9"
+            " count_column='count' rank_column='rank'"
+        )
 
     @parameterized.expand(
         [

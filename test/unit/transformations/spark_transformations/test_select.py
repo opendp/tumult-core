@@ -170,3 +170,14 @@ class TestSelect(TestComponent):
                 metric=IfGroupedBy(groupby_cols, inner_metric),
                 columns=select_columns,
             )
+
+    def test_format(self):
+        """Select formats as expected."""
+        transformation = Select(
+            input_domain=SparkDataFrameDomain(
+                {"A": SparkStringColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+            ),
+            metric=SymmetricDifference(),
+            columns=["A"],
+        )
+        assert transformation.format() == "Select columns=['A']"

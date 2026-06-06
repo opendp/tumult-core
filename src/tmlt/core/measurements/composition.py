@@ -15,6 +15,7 @@ from tmlt.core.exceptions import (
 )
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import ApproxDP, PureDP, RhoZCDP
+from tmlt.core.utils.format import format_siblings
 
 
 class Composition(Measurement):
@@ -178,3 +179,6 @@ class Composition(Measurement):
     def __call__(self, data: Any) -> List:
         """Return answers to composed measurements."""
         return [measurement(data) for measurement in self._measurements]
+
+    def _format_children(self) -> str:
+        return format_siblings(self._measurements)

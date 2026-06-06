@@ -3,10 +3,13 @@
 Changelog
 =========
 
-
-
 Unreleased
 ----------
+
+Added
+~~~~~
+
+- :class:`.Transformation`\s and :class:`.Measurement`\ s have a new ``format`` method, which renders a human-readable string showing the structure of the transformation/measurement to aid in visualization and debugging.
 
 .. _v0.19.1:
 

@@ -179,6 +179,17 @@ class TestDropInfs(PySparkTest):
             1,
         )
 
+    def test_format(self) -> None:
+        """DropInfs formats as expected."""
+        transformation = DropInfs(
+            input_domain=SparkDataFrameDomain(
+                {"B": SparkFloatColumnDescriptor(allow_inf=True)}
+            ),
+            metric=SymmetricDifference(),
+            columns=["B"],
+        )
+        assert transformation.format() == "DropInfs columns=['B']"
+
 
 class TestDropNaNs(PySparkTest):
     """Tests DropNaNs."""
@@ -290,6 +301,17 @@ class TestDropNaNs(PySparkTest):
             ).stability_function(d_in=1),
             1,
         )
+
+    def test_format(self):
+        """DropNaNs formats as expected."""
+        transformation = DropNaNs(
+            input_domain=SparkDataFrameDomain(
+                {"B": SparkFloatColumnDescriptor(allow_nan=True)}
+            ),
+            metric=SymmetricDifference(),
+            columns=["B"],
+        )
+        assert transformation.format() == "DropNaNs columns=['B']"
 
 
 class TestDropNulls(PySparkTest):
@@ -429,6 +451,17 @@ class TestDropNulls(PySparkTest):
             ).stability_function(d_in=1),
             1,
         )
+
+    def test_format(self):
+        """DropNulls formats as expected."""
+        transformation = DropNulls(
+            input_domain=SparkDataFrameDomain(
+                {"B": SparkFloatColumnDescriptor(allow_null=True)}
+            ),
+            metric=SymmetricDifference(),
+            columns=["B"],
+        )
+        assert transformation.format() == "DropNulls columns=['B']"
 
 
 class TestReplaceInfs(PySparkTest):
@@ -616,6 +649,19 @@ class TestReplaceInfs(PySparkTest):
                 replace_map={"A": (-987.6, 123.4)},
             )
 
+    def test_format(self) -> None:
+        """ReplaceInfs formats as expected."""
+        transformation = ReplaceInfs(
+            input_domain=SparkDataFrameDomain(
+                {"B": SparkFloatColumnDescriptor(allow_inf=True)}
+            ),
+            metric=SymmetricDifference(),
+            replace_map={"B": (-100.0, 100.0)},
+        )
+        assert (
+            transformation.format() == "ReplaceInfs replace_map={'B': (-100.0, 100.0)}"
+        )
+
 
 class TestReplaceNaNs(PySparkTest):
     """Tests ReplaceNaNs."""
@@ -773,6 +819,17 @@ class TestReplaceNaNs(PySparkTest):
                 metric=SymmetricDifference(),
                 replace_map={"A": 0.0},
             )
+
+    def test_format(self):
+        """ReplaceNaNs formats as expected."""
+        transformation = ReplaceNaNs(
+            input_domain=SparkDataFrameDomain(
+                {"B": SparkFloatColumnDescriptor(allow_nan=True)}
+            ),
+            metric=SymmetricDifference(),
+            replace_map={"B": 0.0},
+        )
+        assert transformation.format() == "ReplaceNaNs replace_map={'B': 0.0}"
 
 
 class TestReplaceNulls(PySparkTest):
@@ -938,3 +995,14 @@ class TestReplaceNulls(PySparkTest):
                 metric=SymmetricDifference(),
                 replace_map={"A": 0.0},
             )
+
+    def test_format(self):
+        """ReplaceNulls formats as expected."""
+        transformation = ReplaceNulls(
+            input_domain=SparkDataFrameDomain(
+                {"B": SparkFloatColumnDescriptor(allow_null=True)}
+            ),
+            metric=SymmetricDifference(),
+            replace_map={"B": 0.0},
+        )
+        assert transformation.format() == "ReplaceNulls replace_map={'B': 0.0}"

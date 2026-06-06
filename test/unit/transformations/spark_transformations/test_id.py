@@ -235,3 +235,11 @@ class TestAddUniqueColumn(PySparkTest):
             ).stability_function(d_in=1),
             1,
         )
+
+    def test_format(self):
+        """Tests that format returns the expected string."""
+        transformation = AddUniqueColumn(
+            input_domain=SparkDataFrameDomain({"A": SparkIntegerColumnDescriptor()}),
+            column="ID",
+        )
+        assert transformation.format() == "AddUniqueColumn column='ID'"

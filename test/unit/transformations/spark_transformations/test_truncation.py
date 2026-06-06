@@ -167,6 +167,21 @@ class TestLimitRowsPerGroup(PySparkTest):
         with self.assertRaisesRegex(error_type, error_msg):
             LimitRowsPerGroup(**args)  # type: ignore
 
+    def test_format(self):
+        """Tests that format returns the expected string."""
+        transformation = LimitRowsPerGroup(
+            input_domain=SparkDataFrameDomain(
+                {"A": SparkStringColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+            ),
+            output_metric=SymmetricDifference(),
+            grouping_columns=["A"],
+            threshold=2,
+        )
+        assert (
+            transformation.format()
+            == "LimitRowsPerGroup grouping_columns={'A'} threshold=2"
+        )
+
 
 class TestLimitKeysPerGroup(PySparkTest):
     """Tests for class LimitKeysPerGroup."""
@@ -384,6 +399,28 @@ class TestLimitKeysPerGroup(PySparkTest):
         with self.assertRaisesRegex(error_type, error_msg):
             LimitKeysPerGroup(**args)  # type: ignore
 
+    def test_format(self):
+        """Tests that format returns the expected string."""
+        transformation = LimitKeysPerGroup(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                    "C": SparkStringColumnDescriptor(),
+                }
+            ),
+            output_metric=IfGroupedBy(
+                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
+            ),
+            grouping_columns=["A"],
+            key_column="B",
+            threshold=2,
+        )
+        assert (
+            transformation.format()
+            == "LimitKeysPerGroup grouping_columns={'A'} key_column='B' threshold=2"
+        )
+
 
 class TestLimitRowsPerKeyPerGroup(PySparkTest):
     """Tests for class LimitRowsPerKeyPerGroup."""
@@ -560,3 +597,24 @@ class TestLimitRowsPerKeyPerGroup(PySparkTest):
         args.update(updated_args)
         with self.assertRaisesRegex(error_type, error_msg):
             LimitRowsPerKeyPerGroup(**args)  # type: ignore
+
+    def test_format(self):
+        """Tests that format returns the expected string."""
+        transformation = LimitRowsPerKeyPerGroup(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                    "C": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=IfGroupedBy(
+                ["B"], SumOf(IfGroupedBy(["A"], SymmetricDifference()))
+            ),
+            grouping_columns=["A"],
+            key_column="B",
+            threshold=2,
+        )
+        assert transformation.format() == (
+            "LimitRowsPerKeyPerGroup grouping_columns={'A'} key_column='B' threshold=2"
+        )

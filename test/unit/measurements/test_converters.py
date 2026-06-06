@@ -2,6 +2,8 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
+
+import textwrap
 from typing import Tuple
 from unittest.case import TestCase
 from unittest.mock import call
@@ -9,12 +11,14 @@ from unittest.mock import call
 import sympy as sp
 from parameterized import parameterized
 
+from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.converters import (
     PureDPToApproxDP,
     PureDPToRhoZCDP,
     RhoZCDPToApproxDP,
 )
+from tmlt.core.measurements.noise_mechanisms import AddGaussianNoise, AddLaplaceNoise
 from tmlt.core.measures import ApproxDP, PureDP, RhoZCDP
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.testing import create_mock_measurement
@@ -75,6 +79,17 @@ class TestPureDPToZCDP(TestCase):
         self.assertEqual(inner_measurement.mock_calls, [call(5)])
         self.assertEqual(result, 6)
 
+    def test_format(self):
+        """PureDPToRhoZCDP formats with its wrapped measurement."""
+        measurement = PureDPToRhoZCDP(
+            AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+        )
+        assert measurement.format() == textwrap.dedent(
+            """\
+            PureDPToRhoZCDP
+              AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
+        )
+
 
 class TestPureDPToApproxDP(TestCase):
     """Tests for :class:`PureDPToApproxDP`."""
@@ -130,6 +145,17 @@ class TestPureDPToApproxDP(TestCase):
         result = PureDPToRhoZCDP(inner_measurement)(5)
         self.assertEqual(inner_measurement.mock_calls, [call(5)])
         self.assertEqual(result, 6)
+
+    def test_format(self):
+        """PureDPToApproxDP formats with its wrapped measurement."""
+        measurement = PureDPToApproxDP(
+            AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+        )
+        assert measurement.format() == textwrap.dedent(
+            """\
+            PureDPToApproxDP
+              AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
+        )
 
 
 class TestRhoZCDPToApproxDP(TestCase):
@@ -196,3 +222,18 @@ class TestRhoZCDPToApproxDP(TestCase):
         result = PureDPToRhoZCDP(inner_measurement)(5)
         self.assertEqual(inner_measurement.mock_calls, [call(5)])
         self.assertEqual(result, 6)
+
+    def test_format(self):
+        """RhoZCDPToApproxDP formats with its wrapped measurement."""
+        measurement = RhoZCDPToApproxDP(
+            AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=1)
+        )
+        gaussian_fmt = (
+            "AddGaussianNoise output_type=DoubleType() sigma_squared=1"
+            " adds_no_noise=False"
+        )
+        assert measurement.format() == textwrap.dedent(
+            f"""\
+            RhoZCDPToApproxDP
+              {gaussian_fmt}"""
+        )

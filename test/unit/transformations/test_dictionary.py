@@ -5,6 +5,7 @@
 
 
 import re
+import textwrap
 import unittest
 from typing import Any, Dict, List, Tuple, Union
 from unittest.case import TestCase
@@ -148,6 +149,19 @@ class TestAugmentDictTransformation(TestCase):
             stability_relation_return_value,
         )
 
+    def test_format(self):
+        """AugmentDictTransformation formats with its inner transformation."""
+        inner = GetValue(
+            self.input_domain, self.input_metric, key="A"
+        ) | CreateDictFromValue(NumpyIntegerDomain(), AbsoluteDifference(), key="K")
+        transformation = AugmentDictTransformation(inner)
+        assert transformation.format() == textwrap.dedent(
+            """\
+            AugmentDictTransformation
+              ┌ GetValue key='A'
+              └ CreateDictFromValue key='K'"""
+        )
+
     def test_correctness(self):
         """Tests that AugmentDictTransformation works correctly."""
         inner_transformation = self.get_mock_transformation(
@@ -280,6 +294,19 @@ class TestGetValue(TestCase):
         self.assertEqual(transformation.output_domain, input_domain["key1"])
         self.assertEqual(transformation.output_metric, output_metric)
         self.assertEqual(transformation.key, "key1")
+
+    def test_format(self):
+        """GetValue formats as its class name with its key."""
+        transformation = GetValue(
+            input_domain=DictDomain(
+                {"A": NumpyIntegerDomain(), "B": NumpyIntegerDomain()}
+            ),
+            input_metric=DictMetric(
+                {"A": AbsoluteDifference(), "B": AbsoluteDifference()}
+            ),
+            key="A",
+        )
+        assert transformation.format() == "GetValue key='A'"
 
     @parameterized.expand([("A", np.int_(20)), (("B", "B"), np.int_(123))])
     def test_correctness(self, key: Any, expected: Any):
@@ -454,6 +481,17 @@ class TestSubset(TestCase):
         self.assertEqual(transformation.output_metric, output_metric)
         self.assertEqual(transformation.keys, ["key2"])
 
+    def test_format(self):
+        """Subset formats as its class name with its keys."""
+        transformation = Subset(
+            input_domain=self.input_domain,
+            input_metric=DictMetric(
+                {"key1": SymmetricDifference(), "key2": SymmetricDifference()}
+            ),
+            keys=["key1"],
+        )
+        assert transformation.format() == "Subset keys=['key1']"
+
     @parameterized.expand(
         [
             (
@@ -612,6 +650,15 @@ class TestCreateDictFromValue(TestCase):
         )
         self.assertEqual(transformation.output_metric, output_metric)
         self.assertEqual(transformation.key, ("X", "Y"))
+
+    def test_format(self):
+        """CreateDictFromValue formats as its class name with its key."""
+        transformation = CreateDictFromValue(
+            input_domain=NumpyIntegerDomain(),
+            input_metric=AbsoluteDifference(),
+            key="X",
+        )
+        assert transformation.format() == "CreateDictFromValue key='X'"
 
     def test_correctness(self):
         """Tests that CreateDictFromValue correctly applies transformation."""

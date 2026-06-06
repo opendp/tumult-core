@@ -5,6 +5,7 @@
 
 
 import itertools
+import textwrap
 from unittest.mock import MagicMock, Mock
 
 import pandas as pd
@@ -16,6 +17,7 @@ from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import SparkRowDomain
 from tmlt.core.metrics import AbsoluteDifference, Metric, SymmetricDifference
 from tmlt.core.transformations.chaining import ChainTT
+from tmlt.core.transformations.identity import Identity
 from tmlt.core.transformations.spark_transformations.map import (
     FlatMap,
     RowToRowsTransformation,
@@ -189,6 +191,17 @@ class TestChainTT(TestComponent):
             )
             if mock_hint.called:
                 mock_hint.assert_called_with(1, 1)
+
+    def test_format(self):
+        """A ChainTT formats as its members joined by chain markers."""
+        chain = Identity(AbsoluteDifference(), NumpyIntegerDomain()) | Identity(
+            AbsoluteDifference(), NumpyIntegerDomain()
+        )
+        assert chain.format() == textwrap.dedent(
+            """\
+            ┌ Identity
+            └ Identity"""
+        )
 
     def test_incompatible_domains(self):
         """Tests that chaining fails with incompatible domains."""
