@@ -9,6 +9,7 @@ from typeguard import typechecked
 
 from tmlt.core.exceptions import DomainMismatchError, MetricMismatchError
 from tmlt.core.transformations.base import Transformation
+from tmlt.core.utils.format import format_chain, get_chain_children
 
 
 class ChainTT(Transformation):
@@ -126,3 +127,7 @@ class ChainTT(Transformation):
     def __call__(self, data: Any) -> Any:
         """Performs transformation1 followed by transformation2."""
         return self._transformation2(self._transformation1(data))
+
+    def format(self) -> str:
+        """Return a human-readable multi-line description of this measurement."""
+        return format_chain(get_chain_children(self))

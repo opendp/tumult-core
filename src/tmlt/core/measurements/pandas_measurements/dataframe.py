@@ -26,6 +26,7 @@ from tmlt.core.measurements.pandas_measurements.series import (
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
 from tmlt.core.metrics import HammingDistance, SymmetricDifference
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.utils.format import format_labeled_siblings
 
 
 class Aggregate(Measurement):
@@ -272,4 +273,15 @@ class AggregateByColumn(Aggregate):
                 column_name: [aggregation(df[column_name])]
                 for column_name, aggregation in self.column_to_aggregation.items()
             }
+        )
+
+    def format(self) -> str:
+        """Return a human-readable multi-line description of this measurement.
+
+        The per-column aggregations are rendered as labeled sibling children
+        (the ``output_schema`` is derivable from them, so it is not shown).
+        """
+        return (
+            f"{type(self).__name__}\n"
+            f"{format_labeled_siblings(self.column_to_aggregation.items())}"
         )

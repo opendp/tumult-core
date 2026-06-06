@@ -275,3 +275,19 @@ def test_invalid_output_column_types(
     else:
         transformer1([Row()])
         transformer2([Row()])
+
+
+def test_format():
+    """RowsToRowsTransformation formats with its trusted_f."""
+
+    def f(rows):
+        return rows
+
+    transformation = RowsToRowsTransformation(
+        input_domain=ListDomain(SparkRowDomain({"A": SparkStringColumnDescriptor()})),
+        output_domain=ListDomain(SparkRowDomain({"A": SparkStringColumnDescriptor()})),
+        trusted_f=f,
+    )
+    assert transformation.format() == (
+        f"RowsToRowsTransformation trusted_f=<function {f.__qualname__}>"
+    )

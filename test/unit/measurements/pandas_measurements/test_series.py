@@ -5,6 +5,7 @@
 
 
 import re
+import textwrap
 from typing import Any, Dict, Tuple, Union
 from unittest.case import TestCase
 from unittest.mock import Mock, call, patch
@@ -56,6 +57,21 @@ class TestNoisyQuantile(TestCase):
             epsilon=10000000,
         )
         assert_property_immutability(measurement, prop_name)
+
+    def test_format(self):
+        """NoisyQuantile formats as its class name with its inline attrs."""
+        measurement = NoisyQuantile(
+            PandasSeriesDomain(NumpyIntegerDomain()),
+            output_measure=PureDP(),
+            quantile=0.5,
+            lower=22,
+            upper=29,
+            epsilon=1,
+        )
+        assert measurement.format() == (
+            "NoisyQuantile output_spark_type=DoubleType() quantile=0.5 lower=22"
+            " upper=29 epsilon=1"
+        )
 
     def test_properties(self):
         """NoisyQuantile's properties have the expected values."""
@@ -235,6 +251,19 @@ class TestAddNoiseToSeries(TestCase):
             noise_measurement=AddDiscreteGaussianNoise(sigma_squared=1)
         )
         assert_property_immutability(measurement, prop_name)
+
+    def test_format(self):
+        """AddNoiseToSeries formats with its wrapped noise measurement."""
+        measurement = AddNoiseToSeries(
+            noise_measurement=AddLaplaceNoise(
+                scale=1, input_domain=NumpyIntegerDomain()
+            )
+        )
+        assert measurement.format() == textwrap.dedent(
+            """\
+            AddNoiseToSeries output_type=DoubleType()
+              AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
+        )
 
     @parameterized.expand(
         [

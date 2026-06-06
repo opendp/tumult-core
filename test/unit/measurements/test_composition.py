@@ -5,6 +5,7 @@
 
 
 import itertools
+import textwrap
 from typing import Tuple
 from unittest.mock import MagicMock, create_autospec
 
@@ -53,6 +54,21 @@ class TestComposition(TestComponent):
             ]
         )
         assert_property_immutability(measurement, prop_name)
+
+    def test_format(self):
+        """Composition formats its composed measurements as siblings."""
+        measurement = Composition(
+            [
+                AddLaplaceNoiseToNumber(scale=1, input_domain=NumpyIntegerDomain()),
+                AddLaplaceNoiseToNumber(scale=2, input_domain=NumpyIntegerDomain()),
+            ]
+        )
+        assert measurement.format() == textwrap.dedent(
+            """\
+            Composition
+            * AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False
+            * AddLaplaceNoise scale=2 output_type=DoubleType() adds_no_noise=False"""
+        )
 
     @parameterized.expand(
         [

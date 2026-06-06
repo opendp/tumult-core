@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2026
 
 import math
+import textwrap
 from typing import Union
 
 import pandas as pd
@@ -288,3 +289,23 @@ def test_if_grouped_by_metric_invalid_parameters(
                 augment=augment,
             ),
         )
+
+
+def test_format():
+    """Map formats with its row transformer."""
+
+    def f(row):
+        return row
+
+    row_transformer = RowToRowTransformation(
+        input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
+        output_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
+        trusted_f=f,
+        augment=False,
+    )
+    transformation = Map(metric=SymmetricDifference(), row_transformer=row_transformer)
+    assert transformation.format() == textwrap.dedent(
+        f"""\
+        Map
+          RowToRowTransformation trusted_f=<function {f.__qualname__}> augment=False"""
+    )

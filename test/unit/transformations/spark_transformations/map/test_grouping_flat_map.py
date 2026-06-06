@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2026
 
 import math
+import textwrap
 
 import pandas as pd
 import pytest
@@ -363,3 +364,34 @@ def test_invalid_transformers(transformer: RowToRowsTransformation, raises):
     """Incompatible transformers are rejected."""
     with raises:
         GroupingFlatMap(RootSumOfSquared(SymmetricDifference()), transformer, 1)
+
+
+def test_format():
+    """GroupingFlatMap formats with its row transformer."""
+
+    def f(row):
+        return [row]
+
+    row_transformer = RowToRowsTransformation(
+        input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
+        output_domain=ListDomain(
+            SparkRowDomain(
+                {
+                    "a": SparkIntegerColumnDescriptor(),
+                    "b": SparkIntegerColumnDescriptor(),
+                }
+            )
+        ),
+        trusted_f=f,
+        augment=True,
+    )
+    transformation = GroupingFlatMap(
+        output_metric=RootSumOfSquared(SymmetricDifference()),
+        row_transformer=row_transformer,
+        max_num_rows=3,
+    )
+    assert transformation.format() == textwrap.dedent(
+        f"""\
+        GroupingFlatMap max_num_rows=3
+          RowToRowsTransformation trusted_f=<function {f.__qualname__}> augment=True"""
+    )

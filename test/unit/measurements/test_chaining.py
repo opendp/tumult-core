@@ -5,6 +5,7 @@
 
 
 import itertools
+import textwrap
 from unittest.mock import MagicMock, call
 
 import sympy as sp
@@ -13,8 +14,10 @@ from parameterized import parameterized
 from tmlt.core.domains.base import Domain
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.measurements.chaining import ChainTM
+from tmlt.core.measurements.noise_mechanisms import AddLaplaceNoise
 from tmlt.core.measures import Measure, PureDP, RhoZCDP
 from tmlt.core.metrics import AbsoluteDifference, Metric, SymmetricDifference
+from tmlt.core.transformations.identity import Identity
 from tmlt.core.utils.testing import (
     TestComponent,
     assert_property_immutability,
@@ -178,6 +181,17 @@ class TestChainTM(TestComponent):
             )
             if mock_hint.called:
                 mock_hint.assert_called_with(sp.Integer(1), sp.Integer(1))
+
+    def test_format(self):
+        """A ChainTM formats its transformation and measurement as a chain."""
+        measurement = Identity(
+            AbsoluteDifference(), NumpyIntegerDomain()
+        ) | AddLaplaceNoise(scale=1, input_domain=NumpyIntegerDomain())
+        assert measurement.format() == textwrap.dedent(
+            """\
+            ┌ Identity
+            └ AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
+        )
 
     def test_incompatible_domains_fails(self):
         """Tests that chaining fails with incompatible domains."""

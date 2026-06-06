@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2026
 
 import math
+import textwrap
 from typing import Any, Dict, Optional, cast
 
 import pandas as pd
@@ -389,3 +390,25 @@ def test_invalid_domains_metrics(input_domain, output_domain, metric, augment, r
             ),
             max_num_rows=1,
         )
+
+
+def test_format():
+    """FlatMap formats with its row transformer."""
+
+    def f(row):
+        return [row]
+
+    row_transformer = RowToRowsTransformation(
+        input_domain=SparkRowDomain({"a": SparkIntegerColumnDescriptor()}),
+        output_domain=ListDomain(SparkRowDomain({"a": SparkIntegerColumnDescriptor()})),
+        trusted_f=f,
+        augment=False,
+    )
+    transformation = FlatMap(
+        metric=SymmetricDifference(), row_transformer=row_transformer, max_num_rows=2
+    )
+    assert transformation.format() == textwrap.dedent(
+        f"""\
+        FlatMap max_num_rows=2
+          RowToRowsTransformation trusted_f=<function {f.__qualname__}> augment=False"""
+    )

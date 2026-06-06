@@ -13,6 +13,7 @@ from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
+    SparkStringColumnDescriptor,
     SparkTimestampColumnDescriptor,
 )
 from tmlt.core.exceptions import UnsupportedCombinationError, UnsupportedMetricError
@@ -197,3 +198,12 @@ class TestFilter(TestComponent):
                 metric=IfGroupedBy(groupby_cols, SumOf(inner_metric)),
                 filter_expr="A < 0",
             )
+
+    def test_format(self):
+        """Filter formats as expected."""
+        transformation = Filter(
+            domain=SparkDataFrameDomain({"A": SparkStringColumnDescriptor()}),
+            metric=SymmetricDifference(),
+            filter_expr="A = 'a1'",
+        )
+        assert transformation.format() == "Filter filter_expr='A = 'a1''"

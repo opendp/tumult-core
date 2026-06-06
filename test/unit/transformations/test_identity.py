@@ -44,3 +44,8 @@ class TestIdentityTransformation(TestComponent):
         self.assertTrue(id_transformation.stability_relation(1, 1))
         self.assertTrue(id_transformation.stability_relation(1, 2))
         self.assertFalse(id_transformation.stability_relation(4, 2))
+
+    def test_format(self):
+        """Identity formats as just its class name."""
+        transformation = Identity(AbsoluteDifference(), NumpyIntegerDomain())
+        assert transformation.format() == "Identity"

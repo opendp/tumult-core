@@ -35,6 +35,7 @@ from tmlt.core.metrics import Metric, RootSumOfSquared, SumOf
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
 from tmlt.core.transformations.identity import Identity
+from tmlt.core.utils.format import format_siblings
 from tmlt.core.utils.misc import copy_if_mutable
 
 
@@ -719,6 +720,9 @@ class ParallelComposition(Measurement):
     def __call__(self, data: Any) -> ParallelQueryable:
         """Returns a :class:`~.ParallelQueryable`."""
         return ParallelQueryable(data, self._measurements)
+
+    def _format_children(self) -> str:
+        return format_siblings(self._measurements)
 
 
 class MakeInteractive(Measurement):

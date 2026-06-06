@@ -52,6 +52,19 @@ from tmlt.core.utils.testing import (
 class TestCount(PySparkTest):
     """Unit tests for Count."""
 
+    def test_format(self):
+        """Count formats as just its class name."""
+        transformation = Count(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "X": SparkIntegerColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+        )
+        assert transformation.format() == "Count"
+
     def setUp(self):
         """Test Setup."""
         self.domain = SparkDataFrameDomain(
@@ -129,6 +142,19 @@ class TestCount(PySparkTest):
 
 class TestCountDistinct(PySparkTest):
     """Unit tests for CountDistinct."""
+
+    def test_format(self):
+        """CountDistinct formats as just its class name."""
+        transformation = CountDistinct(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "X": SparkIntegerColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+        )
+        assert transformation.format() == "CountDistinct"
 
     def setUp(self):
         """Test Setup."""
@@ -219,6 +245,20 @@ class TestCountDistinct(PySparkTest):
 
 class TestCountGrouped(PySparkTest):
     """Unit tests for CountGrouped."""
+
+    def test_format(self):
+        """CountGrouped formats with its count_column."""
+        transformation = CountGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkStringColumnDescriptor(),
+                    "X": SparkIntegerColumnDescriptor(),
+                },
+                groupby_columns=["A"],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+        )
+        assert transformation.format() == "CountGrouped count_column='count'"
 
     def setUp(self):
         """Test Setup."""
@@ -408,6 +448,23 @@ class TestCountGrouped(PySparkTest):
 
 class TestCountDistinctGrouped(PySparkTest):
     """Unit tests for CountDistinctGrouped."""
+
+    def test_format(self):
+        """CountDistinctGrouped formats with its count_column."""
+        transformation = CountDistinctGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkStringColumnDescriptor(),
+                    "X": SparkIntegerColumnDescriptor(),
+                },
+                groupby_columns=["A"],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+        )
+        assert (
+            transformation.format()
+            == "CountDistinctGrouped count_column='count_distinct'"
+        )
 
     def setUp(self):
         """Test Setup."""
@@ -621,6 +678,22 @@ class TestCountDistinctGrouped(PySparkTest):
 class TestSum(PySparkTest):
     """Unit tests for Sum."""
 
+    def test_format(self):
+        """Sum formats with its bounds and measure_column."""
+        transformation = Sum(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "X": SparkIntegerColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            measure_column="X",
+            lower=0,
+            upper=4,
+        )
+        assert transformation.format() == "Sum upper=4 lower=0 measure_column='X'"
+
     def setUp(self):
         """Test Setup."""
         self.domain = SparkDataFrameDomain(
@@ -780,6 +853,26 @@ class TestSum(PySparkTest):
 
 class TestSumGrouped(PySparkTest):
     """Unit tests for SumGrouped."""
+
+    def test_format(self):
+        """SumGrouped formats with its bounds, measure_column, and sum_column."""
+        transformation = SumGrouped(
+            input_domain=SparkGroupedDataFrameDomain(
+                schema={
+                    "A": SparkStringColumnDescriptor(),
+                    "X": SparkIntegerColumnDescriptor(),
+                },
+                groupby_columns=["A"],
+            ),
+            input_metric=SumOf(SymmetricDifference()),
+            measure_column="X",
+            lower=0,
+            upper=4,
+        )
+        assert (
+            transformation.format()
+            == "SumGrouped upper=4 lower=0 measure_column='X' sum_column='sum(X)'"
+        )
 
     def setUp(self):
         """Test setup."""

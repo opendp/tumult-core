@@ -65,6 +65,18 @@ class TestGroupBy(PySparkTest):
 
     data: List[Tuple[str, int]]
 
+    def test_format(self):
+        """GroupBy formats with use_l2, group_keys, and groupby_columns."""
+        transformation = GroupBy(
+            input_domain=SparkDataFrameDomain(
+                {"A": SparkStringColumnDescriptor(), "B": SparkStringColumnDescriptor()}
+            ),
+            input_metric=SymmetricDifference(),
+            use_l2=False,
+            group_keys=self.spark.createDataFrame(pd.DataFrame({"B": ["b1", "b2"]})),
+        )
+        assert transformation.format() == "GroupBy use_l2=False groupby_columns=['B']"
+
     def setUp(self):
         """Setup."""
         self.domain = SparkDataFrameDomain(

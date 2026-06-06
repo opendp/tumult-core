@@ -285,6 +285,42 @@ class TestTransformValueSubclasses(PySparkTest):
         transformation = self.subclass(**kwargs)  # type: ignore
         transformation(input_data)
 
+    def test_format(self):
+        """Each subclass formats with its head line and leaks no memory addresses."""
+        kwargs = self.extra_kwargs.copy()  # type: ignore
+        kwargs["input_domain"] = DictDomain(
+            {
+                "key1": SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "B": SparkFloatColumnDescriptor(
+                            allow_nan=True, allow_inf=True, allow_null=True
+                        ),
+                        "C": SparkStringColumnDescriptor(),
+                    }
+                ),
+                "key2": SparkDataFrameDomain(
+                    {
+                        "A": SparkStringColumnDescriptor(),
+                        "D": SparkIntegerColumnDescriptor(),
+                    }
+                ),
+            }
+        )
+        kwargs["input_metric"] = AddRemoveKeys({"key1": "A", "key2": "A"})
+        kwargs["key"] = "key1"
+        kwargs["new_key"] = "key3"
+        kwargs.update(self.extra_kwargs)  # type: ignore
+        for key, value in self.pandas_to_spark_kwargs.items():  # type: ignore
+            kwargs[key] = self.spark.createDataFrame(value)
+        transformation = self.subclass(**kwargs)  # type: ignore
+        formatted = transformation.format()
+        assert (
+            formatted.split("\n")[0]
+            == f"{self.subclass.__name__} key='key1' new_key='key3'"  # type: ignore
+        )
+        assert " at 0x" not in formatted
+
 
 class MockValue(TransformValue):
     """Subclass of :class:`~.TransformValue` with flexible behavior for testing."""

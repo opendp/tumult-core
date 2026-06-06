@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2026
 
 import math
+import textwrap
 from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
@@ -363,3 +364,32 @@ def test_invalid_metrics(
                 lambda rs: [{"a": r["a"]} for r in rs],
             ),
         )
+
+
+def test_format():
+    """FlatMapByKey formats with its row transformer."""
+
+    def f(rows):
+        return rows
+
+    row_transformer = RowsToRowsTransformation(
+        input_domain=ListDomain(
+            SparkRowDomain(
+                {
+                    "k": SparkIntegerColumnDescriptor(),
+                    "a": SparkFloatColumnDescriptor(),
+                }
+            )
+        ),
+        output_domain=ListDomain(SparkRowDomain({"a": SparkFloatColumnDescriptor()})),
+        trusted_f=f,
+    )
+    transformation = FlatMapByKey(
+        metric=IfGroupedBy(["k"], SymmetricDifference()),
+        row_transformer=row_transformer,
+    )
+    assert transformation.format() == textwrap.dedent(
+        f"""\
+        FlatMapByKey
+          RowsToRowsTransformation trusted_f=<function {f.__qualname__}>"""
+    )

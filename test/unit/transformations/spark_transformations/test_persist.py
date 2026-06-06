@@ -8,6 +8,7 @@ from parameterized import parameterized
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkIntegerColumnDescriptor,
+    SparkStringColumnDescriptor,
 )
 from tmlt.core.metrics import SymmetricDifference
 from tmlt.core.transformations.spark_transformations.persist import (
@@ -44,6 +45,14 @@ class TestPersist(PySparkTest):
         df = self.transformation(df)
         self.assertTrue(df.is_cached)
 
+    def test_format(self):
+        """Persist formats as expected."""
+        transformation = Persist(
+            domain=SparkDataFrameDomain({"A": SparkStringColumnDescriptor()}),
+            metric=SymmetricDifference(),
+        )
+        assert transformation.format() == "Persist"
+
 
 class TestUnpersist(PySparkTest):
     """Tests for Unpersist transformation."""
@@ -66,6 +75,14 @@ class TestUnpersist(PySparkTest):
         assert df.is_cached
         df = self.transformation(df)
         self.assertFalse(df.is_cached)
+
+    def test_format(self):
+        """Unpersist formats as expected."""
+        transformation = Unpersist(
+            domain=SparkDataFrameDomain({"A": SparkStringColumnDescriptor()}),
+            metric=SymmetricDifference(),
+        )
+        assert transformation.format() == "Unpersist"
 
 
 class TestSparkAction(PySparkTest):
@@ -101,3 +118,11 @@ class TestSparkAction(PySparkTest):
             1,
         )
         df.unpersist()
+
+    def test_format(self):
+        """SparkAction formats as expected."""
+        transformation = SparkAction(
+            domain=SparkDataFrameDomain({"A": SparkStringColumnDescriptor()}),
+            metric=SymmetricDifference(),
+        )
+        assert transformation.format() == "SparkAction"
