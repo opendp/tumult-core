@@ -380,8 +380,8 @@ def _discrete_gaussian_unnormalized_cmf(
                     n_terms + 1,
                     k,
                     sigma_squared,
-                    prec,  # n_terms + 1 to k
-                ),
+                    prec,
+                ),  # n_terms + 1 to k
             ],
             prec,
         )
