@@ -1090,8 +1090,7 @@ def create_count_aggregation(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance],
     count_column: Optional[str],
-) -> Count:
-    ...
+) -> Count: ...
 
 
 @overload
@@ -1099,8 +1098,7 @@ def create_count_aggregation(
     input_domain: SparkGroupedDataFrameDomain,
     input_metric: Union[SumOf, RootSumOfSquared],
     count_column: Optional[str],
-) -> CountGrouped:
-    ...
+) -> CountGrouped: ...
 
 
 def create_count_aggregation(
@@ -1141,8 +1139,7 @@ def create_count_distinct_aggregation(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance],
     count_column: Optional[str],
-) -> CountDistinct:
-    ...
+) -> CountDistinct: ...
 
 
 @overload
@@ -1150,8 +1147,7 @@ def create_count_distinct_aggregation(
     input_domain: SparkGroupedDataFrameDomain,
     input_metric: Union[SumOf, RootSumOfSquared],
     count_column: Optional[str],
-) -> CountDistinctGrouped:
-    ...
+) -> CountDistinctGrouped: ...
 
 
 def create_count_distinct_aggregation(
@@ -1195,8 +1191,7 @@ def create_sum_aggregation(
     lower: ExactNumberInput,
     upper: ExactNumberInput,
     sum_column: Optional[str],
-) -> Sum:
-    ...
+) -> Sum: ...
 
 
 @overload
@@ -1207,8 +1202,7 @@ def create_sum_aggregation(
     lower: ExactNumberInput,
     upper: ExactNumberInput,
     sum_column: Optional[str],
-) -> SumGrouped:
-    ...
+) -> SumGrouped: ...
 
 
 def create_sum_aggregation(

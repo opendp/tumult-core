@@ -51,9 +51,9 @@ class MeasureTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception.value, prop), f"Expected prop was missing: {prop}"
             actual_value = getattr(exception.value, prop)
-            assert (
-                actual_value == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert actual_value == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_mutable_inputs(
@@ -76,9 +76,9 @@ class MeasureTests(ABC):
         expected = copy.deepcopy(getattr(measure, key))
         mutator(measure_args[key])
         actual_value = getattr(measure, key)
-        assert (
-            getattr(measure, key) == expected
-        ), f"Expected {key} to be {expected}, got {actual_value}"
+        assert getattr(measure, key) == expected, (
+            f"Expected {key} to be {expected}, got {actual_value}"
+        )
 
     @abstractmethod
     def test_property_immutability(self, measure: Measure):
@@ -105,9 +105,9 @@ class MeasureTests(ABC):
         for prop, expected_val in expected_properties.items():
             assert hasattr(measure, prop), f"{prop} not in {measure}"
             actual_value = getattr(measure, prop)
-            assert (
-                getattr(measure, prop) == expected_val
-            ), f"Expected {prop} to be {expected_val}; got {actual_value}"
+            assert getattr(measure, prop) == expected_val, (
+                f"Expected {prop} to be {expected_val}; got {actual_value}"
+            )
 
     @abstractmethod
     def test_compare(
@@ -139,9 +139,9 @@ class MeasureTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception, prop), f"{prop} not in {exception}"
             actual_value = getattr(exception, prop)
-            assert (
-                getattr(exception, prop) == expected_value
-            ), f"Expected {prop} to be {expected_value}; got {actual_value}"
+            assert getattr(exception, prop) == expected_value, (
+                f"Expected {prop} to be {expected_value}; got {actual_value}"
+            )
 
     @abstractmethod
     def test_repr(self, measure: Measure, representation: str):

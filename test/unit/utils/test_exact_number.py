@@ -1,4 +1,5 @@
 """Unit tests for :mod:`tmlt.core.utils.exact_number`."""
+
 import itertools
 from fractions import Fraction
 from unittest import TestCase

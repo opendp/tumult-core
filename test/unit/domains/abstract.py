@@ -61,9 +61,9 @@ class DomainTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception.value, prop), f"Expected prop was missing: {prop}"
             actual_value = getattr(exception.value, prop)
-            assert (
-                actual_value == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert actual_value == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_mutable_inputs(
@@ -86,9 +86,9 @@ class DomainTests(ABC):
         expected = copy.deepcopy(getattr(domain, key))
         mutator(domain_args[key])
         actual_value = getattr(domain, key)
-        assert (
-            getattr(domain, key) == expected
-        ), f"Expected {key} to be {expected}, got {actual_value}"
+        assert getattr(domain, key) == expected, (
+            f"Expected {key} to be {expected}, got {actual_value}"
+        )
 
     @abstractmethod
     def test_property_immutability(self, domain: Domain):
@@ -115,9 +115,9 @@ class DomainTests(ABC):
         for prop, expected_val in expected_properties.items():
             assert hasattr(domain, prop), f"{prop} not in {domain}"
             actual_value = getattr(domain, prop)
-            assert (
-                actual_value == expected_val
-            ), f"Expected {prop} to be {expected_val}, got {actual_value}"
+            assert actual_value == expected_val, (
+                f"Expected {prop} to be {expected_val}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_construct_component(
@@ -150,6 +150,6 @@ class DomainTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception.value, prop), f"{prop} not in {exception.value}"
             actual_value = getattr(exception.value, prop)
-            assert (
-                actual_value == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert actual_value == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )

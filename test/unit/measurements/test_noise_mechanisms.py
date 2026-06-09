@@ -548,9 +548,9 @@ class TestAddLaplaceNoise(MeasurementTests):
             if np.isnan(expected):
                 assert np.isnan(actual), f"Expected {expected}, got {actual}"
             else:
-                assert actual == pytest.approx(
-                    expected
-                ), f"Expected {expected}, got {actual}"
+                assert actual == pytest.approx(expected), (
+                    f"Expected {expected}, got {actual}"
+                )
 
 
 class TestAddGeometricNoise(MeasurementTests):
@@ -924,9 +924,9 @@ class TestAddGeometricNoise(MeasurementTests):
             if np.isnan(expected):
                 assert np.isnan(actual), f"Expected {expected}, got {actual}"
             else:
-                assert actual == pytest.approx(
-                    expected
-                ), f"Expected {expected}, got {actual}"
+                assert actual == pytest.approx(expected), (
+                    f"Expected {expected}, got {actual}"
+                )
 
 
 class TestAddGaussianNoise(MeasurementTests):
@@ -1826,6 +1826,6 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
             if np.isnan(expected):
                 assert np.isnan(actual), f"Expected {expected}, got {actual}"
             else:
-                assert actual == pytest.approx(
-                    expected
-                ), f"Expected {expected}, got {actual}"
+                assert actual == pytest.approx(expected), (
+                    f"Expected {expected}, got {actual}"
+                )

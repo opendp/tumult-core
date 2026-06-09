@@ -658,7 +658,7 @@ def _get_exact_arb(val: Union[int, float, Tuple[int, int]]) -> Arb:
         return Arb.from_int(val)
     if isinstance(val, float):
         return Arb.from_float(val)
-    assert (
-        len(val) == 2 and isinstance(val[0], int) and isinstance(val[1], int)
-    ), f"Invalid mantissa, exponent tuple : ({val}). Expected a pair of integers"
+    assert len(val) == 2 and isinstance(val[0], int) and isinstance(val[1], int), (
+        f"Invalid mantissa, exponent tuple : ({val}). Expected a pair of integers"
+    )
     return Arb.from_man_exp(val[0], val[1])

@@ -16,9 +16,9 @@ def uniform_inverse_cdf(l: float, u: float, p: arb.Arb, prec: int) -> arb.Arb:
         p: Probability to compute the inverse CDF at.
         prec: Precision to compute the CDF with.
     """
-    assert (
-        arb.Arb.from_int(0) <= p <= arb.Arb.from_int(1)
-    ), f"`p` should be in [0,1], not {p}"
+    assert arb.Arb.from_int(0) <= p <= arb.Arb.from_int(1), (
+        f"`p` should be in [0,1], not {p}"
+    )
     assert l <= u, f"`l` should not be larger than `u`, but {l} > {u}"
     # The following code-block is equivalent to:
     #   return l * (1 - p) + p * u

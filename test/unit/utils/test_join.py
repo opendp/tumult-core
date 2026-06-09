@@ -306,8 +306,7 @@ JOIN_VALIDATION_CASES: Any = [
         pytest.raises(
             ValueError,
             match=re.escape(
-                "Name collision, ['b_right'] would appear more than once in the "
-                "output."
+                "Name collision, ['b_right'] would appear more than once in the output."
             ),
         ),
     ),
@@ -330,8 +329,7 @@ JOIN_VALIDATION_CASES: Any = [
         pytest.raises(
             ValueError,
             match=re.escape(
-                "Name collision, ['b_right'] would appear more than once in the "
-                "output."
+                "Name collision, ['b_right'] would appear more than once in the output."
             ),
         ),
     ),

@@ -190,9 +190,9 @@ class TestRhoZCDPToApproxDP(TestCase):
     ):
         """Test that the privacy relation is computed correctly."""
         inner_measurement = create_mock_measurement(output_measure=RhoZCDP())
-        inner_measurement.privacy_relation = lambda d_in, d_out: ExactNumber(
-            d_in
-        ) <= ExactNumber(d_out)
+        inner_measurement.privacy_relation = lambda d_in, d_out: (
+            ExactNumber(d_in) <= ExactNumber(d_out)
+        )
         measurement = RhoZCDPToApproxDP(inner_measurement)
         self.assertTrue(measurement.privacy_relation(d_in, d_out))
 
@@ -210,9 +210,9 @@ class TestRhoZCDPToApproxDP(TestCase):
     ):
         """Test that the privacy relation fails when the conversion shouldn't work."""
         inner_measurement = create_mock_measurement(output_measure=RhoZCDP())
-        inner_measurement.privacy_relation = lambda d_in, d_out: ExactNumber(
-            d_in
-        ) <= ExactNumber(d_out)
+        inner_measurement.privacy_relation = lambda d_in, d_out: (
+            ExactNumber(d_in) <= ExactNumber(d_out)
+        )
         measurement = RhoZCDPToApproxDP(inner_measurement)
         self.assertFalse(measurement.privacy_relation(d_in, d_out))
 

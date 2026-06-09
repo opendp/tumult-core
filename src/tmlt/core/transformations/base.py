@@ -108,12 +108,10 @@ class Transformation(ABC):
         return self.output_metric.compare(min_d_out, d_out)
 
     @overload
-    def __or__(self, other: "Transformation") -> "Transformation":
-        ...
+    def __or__(self, other: "Transformation") -> "Transformation": ...
 
     @overload
-    def __or__(self, other: Measurement) -> Measurement:
-        ...
+    def __or__(self, other: Measurement) -> Measurement: ...
 
     def __or__(self, other: Any) -> Union[Measurement, Transformation]:
         """Return this transformation chained with another component."""

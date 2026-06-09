@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
-
 from test.system.noise_distribution_tests import P_THRESHOLD, SAMPLE_SIZE
 
 import numpy as np
@@ -19,6 +18,6 @@ def test_uniform_distribution(a, b):
     """:func:`~.uniform` samples correctly."""
     samples = np.array([uniform(a, b) for _ in range(SAMPLE_SIZE)])
     (_, p_value) = kstest(samples, cdf=scipy_uniform(a, b - a).cdf)
-    assert (
-        p_value > P_THRESHOLD
-    ), f"p-value ({p_value}) is not greater than threshold ({P_THRESHOLD})"
+    assert p_value > P_THRESHOLD, (
+        f"p-value ({p_value}) is not greater than threshold ({P_THRESHOLD})"
+    )

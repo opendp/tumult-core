@@ -13,7 +13,7 @@ from pyspark.conf import SparkConf
 class Config:
     """Global configuration for programs using Core."""
 
-    _temp_db_name = f'tumult_temp_{time.strftime("%Y%m%d_%H%M%S")}_{uuid4().hex}'
+    _temp_db_name = f"tumult_temp_{time.strftime('%Y%m%d_%H%M%S')}_{uuid4().hex}"
 
     @classmethod
     def temp_db_name(cls) -> str:

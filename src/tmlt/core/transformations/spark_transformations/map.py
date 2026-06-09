@@ -1366,9 +1366,9 @@ class FlatMapByKey(Transformation):
             )
 
         # Add the key column back to the schema, ensuring it is the first column.
-        output_schema[
-            self._key_column
-        ] = row_transformer.input_domain.element_domain.schema[self._key_column]
+        output_schema[self._key_column] = (
+            row_transformer.input_domain.element_domain.schema[self._key_column]
+        )
         output_schema.move_to_end(self._key_column, last=False)
 
         super().__init__(

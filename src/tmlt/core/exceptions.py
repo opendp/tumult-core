@@ -1,4 +1,5 @@
 """Special exceptions raised by Core in certain situations."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Collection, Iterable, Union

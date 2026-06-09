@@ -43,9 +43,9 @@ class MeasurementTests(ABC):
         expected = copy.deepcopy(getattr(measurement, key))
         mutator(measurement_args[key])
         actual_value = getattr(measurement, key)
-        assert (
-            getattr(measurement, key) == expected
-        ), f"Expected {key} to be {expected}, got {actual_value}"
+        assert getattr(measurement, key) == expected, (
+            f"Expected {key} to be {expected}, got {actual_value}"
+        )
 
     @abstractmethod
     def test_property_immutability(self, measurement: Measurement):
@@ -77,9 +77,9 @@ class MeasurementTests(ABC):
         for prop, expected_val in expected_properties.items():
             assert hasattr(measurement, prop), f"{prop} not in {measurement}"
             actual_value = getattr(measurement, prop)
-            assert (
-                getattr(measurement, prop) == expected_val
-            ), f"Expected {prop} to be {expected_val}; got {actual_value}"
+            assert getattr(measurement, prop) == expected_val, (
+                f"Expected {prop} to be {expected_val}; got {actual_value}"
+            )
 
     @abstractmethod
     def test_construct_component(
@@ -112,9 +112,9 @@ class MeasurementTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception.value, prop), f"{prop} not in {exception.value}"
             actual_value = getattr(exception.value, prop)
-            assert (
-                actual_value == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert actual_value == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_privacy_function(
@@ -145,9 +145,9 @@ class MeasurementTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception, prop), f"{prop} not in {exception}"
             actual_value = getattr(exception, prop)
-            assert (
-                getattr(exception, prop) == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert getattr(exception, prop) == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_privacy_relation(
@@ -179,9 +179,9 @@ class MeasurementTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception, prop), f"{prop} not in {exception}"
             actual_value = getattr(exception, prop)
-            assert (
-                getattr(exception, prop) == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert getattr(exception, prop) == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_output(

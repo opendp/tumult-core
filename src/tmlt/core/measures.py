@@ -245,18 +245,15 @@ class PrivacyBudget(ABC):
 
     @classmethod
     @overload
-    def cast(cls, measure: RhoZCDP, value: PrivacyBudgetInput) -> "RhoZCDPBudget":
-        ...
+    def cast(cls, measure: RhoZCDP, value: PrivacyBudgetInput) -> "RhoZCDPBudget": ...
 
     @classmethod
     @overload
-    def cast(cls, measure: PureDP, value: PrivacyBudgetInput) -> "PureDPBudget":
-        ...
+    def cast(cls, measure: PureDP, value: PrivacyBudgetInput) -> "PureDPBudget": ...
 
     @classmethod
     @overload
-    def cast(cls, measure: ApproxDP, value: PrivacyBudgetInput) -> "ApproxDPBudget":
-        ...
+    def cast(cls, measure: ApproxDP, value: PrivacyBudgetInput) -> "ApproxDPBudget": ...
 
     @classmethod
     @typechecked
