@@ -249,13 +249,13 @@ class TestPandasSeriesDomain(DomainTests):
             assert hasattr(exception.value, prop), f"Expected prop was missing: {prop}"
             actual_value = getattr(exception.value, prop)
             if isinstance(actual_value, pd.Series):
-                assert actual_value.equals(
-                    expected_value
-                ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+                assert actual_value.equals(expected_value), (
+                    f"Expected {prop} to be {expected_value}, got {actual_value}"
+                )
             else:
-                assert (
-                    actual_value == expected_value
-                ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+                assert actual_value == expected_value, (
+                    f"Expected {prop} to be {expected_value}, got {actual_value}"
+                )
 
     @pytest.mark.parametrize(
         "dtype, expected, expectation",
@@ -638,13 +638,13 @@ class TestPandasDataFrameDomain(DomainTests):
             assert hasattr(exception.value, prop), f"Expected prop was missing: {prop}"
             actual_value = getattr(exception.value, prop)
             if isinstance(actual_value, (pd.Series, pd.DataFrame)):
-                assert actual_value.equals(
-                    expected_value
-                ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+                assert actual_value.equals(expected_value), (
+                    f"Expected {prop} to be {expected_value}, got {actual_value}"
+                )
             else:
-                assert (
-                    actual_value == expected_value
-                ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+                assert actual_value == expected_value, (
+                    f"Expected {prop} to be {expected_value}, got {actual_value}"
+                )
 
     @pytest.mark.parametrize(
         "dtypes, expected, expectation",

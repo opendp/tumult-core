@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
-
 import numpy as np
 import pytest
 from scipy.stats import gennorm, ttest_ind
@@ -172,8 +171,8 @@ class TestPRDPTransformationMechanisms:
     @pytest.mark.slow
     def test_log_transformation_mechanism(self, x: float, offset: float, sigma: float):
         """Tests :func:`log_transformation_mechanism`."""
-        unbias = lambda answer: answer * np.exp(-(sigma**2) / 2) - offset * (
-            1 - np.exp(-(sigma**2) / 2)
+        unbias = lambda answer: (
+            answer * np.exp(-(sigma**2) / 2) - offset * (1 - np.exp(-(sigma**2) / 2))
         )
         samples = [
             unbias(log_transformation_mechanism(x, offset, sigma))

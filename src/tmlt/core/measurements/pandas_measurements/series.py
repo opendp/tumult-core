@@ -467,8 +467,7 @@ def _select_quantile_interval(
         remaining_intervals: List[_RankedInterval] = []
         for i, noisy_score in enumerate(noisy_scores):
             if not (
-                noisy_score
-                < approx_max
+                noisy_score < approx_max
                 # NOT the same as noisy_score >= approx_max
                 # A < B only returns true if A.upper < B.lower
                 # true if A.upper < B.lower

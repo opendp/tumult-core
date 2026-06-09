@@ -51,9 +51,9 @@ class TransformationTests(ABC):
         expected = copy.deepcopy(getattr(transformation, key))
         mutator(transformation_args[key])
         actual_value = getattr(transformation, key)
-        assert (
-            getattr(transformation, key) == expected
-        ), f"Expected {key} to be {expected}, got {actual_value}"
+        assert getattr(transformation, key) == expected, (
+            f"Expected {key} to be {expected}, got {actual_value}"
+        )
 
     @abstractmethod
     def test_property_immutability(self, transformation: Transformation):
@@ -82,9 +82,9 @@ class TransformationTests(ABC):
         for prop, expected_val in expected_properties.items():
             assert hasattr(transformation, prop), f"{prop} not in {transformation}"
             actual_value = getattr(transformation, prop)
-            assert (
-                getattr(transformation, prop) == expected_val
-            ), f"Expected {prop} to be {expected_val}, got {actual_value}"
+            assert getattr(transformation, prop) == expected_val, (
+                f"Expected {prop} to be {expected_val}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_construct_component(
@@ -117,9 +117,9 @@ class TransformationTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception.value, prop), f"{prop} not in {exception.value}"
             actual_value = getattr(exception.value, prop)
-            assert (
-                actual_value == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert actual_value == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_stability_function(
@@ -149,9 +149,9 @@ class TransformationTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception, prop), f"{prop} not in {exception}"
             actual_value = getattr(exception, prop)
-            assert (
-                getattr(exception, prop) == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert getattr(exception, prop) == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_stability_relation(
@@ -183,9 +183,9 @@ class TransformationTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception, prop), f"{prop} not in {exception}"
             actual_value = getattr(exception, prop)
-            assert (
-                getattr(exception, prop) == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert getattr(exception, prop) == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_output(

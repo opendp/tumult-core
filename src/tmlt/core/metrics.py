@@ -765,9 +765,7 @@ class RootSumOfSquared(AggregationMetric):
         Args:
             distances: The list of distances to aggregate.
         """
-        return ExactNumber(
-            sp.sqrt(sum((d**2 for d in distances), ExactNumber(0)).expr)
-        )
+        return ExactNumber(sp.sqrt(sum((d**2 for d in distances), ExactNumber(0)).expr))
 
 
 class OnColumn(ExactNumberMetric):

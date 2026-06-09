@@ -2104,9 +2104,7 @@ class TestBounds:
             ),
             (
                 SparkFloatColumnDescriptor(),
-                pd.DataFrame(
-                    {"X": [-(2**-99.5)] * 8 + [0.0] * 10 + [2**-99.5] * 8}
-                ),
+                pd.DataFrame({"X": [-(2**-99.5)] * 8 + [0.0] * 10 + [2**-99.5] * 8}),
                 0.95,
                 2**-99,
             ),

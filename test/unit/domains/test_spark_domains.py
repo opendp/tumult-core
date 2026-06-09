@@ -446,9 +446,9 @@ class TestSparkDataFrameDomain(DomainTests):
             if isinstance(actual_value, DataFrame):
                 assert_dataframe_equal(actual_value, expected_value)
                 continue
-            assert (
-                actual_value == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert actual_value == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @pytest.mark.parametrize(
         "spark_schema, expected, expectation",
@@ -934,10 +934,10 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                 **exception_properties["value"]["dataframe"]
             )
             if exception_properties["value"]["group_keys"]:
-                exception_properties["value"][
-                    "group_keys"
-                ] = self.spark.createDataFrame(
-                    **exception_properties["value"]["group_keys"]
+                exception_properties["value"]["group_keys"] = (
+                    self.spark.createDataFrame(
+                        **exception_properties["value"]["group_keys"]
+                    )
                 )
             exception_properties["value"] = GroupedDataFrame(
                 **exception_properties["value"]
@@ -950,9 +950,9 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         assert isinstance(exception, pytest.ExceptionInfo)
         core_exception = exception.value
         assert hasattr(core_exception, "domain"), "Exception has no domain attribute"
-        assert (
-            exception_properties["domain"] == core_exception.domain
-        ), "Exception domain is not as expected"
+        assert exception_properties["domain"] == core_exception.domain, (
+            "Exception domain is not as expected"
+        )
         assert hasattr(core_exception, "value"), "Exception has no value attribute"
         # Separate asserts for the frames are required since GroupedDataFrame does not
         # implement __eq__.

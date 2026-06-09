@@ -160,9 +160,9 @@ def pandas_to_spark_dataframe(
     """
     # Because of the way this function is typically used, requiring the caller
     # to do this check is inconvenient and doesn't .
-    assert isinstance(
-        domain, SparkDataFrameDomain
-    ), "Only SparkDataFrameDomains can be used to generate Spark dataframes."
+    assert isinstance(domain, SparkDataFrameDomain), (
+        "Only SparkDataFrameDomains can be used to generate Spark dataframes."
+    )
     if df.empty:
         # Dataframe has no rows -- create an empty dataframe based on the
         # domain, as otherwise Spark has no way of knowing the correct schema.
@@ -938,13 +938,11 @@ def run_test_using_chi_squared_test(
 
 
 @overload
-def get_values_summing_to_loc(loc: int, n: int) -> List[int]:
-    ...
+def get_values_summing_to_loc(loc: int, n: int) -> List[int]: ...
 
 
 @overload
-def get_values_summing_to_loc(loc: float, n: int) -> List[float]:
-    ...
+def get_values_summing_to_loc(loc: float, n: int) -> List[float]: ...
 
 
 def get_values_summing_to_loc(
@@ -1026,8 +1024,8 @@ def get_noise_scales(
     """Get noise scale per output column for an aggregation."""
     budget = ExactNumber(budget)
     assert budget > 0
-    second_if_gauss = (
-        lambda s1, s2: s1
+    second_if_gauss = lambda s1, s2: (
+        s1
         if noise_mechanism
         not in [NoiseMechanism.GAUSSIAN, NoiseMechanism.DISCRETE_GAUSSIAN]
         else s2
@@ -1036,9 +1034,7 @@ def get_noise_scales(
         scale = second_if_gauss(1 / budget, 1 / (2 * budget))
         return {"count": scale}
     if agg == "sum":
-        scale = second_if_gauss(
-            dataset.upper / budget, dataset.upper**2 / (2 * budget)
-        )
+        scale = second_if_gauss(dataset.upper / budget, dataset.upper**2 / (2 * budget))
         return {"sum": scale}
     if agg == "average":
         sod_sensitivity = (dataset.upper - dataset.lower) / 2

@@ -45,9 +45,9 @@ class MetricTests(ABC):
         expected = copy.deepcopy(getattr(metric, key))
         mutator(metric_args[key])
         actual_value = getattr(metric, key)
-        assert (
-            getattr(metric, key) == expected
-        ), f"Expected {key} to be {expected}, got {actual_value}"
+        assert getattr(metric, key) == expected, (
+            f"Expected {key} to be {expected}, got {actual_value}"
+        )
 
     @abstractmethod
     def test_property_immutability(self, metric: Metric):
@@ -103,9 +103,9 @@ class MetricTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception, prop), f"{prop} not in {exception}"
             actual_value = getattr(exception, prop)
-            assert (
-                getattr(exception, prop) == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert getattr(exception, prop) == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_eq(self, metric: Metric, other_metric: Metric, expected: bool):
@@ -146,9 +146,9 @@ class MetricTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception.value, prop), f"Expected prop was missing: {prop}"
             actual_value = getattr(exception.value, prop)
-            assert (
-                actual_value == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert actual_value == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_compare(
@@ -210,9 +210,9 @@ class MetricTests(ABC):
         for prop, expected_value in exception_properties.items():
             assert hasattr(exception, prop), f"{prop} not in {exception}"
             actual_value = getattr(exception, prop)
-            assert (
-                getattr(exception, prop) == expected_value
-            ), f"Expected {prop} to be {expected_value}, got {actual_value}"
+            assert getattr(exception, prop) == expected_value, (
+                f"Expected {prop} to be {expected_value}, got {actual_value}"
+            )
 
     @abstractmethod
     def test_supports_domain(self, metric: Metric, domain: Domain, expected: bool):

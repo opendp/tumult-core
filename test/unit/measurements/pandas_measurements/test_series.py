@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
-
 import re
 import textwrap
 from typing import Any, Dict, Tuple, Union

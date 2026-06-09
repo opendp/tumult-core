@@ -197,10 +197,12 @@ class DropInfs(Transformation):
         """Drops rows containing +inf or -inf in ``self.columns``."""
         return sdf.filter(
             reduce(
-                lambda exp, column: exp
-                & ~(
-                    sf.col(column).eqNullSafe(float("-inf"))
-                    | sf.col(column).eqNullSafe(float("inf"))
+                lambda exp, column: (
+                    exp
+                    & ~(
+                        sf.col(column).eqNullSafe(float("-inf"))
+                        | sf.col(column).eqNullSafe(float("inf"))
+                    )
                 ),
                 self.columns,
                 sf.lit(True),
@@ -327,7 +329,7 @@ class DropNaNs(Transformation):
                 set(columns) - set(input_domain.schema),
                 (
                     "One or more columns do not exist in the input domain"
-                    f" {set(columns)-set(input_domain.schema)}"
+                    f" {set(columns) - set(input_domain.schema)}"
                 ),
             )
 
@@ -504,7 +506,7 @@ class DropNulls(Transformation):
                 set(columns) - set(input_domain.schema),
                 (
                     "One or more columns do not exist in the input domain"
-                    f" {set(columns)-set(input_domain.schema)}"
+                    f" {set(columns) - set(input_domain.schema)}"
                 ),
             )
         output_domain = SparkDataFrameDomain(
@@ -866,7 +868,7 @@ class ReplaceNaNs(Transformation):
                 set(replace_map) - set(input_domain.schema),
                 (
                     "One or more columns do not exist in the input domain"
-                    f" {set(replace_map)-set(input_domain.schema)}"
+                    f" {set(replace_map) - set(input_domain.schema)}"
                 ),
             )
         for column, value in replace_map.items():
@@ -1049,7 +1051,7 @@ class ReplaceNulls(Transformation):
                 set(replace_map) - set(input_domain.schema),
                 (
                     "One or more columns do not exist in the input domain"
-                    f" {set(replace_map)-set(input_domain.schema)}"
+                    f" {set(replace_map) - set(input_domain.schema)}"
                 ),
             )
         output_domain = SparkDataFrameDomain(

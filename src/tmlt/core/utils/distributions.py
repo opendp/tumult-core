@@ -30,18 +30,15 @@ from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
 @overload
-def double_sided_geometric_pmf(k: int, alpha: float) -> float:
-    ...
+def double_sided_geometric_pmf(k: int, alpha: float) -> float: ...
 
 
 @overload
-def double_sided_geometric_pmf(k: np.ndarray, alpha: float) -> np.ndarray:
-    ...
+def double_sided_geometric_pmf(k: np.ndarray, alpha: float) -> np.ndarray: ...
 
 
 @overload
-def double_sided_geometric_pmf(k: int, alpha: np.ndarray) -> np.ndarray:
-    ...
+def double_sided_geometric_pmf(k: int, alpha: np.ndarray) -> np.ndarray: ...
 
 
 def double_sided_geometric_pmf(
@@ -78,13 +75,11 @@ def double_sided_geometric_pmf(
 
 
 @overload
-def double_sided_geometric_cmf(k: int, alpha: float) -> float:
-    ...
+def double_sided_geometric_cmf(k: int, alpha: float) -> float: ...
 
 
 @overload
-def double_sided_geometric_cmf(k: np.ndarray, alpha: float) -> np.ndarray:
-    ...
+def double_sided_geometric_cmf(k: np.ndarray, alpha: float) -> np.ndarray: ...
 
 
 def double_sided_geometric_cmf(
@@ -143,13 +138,11 @@ def double_sided_geometric_cmf_exact(
 
 
 @overload
-def double_sided_geometric_inverse_cmf(p: float, alpha: float) -> int:
-    ...
+def double_sided_geometric_inverse_cmf(p: float, alpha: float) -> int: ...
 
 
 @overload
-def double_sided_geometric_inverse_cmf(p: np.ndarray, alpha: float) -> np.ndarray:
-    ...
+def double_sided_geometric_inverse_cmf(p: np.ndarray, alpha: float) -> np.ndarray: ...
 
 
 def double_sided_geometric_inverse_cmf(
@@ -384,8 +377,11 @@ def _discrete_gaussian_unnormalized_cmf(
                 result,  # -inf to 0
                 mass_from_1_to_n_terms,  # 1 to n_terms
                 _discrete_gaussian_unnormalized_mass_from_k_to_n_fast(
-                    n_terms + 1, k, sigma_squared, prec  # n_terms + 1 to k
-                ),
+                    n_terms + 1,
+                    k,
+                    sigma_squared,
+                    prec,
+                ),  # n_terms + 1 to k
             ],
             prec,
         )
@@ -426,13 +422,11 @@ def _discrete_gaussian_cmf(k: int, sigma_squared: Arb, n_terms: int, prec: int) 
 
 
 @overload
-def discrete_gaussian_pmf(k: int, sigma_squared: float) -> float:
-    ...
+def discrete_gaussian_pmf(k: int, sigma_squared: float) -> float: ...
 
 
 @overload
-def discrete_gaussian_pmf(k: np.ndarray, sigma_squared: float) -> np.ndarray:
-    ...
+def discrete_gaussian_pmf(k: np.ndarray, sigma_squared: float) -> np.ndarray: ...
 
 
 def discrete_gaussian_pmf(
@@ -490,13 +484,11 @@ def discrete_gaussian_pmf(
 
 
 @overload
-def discrete_gaussian_cmf(k: int, sigma_squared: float) -> float:
-    ...
+def discrete_gaussian_cmf(k: int, sigma_squared: float) -> float: ...
 
 
 @overload
-def discrete_gaussian_cmf(k: np.ndarray, sigma_squared: float) -> np.ndarray:
-    ...
+def discrete_gaussian_cmf(k: np.ndarray, sigma_squared: float) -> np.ndarray: ...
 
 
 def discrete_gaussian_cmf(
@@ -537,18 +529,17 @@ def discrete_gaussian_cmf(
 
 
 @overload
-def discrete_gaussian_inverse_cmf(p: float, sigma_squared: float) -> int:
-    ...
+def discrete_gaussian_inverse_cmf(p: float, sigma_squared: float) -> int: ...
 
 
 @overload
-def discrete_gaussian_inverse_cmf(p: np.ndarray, sigma_squared: float) -> np.ndarray:
-    ...
+def discrete_gaussian_inverse_cmf(
+    p: np.ndarray, sigma_squared: float
+) -> np.ndarray: ...
 
 
 @overload
-def discrete_gaussian_inverse_cmf(p: Arb, sigma_squared: Arb) -> int:
-    ...
+def discrete_gaussian_inverse_cmf(p: Arb, sigma_squared: Arb) -> int: ...
 
 
 def discrete_gaussian_inverse_cmf(

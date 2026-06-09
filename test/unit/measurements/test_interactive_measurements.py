@@ -164,13 +164,16 @@ class TestSequentialComposition(PySparkTest):
         actual = self.measurement(self.data)
         self.assertIsInstance(actual, SequentialQueryable)
         self.assertEqual(
-            actual._input_domain, self.measurement.input_domain  # noqa: SLF001
+            actual._input_domain,  # noqa: SLF001
+            self.measurement.input_domain,
         )
         self.assertEqual(
-            actual._input_metric, self.measurement.input_metric  # noqa: SLF001
+            actual._input_metric,  # noqa: SLF001
+            self.measurement.input_metric,
         )
         self.assertEqual(
-            actual._output_measure, self.measurement.output_measure  # noqa: SLF001
+            actual._output_measure,  # noqa: SLF001
+            self.measurement.output_measure,
         )
         self.assertEqual(
             actual._remaining_budget.value,  # noqa: SLF001
@@ -287,14 +290,12 @@ class TestParallelComposition(PySparkTest):
                 ),
             ],
         )
-        assert measurement.format() == textwrap.dedent(
-            """\
+        assert measurement.format() == textwrap.dedent("""\
             ParallelComposition
             * MakeInteractive
                 AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False
             * MakeInteractive
-                AddLaplaceNoise scale=2 output_type=DoubleType() adds_no_noise=False"""
-        )
+                AddLaplaceNoise scale=2 output_type=DoubleType() adds_no_noise=False""")
 
     @parameterized.expand(get_all_props(ParallelComposition))
     def test_property_immutability(self, prop_name: str):
@@ -400,7 +401,8 @@ class TestParallelComposition(PySparkTest):
         self.assertEqual(actual._next_index, 0)  # noqa: SLF001
         self.assertEqual(actual._data, self.data)  # noqa: SLF001
         self.assertEqual(
-            actual._measurements, self.composed_measurements  # noqa: SLF001
+            actual._measurements,  # noqa: SLF001
+            self.composed_measurements,
         )
 
 
@@ -441,11 +443,9 @@ class TestMakeInteractive(PySparkTest):
         measurement = MakeInteractive(
             AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
         )
-        assert measurement.format() == textwrap.dedent(
-            """\
+        assert measurement.format() == textwrap.dedent("""\
             MakeInteractive
-              AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
-        )
+              AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False""")
 
     def test_properties(self):
         """MakeInteractive's properties have appropriate values."""
@@ -1950,11 +1950,9 @@ class TestDecorateQueryable(TestCase):
             f"DecorateQueryable preprocess_query=<function {preprocess.__qualname__}>"
             f" postprocess_answer=<function {postprocess.__qualname__}>"
         )
-        assert measurement.format() == textwrap.dedent(
-            f"""\
+        assert measurement.format() == textwrap.dedent(f"""\
             {head}
-              SequentialComposition d_in=1 privacy_budget=1"""
-        )
+              SequentialComposition d_in=1 privacy_budget=1""")
 
     @parameterized.expand(get_all_props(DecorateQueryable))
     def test_property_immutability(self, prop_name: str):
@@ -1977,7 +1975,8 @@ class TestDecorateQueryable(TestCase):
         actual = self.measurement(np.int64(10))
         assert isinstance(actual, DecoratedQueryable)
         self.assertEqual(
-            actual._preprocess_query, self.measurement.preprocess_query  # noqa: SLF001
+            actual._preprocess_query,  # noqa: SLF001
+            self.measurement.preprocess_query,
         )
         self.assertEqual(
             actual._postprocess_answer,  # noqa: SLF001
