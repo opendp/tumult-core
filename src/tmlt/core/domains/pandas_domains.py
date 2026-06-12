@@ -13,6 +13,7 @@ from typeguard import check_type, typechecked
 
 from tmlt.core.domains.base import Domain, OutOfDomainError
 from tmlt.core.domains.numpy_domains import NumpyDomain
+from tmlt.core.utils.format import format_labeled_siblings
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,8 @@ PandasColumnsDescriptor = Dict[str, PandasSeriesDomain]
 
 class PandasDataFrameDomain(Domain):
     """Domain of Pandas DataFrames."""
+
+    FORMAT_EXCLUDED_ATTRS = Domain.FORMAT_EXCLUDED_ATTRS | {"schema"}
 
     @typechecked
     def __init__(self, schema: PandasColumnsDescriptor):
@@ -124,6 +127,12 @@ class PandasDataFrameDomain(Domain):
         if self.__class__ != other.__class__:
             return False
         return OrderedDict(self.schema) == OrderedDict(other.schema)
+
+    def _format_children(self) -> str:
+        """Render the column schema as labeled siblings."""
+        if not self._schema:
+            return ""
+        return format_labeled_siblings(self._schema.items())
 
     @classmethod
     def from_numpy_types(cls, dtypes: Dict[str, np.dtype]) -> "PandasDataFrameDomain":

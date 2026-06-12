@@ -9,7 +9,7 @@ Unreleased
 Added
 ~~~~~
 
-- :class:`.Transformation`\s and :class:`.Measurement`\ s have a new ``format`` method, which renders a human-readable string showing the structure of the transformation/measurement to aid in visualization and debugging.
+- :class:`.Transformation`\s, :class:`.Measurement`\ s, and :class:`.Domain`\ s have a new ``format`` method, which renders a human-readable string showing the structure of the object to aid in visualization and debugging.
 
 .. _v0.19.1:
 

@@ -124,9 +124,7 @@ class GroupBy(Transformation):
     """  # noqa: E501
 
     # When formatted, group_keys provides no information that isn't in groupby_columns
-    _FORMAT_EXCLUDED_ATTRS = Transformation._FORMAT_EXCLUDED_ATTRS | {  # noqa: SLF001
-        "group_keys"
-    }
+    FORMAT_EXCLUDED_ATTRS = Transformation.FORMAT_EXCLUDED_ATTRS | {"group_keys"}
 
     @typechecked
     def __init__(

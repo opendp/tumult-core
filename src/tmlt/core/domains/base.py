@@ -8,11 +8,15 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from tmlt.core.exceptions import OutOfDomainError
+from tmlt.core.utils.format import Formattable
 from tmlt.core.utils.misc import get_fullname
 
 
-class Domain(ABC):
+class Domain(Formattable, ABC):
     """Base class for input/output domains."""
+
+    FORMAT_EXCLUDED_ATTRS = Formattable.FORMAT_EXCLUDED_ATTRS | {"carrier_type"}
+    """Attributes hidden from output when formatting this domain. @nodoc"""
 
     @property
     @abstractmethod

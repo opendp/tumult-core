@@ -10,6 +10,7 @@ from typeguard import check_type, typechecked
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.exceptions import OutOfDomainError
+from tmlt.core.utils.format import format_labeled_siblings
 from tmlt.core.utils.misc import get_fullname
 
 
@@ -56,6 +57,8 @@ class ListDomain(Domain):
 
 class DictDomain(Domain):
     """Domain of dictionaries."""
+
+    FORMAT_EXCLUDED_ATTRS = Domain.FORMAT_EXCLUDED_ATTRS | {"key_to_domain", "length"}
 
     @typechecked
     def __init__(self, key_to_domain: Mapping[Any, Domain]):
@@ -123,3 +126,11 @@ class DictDomain(Domain):
                 raise OutOfDomainError(
                     self, value, f"Found invalid value at '{key}': {exception}"
                 ) from exception
+
+    def _format_children(self) -> str:
+        """Render the keyed inner domains as labeled siblings."""
+        if not self._key_to_domain:
+            return ""
+        return format_labeled_siblings(
+            (str(key), domain) for key, domain in self._key_to_domain.items()
+        )
