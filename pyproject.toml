@@ -54,7 +54,7 @@ dependencies = [
 
 [project.optional-dependencies]
 testing = [
-    "pytest >=7.3.1,<8",
+    "pytest >=9.0.3,<10",
 ]
 
 [project.urls]
@@ -73,7 +73,7 @@ mypy = ["mypy >=1.14.0"]
 test = [
     "parameterized >=0.7.4,<0.8",
     "pytest",
-    "pytest-cov >=5.0,<6",
+    "pytest-cov >=7.1.0,<8",
     "pytest-xdist >=3.6,<4",
 ]
 docs = [
