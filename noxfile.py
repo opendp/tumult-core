@@ -175,8 +175,8 @@ sm = SessionManager(
 sm.build()
 
 sm.isort()
-sm.ruff_check()
 sm.ruff_format()
+sm.ruff_check()
 sm.mypy()
 
 sm.smoketest()
