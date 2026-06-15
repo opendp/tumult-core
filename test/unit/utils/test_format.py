@@ -271,7 +271,8 @@ def test_multi_child_container_rejected():
 
     multi = _MultiMeasurement([_m("a"), _m("b"), _m("c")])
     with pytest.raises(
-        NotImplementedError, match="multiple child components cannot be formatted"
+        NotImplementedError,
+        match=r"_MultiMeasurement has multiple child components",
     ):
         multi.format()
 

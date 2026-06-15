@@ -3,23 +3,26 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 from abc import ABC, abstractmethod
-from typing import Any, FrozenSet
+from typing import Any
 
 from typeguard import typechecked
 
 from tmlt.core.domains.base import Domain
 from tmlt.core.measures import Measure
 from tmlt.core.metrics import Metric, UnsupportedCombinationError
-from tmlt.core.utils.format import default_format_attrs, default_format_children
+from tmlt.core.utils.format import Formattable
 
 
-class Measurement(ABC):
+class Measurement(Formattable, ABC):
     """Abstract base class for measurements."""
 
-    _FORMAT_EXCLUDED_ATTRS: FrozenSet[str] = frozenset(
-        {"input_domain", "input_metric", "output_measure", "is_interactive"}
-    )
-    """Fields hidden from output when formatting this measurement."""
+    FORMAT_EXCLUDED_ATTRS = Formattable.FORMAT_EXCLUDED_ATTRS | {
+        "input_domain",
+        "input_metric",
+        "output_measure",
+        "is_interactive",
+    }
+    """Fields hidden from output when formatting this measurement. @nodoc"""
 
     @typechecked
     def __init__(
@@ -102,29 +105,3 @@ class Measurement(ABC):
     @abstractmethod
     def __call__(self, data: Any) -> Any:
         """Performs measurement."""
-
-    def format(self) -> str:
-        """Return a human-readable multi-line description of this measurement.
-
-        The default implementation assembles :meth:`_format_head` and
-        :meth:`_format_children`; subclasses can override either of these
-        hooks (or :meth:`format` itself) to customize the rendering.
-        """
-        head = self._format_head()
-        children = self._format_children()
-        if not children:
-            return head
-        return f"{head}\n{children}"
-
-    def _format_head(self) -> str:
-        """Render this measurement's head line: class name followed by its attrs."""
-        parts = [type(self).__name__]
-        parts.extend(
-            f"{name}={value}"
-            for name, value in default_format_attrs(self, self._FORMAT_EXCLUDED_ATTRS)
-        )
-        return " ".join(parts)
-
-    def _format_children(self) -> str:
-        """Return the rendered block for nested transformations/measurements."""
-        return default_format_children(self)

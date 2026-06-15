@@ -35,15 +35,19 @@ from tmlt.core.domains.numpy_domains import (
     NumpyStringDomain,
 )
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
+from tmlt.core.utils.format import Formattable, format_labeled_siblings
 from tmlt.core.utils.misc import ConciseFrozenSet, escape_column_name, get_fullname
 
 
-class SparkColumnDescriptor(ABC):
+class SparkColumnDescriptor(Formattable, ABC):
     """Base class for describing Spark column types.
 
     Attributes:
         allow_null: If True, null values are permitted in the domain.
     """
+
+    FORMAT_EXCLUDED_ATTRS = Formattable.FORMAT_EXCLUDED_ATTRS | {"data_type"}
+    """Attributes hidden from output when formatting this descriptor. @nodoc"""
 
     allow_null: bool
 
@@ -301,6 +305,8 @@ class SparkTimestampColumnDescriptor(SparkColumnDescriptor):
 class SparkRowDomain(Domain):
     """Domain of Spark DataFrame rows."""
 
+    FORMAT_EXCLUDED_ATTRS = Domain.FORMAT_EXCLUDED_ATTRS | {"schema"}
+
     @typechecked
     def __init__(self, schema: SparkColumnsDescriptor):
         """Constructor.
@@ -338,9 +344,17 @@ class SparkRowDomain(Domain):
         """Returns carrier types for members of SparkRowDomain."""
         return Row
 
+    def _format_children(self) -> str:
+        """Render the column schema as labeled siblings."""
+        if not self._schema:
+            return ""
+        return format_labeled_siblings(self._schema.items())
+
 
 class SparkDataFrameDomain(Domain):
     """Domain of Spark DataFrames."""
+
+    FORMAT_EXCLUDED_ATTRS = Domain.FORMAT_EXCLUDED_ATTRS | {"schema", "spark_schema"}
 
     @typechecked
     def __init__(self, schema: SparkColumnsDescriptor):
@@ -475,6 +489,12 @@ class SparkDataFrameDomain(Domain):
             {column: domain for column, domain in self.schema.items() if column in cols}
         )
 
+    def _format_children(self) -> str:
+        """Render the column schema as labeled siblings."""
+        if not self._schema:
+            return ""
+        return format_labeled_siblings(self._schema.items())
+
 
 def _spark_type_to_descriptor(
     spark_type: DataType, nullable: bool, size: Optional[int] = None
@@ -506,6 +526,8 @@ def _spark_type_to_descriptor(
 
 class SparkGroupedDataFrameDomain(Domain):
     """Domain of grouped DataFrames."""
+
+    FORMAT_EXCLUDED_ATTRS = Domain.FORMAT_EXCLUDED_ATTRS | {"schema", "spark_schema"}
 
     @typechecked
     def __init__(
@@ -642,6 +664,12 @@ class SparkGroupedDataFrameDomain(Domain):
     def __getitem__(self, col_name: str) -> SparkColumnDescriptor:
         """Returns column descriptor for given column."""
         return self.schema[col_name]
+
+    def _format_children(self) -> str:
+        """Render the column schema as labeled siblings."""
+        if not self._schema:
+            return ""
+        return format_labeled_siblings(self._schema.items())
 
 
 def convert_spark_schema(spark_schema: StructType) -> SparkColumnsDescriptor:
