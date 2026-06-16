@@ -4,6 +4,7 @@
 # Copyright Tumult Labs 2026
 
 import datetime
+import textwrap
 from typing import Any, Dict, Union
 from unittest import TestCase
 from unittest.mock import patch
@@ -81,6 +82,10 @@ class TestNullMetric(TestCase):
         """Tests that the string representation is as expected."""
         self.assertEqual(repr(NullMetric()), "NullMetric()")
 
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert NullMetric().format() == "NullMetric"
+
 
 class TestAbsoluteDifference(TestCase):
     """TestCase for AbsoluteDifference."""
@@ -139,6 +144,10 @@ class TestAbsoluteDifference(TestCase):
     def test_repr(self):
         """Tests that the string representation is as expected."""
         self.assertEqual(repr(AbsoluteDifference()), "AbsoluteDifference()")
+
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert AbsoluteDifference().format() == "AbsoluteDifference"
 
     @parameterized.expand(
         [
@@ -227,6 +236,10 @@ class TestSymmetricDifference(PySparkTest):
     def test_repr(self):
         """Tests that the string representation is as expected."""
         self.assertEqual(repr(SymmetricDifference()), "SymmetricDifference()")
+
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert SymmetricDifference().format() == "SymmetricDifference"
 
     @parameterized.expand(
         [
@@ -453,6 +466,10 @@ class TestHammingDistance(PySparkTest):
         """Tests that the string representation is as expected."""
         self.assertEqual(repr(HammingDistance()), "HammingDistance()")
 
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert HammingDistance().format() == "HammingDistance"
+
     @parameterized.expand(
         [
             (NumpyIntegerDomain(), False),
@@ -674,6 +691,14 @@ class TestSumOf(PySparkTest):
         )
         self.assertEqual(
             repr(SumOf(HammingDistance())), "SumOf(inner_metric=HammingDistance())"
+        )
+
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert SumOf(AbsoluteDifference()).format() == textwrap.dedent(
+            """\
+            SumOf
+              AbsoluteDifference"""
         )
 
     @parameterized.expand(
@@ -1024,6 +1049,14 @@ class TestRootSumOfSquared(TestCase):
             "RootSumOfSquared(inner_metric=HammingDistance())",
         )
 
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert RootSumOfSquared(AbsoluteDifference()).format() == textwrap.dedent(
+            """\
+            RootSumOfSquared
+              AbsoluteDifference"""
+        )
+
     @parameterized.expand(
         [
             (RootSumOfSquared(AbsoluteDifference()), NumpyIntegerDomain(), False),
@@ -1348,6 +1381,15 @@ class TestOnColumn(TestCase):
             "OnColumn(column='A', metric=SumOf(inner_metric=AbsoluteDifference()))",
         )
 
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert OnColumn("A", SumOf(AbsoluteDifference())).format() == textwrap.dedent(
+            """\
+            OnColumn column='A'
+              SumOf
+                AbsoluteDifference"""
+        )
+
     @parameterized.expand(
         [
             (OnColumn("A", SumOf(AbsoluteDifference())), NumpyIntegerDomain(), False),
@@ -1571,6 +1613,24 @@ class TestOnColumns(TestCase):
                 " OnColumn(column='B',"
                 " metric=SumOf(inner_metric=AbsoluteDifference()))])"
             ),
+        )
+
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert OnColumns(
+            [
+                OnColumn("A", SumOf(AbsoluteDifference())),
+                OnColumn("B", RootSumOfSquared(AbsoluteDifference())),
+            ]
+        ).format() == textwrap.dedent(
+            """\
+            OnColumns
+            * OnColumn column='A'
+                SumOf
+                  AbsoluteDifference
+            * OnColumn column='B'
+                RootSumOfSquared
+                  AbsoluteDifference"""
         )
 
     @parameterized.expand(
@@ -1823,6 +1883,17 @@ class TestIfGroupedBy(TestCase):
                 "IfGroupedBy(columns={'A'}, "
                 "inner_metric=SumOf(inner_metric=AbsoluteDifference()))"
             ),
+        )
+
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert IfGroupedBy(
+            ["A"], RootSumOfSquared(SymmetricDifference())
+        ).format() == textwrap.dedent(
+            """\
+            IfGroupedBy columns={'A'}
+              RootSumOfSquared
+                SymmetricDifference"""
         )
 
     @parameterized.expand(
@@ -2132,6 +2203,20 @@ class TestDictMetric(TestCase):
             ),
         )
 
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert DictMetric(
+            {"A": AbsoluteDifference(), "longer": SumOf(SymmetricDifference())}
+        ).format() == textwrap.dedent(
+            """\
+            DictMetric
+            * A:
+              AbsoluteDifference
+            * longer:
+              SumOf
+                SymmetricDifference"""
+        )
+
     @parameterized.expand(
         [
             (
@@ -2279,6 +2364,15 @@ class TestAddRemoveKeys(PySparkTest):
         self.assertEqual(
             repr(AddRemoveKeys({"A": "B", "C": "D"})),
             "AddRemoveKeys(df_to_key_column={'A': 'B', 'C': 'D'})",
+        )
+
+    def test_format(self):
+        """Tests that the human-readable representation is as expected."""
+        assert AddRemoveKeys({1: "A", "longer": "C"}).format() == textwrap.dedent(
+            """\
+            AddRemoveKeys
+            * 1:      A
+            * longer: C"""
         )
 
     @parameterized.expand(

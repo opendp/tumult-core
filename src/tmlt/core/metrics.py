@@ -37,12 +37,13 @@ from tmlt.core.domains.spark_domains import (
 )
 from tmlt.core.exceptions import OutOfDomainError, UnsupportedCombinationError
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.utils.format import Formattable, format_labeled_siblings, format_siblings
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.misc import ConciseFrozenSet
 from tmlt.core.utils.validation import validate_exact_number
 
 
-class Metric(ABC):
+class Metric(Formattable, ABC):
     """Base class for input/output metrics."""
 
     @abstractmethod
@@ -1002,6 +1003,10 @@ class OnColumns(Metric):
             f"{', '.join([repr(on_column) for on_column in self.on_columns])}])"
         )
 
+    def _format_children(self) -> str:
+        """Render the per-column metrics as sibling children."""
+        return format_siblings(self.on_columns)
+
 
 class IfGroupedBy(ExactNumberMetric):
     """Distance between two DataFrames that shall be grouped by a given set of columns.
@@ -1214,6 +1219,9 @@ class DictMetric(Metric):
         {'x': 9, 'y': 3}
     """
 
+    FORMAT_EXCLUDED_ATTRS = Metric.FORMAT_EXCLUDED_ATTRS | {"key_to_metric"}
+    """Attributes hidden from the formatted output. @nodoc"""
+
     @typechecked
     def __init__(self, key_to_metric: Mapping[Any, Metric]):
         """Constructor.
@@ -1316,6 +1324,14 @@ class DictMetric(Metric):
         }
         return f"{self.__class__.__name__}(key_to_metric={sorted_key_to_metric})"
 
+    def _format_children(self) -> str:
+        """Render keyed metrics as labeled sibling children."""
+        if not self._key_to_metric:
+            return ""
+        return format_labeled_siblings(
+            (str(key), self[key]) for key in sorted(self.key_to_metric, key=str)
+        )
+
 
 class AddRemoveKeys(Metric):
     """The number of keys that dictionaries of dataframe differ by.
@@ -1403,6 +1419,9 @@ class AddRemoveKeys(Metric):
         >>> metric.distance(value1, value2, domain)
         4
     """
+
+    FORMAT_EXCLUDED_ATTRS = Metric.FORMAT_EXCLUDED_ATTRS | {"df_to_key_column"}
+    """Attributes hidden from the formatted output. @nodoc"""
 
     @typechecked
     def __init__(self, df_to_key_column: Mapping[Any, str]):
@@ -1531,4 +1550,18 @@ class AddRemoveKeys(Metric):
         """Returns string representation."""
         return (
             f"{self.__class__.__name__}(df_to_key_column={repr(self.df_to_key_column)})"
+        )
+
+    def _format_children(self) -> str:
+        """Render each dataframe's key column on a separate labeled line."""
+        if not self._df_to_key_column:
+            return ""
+        labels_and_values = [
+            (str(key), self.df_to_key_column[key])
+            for key in sorted(self.df_to_key_column, key=str)
+        ]
+        width = max(len(label) for label, _ in labels_and_values) + 2
+        return "\n".join(
+            f"* {(label + ':').ljust(width)}{value}"
+            for label, value in labels_and_values
         )
