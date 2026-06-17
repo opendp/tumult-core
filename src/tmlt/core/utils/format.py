@@ -160,7 +160,8 @@ def format_value(value: Any) -> str:
             return f"({value[0]},)"
         return f"({', '.join(format_value(v) for v in value)})"
     if isinstance(value, (set, frozenset)):
-        return f"{{{', '.join(format_value(v) for v in value)}}}"
+        # Sort to guarantee consistent ordering
+        return f"{{{', '.join(sorted(format_value(v) for v in value))}}}"
     return str(value)
 
 
