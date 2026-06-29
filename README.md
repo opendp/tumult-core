@@ -7,7 +7,7 @@ The design of Tumult Core is based on the design proposed in the [OpenDP White P
 > [!NOTE]
 > This software is part of the [**OpenDP Commons**](https://sites.harvard.edu/opendp/tools/#opendp-commons). As such, the OpenDP Executive Committee commits to:
 > - Releasing this software under an [OSI approved licence](https://opensource.org/licenses), in this case the [Apache License](https://github.com/opendp/tumult-core/blob/main/LICENSE).
-> - Ensuring there are at least two maintainers, in this case Tom Magerlein (`tmager`) and Daniel Simmons-Marengo (`Maegereg`), who will respond within a month to new issues and PRs.
+> - Ensuring there are at least two maintainers, in this case Tom Magerlein (`tmager`), Daniel Simmons-Marengo (`Maegereg`), and Damien Desfontaines (`TedTed`), who will respond within a month to new issues and PRs.
 > - Only making changes on `main` through PRs, and getting approval on these PRs before merging.
 > - On an annual basis, recruiting one or more volunteers (not active contributors) who will conduct a health-check, focussed not on the details of the algorithms but on the health of this repo as open source software. Their report will be linked here. The next (and first) health-check is scheduled for June 2027.
 
