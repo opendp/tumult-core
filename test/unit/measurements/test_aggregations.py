@@ -25,6 +25,8 @@ from tmlt.core.domains.spark_domains import (
 from tmlt.core.exceptions import (
     DomainMismatchError,
     MetricMismatchError,
+    UnsupportedCombinationError,
+    UnsupportedMeasureError,
     UnsupportedMetricError,
 )
 from tmlt.core.measurements.aggregations import (
@@ -1703,6 +1705,138 @@ def test_create_scalar_measurement_errors(
         )
 
 
+@parametrize(
+    Case("discrete gaussian")(noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN),
+    Case("gaussian")(noise_mechanism=NoiseMechanism.GAUSSIAN),
+)
+@parametrize(
+    Case("count")(
+        create_measurement_method=create_count_measurement,
+        extra_args={},
+    ),
+    Case("count distinct")(
+        create_measurement_method=create_count_distinct_measurement,
+        extra_args={},
+    ),
+    Case("sum")(
+        create_measurement_method=create_sum_measurement,
+        extra_args={
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+            "measure_column": "B",
+        },
+    ),
+    Case("average")(
+        create_measurement_method=create_average_measurement,
+        extra_args={
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+            "measure_column": "B",
+        },
+    ),
+    Case("standard deviation")(
+        create_measurement_method=create_standard_deviation_measurement,
+        extra_args={
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+            "measure_column": "B",
+        },
+    ),
+    Case("variance")(
+        create_measurement_method=create_variance_measurement,
+        extra_args={
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+            "measure_column": "B",
+        },
+    ),
+)
+def test_unsupported_output_measure_for_noise_mechanism(
+    create_measurement_method, extra_args, noise_mechanism: NoiseMechanism
+):
+    """Gaussian mechanisms reject PureDP as an output measure."""
+    input_domain = SparkDataFrameDomain(
+        {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+    )
+    with pytest.raises(
+        UnsupportedMeasureError,
+        match="is not supported by noise mechanism",
+    ):
+        create_measurement_method(
+            input_domain=input_domain,
+            input_metric=SymmetricDifference(),
+            output_measure=PureDP(),
+            d_in=sp.Integer(1),
+            d_out=sp.Integer(1),
+            noise_mechanism=noise_mechanism,
+            groupby_transformation=None,
+            **extra_args,
+        )
+
+
+@parametrize(
+    Case("sum")(create_measurement_method=create_sum_measurement),
+    Case("average")(create_measurement_method=create_average_measurement),
+    Case("standard deviation")(
+        create_measurement_method=create_standard_deviation_measurement
+    ),
+    Case("variance")(create_measurement_method=create_variance_measurement),
+)
+def test_non_numeric_measure_column(create_measurement_method):
+    """Measure column must be numeric for sum-based aggregations."""
+    input_domain = SparkDataFrameDomain(
+        {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+    )
+    with pytest.raises(ValueError, match="Measure column must be numeric"):
+        create_measurement_method(
+            input_domain=input_domain,
+            input_metric=SymmetricDifference(),
+            output_measure=PureDP(),
+            d_in=sp.Integer(1),
+            d_out=sp.Integer(1),
+            noise_mechanism=NoiseMechanism.LAPLACE,
+            measure_column="A",
+            lower=sp.Integer(0),
+            upper=sp.Integer(10),
+            groupby_transformation=None,
+        )
+
+
+def test_partition_selection_d_in_less_than_one():
+    """Partition selection does not support d_in < 1."""
+    with pytest.raises(
+        NotImplementedError,
+        match="Creating a partition selection measurement with d_in < 1",
+    ):
+        create_partition_selection_measurement(
+            input_domain=SparkDataFrameDomain(
+                {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+            ),
+            epsilon=sp.Integer(1),
+            delta=sp.Rational(1, 10),
+            d_in=sp.Rational(1, 2),
+        )
+
+
+def test_bounds_measurement_d_in_less_than_one(spark):
+    """Bounds measurement does not support d_in < 1."""
+    with pytest.raises(
+        NotImplementedError,
+        match="Creating a bounds measurement with d_in < 1",
+    ):
+        create_bounds_measurement(
+            input_domain=SparkDataFrameDomain(
+                {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+            ),
+            input_metric=SymmetricDifference(),
+            output_measure=PureDP(),
+            d_out=sp.Integer(1),
+            measure_column="B",
+            threshold=0.5,
+            d_in=sp.Rational(1, 2),
+        )
+
+
 INPUT_DOMAIN = SparkDataFrameDomain(
     {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
 )
@@ -1778,7 +1912,7 @@ class TestBadDelta(unittest.TestCase):
         self, noise_mechanism: NoiseMechanism, d_out: PrivacyBudgetInput, f: Callable
     ) -> None:
         """Test error is raised for invalid delta/noise mechanism combination."""
-        with self.assertRaises(ValueError):
+        with self.assertRaises(UnsupportedCombinationError):
             f(noise_mechanism=noise_mechanism, d_out=d_out)
 
     @parameterized.expand(
@@ -1814,8 +1948,10 @@ class TestBadDelta(unittest.TestCase):
         self, d_out: PrivacyBudgetInput, f: Callable
     ) -> None:
         """Test error is raised for invalid deltas."""
-        with self.assertRaises(ValueError):
+        # Quantile and bounds raise plain ValueError (not UnsupportedCombinationError).
+        with self.assertRaises(ValueError) as cm:
             f(d_out=d_out)
+        self.assertNotIsInstance(cm.exception, UnsupportedCombinationError)
 
 
 big_test_size = 1000
