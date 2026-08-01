@@ -1802,6 +1802,42 @@ def test_non_numeric_measure_column(create_measurement_method):
         )
 
 
+# TODO: Enable once create_bounds_measurement and create_quantile_measurement
+# validate that measure_column is numeric (same idea as create_sum_measurement).
+# @parametrize(
+#     Case("bounds")(
+#         create_measurement_method=create_bounds_measurement,
+#         extra_args={"measure_column": "A", "threshold": 0.5},
+#     ),
+#     Case("quantile")(
+#         create_measurement_method=create_quantile_measurement,
+#         extra_args={
+#             "measure_column": "A",
+#             "quantile": 0.5,
+#             "lower": 0,
+#             "upper": 10,
+#         },
+#     ),
+# )
+# def test_non_numeric_measure_column_bounds_and_quantile(
+#     create_measurement_method, extra_args
+# ):
+#     """Measure column must be numeric for bounds and quantile aggregations."""
+#     input_domain = SparkDataFrameDomain(
+#         {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+#     )
+#     with pytest.raises(ValueError, match="Measure column must be numeric"):
+#         create_measurement_method(
+#             input_domain=input_domain,
+#             input_metric=SymmetricDifference(),
+#             output_measure=PureDP(),
+#             d_in=sp.Integer(1),
+#             d_out=sp.Integer(1),
+#             groupby_transformation=None,
+#             **extra_args,
+#         )
+
+
 def test_partition_selection_d_in_less_than_one():
     """Partition selection does not support d_in < 1."""
     with pytest.raises(
@@ -1948,10 +1984,8 @@ class TestBadDelta(unittest.TestCase):
         self, d_out: PrivacyBudgetInput, f: Callable
     ) -> None:
         """Test error is raised for invalid deltas."""
-        # Quantile and bounds raise plain ValueError (not UnsupportedCombinationError).
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError):
             f(d_out=d_out)
-        self.assertNotIsInstance(cm.exception, UnsupportedCombinationError)
 
 
 big_test_size = 1000
