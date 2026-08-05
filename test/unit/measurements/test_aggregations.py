@@ -1775,15 +1775,74 @@ def test_unsupported_output_measure_for_noise_mechanism(
 
 
 @parametrize(
-    Case("sum")(create_measurement_method=create_sum_measurement),
-    Case("average")(create_measurement_method=create_average_measurement),
-    Case("standard deviation")(
-        create_measurement_method=create_standard_deviation_measurement
+    Case("sum")(
+        create_measurement_method=create_sum_measurement,
+        extra_args={
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "measure_column": "A",
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+        },
     ),
-    Case("variance")(create_measurement_method=create_variance_measurement),
+    Case("average")(
+        create_measurement_method=create_average_measurement,
+        extra_args={
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "measure_column": "A",
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+        },
+    ),
+    Case("standard deviation")(
+        create_measurement_method=create_standard_deviation_measurement,
+        extra_args={
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "measure_column": "A",
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+        },
+    ),
+    Case("variance")(
+        create_measurement_method=create_variance_measurement,
+        extra_args={
+            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "measure_column": "A",
+            "lower": sp.Integer(0),
+            "upper": sp.Integer(10),
+        },
+    ),
+    Case(
+        "bounds",
+        marks=pytest.mark.xfail(
+            reason=(
+                "create_bounds_measurement does not yet validate numeric"
+                " measure_column; opendp/tumult-core#73"
+            ),
+        ),
+    )(
+        create_measurement_method=create_bounds_measurement,
+        extra_args={"measure_column": "A", "threshold": 0.5},
+    ),
+    Case(
+        "quantile",
+        marks=pytest.mark.xfail(
+            reason=(
+                "create_quantile_measurement does not yet validate numeric"
+                " measure_column; opendp/tumult-core#73"
+            ),
+        ),
+    )(
+        create_measurement_method=create_quantile_measurement,
+        extra_args={
+            "measure_column": "A",
+            "quantile": 0.5,
+            "lower": 0,
+            "upper": 10,
+        },
+    ),
 )
-def test_non_numeric_measure_column(create_measurement_method):
-    """Measure column must be numeric for sum-based aggregations."""
+def test_non_numeric_measure_column(create_measurement_method, extra_args):
+    """Measure column must be numeric for aggregations that require it."""
     input_domain = SparkDataFrameDomain(
         {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
     )
@@ -1794,48 +1853,9 @@ def test_non_numeric_measure_column(create_measurement_method):
             output_measure=PureDP(),
             d_in=sp.Integer(1),
             d_out=sp.Integer(1),
-            noise_mechanism=NoiseMechanism.LAPLACE,
-            measure_column="A",
-            lower=sp.Integer(0),
-            upper=sp.Integer(10),
             groupby_transformation=None,
+            **extra_args,
         )
-
-
-# TODO: Enable once create_bounds_measurement and create_quantile_measurement
-# validate that measure_column is numeric (same idea as create_sum_measurement).
-# @parametrize(
-#     Case("bounds")(
-#         create_measurement_method=create_bounds_measurement,
-#         extra_args={"measure_column": "A", "threshold": 0.5},
-#     ),
-#     Case("quantile")(
-#         create_measurement_method=create_quantile_measurement,
-#         extra_args={
-#             "measure_column": "A",
-#             "quantile": 0.5,
-#             "lower": 0,
-#             "upper": 10,
-#         },
-#     ),
-# )
-# def test_non_numeric_measure_column_bounds_and_quantile(
-#     create_measurement_method, extra_args
-# ):
-#     """Measure column must be numeric for bounds and quantile aggregations."""
-#     input_domain = SparkDataFrameDomain(
-#         {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
-#     )
-#     with pytest.raises(ValueError, match="Measure column must be numeric"):
-#         create_measurement_method(
-#             input_domain=input_domain,
-#             input_metric=SymmetricDifference(),
-#             output_measure=PureDP(),
-#             d_in=sp.Integer(1),
-#             d_out=sp.Integer(1),
-#             groupby_transformation=None,
-#             **extra_args,
-#         )
 
 
 def test_partition_selection_d_in_less_than_one():
