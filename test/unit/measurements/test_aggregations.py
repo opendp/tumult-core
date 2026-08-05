@@ -1866,7 +1866,10 @@ def test_partition_selection_d_in_less_than_one():
     ):
         create_partition_selection_measurement(
             input_domain=SparkDataFrameDomain(
-                {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkIntegerColumnDescriptor(),
+                }
             ),
             epsilon=sp.Integer(1),
             delta=sp.Rational(1, 10),
@@ -1882,7 +1885,10 @@ def test_bounds_measurement_d_in_less_than_one(spark):
     ):
         create_bounds_measurement(
             input_domain=SparkDataFrameDomain(
-                {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+                {
+                    "A": SparkStringColumnDescriptor(),
+                    "B": SparkIntegerColumnDescriptor(),
+                }
             ),
             input_metric=SymmetricDifference(),
             output_measure=PureDP(),
