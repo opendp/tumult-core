@@ -16,7 +16,7 @@ For example, consider the following example:
 ..
     >>> from pyspark.sql import SparkSession
     >>> from tmlt.core.transformations.spark_transformations.truncation import (
-    ...     LimitRowsPerGroup
+    ...     LimitRowsPerID
     ... )
     >>> from tmlt.core.domains.spark_domains import SparkStringColumnDescriptor
     >>> from tmlt.core.transformations.spark_transformations.id import AddUniqueColumn
@@ -31,10 +31,10 @@ For example, consider the following example:
 ...     }
 ... )
 >>> input_metric = IfGroupedBy({"A"}, SymmetricDifference())
->>> truncate = LimitRowsPerGroup(
+>>> truncate = LimitRowsPerID(
 ...     input_domain=input_domain,
 ...     output_metric=SymmetricDifference(),
-...     grouping_columns=["A"],
+...     id_columns=["A"],
 ...     threshold=1,
 ... )
 >>> rename = Rename(
@@ -149,9 +149,9 @@ from tmlt.core.transformations.spark_transformations.persist import (
 from tmlt.core.transformations.spark_transformations.rename import Rename
 from tmlt.core.transformations.spark_transformations.select import Select
 from tmlt.core.transformations.spark_transformations.truncation import (
-    LimitKeysPerGroup,
-    LimitRowsPerGroup,
-    LimitRowsPerKeyPerGroup,
+    LimitGroupsPerID,
+    LimitRowsPerGroupPerID,
+    LimitRowsPerID,
 )
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
@@ -315,10 +315,10 @@ class TransformValue(Transformation):
         return output
 
 
-class LimitRowsPerGroupValue(TransformValue):
-    """Applies a :class:`~.LimitRowsPerGroup` to the specified key.
+class LimitRowsPerIDValue(TransformValue):
+    """Applies a :class:`~.LimitRowsPerID` to the specified key.
 
-    See :class:`~.TransformValue` and :class:`~.LimitRowsPerGroup` for more
+    See :class:`~.TransformValue` and :class:`~.LimitRowsPerID` for more
     information.
     """
 
@@ -340,22 +340,22 @@ class LimitRowsPerGroupValue(TransformValue):
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
-            threshold: The maximum number of rows per group after truncation.
+            threshold: The maximum number of rows per ID after truncation.
         """
-        grouping_column = input_metric.df_to_key_column[key]
-        transformation = LimitRowsPerGroup(
+        id_column = input_metric.df_to_key_column[key]
+        transformation = LimitRowsPerID(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            output_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
-            grouping_columns=[grouping_column],
+            output_metric=IfGroupedBy([id_column], SymmetricDifference()),
+            id_columns=[id_column],
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
-class LimitKeysPerGroupValue(TransformValue):
-    """Applies a :class:`~.LimitKeysPerGroup` to the specified key.
+class LimitGroupsPerIDValue(TransformValue):
+    """Applies a :class:`~.LimitGroupsPerID` to the specified key.
 
-    See :class:`~.TransformValue` and :class:`~.LimitKeysPerGroup` for more
+    See :class:`~.TransformValue` and :class:`~.LimitGroupsPerID` for more
     information.
     """
 
@@ -366,7 +366,7 @@ class LimitKeysPerGroupValue(TransformValue):
         input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
-        key_column: str,
+        grouping_column: str,
         threshold: int,
     ):
         """Constructor.
@@ -378,24 +378,24 @@ class LimitKeysPerGroupValue(TransformValue):
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
-            key_column: Name of column defining the keys.
-            threshold: The maximum number of keys per group after truncation.
+            grouping_column: Name of column defining the group.
+            threshold: The maximum number of groups per id after truncation.
         """
-        grouping_column = input_metric.df_to_key_column[key]
-        transformation = LimitKeysPerGroup(
+        id_column = input_metric.df_to_key_column[key]
+        transformation = LimitGroupsPerID(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            output_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
-            grouping_columns=[grouping_column],
-            key_column=key_column,
+            output_metric=IfGroupedBy([id_column], SymmetricDifference()),
+            id_columns=[id_column],
+            grouping_column=grouping_column,
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
-class LimitRowsPerKeyPerGroupValue(TransformValue):
-    """Applies a :class:`~.LimitRowsPerKeyPerGroup` to the specified key.
+class LimitRowsPerGroupPerIDValue(TransformValue):
+    """Applies a :class:`~.LimitRowsPerGroupPerID` to the specified key.
 
-    See :class:`~.TransformValue` and :class:`~.LimitRowsPerKeyPerGroup` for more
+    See :class:`~.TransformValue` and :class:`~.LimitRowsPerGroupPerID` for more
     information.
     """
 
@@ -406,7 +406,7 @@ class LimitRowsPerKeyPerGroupValue(TransformValue):
         input_metric: AddRemoveKeys,
         key: Any,
         new_key: Any,
-        key_column: str,
+        grouping_column: str,
         threshold: int,
     ):
         """Constructor.
@@ -418,16 +418,16 @@ class LimitRowsPerKeyPerGroupValue(TransformValue):
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
-            key_column: Name of column defining the keys.
+            grouping_column: Name of column defining the keys.
             threshold: The maximum number of rows each unique (key, grouping column
                 value) pair may appear in after truncation.
         """
-        grouping_column = input_metric.df_to_key_column[key]
-        transformation = LimitRowsPerKeyPerGroup(
+        id_column = input_metric.df_to_key_column[key]
+        transformation = LimitRowsPerGroupPerID(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            input_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
-            grouping_columns=[grouping_column],
-            key_column=key_column,
+            input_metric=IfGroupedBy([id_column], SymmetricDifference()),
+            id_columns=[id_column],
+            grouping_column=grouping_column,
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)

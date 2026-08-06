@@ -13,8 +13,8 @@ from tmlt.core.metrics import IfGroupedBy, SumOf, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations.groupby import GroupBy
 from tmlt.core.transformations.spark_transformations.truncation import (
-    LimitKeysPerGroup,
-    LimitRowsPerKeyPerGroup,
+    LimitGroupsPerID,
+    LimitRowsPerGroupPerID,
 )
 from tmlt.core.utils.testing import assert_dataframe_equal
 
@@ -50,22 +50,22 @@ def test_multi_column_truncation(spark: SparkSession):
         }
     )
 
-    truncation: Transformation = LimitKeysPerGroup(
+    truncation: Transformation = LimitGroupsPerID(
         input_domain=input_domain,
         output_metric=IfGroupedBy(
             ["id"], SumOf(IfGroupedBy(["group1", "group2"], SymmetricDifference()))
         ),
-        grouping_columns=["group1", "group2"],
-        key_column="id",
+        id_columns=["group1", "group2"],
+        grouping_column="id",
         threshold=1,
     )
     assert isinstance(truncation.output_domain, SparkDataFrameDomain)
     assert isinstance(truncation.output_metric, IfGroupedBy)
-    truncation = truncation | LimitRowsPerKeyPerGroup(
+    truncation = truncation | LimitRowsPerGroupPerID(
         input_domain=truncation.output_domain,
         input_metric=truncation.output_metric,
-        grouping_columns=["group1", "group2"],
-        key_column="id",
+        id_columns=["group1", "group2"],
+        grouping_column="id",
         threshold=1,
     )
     assert isinstance(truncation.output_domain, SparkDataFrameDomain)

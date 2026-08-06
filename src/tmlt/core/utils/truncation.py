@@ -234,18 +234,18 @@ def drop_large_groups(
     )
 
 
-def limit_keys_per_group(
+def limit_groups_per_id(
     df: DataFrame,
+    id_columns: Collection[str],
     grouping_columns: Collection[str],
-    key_columns: Collection[str],
     threshold: int,
 ) -> DataFrame:
-    """Order keys by a hash function and keep at most ``threshold`` keys for each group.
+    """Order groups by a hash function and keep at most ``threshold`` groups per ID.
 
     .. note::
 
-        After truncation there may still be an unbounded number of rows per key, but
-        at most ``threshold`` keys per group
+        After truncation there may still be an unbounded number of rows per group, but
+        at most ``threshold`` groups per ID.
 
     Example:
         ..
@@ -275,10 +275,10 @@ def limit_keys_per_group(
         6  a4  b2
         7  a4  b3
         >>> print_sdf(
-        ...     limit_keys_per_group(
+        ...     limit_groups_per_id(
         ...         df=spark_dataframe,
-        ...         grouping_columns=["A"],
-        ...         key_columns=["B"],
+        ...         id_columns=["A"],
+        ...         grouping_columns=["B"],
         ...         threshold=2,
         ...     )
         ... )
@@ -291,10 +291,10 @@ def limit_keys_per_group(
         5  a4  b2
         6  a4  b3
         >>> print_sdf(
-        ...     limit_keys_per_group(
+        ...     limit_groups_per_id(
         ...         df=spark_dataframe,
-        ...         grouping_columns=["A"],
-        ...         key_columns=["B"],
+        ...         id_columns=["A"],
+        ...         grouping_columns=["B"],
         ...         threshold=1,
         ...     )
         ... )
@@ -306,13 +306,13 @@ def limit_keys_per_group(
 
     Args:
         df: DataFrame to truncate.
-        grouping_columns: Columns defining the groups.
-        key_columns: Column defining the keys.
+        id_columns: Columns defining the groups.
+        grouping_columns: Column defining the keys.
         threshold: Maximum number of keys to include for each group.
     """
-    df, hash_column = _hash_columns(df, list(grouping_columns) + list(key_columns))
-    shuffled_partitions = Window.partitionBy(*grouping_columns).orderBy(
-        hash_column, *key_columns
+    df, hash_column = _hash_columns(df, list(id_columns) + list(grouping_columns))
+    shuffled_partitions = Window.partitionBy(*id_columns).orderBy(
+        hash_column, *grouping_columns
     )
     rank_column = get_nonconflicting_string(df.columns)
     return (
