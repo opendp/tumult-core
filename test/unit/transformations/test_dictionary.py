@@ -25,7 +25,7 @@ from tmlt.core.domains.spark_domains import (
 from tmlt.core.exceptions import DomainKeyError, UnsupportedDomainError
 from tmlt.core.metrics import (
     AbsoluteDifference,
-    AddRemoveKeys,
+    AddRemoveIDs,
     DictMetric,
     IfGroupedBy,
     Metric,
@@ -154,12 +154,10 @@ class TestAugmentDictTransformation(TestCase):
             self.input_domain, self.input_metric, key="A"
         ) | CreateDictFromValue(NumpyIntegerDomain(), AbsoluteDifference(), key="K")
         transformation = AugmentDictTransformation(inner)
-        assert transformation.format() == textwrap.dedent(
-            """\
+        assert transformation.format() == textwrap.dedent("""\
             AugmentDictTransformation
               ┌ GetValue key='A'
-              └ CreateDictFromValue key='K'"""
-        )
+              └ CreateDictFromValue key='K'""")
 
     def test_correctness(self):
         """Tests that AugmentDictTransformation works correctly."""
@@ -257,13 +255,13 @@ class TestGetValue(TestCase):
                 IfGroupedBy(["A"], SymmetricDifference()),
             ),
             (
-                AddRemoveKeys({"key1": "A", "key2": "A"}),
+                AddRemoveIDs({"key1": "A", "key2": "A"}),
                 IfGroupedBy(["A"], SymmetricDifference()),
             ),
         ]
     )
     def test_properties(
-        self, input_metric: Union[DictMetric, AddRemoveKeys], output_metric: Metric
+        self, input_metric: Union[DictMetric, AddRemoveIDs], output_metric: Metric
     ):
         """Tests that GetValue has expected properties."""
         input_domain = DictDomain(
@@ -367,12 +365,12 @@ class TestGetValue(TestCase):
                 {"key1": 2, "key2": 3},
                 2,
             ),
-            (AddRemoveKeys({"key1": "A", "key2": "A"}), 2, 2),
+            (AddRemoveIDs({"key1": "A", "key2": "A"}), 2, 2),
         ]
     )
     def test_stability_function_and_relation(
         self,
-        input_metric: Union[DictMetric, AddRemoveKeys],
+        input_metric: Union[DictMetric, AddRemoveIDs],
         d_in: Any,
         d_out: ExactNumberInput,
     ):
@@ -433,7 +431,7 @@ class TestSubset(TestCase):
         keys = ["key1", "key2"]
         transformation = Subset(
             input_domain=self.input_domain,
-            input_metric=AddRemoveKeys({"key1": "A", "key2": "A"}),
+            input_metric=AddRemoveIDs({"key1": "A", "key2": "A"}),
             keys=keys,
         )
         keys[1] = "key3"
@@ -459,13 +457,13 @@ class TestSubset(TestCase):
                 ),
                 DictMetric({"key2": SymmetricDifference()}),
             ),
-            (AddRemoveKeys({"key1": "A", "key2": "A"}), AddRemoveKeys({"key2": "A"})),
+            (AddRemoveIDs({"key1": "A", "key2": "A"}), AddRemoveIDs({"key2": "A"})),
         ]
     )
     def test_properties(
         self,
-        input_metric: Union[DictMetric, AddRemoveKeys],
-        output_metric: Union[DictMetric, AddRemoveKeys],
+        input_metric: Union[DictMetric, AddRemoveIDs],
+        output_metric: Union[DictMetric, AddRemoveIDs],
     ):
         """Tests that Subset has expected properties."""
         transformation = Subset(
@@ -551,12 +549,12 @@ class TestSubset(TestCase):
             ),
             (
                 (
-                    "Input metric AddRemoveKeys(df_to_key_column={'A': 'B'}) and input"
+                    "Input metric AddRemoveIDs(df_to_id_column={'A': 'B'}) and input"
                     " domain DictDomain(key_to_domain={'A':"
                     " NumpyIntegerDomain(size=64)}) are not compatible."
                 ),
                 DictDomain({"A": NumpyIntegerDomain()}),
-                AddRemoveKeys({"A": "B"}),
+                AddRemoveIDs({"A": "B"}),
                 ["A"],
             ),
         ]
@@ -583,11 +581,11 @@ class TestSubset(TestCase):
                 {"key1": 3, "key2": 10},
                 {"key1": 3},
             ),
-            (AddRemoveKeys({"key1": "A", "key2": "A"}), 4, 4),
+            (AddRemoveIDs({"key1": "A", "key2": "A"}), 4, 4),
         ]
     )
     def test_stability_function_and_relation(
-        self, input_metric: Union[DictMetric, AddRemoveKeys], d_in: Any, d_out: Any
+        self, input_metric: Union[DictMetric, AddRemoveIDs], d_in: Any, d_out: Any
     ):
         """Tests that Subset's stability function and relation are correct."""
         transformation = Subset(
@@ -618,11 +616,11 @@ class TestCreateDictFromValue(TestCase):
                 False,
                 DictMetric({("X", "Y"): IfGroupedBy(["A"], SymmetricDifference())}),
             ),
-            (True, AddRemoveKeys({("X", "Y"): "A"})),
+            (True, AddRemoveIDs({("X", "Y"): "A"})),
         ]
     )
     def test_properties(
-        self, use_add_remove_keys: bool, output_metric: Union[DictMetric, AddRemoveKeys]
+        self, use_add_remove_ids: bool, output_metric: Union[DictMetric, AddRemoveIDs]
     ):
         """Tests that CreateDictFromValue has expected properties."""
         input_domain = SparkDataFrameDomain(
@@ -638,7 +636,7 @@ class TestCreateDictFromValue(TestCase):
             input_domain=input_domain,
             input_metric=IfGroupedBy(["A"], SymmetricDifference()),
             key=("X", "Y"),
-            use_add_remove_keys=use_add_remove_keys,
+            use_add_remove_ids=use_add_remove_ids,
         )
         self.assertEqual(transformation.input_domain, input_domain)
         self.assertEqual(
@@ -672,7 +670,7 @@ class TestCreateDictFromValue(TestCase):
 
     @parameterized.expand([(False, 3, {"X": 3}), (True, 4, 4)])
     def test_stability_function_and_relation(
-        self, use_add_remove_keys: bool, d_in: Any, d_out: Any
+        self, use_add_remove_ids: bool, d_in: Any, d_out: Any
     ):
         """Tests that the stability function and relation are correct."""
         input_domain = SparkDataFrameDomain(
@@ -688,7 +686,7 @@ class TestCreateDictFromValue(TestCase):
             input_domain=input_domain,
             input_metric=IfGroupedBy(["A"], SymmetricDifference()),
             key="X",
-            use_add_remove_keys=use_add_remove_keys,
+            use_add_remove_ids=use_add_remove_ids,
         )
         self.assertEqual(transformation.stability_function(d_in), d_out)
         self.assertTrue(transformation.stability_relation(d_in, d_out))
@@ -698,7 +696,7 @@ class TestCreateDictFromValue(TestCase):
             (
                 (
                     "Input metric must be IfGroupedBy with an inner metric of"
-                    " SymmetricDifference to use AddRemoveKeys as the output metric"
+                    " SymmetricDifference to use AddRemoveIDs as the output metric"
                 ),
                 NumpyIntegerDomain(),
                 AbsoluteDifference(),
@@ -707,8 +705,8 @@ class TestCreateDictFromValue(TestCase):
             ),
             (
                 re.escape(
-                    "Input metric must have only a single grouping column to use "
-                    "AddRemoveKeys as the output metric, but found "
+                    "Input metric must have only a single grouping column (i.e. "
+                    "an ID column) to use AddRemoveIDs as the output metric, but found "
                 )
                 + r"(\{'A', 'B'\}|\{'B', 'A'\})",
                 NumpyIntegerDomain(),
@@ -724,7 +722,7 @@ class TestCreateDictFromValue(TestCase):
         input_domain: DictDomain,
         input_metric: DictMetric,
         key: Any,
-        use_add_remove_keys: bool,
+        use_add_remove_ids: bool,
     ):
         """Tests that CreateDictFromValue raises errors appropriately."""
         with self.assertRaisesRegex(ValueError, error_regex):
@@ -732,7 +730,7 @@ class TestCreateDictFromValue(TestCase):
                 input_domain=input_domain,
                 input_metric=input_metric,
                 key=key,
-                use_add_remove_keys=use_add_remove_keys,
+                use_add_remove_ids=use_add_remove_ids,
             )
 
 

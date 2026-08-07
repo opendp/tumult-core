@@ -19,14 +19,14 @@ from tmlt.core.domains.spark_domains import (
     SparkStringColumnDescriptor,
 )
 from tmlt.core.exceptions import DomainKeyError
-from tmlt.core.metrics import AddRemoveKeys, IfGroupedBy, SymmetricDifference
+from tmlt.core.metrics import AddRemoveIDs, IfGroupedBy, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
-from tmlt.core.transformations.spark_transformations.add_remove_keys import (
+from tmlt.core.transformations.spark_transformations.add_remove_ids import (
     DropInfsValue,
     DropNaNsValue,
     DropNullsValue,
     FilterValue,
-    FlatMapByKeyValue,
+    FlatMapByIDValue,
     FlatMapValue,
     LimitGroupsPerIDValue,
     LimitRowsPerGroupPerIDValue,
@@ -119,7 +119,7 @@ from tmlt.core.utils.testing import (
             "pandas_to_spark_kwargs": {},
         },
         {
-            "subclass": FlatMapByKeyValue,
+            "subclass": FlatMapByIDValue,
             "extra_kwargs": {
                 "row_transformer": RowsToRowsTransformation(
                     input_domain=ListDomain(
@@ -276,7 +276,7 @@ class TestTransformValueSubclasses(PySparkTest):
                 ),
             }
         )
-        kwargs["input_metric"] = AddRemoveKeys({"key1": "A", "key2": "A"})
+        kwargs["input_metric"] = AddRemoveIDs({"key1": "A", "key2": "A"})
         kwargs["key"] = "key1"
         kwargs["new_key"] = "key3"
         kwargs.update(self.extra_kwargs)  # type: ignore
@@ -307,7 +307,7 @@ class TestTransformValueSubclasses(PySparkTest):
                 ),
             }
         )
-        kwargs["input_metric"] = AddRemoveKeys({"key1": "A", "key2": "A"})
+        kwargs["input_metric"] = AddRemoveIDs({"key1": "A", "key2": "A"})
         kwargs["key"] = "key1"
         kwargs["new_key"] = "key3"
         kwargs.update(self.extra_kwargs)  # type: ignore
@@ -328,7 +328,7 @@ class MockValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         transformation: Transformation,
         key: str,
         new_key: str,
@@ -373,7 +373,7 @@ class TestTransformValue(PySparkTest):
                 ),
             }
         )
-        self.input_metric = AddRemoveKeys({"key1": "A", "key2": "D"})
+        self.input_metric = AddRemoveIDs({"key1": "A", "key2": "D"})
         self.filter_transformation = Filter(
             domain=self.input_domain.key_to_domain["key1"],  # type: ignore
             metric=IfGroupedBy(["A"], SymmetricDifference()),
@@ -395,7 +395,7 @@ class TestTransformValue(PySparkTest):
         ):
             TransformValue(
                 input_domain=DictDomain({"OLD": df_domain}),
-                input_metric=AddRemoveKeys({"OLD": "A"}),
+                input_metric=AddRemoveIDs({"OLD": "A"}),
                 transformation=create_mock_transformation(
                     input_domain=df_domain,
                     input_metric=IfGroupedBy(["A"], SymmetricDifference()),
@@ -420,7 +420,7 @@ class TestTransformValue(PySparkTest):
         self.assertEqual(self.mock_filter_value.output_domain, output_domain)
         self.assertEqual(
             self.mock_filter_value.output_metric,
-            AddRemoveKeys({"key1": "A", "key2": "D", "key3": "A"}),
+            AddRemoveIDs({"key1": "A", "key2": "D", "key3": "A"}),
         )
         self.assertIs(self.mock_filter_value.transformation, self.filter_transformation)
         self.assertEqual(self.mock_filter_value.key, "key1")
@@ -494,7 +494,7 @@ class TestTransformValue(PySparkTest):
             ),
             (
                 re.escape(
-                    "Output metric AddRemoveKeys(df_to_key_column={'key1': 'A', 'key2':"
+                    "Output metric AddRemoveIDs(df_to_id_column={'key1': 'A', 'key2':"
                     " 'D', 'key3': 'A'}) and output domain"
                     " DictDomain(key_to_domain={'key1':"
                     " SparkDataFrameDomain(schema={'A':"
@@ -532,7 +532,7 @@ class TestTransformValue(PySparkTest):
             (
                 re.escape(
                     "Transformation's input metric grouping column, B, does not"
-                    " match the dataframe's key column, A."
+                    " match the dataframe's ID column, A."
                 ),
                 ValueError,
                 {},
@@ -544,7 +544,7 @@ class TestTransformValue(PySparkTest):
             (
                 re.escape(
                     "Transformation's input metric must have a single grouping"
-                    " column, but found "
+                    " column (i.e. an ID column), but found "
                 )
                 + r"(\{'A', 'B'\}|\{'B', 'A'\})",
                 ValueError,
@@ -556,7 +556,7 @@ class TestTransformValue(PySparkTest):
             (
                 re.escape(
                     "Transformation's output metric must have a single grouping"
-                    " column, but found "
+                    " column (i.e. an ID column), but found "
                 )
                 + r"(\{'A', 'B'\}|\{'B', 'A'\})",
                 ValueError,
@@ -620,7 +620,7 @@ class TestRenameValue(PySparkTest):
                 ),
             }
         )
-        self.input_metric = AddRemoveKeys({"key1": "A", "key2": "D"})
+        self.input_metric = AddRemoveIDs({"key1": "A", "key2": "D"})
         self.input_data = {
             "key1": self.spark.createDataFrame(
                 pd.DataFrame(
