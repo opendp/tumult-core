@@ -11,6 +11,21 @@ Added
 
 - :class:`.Transformation`\s, :class:`.Measurement`\ s, and :class:`.Domain`\ s have a new ``format`` method, which renders a human-readable string showing the structure of the object to aid in visualization and debugging.
 
+Changed
+~~~~~~~
+- Renamed many components to refer to "IDs" (when appropriate) rather than groups or keys. Specifically:
+  - ``limit_keys_per_group()`` -> :func:`~tmlt.core.utils.truncation.limit_groups_per_id`
+  - ``LimitRowsPerGroup`` -> :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerID`
+  - ``LimitKeysPerGroup`` -> :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitGroupsPerID`
+  - ``LimitRowsPerKeyPerGroup`` -> :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerGroupPerID`
+  - ``LimitRowsPerGroupValue`` -> :class:`~tmlt.core.transformations.spark_transformations.add_remove_ids.LimitRowsPerIDValue`
+  - ``LimitKeysPerGroupValue`` -> :class:`~tmlt.core.transformations.spark_transformations.add_remove_ids.LimitGroupsPerIDValue`
+  - ``LimitRowsPerKeyPerGroupValue`` -> :class:`~tmlt.core.transformations.spark_transformations.add_remove_ids.LimitRowsPerGroupPerIDValue`
+  - ``AddRemoveKeys`` -> :class:`~tmlt.core.metrics.AddRemoveIDs`
+  - ``PrivateJoinOnKey`` -> :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnIDs`
+  - ``FlatMapByKey`` -> :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByID`
+
+
 .. _v0.19.1:
 
 0.19.1 - 2026-06-04
