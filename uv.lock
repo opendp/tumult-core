@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -8,6 +8,10 @@ resolution-markers = [
     "python_full_version < '3.11' and sys_platform != 'darwin'",
     "python_full_version < '3.11' and sys_platform == 'darwin'",
 ]
+
+[options]
+exclude-newer = "2026-08-02T23:56:37.543156Z"
+exclude-newer-span = "P7D"
 
 [[package]]
 name = "accessible-pygments"

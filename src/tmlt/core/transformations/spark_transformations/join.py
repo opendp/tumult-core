@@ -431,9 +431,9 @@ class TruncationStrategy(Enum):
     """
 
     TRUNCATE = 1
-    """Use :func:`~.truncate_large_groups`."""
+    """Use :func:`~tmlt.core.utils.truncation.truncate_large_groups`."""
     DROP = 2
-    """Use :func:`~.drop_large_groups`."""
+    """Use :func:`~tmlt.core.utils.truncation.drop_large_groups`."""
     NO_TRUNCATION = 3
     """No truncation, results in infinite stability."""
 

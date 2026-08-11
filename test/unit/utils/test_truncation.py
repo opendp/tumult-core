@@ -5,13 +5,11 @@
 
 import copy
 import datetime
-import itertools
-from typing import Any, List, Tuple
+from typing import Any, List
 from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from parameterized import parameterized
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf
 from pyspark.sql.types import (
@@ -27,111 +25,15 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from tmlt.core.utils.testing import PySparkTest, assert_dataframe_equal
-from tmlt.core.utils.truncation import (
-    _hash_column,
-    drop_large_groups,
-    limit_keys_per_group,
-    truncate_large_groups,
-)
+from tmlt.core.utils.testing import PySparkTest
+from tmlt.core.utils.truncation import _hash_column, limit_keys_per_group
 
-
-class TestTruncateLargeGroups(PySparkTest):
-    """Tests for :meth:`~tmlt.core.utils.truncation.truncate_large_groups`."""
-
-    @parameterized.expand(
-        [
-            (2, [(1, "x"), (1, "y"), (1, "z"), (1, "w")], 2),
-            (2, [(1, "x")], 1),
-            (0, [(1, "x"), (1, "y"), (1, "z"), (1, "w")], 0),
-        ]
-    )
-    def test_correctness(
-        self, threshold: int, rows: List[Tuple], expected_count: int
-    ) -> None:
-        """Tests that truncate_large_groups works correctly."""
-        df = self.spark.createDataFrame(rows, schema=["A", "B"])
-        self.assertEqual(
-            truncate_large_groups(df, ["A"], threshold).count(), expected_count
-        )
-
-    def test_consistency(self) -> None:
-        """Tests that truncate_large_groups does not truncate randomly across calls."""
-        df = self.spark.createDataFrame([(i,) for i in range(1000)], schema=["A"])
-
-        expected_output = truncate_large_groups(df, ["A"], 5)
-        for _ in range(5):
-            assert_dataframe_equal(truncate_large_groups(df, ["A"], 5), expected_output)
-
-    def test_rows_dropped_consistently(self) -> None:
-        """Tests that truncate_large_groups drops that same rows for unchanged keys."""
-        df1 = self.spark.createDataFrame(
-            [("A", 1), ("B", 2), ("B", 3)], schema=["W", "X"]
-        )
-        df2 = self.spark.createDataFrame(
-            [("A", 0), ("A", 1), ("B", 2), ("B", 3)], schema=["W", "X"]
-        )
-
-        df1_truncated = truncate_large_groups(df1, ["W"], 1)
-        df2_truncated = truncate_large_groups(df2, ["W"], 1)
-        assert_dataframe_equal(
-            df1_truncated.filter("W='B'"),
-            df2_truncated.filter("W='B'"),
-        )
-
-    def test_hash_truncation_order_agnostic(self) -> None:
-        """Tests that truncate_large_groups doesn't depend on row order."""
-        df_rows = [(1, 2, "A"), (3, 4, "A"), (5, 6, "A"), (7, 8, "B")]
-
-        truncated_dfs: List[pd.DataFrame] = []
-        for permutation in itertools.permutations(df_rows, 4):
-            df = self.spark.createDataFrame(list(permutation), schema=["W", "X", "Y"])
-            truncated_dfs.append(truncate_large_groups(df, ["Y"], 1).toPandas())
-        for df in truncated_dfs[1:]:
-            assert_dataframe_equal(truncated_dfs[0], df)
-
-    def test_hash_truncation_duplicate_rows_not_clumped(self) -> None:
-        """Tests that truncate_large_groups doesn't clump duplicate rows together."""
-        df = self.spark.createDataFrame(
-            [
-                (1, 2, "A"),
-                (1, 2, "A"),
-                (1, 2, "A"),
-                (1, 2, "A"),
-                (1, 2, "A"),
-                (2, 4, "A"),
-                (2, 4, "A"),
-                (2, 4, "A"),
-                (2, 4, "A"),
-                (2, 4, "A"),
-            ],
-            schema=["X", "Y", "Z"],
-        )
-        actual = truncate_large_groups(df, ["Z"], threshold=5).toPandas()
-        assert isinstance(actual, pd.DataFrame)
-        assert len(actual.drop_duplicates()) == 2
-
-
-class TestDropLargeGroups(PySparkTest):
-    """Tests for :meth:`~tmlt.core.utils.truncation.drop_large_groups`."""
-
-    @parameterized.expand(
-        [
-            (1, [(1, "A"), (1, "B"), (2, "C")], [(2, "C")]),
-            (1, [(1, "A"), (2, "C")], [(1, "A"), (2, "C")]),
-            (2, [(1, "A"), (2, "C"), (2, "D"), (2, "E")], [(1, "A")]),
-            (1, [(1, "A"), (1, "B"), (2, "C"), (2, "D"), (2, "E")], []),
-            (0, [(1, "x"), (2, "y"), (3, "z"), (3, "w")], []),
-        ]
-    )
-    def test_correctness(
-        self, threshold: int, input_rows: List[Tuple], expected: List[Tuple]
-    ) -> None:
-        """Tests that drop_large_groups works correctly."""
-        df = self.spark.createDataFrame(input_rows, schema=["A", "B"])
-        actual = drop_large_groups(df, ["A"], threshold)
-        expected = pd.DataFrame.from_records(expected, columns=["A", "B"])
-        assert_dataframe_equal(actual, expected)
+# The behavioral tests that used to live here (correctness, consistency and
+# order-agnosticism of the three truncation functions) are now the
+# backend-parametrized tests of test.unit.utils.test_truncation_backends,
+# which run the same cases against this module's Spark implementations and
+# their pandas counterparts alike. This module keeps only the tests that are
+# specific to the Spark implementation.
 
 
 class TestLimitKeysPerGroup(PySparkTest):

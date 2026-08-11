@@ -1,4 +1,12 @@
-"""Functions for truncating Spark DataFrames."""
+"""Functions for truncating Spark DataFrames.
+
+:mod:`tmlt.core.utils.pandas_truncation` reimplements these functions for
+pandas DataFrames, keeping exactly the same rows. The per-type renderings and
+the hash-then-rehash protocol of :func:`_hash_column` and :func:`_hash_columns`
+are therefore a contract shared with that module, enforced by
+``test/unit/utils/test_truncation_differential.py``: a change here -- a new
+supported type, a changed rendering -- needs a matching change there.
+"""
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026

@@ -138,6 +138,7 @@ AUDIT_SUPPRESSIONS = [
 ]
 
 BENCHMARKS = [
+    ("pandas_truncation", 30 * 60),
     ("private_join", 35 * 60),
     ("count_sum", 25 * 60),
     ("quantile", 84 * 60),

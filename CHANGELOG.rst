@@ -10,6 +10,15 @@ Added
 ~~~~~
 
 - :class:`.Transformation`\s, :class:`.Measurement`\ s, and :class:`.Domain`\ s have a new ``format`` method, which renders a human-readable string showing the structure of the object to aid in visualization and debugging.
+- Added :mod:`tmlt.core.utils.pandas_truncation`, pandas counterparts of the Spark
+  truncation utilities in :mod:`tmlt.core.utils.truncation` (``truncate_large_groups``,
+  ``drop_large_groups``, and ``limit_keys_per_group``). For the column types supported
+  by the Spark implementations, the pandas functions hash values identically and keep
+  exactly the same rows, so results are directly comparable across backends. The one
+  exception is floating point columns: Spark renders those values with the JVM's
+  ``Double.toString``/``Float.toString``, and a JVM older than 19 renders some values
+  with more digits than the shortest that round-trips, which hashes differently. See
+  the module documentation for details.
 
 .. _v0.19.1:
 
@@ -283,7 +292,8 @@ Added
 
 Changed
 ~~~~~~~
-- Changed :func:`~.truncate_large_groups` and :func:`~.limit_keys_per_group` to use
+- Changed :func:`~tmlt.core.utils.truncation.truncate_large_groups` and
+  :func:`~tmlt.core.utils.truncation.limit_keys_per_group` to use
   SHA-2 (256 bits) instead of Spark's default hash (Murmur3). This results in a minor
   performance hit, but these functions should be less likely to have collisions which
   could impact utility. **Note that this may change the output of transformations which
@@ -417,7 +427,7 @@ Changed
 
 Fixed
 ~~~~~
-- Fixed bug in :func:`~.limit_keys_per_group`.
+- Fixed bug in :func:`~tmlt.core.utils.truncation.limit_keys_per_group`.
 - Fixed bug in :func:`~.gaussian`.
 - :func:`~tmlt.core.utils.cleanup.cleanup` now emits a warning rather than an exception if it fails to get a Spark session.
   This should prevent unexpected exceptions in the ``atexit`` cleanup handler.
@@ -451,7 +461,7 @@ Added
 Changed
 ~~~~~~~
 
-- :func:`~.truncate_large_groups` does not clump identical records together in hash-based ordering.
+- :func:`~tmlt.core.utils.truncation.truncate_large_groups` does not clump identical records together in hash-based ordering.
 - :class:`~.TransformValue` no longer fails when renaming the id column using :class:`~.RenameValue`.
 
 Fixed

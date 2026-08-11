@@ -19,7 +19,8 @@ from tmlt.core.utils.truncation import limit_keys_per_group, truncate_large_grou
 class LimitRowsPerGroup(Transformation):
     """Keep at most k rows per group.
 
-    See :func:`~.truncate_large_groups` for more information about truncation.
+    See :func:`~tmlt.core.utils.truncation.truncate_large_groups` for more
+    information about truncation.
 
     Example:
         ..
@@ -179,7 +180,8 @@ class LimitRowsPerGroup(Transformation):
 class LimitKeysPerGroup(Transformation):
     """Keep at most k keys per group.
 
-    See :func:`~.limit_keys_per_group` for more information about truncation.
+    See :func:`~tmlt.core.utils.truncation.limit_keys_per_group` for more
+    information about truncation.
 
     Example:
         ..
@@ -377,7 +379,8 @@ class LimitKeysPerGroup(Transformation):
 class LimitRowsPerKeyPerGroup(Transformation):
     """For each group, limit k rows per key.
 
-    See :func:`~.truncate_large_groups` for more information about truncation.
+    See :func:`~tmlt.core.utils.truncation.truncate_large_groups` for more
+    information about truncation.
 
     Example:
         ..
