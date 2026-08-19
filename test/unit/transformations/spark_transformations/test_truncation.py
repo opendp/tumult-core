@@ -271,7 +271,7 @@ class TestLimitGroupsPerID(PySparkTest):
         actual_df = transformation(df)
         expected_df = limit_groups_per_id(df, id_columns, ["C"], threshold)
         assert_dataframe_equal(actual_df, expected_df)
-        keys_per_group = actual_df.groupby(id_columns).agg(
+        groups_by_id = actual_df.groupby(id_columns).agg(
             sf.count_distinct("C").alias("count")
         )
         self.assertTrue(
@@ -375,7 +375,7 @@ class TestLimitGroupsPerID(PySparkTest):
             (
                 {"id_columns": ["A", "B"], "grouping_column": "B"},
                 ValueError,
-                "Key column cannot be a grouping column",
+                "ID column cannot be a grouping column",
             ),
         ]
     )
@@ -507,9 +507,9 @@ class TestLimitRowsPerGroupPerID(PySparkTest):
         actual_df = transformation(df)
         expected_df = truncate_large_groups(df, [*id_columns, "C"], threshold)
         assert_dataframe_equal(actual_df, expected_df)
-        rows_per_key_per_group = actual_df.groupby([*id_columns, "C"]).count()
+        rows_per_group_per_id = actual_df.groupby([*id_columns, "C"]).count()
         assert all(
-            [row["count"] <= threshold for row in rows_per_key_per_group.collect()]
+            [row["count"] <= threshold for row in rows_per_group_per_id.collect()]
         )
 
     @parameterized.expand(
@@ -574,7 +574,7 @@ class TestLimitRowsPerGroupPerID(PySparkTest):
             (
                 {"id_columns": ["A", "B"], "grouping_column": "B"},
                 ValueError,
-                "Key column cannot be a grouping column",
+                "ID column cannot be a grouping column",
             ),
         ]
     )

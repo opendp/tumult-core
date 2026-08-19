@@ -294,7 +294,7 @@ class LimitGroupsPerID(Transformation):
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
         if grouping_column in id_columns:
-            raise ValueError("Key column cannot be a grouping column")
+            raise ValueError("ID column cannot be a grouping column")
         self._id_columns = ConciseFrozenSet(id_columns)
         self._grouping_column = grouping_column
         self._threshold = threshold
@@ -493,7 +493,7 @@ class LimitRowsPerGroupPerID(Transformation):
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
         if grouping_column in id_columns:
-            raise ValueError("Key column cannot be a grouping column")
+            raise ValueError("ID column cannot be a grouping column")
         self._id_columns = ConciseFrozenSet(id_columns)
         self._grouping_column = grouping_column
         self._threshold = threshold

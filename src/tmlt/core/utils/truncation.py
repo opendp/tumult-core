@@ -306,8 +306,8 @@ def limit_groups_per_id(
 
     Args:
         df: DataFrame to truncate.
-        id_columns: Columns defining the groups.
-        grouping_columns: Column defining the keys.
+        id_columns: Columns defining the ID.
+        grouping_columns: Column defining the groups.
         threshold: Maximum number of keys to include for each group.
     """
     df, hash_column = _hash_columns(df, list(id_columns) + list(grouping_columns))

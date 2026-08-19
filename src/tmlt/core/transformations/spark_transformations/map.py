@@ -1354,7 +1354,7 @@ class FlatMapByID(Transformation):
         )
 
         # Determining the output domain requires that the input domain is valid
-        # (in particular, that the key column exists in it), so do this check
+        # (in particular, that the ID column exists in it), so do this check
         # early to prevent that case.
         if not metric.supports_domain(input_domain):
             raise UnsupportedCombinationError(
@@ -1365,7 +1365,7 @@ class FlatMapByID(Transformation):
                 ),
             )
 
-        # Add the key column back to the schema, ensuring it is the first column.
+        # Add the ID column back to the schema, ensuring it is the first column.
         output_schema[self._id_column] = (
             row_transformer.input_domain.element_domain.schema[self._id_column]
         )

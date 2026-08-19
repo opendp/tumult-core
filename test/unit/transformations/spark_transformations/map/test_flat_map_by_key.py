@@ -328,7 +328,7 @@ def test_null_nan_inf(spark):
         metric=IfGroupedBy(["k"], SumOf(SymmetricDifference())),
         raises=pytest.raises(UnsupportedMetricError),
     ),
-    Case("missing-key-column")(
+    Case("missing-id-column")(
         input_schema={
             "k": SparkIntegerColumnDescriptor(),
             "a": SparkFloatColumnDescriptor(),
