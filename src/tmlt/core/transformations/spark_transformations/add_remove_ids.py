@@ -1,14 +1,14 @@
-"""Transformations that transform dictionaries using :class:`~.AddRemoveKeys`.
+"""Transformations that transform dictionaries using :class:`~.AddRemoveIDs`.
 
 Note that several of the transformations in :mod:`~.dictionary` also support
-:class:`~.AddRemoveKeys`. In particular
+:class:`~.AddRemoveIDs`. In particular
 
 * :class:`~.CreateDictFromValue`
 * :class:`~.GetValue`
 * :class:`~.Subset`
 
 The transformations defined in this module are required because
-:class:`~.AugmentDictTransformation` is not stable under :class:`~.AddRemoveKeys` for
+:class:`~.AugmentDictTransformation` is not stable under :class:`~.AddRemoveIDs` for
 all transformations.
 
 For example, consider the following example:
@@ -16,7 +16,7 @@ For example, consider the following example:
 ..
     >>> from pyspark.sql import SparkSession
     >>> from tmlt.core.transformations.spark_transformations.truncation import (
-    ...     LimitRowsPerGroup
+    ...     LimitRowsPerID
     ... )
     >>> from tmlt.core.domains.spark_domains import SparkStringColumnDescriptor
     >>> from tmlt.core.transformations.spark_transformations.id import AddUniqueColumn
@@ -31,10 +31,10 @@ For example, consider the following example:
 ...     }
 ... )
 >>> input_metric = IfGroupedBy({"A"}, SymmetricDifference())
->>> truncate = LimitRowsPerGroup(
+>>> truncate = LimitRowsPerID(
 ...     input_domain=input_domain,
 ...     output_metric=SymmetricDifference(),
-...     grouping_columns=["A"],
+...     id_columns=["A"],
 ...     threshold=1,
 ... )
 >>> rename = Rename(
@@ -85,14 +85,14 @@ For example, consider the following example:
 >>> dict_y1 = {"start": x1, "end": y1}
 >>> dict_y2 = {"start": x2, "end": y2}
 >>> dict_input_domain = DictDomain({"start": input_domain})
->>> dict_input_metric = AddRemoveKeys({"start": "A"})
+>>> dict_input_metric = AddRemoveIDs({"start": "A"})
 >>> dict_output_domain = DictDomain(
 ...     {
 ...         "start": input_domain,
 ...         "end": transformation.output_domain
 ...     }
 ... )
->>> dict_output_metric = AddRemoveKeys({"start": "A", "end": "A"})
+>>> dict_output_metric = AddRemoveIDs({"start": "A", "end": "A"})
 >>> # Naively you would expect the stability to be 1, but in this example it is 2
 >>> dict_input_metric.distance(dict_x1, dict_x2, dict_input_domain)
 1
@@ -100,7 +100,7 @@ For example, consider the following example:
 2
 
 Conceptually, what is happening in the example above is that the transformation is
-changing the meaning of the key column. The column "A" that is in the input data is
+changing the meaning of the ID column. The column "A" that is in the input data is
 not the same as the column "A" that is in the output data, so removing one value, "a",
 in the input dictionary results in both "a" and "a,1" being removed in the output
 dictionary.
@@ -121,13 +121,13 @@ from tmlt.core.exceptions import (
     DomainMismatchError,
     UnsupportedMetricError,
 )
-from tmlt.core.metrics import AddRemoveKeys, IfGroupedBy, SymmetricDifference
+from tmlt.core.metrics import AddRemoveIDs, IfGroupedBy, SymmetricDifference
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations.filter import Filter
 from tmlt.core.transformations.spark_transformations.join import PublicJoin
 from tmlt.core.transformations.spark_transformations.map import (
     FlatMap,
-    FlatMapByKey,
+    FlatMapByID,
     Map,
     RowsToRowsTransformation,
     RowToRowsTransformation,
@@ -149,9 +149,9 @@ from tmlt.core.transformations.spark_transformations.persist import (
 from tmlt.core.transformations.spark_transformations.rename import Rename
 from tmlt.core.transformations.spark_transformations.select import Select
 from tmlt.core.transformations.spark_transformations.truncation import (
-    LimitKeysPerGroup,
-    LimitRowsPerGroup,
-    LimitRowsPerKeyPerGroup,
+    LimitGroupsPerID,
+    LimitRowsPerGroupPerID,
+    LimitRowsPerID,
 )
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
@@ -162,7 +162,7 @@ class TransformValue(Transformation):
     This class can be subclassed for the purposes of making a claim that a kind of
     Transformation (like :class:`~.Filter`) can be applied to a DataFrame and augment
     the input dictionary with the output without violating the closeness of neighboring
-    dataframes with :class:`~.AddRemoveKeys`.
+    dataframes with :class:`~.AddRemoveIDs`.
 
     NOTE: This class cannot be instantiated directly.
     """
@@ -171,7 +171,7 @@ class TransformValue(Transformation):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         transformation: Transformation,
         key: Any,
         new_key: Any,
@@ -227,7 +227,7 @@ class TransformValue(Transformation):
                 transformation.input_metric,
                 (
                     "Transformation's input metric must have a "
-                    "single grouping column, but found "
+                    "single grouping column (i.e. an ID column), but found "
                     f"{transformation.input_metric.columns}"
                 ),
             )
@@ -249,20 +249,20 @@ class TransformValue(Transformation):
                 transformation.output_metric,
                 (
                     "Transformation's output metric must have a "
-                    "single grouping column, but found "
+                    "single grouping column (i.e. an ID column), but found "
                     f"{transformation.output_metric.columns}"
                 ),
             )
         input_column = next(iter(transformation.input_metric.columns))
-        if input_metric.df_to_key_column[key] != input_column:
+        if input_metric.df_to_id_column[key] != input_column:
             raise ValueError(
                 f"Transformation's input metric grouping column, {input_column}, does"
-                " not match the dataframe's key column,"
-                f" {input_metric.df_to_key_column[key]}."
+                " not match the dataframe's ID column,"
+                f" {input_metric.df_to_id_column[key]}."
             )
         output_column = next(iter(transformation.output_metric.columns))
-        output_metric = AddRemoveKeys(
-            {**input_metric.df_to_key_column, new_key: output_column}
+        output_metric = AddRemoveIDs(
+            {**input_metric.df_to_id_column, new_key: output_column}
         )
         output_domain = DictDomain(
             {**input_domain.key_to_domain, new_key: transformation.output_domain}
@@ -315,10 +315,10 @@ class TransformValue(Transformation):
         return output
 
 
-class LimitRowsPerGroupValue(TransformValue):
-    """Applies a :class:`~.LimitRowsPerGroup` to the specified key.
+class LimitRowsPerIDValue(TransformValue):
+    """Applies a :class:`~.LimitRowsPerID` to the specified key.
 
-    See :class:`~.TransformValue` and :class:`~.LimitRowsPerGroup` for more
+    See :class:`~.TransformValue` and :class:`~.LimitRowsPerID` for more
     information.
     """
 
@@ -326,7 +326,7 @@ class LimitRowsPerGroupValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         threshold: int,
@@ -340,22 +340,22 @@ class LimitRowsPerGroupValue(TransformValue):
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
-            threshold: The maximum number of rows per group after truncation.
+            threshold: The maximum number of rows per ID after truncation.
         """
-        grouping_column = input_metric.df_to_key_column[key]
-        transformation = LimitRowsPerGroup(
+        id_column = input_metric.df_to_id_column[key]
+        transformation = LimitRowsPerID(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            output_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
-            grouping_columns=[grouping_column],
+            output_metric=IfGroupedBy([id_column], SymmetricDifference()),
+            id_columns=[id_column],
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
-class LimitKeysPerGroupValue(TransformValue):
-    """Applies a :class:`~.LimitKeysPerGroup` to the specified key.
+class LimitGroupsPerIDValue(TransformValue):
+    """Applies a :class:`~.LimitGroupsPerID` to the specified key.
 
-    See :class:`~.TransformValue` and :class:`~.LimitKeysPerGroup` for more
+    See :class:`~.TransformValue` and :class:`~.LimitGroupsPerID` for more
     information.
     """
 
@@ -363,10 +363,10 @@ class LimitKeysPerGroupValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
-        key_column: str,
+        grouping_column: str,
         threshold: int,
     ):
         """Constructor.
@@ -378,24 +378,24 @@ class LimitKeysPerGroupValue(TransformValue):
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
-            key_column: Name of column defining the keys.
-            threshold: The maximum number of keys per group after truncation.
+            grouping_column: Name of column defining the group.
+            threshold: The maximum number of groups per id after truncation.
         """
-        grouping_column = input_metric.df_to_key_column[key]
-        transformation = LimitKeysPerGroup(
+        id_column = input_metric.df_to_id_column[key]
+        transformation = LimitGroupsPerID(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            output_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
-            grouping_columns=[grouping_column],
-            key_column=key_column,
+            output_metric=IfGroupedBy([id_column], SymmetricDifference()),
+            id_columns=[id_column],
+            grouping_column=grouping_column,
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
-class LimitRowsPerKeyPerGroupValue(TransformValue):
-    """Applies a :class:`~.LimitRowsPerKeyPerGroup` to the specified key.
+class LimitRowsPerGroupPerIDValue(TransformValue):
+    """Applies a :class:`~.LimitRowsPerGroupPerID` to the specified key.
 
-    See :class:`~.TransformValue` and :class:`~.LimitRowsPerKeyPerGroup` for more
+    See :class:`~.TransformValue` and :class:`~.LimitRowsPerGroupPerID` for more
     information.
     """
 
@@ -403,10 +403,10 @@ class LimitRowsPerKeyPerGroupValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
-        key_column: str,
+        grouping_column: str,
         threshold: int,
     ):
         """Constructor.
@@ -418,16 +418,16 @@ class LimitRowsPerKeyPerGroupValue(TransformValue):
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
-            key_column: Name of column defining the keys.
+            grouping_column: Name of column defining the keys.
             threshold: The maximum number of rows each unique (key, grouping column
                 value) pair may appear in after truncation.
         """
-        grouping_column = input_metric.df_to_key_column[key]
-        transformation = LimitRowsPerKeyPerGroup(
+        id_column = input_metric.df_to_id_column[key]
+        transformation = LimitRowsPerGroupPerID(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
-            input_metric=IfGroupedBy([grouping_column], SymmetricDifference()),
-            grouping_columns=[grouping_column],
-            key_column=key_column,
+            input_metric=IfGroupedBy([id_column], SymmetricDifference()),
+            id_columns=[id_column],
+            grouping_column=grouping_column,
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -443,7 +443,7 @@ class FilterValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         filter_expr: str,
@@ -464,7 +464,7 @@ class FilterValue(TransformValue):
         transformation = Filter(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             filter_expr=filter_expr,
         )
@@ -481,7 +481,7 @@ class PublicJoinValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         public_df: DataFrame,
@@ -513,7 +513,7 @@ class PublicJoinValue(TransformValue):
         transformation = PublicJoin(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             public_df=public_df,
             public_df_domain=public_df_domain,
@@ -523,17 +523,17 @@ class PublicJoinValue(TransformValue):
         super().__init__(input_domain, input_metric, transformation, key, new_key)
 
 
-class FlatMapByKeyValue(TransformValue):
-    """Applies a :class:`~.FlatMapByKey` to create a new element from specified value.
+class FlatMapByIDValue(TransformValue):
+    """Applies a :class:`~.FlatMapByID` to create a new element from specified value.
 
-    See :class:`~.TransformValue` and :class:`~.FlatMapByKey` for more information.
+    See :class:`~.TransformValue` and :class:`~.FlatMapByID` for more information.
     """
 
     @typechecked
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         row_transformer: RowsToRowsTransformation,
@@ -549,9 +549,9 @@ class FlatMapByKeyValue(TransformValue):
                 be in the input domain.
             row_transformer: Transformation to apply to each group of rows.
         """
-        transformation = FlatMapByKey(
+        transformation = FlatMapByID(
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             row_transformer=row_transformer,
         )
@@ -568,7 +568,7 @@ class FlatMapValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         row_transformer: RowToRowsTransformation,
@@ -591,7 +591,7 @@ class FlatMapValue(TransformValue):
         """
         transformation = FlatMap(
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             row_transformer=row_transformer,
             max_num_rows=max_num_rows,
@@ -609,7 +609,7 @@ class MapValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         row_transformer: RowToRowTransformation,
@@ -627,7 +627,7 @@ class MapValue(TransformValue):
         """
         transformation = Map(
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             row_transformer=row_transformer,
         )
@@ -644,7 +644,7 @@ class DropInfsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         columns: List[str],
@@ -663,7 +663,7 @@ class DropInfsValue(TransformValue):
         transformation = DropInfs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             columns=columns,
         )
@@ -680,7 +680,7 @@ class DropNaNsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         columns: List[str],
@@ -699,7 +699,7 @@ class DropNaNsValue(TransformValue):
         transformation = DropNaNs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             columns=columns,
         )
@@ -716,7 +716,7 @@ class DropNullsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         columns: List[str],
@@ -735,7 +735,7 @@ class DropNullsValue(TransformValue):
         transformation = DropNulls(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             columns=columns,
         )
@@ -752,7 +752,7 @@ class ReplaceInfsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         replace_map: Dict[str, Tuple[float, float]],
@@ -774,7 +774,7 @@ class ReplaceInfsValue(TransformValue):
         transformation = ReplaceInfs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             replace_map=replace_map,
         )
@@ -791,7 +791,7 @@ class ReplaceNaNsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         replace_map: Dict[str, Any],
@@ -811,7 +811,7 @@ class ReplaceNaNsValue(TransformValue):
         transformation = ReplaceNaNs(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             replace_map=replace_map,
         )
@@ -828,7 +828,7 @@ class ReplaceNullsValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         replace_map: Dict[str, Any],
@@ -848,7 +848,7 @@ class ReplaceNullsValue(TransformValue):
         transformation = ReplaceNulls(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             replace_map=replace_map,
         )
@@ -865,7 +865,7 @@ class PersistValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
     ):
@@ -882,7 +882,7 @@ class PersistValue(TransformValue):
         transformation = Persist(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -898,7 +898,7 @@ class UnpersistValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
     ):
@@ -915,7 +915,7 @@ class UnpersistValue(TransformValue):
         transformation = Unpersist(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -931,7 +931,7 @@ class SparkActionValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
     ):
@@ -948,7 +948,7 @@ class SparkActionValue(TransformValue):
         transformation = SparkAction(
             domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -964,7 +964,7 @@ class RenameValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         rename_mapping: Dict[str, str],
@@ -984,7 +984,7 @@ class RenameValue(TransformValue):
         transformation = Rename(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             rename_mapping=rename_mapping,
         )
@@ -1001,7 +1001,7 @@ class SelectValue(TransformValue):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
         columns: List[str],
@@ -1020,7 +1020,7 @@ class SelectValue(TransformValue):
         transformation = Select(
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             metric=IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             ),
             columns=columns,
         )

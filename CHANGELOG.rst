@@ -11,6 +11,21 @@ Added
 
 - :class:`.Transformation`\s, :class:`.Measurement`\ s, and :class:`.Domain`\ s have a new ``format`` method, which renders a human-readable string showing the structure of the object to aid in visualization and debugging.
 
+Changed
+~~~~~~~
+- Renamed many components to refer to "IDs" (when appropriate) rather than groups or keys. Specifically:
+  - ``limit_keys_per_group()`` -> :func:`~tmlt.core.utils.truncation.limit_groups_per_id`
+  - ``LimitRowsPerGroup`` -> :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerID`
+  - ``LimitKeysPerGroup`` -> :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitGroupsPerID`
+  - ``LimitRowsPerKeyPerGroup`` -> :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerGroupPerID`
+  - ``LimitRowsPerGroupValue`` -> :class:`~tmlt.core.transformations.spark_transformations.add_remove_ids.LimitRowsPerIDValue`
+  - ``LimitKeysPerGroupValue`` -> :class:`~tmlt.core.transformations.spark_transformations.add_remove_ids.LimitGroupsPerIDValue`
+  - ``LimitRowsPerKeyPerGroupValue`` -> :class:`~tmlt.core.transformations.spark_transformations.add_remove_ids.LimitRowsPerGroupPerIDValue`
+  - ``AddRemoveKeys`` -> :class:`~tmlt.core.metrics.AddRemoveIDs`
+  - ``PrivateJoinOnKey`` -> :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnIDs`
+  - ``FlatMapByKey`` -> :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByID`
+
+
 .. _v0.19.1:
 
 0.19.1 - 2026-06-04
@@ -103,7 +118,7 @@ Changed
 
 0.17.0 - 2024-10-02
 -------------------
-This release changes the behavior of :class:`~.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` (and thus :class:`~.Map`, :class:`~.FlatMap`, and :class:`~.FlatMapByKey`) so that they catch many function outputs that would be invalid under their output domains.
+This release changes the behavior of :class:`~.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` (and thus :class:`~.Map`, :class:`~.FlatMap`, and :class:`~FlatMapByKey <.FlatMapByID>`) so that they catch many function outputs that would be invalid under their output domains.
 
 .. note::
 
@@ -141,7 +156,7 @@ This is a maintenance release that does not include user-visible changes.
 
 Fixed
 ~~~~~
-- The :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByKey` transformation was incorrectly turning some NaNs into nulls and vice versa when converting the input dataframe into the input for the user-defined transformer function and when converting the output of that function back into a dataframe.
+- The :class:`~FlatMapByKey <tmlt.core.transformations.spark_transformations.map.FlatMapByID>` transformation was incorrectly turning some NaNs into nulls and vice versa when converting the input dataframe into the input for the user-defined transformer function and when converting the output of that function back into a dataframe.
   This should no longer occur.
 
 .. _v0.16.1:
@@ -163,8 +178,8 @@ Fixed
 Added
 ~~~~~
 - Added a way to construct a bounds measurement per-group using :func:`~tmlt.core.measurements.aggregations.create_bounds_measurement`.
-- Added :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByKey`, a transformation for combining all records sharing a key under the ``IfGroupedBy("key", SymmetricDifference())`` metric into an arbitrary collection of other records with the same key using a user-defined function.
-  In addition, added the :class:`~tmlt.core.transformations.spark_transformations.add_remove_keys.FlatMapByKeyValue` transformation, which performs this same operation on a table under an :class:`~tmlt.core.metrics.AddRemoveKeys` metric.
+- Added :class:`~FlatMapByKey <tmlt.core.transformations.spark_transformations.map.FlatMapByID>`, a transformation for combining all records sharing a key under the ``IfGroupedBy("key", SymmetricDifference())`` metric into an arbitrary collection of other records with the same key using a user-defined function.
+  In addition, added the :class:`~FlatMapByKeyValue <tmlt.core.transformations.spark_transformations.add_remove_ids.FlatMapByIDValue>` transformation, which performs this same operation on a table under an :class:`~AddRemoveKeys <tmlt.core.metrics.AddRemoveIDs>` metric.
 - Added :class:`~tmlt.core.transformations.spark_transformations.map.RowsToRowsTransformation`, a transformation mapping a set of records to another set of records using a user-defined function.
 
 Changed
@@ -283,13 +298,13 @@ Added
 
 Changed
 ~~~~~~~
-- Changed :func:`~.truncate_large_groups` and :func:`~.limit_keys_per_group` to use
+- Changed :func:`~.truncate_large_groups` and :func:`~limit_keys_per_group <.limit_groups_per_id>` to use
   SHA-2 (256 bits) instead of Spark's default hash (Murmur3). This results in a minor
   performance hit, but these functions should be less likely to have collisions which
   could impact utility. **Note that this may change the output of transformations which
   use these functions.** In particular, :class:`~.PrivateJoin`,
-  :class:`~.LimitRowsPerGroup`, :class:`~.LimitKeysPerGroup`, and
-  :class:`~.LimitRowsPerKeyPerGroup`.
+  :class:`~LimitRowsPerGroup <.LimitRowsPerID>`, :class:`~LimitKeysPerGroup <.LimitGroupsPerID>`, and
+  :class:`~LimitRowsPerKeyPerGroup <.LimitRowsPerGroupPerID>`.
 - Expanded the explanation of :class:`~.GroupingFlatMap`'s stability.
 - Support all metrics for the flat map transformation.
 
@@ -417,7 +432,7 @@ Changed
 
 Fixed
 ~~~~~
-- Fixed bug in :func:`~.limit_keys_per_group`.
+- Fixed bug in :func:`~limit_keys_per_group <.limit_groups_per_id>`.
 - Fixed bug in :func:`~.gaussian`.
 - :func:`~tmlt.core.utils.cleanup.cleanup` now emits a warning rather than an exception if it fails to get a Spark session.
   This should prevent unexpected exceptions in the ``atexit`` cleanup handler.
@@ -478,11 +493,11 @@ Changed
 
 Added
 ~~~~~
-- Added :class:`~.LimitKeysPerGroupValue` transformation
+- Added :class:`~LimitKeysPerGroupValue <.LimitGroupsPerIDValue>` transformation
 
 Changed
 ~~~~~~~
-- Updated :class:`~.LimitKeysPerGroup` to require an output metric, and to support the
+- Updated :class:`~LimitKeysPerGroup <.LimitGroupsPerID>` to require an output metric, and to support the
   ``IfGroupedBy(grouping_column, SymmetricDifference())`` output metric. Dropped the ``use_l2`` parameter.
 
 .. _v0.8.1:
@@ -493,7 +508,7 @@ Changed
 Added
 ~~~~~
 
-- Added :class:`~.LimitRowsPerKeyPerGroup` and :class:`~.LimitRowsPerKeyPerGroupValue` transformations
+- Added :class:`~LimitRowsPerKeyPerGroup <.LimitRowsPerGroupPerID>` and :class:`~LimitRowsPerKeyPerGroupValue <.LimitRowsPerGroupPerIDValue>` transformations
 
 Changed
 ~~~~~~~
@@ -508,12 +523,12 @@ Changed
 Added
 ~~~~~
 
-- Added :class:`~.LimitRowsPerGroupValue` transformation
+- Added :class:`~LimitRowsPerGroupValue <.LimitRowsPerIDValue>` transformation
 
 Changed
 ~~~~~~~
 
-- Updated :class:`~.LimitRowsPerGroup` to require an output metric, and to support the
+- Updated :class:`~LimitRowsPerGroup <.LimitRowsPerID>` to require an output metric, and to support the
   ``IfGroupedBy(column, SymmetricDifference())`` output metric.
 - Added a check so that :class:`~.TransformValue` can no longer be instantiated without
   subclassing.

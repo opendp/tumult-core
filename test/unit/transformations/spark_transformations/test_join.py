@@ -19,7 +19,7 @@ from tmlt.core.domains.spark_domains import (
 )
 from tmlt.core.exceptions import DomainKeyError, UnsupportedDomainError
 from tmlt.core.metrics import (
-    AddRemoveKeys,
+    AddRemoveIDs,
     DictMetric,
     HammingDistance,
     IfGroupedBy,
@@ -29,7 +29,7 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.transformations.spark_transformations.join import (
     PrivateJoin,
-    PrivateJoinOnKey,
+    PrivateJoinOnIDs,
     PublicJoin,
     TruncationStrategy,
 )
@@ -1279,8 +1279,8 @@ class TestPrivateJoin(PySparkTest):
         )
 
 
-class TestPrivateJoinOnKey(PySparkTest):
-    """Tests for PrivateJoinOnKey."""
+class TestPrivateJoinOnIDs(PySparkTest):
+    """Tests for PrivateJoinOnIDs."""
 
     def setUp(self):
         """Setup."""
@@ -1294,11 +1294,11 @@ class TestPrivateJoinOnKey(PySparkTest):
     def test_constructor_mutable_arguments(self):
         """Tests that mutable constructor arguments are copied."""
         join_cols = ["B"]
-        transformation = PrivateJoinOnKey(
+        transformation = PrivateJoinOnIDs(
             input_domain=DictDomain(
                 {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
             ),
-            input_metric=AddRemoveKeys({"l": "B", ("r", "i", "g", "h", "t"): "B"}),
+            input_metric=AddRemoveIDs({"l": "B", ("r", "i", "g", "h", "t"): "B"}),
             left_key="l",
             right_key=("r", "i", "g", "h", "t"),
             new_key="joined",
@@ -1307,14 +1307,14 @@ class TestPrivateJoinOnKey(PySparkTest):
         join_cols.append("C")
         self.assertListEqual(transformation.join_cols, ["B"])
 
-    @parameterized.expand(get_all_props(PrivateJoinOnKey))
+    @parameterized.expand(get_all_props(PrivateJoinOnIDs))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""
-        transformation = PrivateJoinOnKey(
+        transformation = PrivateJoinOnIDs(
             input_domain=DictDomain(
                 {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
             ),
-            input_metric=AddRemoveKeys({"l": "B", ("r", "i", "g", "h", "t"): "B"}),
+            input_metric=AddRemoveIDs({"l": "B", ("r", "i", "g", "h", "t"): "B"}),
             left_key="l",
             right_key=("r", "i", "g", "h", "t"),
             new_key="joined",
@@ -1324,15 +1324,15 @@ class TestPrivateJoinOnKey(PySparkTest):
 
     @parameterized.expand([(["B"], True), (None, False)])
     def test_properties(self, join_cols: Optional[List[str]], join_on_nulls: bool):
-        """Tests that PrivateJoinOnKey's properties have expected values."""
+        """Tests that PrivateJoinOnIDs's properties have expected values."""
         input_domain = DictDomain(
             {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
         )
-        transformation = PrivateJoinOnKey(
+        transformation = PrivateJoinOnIDs(
             input_domain=DictDomain(
                 {"l": self.left_domain, ("r", "i", "g", "h", "t"): self.right_domain}
             ),
-            input_metric=AddRemoveKeys({"l": "B", ("r", "i", "g", "h", "t"): "B"}),
+            input_metric=AddRemoveIDs({"l": "B", ("r", "i", "g", "h", "t"): "B"}),
             left_key="l",
             right_key=("r", "i", "g", "h", "t"),
             new_key="joined",
@@ -1340,7 +1340,7 @@ class TestPrivateJoinOnKey(PySparkTest):
             join_on_nulls=join_on_nulls,
         )
 
-        expected_output_metric = AddRemoveKeys(
+        expected_output_metric = AddRemoveIDs(
             {"l": "B", ("r", "i", "g", "h", "t"): "B"}
         )
         expected_output_domain = DictDomain(
@@ -1362,7 +1362,7 @@ class TestPrivateJoinOnKey(PySparkTest):
         self.assertEqual(transformation.output_domain, expected_output_domain)
         self.assertEqual(
             transformation.output_metric,
-            AddRemoveKeys({"l": "B", ("r", "i", "g", "h", "t"): "B", "joined": "B"}),
+            AddRemoveIDs({"l": "B", ("r", "i", "g", "h", "t"): "B", "joined": "B"}),
         )
         self.assertEqual(transformation.left_key, "l")
         self.assertEqual(transformation.right_key, ("r", "i", "g", "h", "t"))
@@ -1424,9 +1424,9 @@ class TestPrivateJoinOnKey(PySparkTest):
             [("x",) * len(right_cols)], schema=right_cols
         )
 
-        private_join = PrivateJoinOnKey(
+        private_join = PrivateJoinOnIDs(
             input_domain=DictDomain({"left": left_domain, "right": right_domain}),
-            input_metric=AddRemoveKeys({"left": "B", "right": "B"}),
+            input_metric=AddRemoveIDs({"left": "B", "right": "B"}),
             left_key="left",
             right_key="right",
             new_key="joined",
@@ -1444,12 +1444,12 @@ class TestPrivateJoinOnKey(PySparkTest):
     def test_stability_relation_and_function(
         self, d_in: ExactNumberInput, d_out: ExactNumberInput, expected: bool
     ):
-        """Test that PrivateJoinOnKey's stability relation and function are correct."""
-        private_join = PrivateJoinOnKey(
+        """Test that PrivateJoinOnIDs's stability relation and function are correct."""
+        private_join = PrivateJoinOnIDs(
             input_domain=DictDomain(
                 {"left": self.left_domain, "right": self.right_domain}
             ),
-            input_metric=AddRemoveKeys({"left": "B", "right": "B"}),
+            input_metric=AddRemoveIDs({"left": "B", "right": "B"}),
             left_key="left",
             right_key="right",
             new_key="new",
@@ -1533,9 +1533,9 @@ class TestPrivateJoinOnKey(PySparkTest):
         expected_domain: SparkDataFrameDomain,
     ):
         """Tests that special values in output domain."""
-        transformation = PrivateJoinOnKey(
+        transformation = PrivateJoinOnIDs(
             input_domain=DictDomain({"left": left_domain, "right": right_domain}),
-            input_metric=AddRemoveKeys({"left": "B", "right": "B"}),
+            input_metric=AddRemoveIDs({"left": "B", "right": "B"}),
             left_key="left",
             right_key="right",
             new_key="joined",
@@ -1549,7 +1549,7 @@ class TestPrivateJoinOnKey(PySparkTest):
 
     def test_format(self):
         """Tests that format returns the expected string."""
-        transformation = PrivateJoinOnKey(
+        transformation = PrivateJoinOnIDs(
             input_domain=DictDomain(
                 {
                     "left": SparkDataFrameDomain(
@@ -1566,13 +1566,13 @@ class TestPrivateJoinOnKey(PySparkTest):
                     ),
                 }
             ),
-            input_metric=AddRemoveKeys({"left": "B", "right": "B"}),
+            input_metric=AddRemoveIDs({"left": "B", "right": "B"}),
             left_key="left",
             right_key="right",
             new_key="joined",
             join_cols=["B"],
         )
         assert transformation.format() == (
-            "PrivateJoinOnKey left_key='left' right_key='right' new_key='joined' "
+            "PrivateJoinOnIDs left_key='left' right_key='right' new_key='joined' "
             "join_cols=['B'] join_on_nulls=False"
         )

@@ -1,10 +1,10 @@
 """Transformations and utilities for manipulating dictionaries.
 
 Note that while most transformations in this module (:class:`~.CreateDictFromValue`,
-:class:`~.Subset`, and :class:`~.GetValue`) support the metric :class:`~.AddRemoveKeys`,
+:class:`~.Subset`, and :class:`~.GetValue`) support the metric :class:`~.AddRemoveIDs`,
 :class:`~.AugmentDictTransformation` does not. Because of this, none of the included
 derived transformations (such as :func:`create_copy_and_transform_value`) support
-:class:`~.AddRemoveKeys`. Instead, use transformations in :mod:`~.add_remove_keys`.
+:class:`~.AddRemoveIDs`. Instead, use transformations in :mod:`~.add_remove_ids`.
 """
 
 # SPDX-License-Identifier: Apache-2.0
@@ -25,7 +25,7 @@ from tmlt.core.exceptions import (
     UnsupportedMetricError,
 )
 from tmlt.core.metrics import (
-    AddRemoveKeys,
+    AddRemoveIDs,
     DictMetric,
     IfGroupedBy,
     Metric,
@@ -46,7 +46,7 @@ class CreateDictFromValue(Transformation):
         input_domain: Domain,
         input_metric: Metric,
         key: Any,
-        use_add_remove_keys: bool = False,
+        use_add_remove_ids: bool = False,
     ):
         """Constructor.
 
@@ -54,11 +54,11 @@ class CreateDictFromValue(Transformation):
             input_domain: Domain of input objects.
             input_metric: Distance metric on input objects.
             key: Key for constructing dictionary with given object.
-            use_add_remove_keys: Whether to use :class:`~.AddRemoveKeys` as the output
+            use_add_remove_ids: Whether to use :class:`~.AddRemoveIDs` as the output
                 metric instead of :class:`~.DictMetric`.
         """
-        output_metric: Union[DictMetric, AddRemoveKeys]
-        if use_add_remove_keys:
+        output_metric: Union[DictMetric, AddRemoveIDs]
+        if use_add_remove_ids:
             if not (
                 isinstance(input_metric, IfGroupedBy)
                 and isinstance(input_metric.inner_metric, SymmetricDifference)
@@ -67,19 +67,19 @@ class CreateDictFromValue(Transformation):
                     input_metric,
                     (
                         "Input metric must be IfGroupedBy with an inner metric of "
-                        "SymmetricDifference to use AddRemoveKeys as the output metric"
+                        "SymmetricDifference to use AddRemoveIDs as the output metric"
                     ),
                 )
             if len(input_metric.columns) > 1:
                 raise UnsupportedMetricError(
                     input_metric,
                     (
-                        "Input metric must have only a single grouping column to use "
-                        "AddRemoveKeys as the output metric, but found "
-                        f"{input_metric.columns}"
+                        "Input metric must have only a single grouping column (i.e. an "
+                        "ID column) to use AddRemoveIDs as the output metric, but "
+                        f"found {input_metric.columns}"
                     ),
                 )
-            output_metric = AddRemoveKeys({key: next(iter(input_metric.columns))})
+            output_metric = AddRemoveIDs({key: next(iter(input_metric.columns))})
         else:
             output_metric = DictMetric({key: input_metric})
         super().__init__(
@@ -234,7 +234,7 @@ class Subset(Transformation):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: Union[DictMetric, AddRemoveKeys],
+        input_metric: Union[DictMetric, AddRemoveIDs],
         keys: List[Any],
     ):
         """Constructor.
@@ -256,7 +256,7 @@ class Subset(Transformation):
                     f"{invalid_keys}"
                 ),
             )
-        output_metric: Union[DictMetric, AddRemoveKeys]
+        output_metric: Union[DictMetric, AddRemoveIDs]
         if isinstance(input_metric, DictMetric):
             if set(input_domain.key_to_domain) != set(input_metric.key_to_metric):
                 raise UnsupportedCombinationError(
@@ -269,8 +269,8 @@ class Subset(Transformation):
                 )
             output_metric = DictMetric({k: input_metric[k] for k in keys})
         else:
-            output_metric = AddRemoveKeys(
-                {k: input_metric.df_to_key_column[k] for k in keys}
+            output_metric = AddRemoveIDs(
+                {k: input_metric.df_to_id_column[k] for k in keys}
             )
         super().__init__(
             input_domain=input_domain,
@@ -311,7 +311,7 @@ class GetValue(Transformation):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: Union[DictMetric, AddRemoveKeys],
+        input_metric: Union[DictMetric, AddRemoveIDs],
         key: Any,
     ):
         """Constructor.
@@ -340,7 +340,7 @@ class GetValue(Transformation):
             output_metric = input_metric[key]
         else:
             output_metric = IfGroupedBy(
-                [input_metric.df_to_key_column[key]], SymmetricDifference()
+                [input_metric.df_to_id_column[key]], SymmetricDifference()
             )
 
         super().__init__(

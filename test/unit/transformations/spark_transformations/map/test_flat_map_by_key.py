@@ -1,4 +1,4 @@
-"""Tests for transformations.spark_transformations.map.FlatMapByKey."""
+"""Tests for transformations.spark_transformations.map.FlatMapByID."""
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
@@ -21,7 +21,7 @@ from tmlt.core.domains.spark_domains import (
 from tmlt.core.exceptions import UnsupportedCombinationError, UnsupportedMetricError
 from tmlt.core.metrics import IfGroupedBy, Metric, SumOf, SymmetricDifference
 from tmlt.core.transformations.spark_transformations.map import (
-    FlatMapByKey,
+    FlatMapByID,
     RowsToRowsTransformation,
 )
 from tmlt.core.utils.testing import (
@@ -35,7 +35,7 @@ from tmlt.core.utils.testing import (
 
 
 def test_properties():
-    """FlatMapByKey's properties have the expected values."""
+    """FlatMapByID's properties have the expected values."""
     metric = IfGroupedBy(["k"], SymmetricDifference())
     row_transformer = RowsToRowsTransformation(
         input_domain=ListDomain(
@@ -49,7 +49,7 @@ def test_properties():
         output_domain=ListDomain(SparkRowDomain({"a": SparkIntegerColumnDescriptor()})),
         trusted_f=lambda rs: [{"a": r["a"] * 2} for r in rs],
     )
-    transformation = FlatMapByKey(metric, row_transformer)
+    transformation = FlatMapByID(metric, row_transformer)
     assert transformation.input_domain == SparkDataFrameDomain(
         {"k": SparkIntegerColumnDescriptor(), "a": SparkIntegerColumnDescriptor()}
     )
@@ -63,10 +63,10 @@ def test_properties():
 
 # get_all_props is built for use with parameterized.expand, so we need to unwrap
 # the inner singleton tuples to get it to work with pytest.
-@pytest.mark.parametrize("prop_name", [p[0] for p in get_all_props(FlatMapByKey)])
+@pytest.mark.parametrize("prop_name", [p[0] for p in get_all_props(FlatMapByID)])
 def test_property_immutability(prop_name: str):
     """Property is immutable."""
-    t = FlatMapByKey(
+    t = FlatMapByID(
         metric=IfGroupedBy(["k"], SymmetricDifference()),
         row_transformer=RowsToRowsTransformation(
             input_domain=ListDomain(
@@ -223,7 +223,7 @@ def test_transformation_correctness(
     expected_df: pd.DataFrame,
 ):
     """Transformation works correctly."""
-    transformation = FlatMapByKey(
+    transformation = FlatMapByID(
         metric=IfGroupedBy(["k"], SymmetricDifference()), row_transformer=transformer
     )
     assert transformation.stability_function(1) == 1
@@ -277,7 +277,7 @@ def test_null_nan_inf(spark):
         ),
         f,
     )
-    transformation = FlatMapByKey(
+    transformation = FlatMapByID(
         metric=IfGroupedBy(["id"], SymmetricDifference()),
         row_transformer=transformer,
     )
@@ -328,7 +328,7 @@ def test_null_nan_inf(spark):
         metric=IfGroupedBy(["k"], SumOf(SymmetricDifference())),
         raises=pytest.raises(UnsupportedMetricError),
     ),
-    Case("missing-key-column")(
+    Case("missing-id-column")(
         input_schema={
             "k": SparkIntegerColumnDescriptor(),
             "a": SparkFloatColumnDescriptor(),
@@ -356,7 +356,7 @@ def test_invalid_metrics(
 ):
     """Tests that the constructor checks metrics correctly."""
     with raises:
-        FlatMapByKey(
+        FlatMapByID(
             metric=metric,  # type: ignore
             row_transformer=RowsToRowsTransformation(
                 ListDomain(SparkRowDomain(input_schema)),
@@ -367,7 +367,7 @@ def test_invalid_metrics(
 
 
 def test_format():
-    """FlatMapByKey formats with its row transformer."""
+    """FlatMapByID formats with its row transformer."""
 
     def f(rows):
         return rows
@@ -384,12 +384,10 @@ def test_format():
         output_domain=ListDomain(SparkRowDomain({"a": SparkFloatColumnDescriptor()})),
         trusted_f=f,
     )
-    transformation = FlatMapByKey(
+    transformation = FlatMapByID(
         metric=IfGroupedBy(["k"], SymmetricDifference()),
         row_transformer=row_transformer,
     )
-    assert transformation.format() == textwrap.dedent(
-        f"""\
-        FlatMapByKey
-          RowsToRowsTransformation trusted_f=<function {f.__qualname__}>"""
-    )
+    assert transformation.format() == textwrap.dedent(f"""\
+        FlatMapByID
+          RowsToRowsTransformation trusted_f=<function {f.__qualname__}>""")

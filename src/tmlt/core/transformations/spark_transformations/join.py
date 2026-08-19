@@ -25,7 +25,7 @@ from tmlt.core.exceptions import (
     UnsupportedMetricError,
 )
 from tmlt.core.metrics import (
-    AddRemoveKeys,
+    AddRemoveIDs,
     DictMetric,
     IfGroupedBy,
     RootSumOfSquared,
@@ -805,8 +805,8 @@ class PrivateJoin(Transformation):
         )
 
 
-class PrivateJoinOnKey(Transformation):
-    r"""Join two private SparkDataFrames including a key column.
+class PrivateJoinOnIDs(Transformation):
+    r"""Join two private SparkDataFrames that include an ID column.
 
     Example:
         ..
@@ -888,7 +888,7 @@ class PrivateJoinOnKey(Transformation):
         ...     },
         ... )
         >>> assert ignored_dataframe in ignored_domain
-        >>> private_join = PrivateJoinOnKey(
+        >>> private_join = PrivateJoinOnIDs(
         ...     input_domain=DictDomain(
         ...         {
         ...             "left": left_domain,
@@ -896,7 +896,7 @@ class PrivateJoinOnKey(Transformation):
         ...             "ignored": ignored_domain,
         ...         }
         ...     ),
-        ...     input_metric=AddRemoveKeys(
+        ...     input_metric=AddRemoveIDs(
         ...         {
         ...            "left": "B",
         ...            "right": "B",
@@ -936,28 +936,28 @@ class PrivateJoinOnKey(Transformation):
         Unlike :class:`~.PrivateJoin`, this join allows for other dataframes to
         be present in the input dictionary, and will output a dictionary
         containing all of the input dataframes along with the joined dataframe.
-        This is because of the stability analysis for AddRemoveKeys. See
-        :mod:`~.add_remove_keys` for more details.
+        This is because of the stability analysis for AddRemoveIDs. See
+        :mod:`~.add_remove_ids` for more details.
 
     Transformation Contract:
         * Input domain - :class:`~.DictDomain` containing two or more
           SparkDataFrame domains.
         * Output domain - The same as the input :class:`~.DictDomain` with the addition
           of a new :class:`~.SparkDataFrameDomain` for the joined table.
-        * Input metric - :class:`~.AddRemoveKeys`
-        * Output metric - :class:`~.AddRemoveKeys`
+        * Input metric - :class:`~.AddRemoveIDs`
+        * Output metric - :class:`~.AddRemoveIDs`
 
     >>> private_join.input_domain
     DictDomain(key_to_domain={'left': SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}), 'right': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'C': SparkStringColumnDescriptor(allow_null=False)}), 'ignored': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'D': SparkStringColumnDescriptor(allow_null=False)})})
     >>> private_join.output_domain
     DictDomain(key_to_domain={'left': SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}), 'right': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'C': SparkStringColumnDescriptor(allow_null=False)}), 'ignored': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'D': SparkStringColumnDescriptor(allow_null=False)}), 'joined': SparkDataFrameDomain(schema={'B': SparkStringColumnDescriptor(allow_null=False), 'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64), 'C': SparkStringColumnDescriptor(allow_null=False)})})
     >>> private_join.input_metric
-    AddRemoveKeys(df_to_key_column={'left': 'B', 'right': 'B', 'ignored': 'B'})
+    AddRemoveIDs(df_to_id_column={'left': 'B', 'right': 'B', 'ignored': 'B'})
     >>> private_join.output_metric
-    AddRemoveKeys(df_to_key_column={'left': 'B', 'right': 'B', 'ignored': 'B', 'joined': 'B'})
+    AddRemoveIDs(df_to_id_column={'left': 'B', 'right': 'B', 'ignored': 'B', 'joined': 'B'})
 
     Stability Guarantee:
-        :class:`~.PrivateJoinOnKey`'s :meth:`~.stability_function` returns ``d_in``
+        :class:`~.PrivateJoinOnIDs`'s :meth:`~.stability_function` returns ``d_in``
 
         >>> private_join.stability_function(1)
         1
@@ -969,7 +969,7 @@ class PrivateJoinOnKey(Transformation):
     def __init__(
         self,
         input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
+        input_metric: AddRemoveIDs,
         left_key: Any,
         right_key: Any,
         new_key: Any,
@@ -981,8 +981,8 @@ class PrivateJoinOnKey(Transformation):
         Args:
             input_domain: Domain of the input dictionaries. Must contain ``left_key``
                 and ``right_key``, but may also contain other keys.
-            input_metric: AddRemoveKeys metric for the input dictionaries. The left and
-                right dataframes must use the same key column.
+            input_metric: AddRemoveIDs metric for the input dictionaries. The left and
+                right dataframes must use the same ID column.
             left_key: Key for the left DataFrame.
             right_key: Key for the right DataFrame.
             new_key: Key for the output DataFrame.
@@ -1018,21 +1018,21 @@ class PrivateJoinOnKey(Transformation):
             join_cols = natural_join_columns(
                 list(left_domain.schema), list(right_domain.schema)
             )
-        if left_key not in input_metric.df_to_key_column:
+        if left_key not in input_metric.df_to_id_column:
             raise ValueError(f"Invalid key: Key '{left_key}' not in input metric.")
-        if right_key not in input_metric.df_to_key_column:
+        if right_key not in input_metric.df_to_id_column:
             raise ValueError(f"Invalid key: Key '{right_key}' not in input metric.")
         if (
-            input_metric.df_to_key_column[left_key]
-            != input_metric.df_to_key_column[right_key]
+            input_metric.df_to_id_column[left_key]
+            != input_metric.df_to_id_column[right_key]
         ):
             raise ValueError("Left and right keys must have the same key column.")
-        key_column = input_metric.df_to_key_column[left_key]
-        if key_column not in join_cols:
-            raise ValueError("Key column must be joined on.")
+        id_column = input_metric.df_to_id_column[left_key]
+        if id_column not in join_cols:
+            raise ValueError("ID column must be joined on.")
 
-        output_metric = AddRemoveKeys(
-            {**input_metric.df_to_key_column, new_key: key_column}
+        output_metric = AddRemoveIDs(
+            {**input_metric.df_to_id_column, new_key: id_column}
         )
 
         super().__init__(
