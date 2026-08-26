@@ -57,6 +57,10 @@ class TestLimitKeysPerGroup(PySparkTest):
 
 
 # Note: The values in these tests are arbitrary and not meaningful.
+# Marked by hand: this test builds its Spark session inside the test body
+# rather than through the `spark` fixture or PySparkTest, so the automatic
+# marking in test/conftest.py cannot see that it needs one.
+@pytest.mark.spark
 @pytest.mark.parametrize(
     "test_rows,schema",
     [

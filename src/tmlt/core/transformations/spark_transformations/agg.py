@@ -16,6 +16,7 @@ from typeguard import typechecked
 
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.spark_domains import (
+    SparkColumnsDescriptor,
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
     SparkGroupedDataFrameDomain,
@@ -38,6 +39,30 @@ from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.spark_transformations import nan
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
+
+
+def _groupby_columns_schema(
+    input_domain: SparkGroupedDataFrameDomain,
+) -> SparkColumnsDescriptor:
+    """Returns the descriptors of a grouped domain's groupby columns.
+
+    The columns are in the *domain's* order, which is the order a
+    :class:`~tmlt.core.transformations.spark_transformations.groupby.GroupBy`
+    puts its group keys in and so the order an aggregation emits them in.
+    Iterating ``groupby_columns`` itself would not do: it is a frozenset, whose
+    iteration order is a function of the strings' hashes and therefore of
+    ``PYTHONHASHSEED`` -- the declared output schema was in a different order
+    from run to run, and in general in a different order from the rows the
+    aggregation actually produced.
+
+    Args:
+        input_domain: The domain whose groupby columns are wanted.
+    """
+    return {
+        column: descriptor
+        for column, descriptor in input_domain.schema.items()
+        if column in input_domain.groupby_columns
+    }
 
 
 class Count(Transformation):
@@ -376,10 +401,7 @@ class CountGrouped(Transformation):
             raise ValueError(
                 f"Invalid count column name: ({count_column}) column already exists"
             )
-        groupby_columns_schema = {
-            groupby_column: input_domain[groupby_column]
-            for groupby_column in input_domain.groupby_columns
-        }
+        groupby_columns_schema = _groupby_columns_schema(input_domain)
         output_domain = SparkDataFrameDomain(
             schema={
                 **groupby_columns_schema,
@@ -552,10 +574,7 @@ class CountDistinctGrouped(Transformation):
             raise ValueError(
                 f"Invalid count column name: ({count_column}) column already exists"
             )
-        groupby_columns_schema = {
-            groupby_column: input_domain[groupby_column]
-            for groupby_column in input_domain.groupby_columns
-        }
+        groupby_columns_schema = _groupby_columns_schema(input_domain)
         output_domain = SparkDataFrameDomain(
             schema={
                 **groupby_columns_schema,
@@ -993,10 +1012,7 @@ class SumGrouped(Transformation):
         if sum_column in input_domain.groupby_columns:
             raise ValueError(f"Invalid sum column name: '{sum_column}' already exists")
 
-        groupby_columns_schema = {
-            groupby_column: input_domain[groupby_column]
-            for groupby_column in input_domain.groupby_columns
-        }
+        groupby_columns_schema = _groupby_columns_schema(input_domain)
         output_domain = SparkDataFrameDomain(
             schema={**groupby_columns_schema, sum_column: input_domain[measure_column]}
         )

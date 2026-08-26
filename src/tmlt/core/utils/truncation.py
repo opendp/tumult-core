@@ -2,7 +2,7 @@
 
 :mod:`tmlt.core.utils.pandas_truncation` reimplements these functions for
 pandas DataFrames, keeping exactly the same rows. The per-type renderings and
-the hash-then-rehash protocol of :func:`_hash_column` and :func:`_hash_columns`
+the hash-then-rehash protocol of ``_hash_column`` and ``_hash_columns``
 are therefore a contract shared with that module, enforced by
 ``test/unit/utils/test_truncation_differential.py``: a change here -- a new
 supported type, a changed rendering -- needs a matching change there.

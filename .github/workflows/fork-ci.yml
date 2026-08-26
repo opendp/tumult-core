@@ -1,0 +1,66 @@
+# The-Everyone-Project fork CI.
+#
+# The upstream pipelines (commit.yml, merge_queue.yml, release.yml) are driven
+# by pushes to opendp/tumult-core's own branches and merge queue, neither of
+# which the fork has. This is the fork's own pipeline: it runs on the branches
+# the pandas backend work actually lands on, and it exists mainly to keep the
+# no-JVM guarantee honest.
+#
+# Every job is guarded on the repository, so this file is inert if it is ever
+# carried upstream in a merge or a pull request.
+name: Fork CI
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'feature/**'
+  pull_request:
+    branches:
+      - 'main'
+      - 'feature/**'
+
+# TODO: add a weekly cron that runs the dependency matrix
+# (`nox -t test_dependency_matrix`, see DEPENDENCY_MATRIX in noxfile.py) against
+# the pyspark/pandas/numpy floors and ceilings. It is too slow for a per-push
+# lane and it is the check most likely to catch an upstream release breaking the
+# pandas backend, so it wants `schedule: - cron: '0 6 * * 1'` in its own job
+# here rather than a place in the jobs below.
+
+env:
+  # Force nox to produce colorful logs:
+  FORCE_COLOR: "true"
+
+jobs:
+  Lint:
+    if: github.repository == 'The-Everyone-Project/tumult-core'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@6cf847ba14aab81eb8c92b8946e09f92fc4cac99
+      - run: uv lock --check
+      # Unlike the upstream pipelines, the fork's lanes run nox with --no-venv
+      # against the environment uv sync builds, rather than against a wheel
+      # downloaded from a Package job. Building the wheel means running
+      # cibuildwheel over three Python versions to compile GMP, MPFR, FLINT and
+      # ARB, which is far more than these two checks need; `uv sync` compiles
+      # the vendored libraries once for this runner's interpreter instead.
+      - run: uv sync
+      - run: uv run nox --no-venv -t lint -- --check
+
+  Test-NoJVM:
+    if: github.repository == 'The-Everyone-Project/tumult-core'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up runner
+        uses: opendp/tumult-tools/actions/setup@6cf847ba14aab81eb8c92b8946e09f92fc4cac99
+      - run: uv sync
+      # pyspark is installed for this run, as it always is. The session sets
+      # TMLT_FORBID_JVM=1, which makes test/conftest.py replace pyspark's
+      # launch_gateway, so the lane fails if any test that survives
+      # `-m "not spark"` tries to start a JVM.
+      - run: uv run nox --no-venv -s test-nojvm

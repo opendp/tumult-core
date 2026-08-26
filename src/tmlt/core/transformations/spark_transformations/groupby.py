@@ -39,6 +39,24 @@ from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.validation import validate_groupby_domains
 
 
+def _in_schema_order(group_keys: DataFrame, schema_columns: List[str]) -> DataFrame:
+    """Returns a group keys dataframe with its columns in the schema's order.
+
+    A dataframe naming a column the schema does not have is returned untouched,
+    so that the domain check in :class:`GroupBy`'s constructor is what reports
+    it.
+
+    Args:
+        group_keys: The group keys to reorder.
+        schema_columns: The input domain's columns, in its order.
+    """
+    columns = group_keys.columns
+    if not set(columns) <= set(schema_columns):
+        return group_keys
+    ordered = [column for column in schema_columns if column in set(columns)]
+    return group_keys if ordered == columns else group_keys.select(*ordered)
+
+
 class GroupBy(Transformation):
     """Groups a Spark DataFrame by given group keys.
 
@@ -142,7 +160,8 @@ class GroupBy(Transformation):
             use_l2: If True, use :class:`~.RootSumOfSquared` instead of :class:`~.SumOf`
                 in the output metric.
             group_keys: DataFrame where rows correspond to group keys. None triggers a
-                total aggregation.
+                total aggregation. Its columns are put in the input domain's
+                order; see :attr:`groupby_columns`.
 
         Note:
             ``group_keys`` must be public.
@@ -152,6 +171,8 @@ class GroupBy(Transformation):
             if use_l2
             else SumOf(SymmetricDifference())
         )
+        if group_keys is not None:
+            group_keys = _in_schema_order(group_keys, list(input_domain.schema))
         self._groupby_columns = group_keys.columns if group_keys else []
         if isinstance(input_metric, IfGroupedBy):
             missing_metric_columns = [
@@ -202,12 +223,24 @@ class GroupBy(Transformation):
 
     @property
     def group_keys(self) -> Optional[DataFrame]:
-        """Returns DataFrame containing group keys, or None for a total aggregation."""
+        """Returns DataFrame containing group keys, or None for a total aggregation.
+
+        Its columns are in the input domain's order, whatever order they were
+        given in; see :attr:`groupby_columns`.
+        """
         return self._group_keys
 
     @property
     def groupby_columns(self) -> List[str]:
-        """Returns list of columns to groupby."""
+        """Returns list of columns to groupby, in the input domain's order.
+
+        An aggregation over the grouped dataframe this produces emits the
+        groupby columns in the order :attr:`group_keys` has them, and the output
+        domain of that aggregation declares them in the order the *schema* has
+        them. Normalizing the group keys here is what makes those two the same
+        order, for either backend and whatever order the group keys were built
+        in.
+        """
         return self._groupby_columns.copy()
 
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:

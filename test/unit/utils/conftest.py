@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
+from test.unit.backend_testing import Backend
 from test.unit.utils.truncation_testing import (
     TruncationBackend,
     make_pandas_backend,
@@ -12,20 +13,25 @@ from test.unit.utils.truncation_testing import (
 import pytest
 
 
-@pytest.fixture(params=["spark", "pandas"])
-def backend(request: pytest.FixtureRequest) -> TruncationBackend:
+@pytest.fixture
+def backend(backend: Backend) -> TruncationBackend:
     """Returns each of the two truncation implementations in turn.
 
+    This overrides the repo-wide ``backend`` fixture from ``test/conftest.py``
+    for this directory, narrowing the plain :class:`Backend` it yields to a
+    :class:`TruncationBackend`, which carries the three truncation functions
+    behind a pandas-in/pandas-out API.
+
+    It builds on the fixture it overrides rather than reparametrizing, so that
+    the backend parametrization, the ``spark`` marker on the Spark parameter,
+    and the lazy Spark session all stay defined in exactly one place.
+
     Args:
-        request: The pytest request, carrying the backend name.
+        backend: The repo-wide backend fixture, overridden by this one.
 
     Returns:
-        The backend to test.
+        The truncation backend to test.
     """
-    if request.param == "spark":
-        # The Spark session is fetched lazily with getfixturevalue, rather
-        # than requested as a fixture parameter, so that the pandas runs of
-        # every test never pay for a Spark session (and its JVM) they do not
-        # use.
-        return make_spark_backend(request.getfixturevalue("spark"))
+    if backend.name == "spark":
+        return make_spark_backend(backend.require_spark())
     return make_pandas_backend()

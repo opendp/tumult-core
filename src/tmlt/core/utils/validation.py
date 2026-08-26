@@ -8,6 +8,7 @@ from __future__ import annotations
 import datetime
 from typing import List, Mapping, Optional, Union
 
+from tmlt.core.domains.pandas_domains import PandasTableDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
@@ -28,7 +29,7 @@ def validate_groupby_domains(
             List[Optional[datetime.date]],
         ],
     ],
-    input_domain: SparkDataFrameDomain,
+    input_domain: Union[SparkDataFrameDomain, PandasTableDomain],
 ) -> None:
     """Raises error if groupby domains are invalid.
 
@@ -38,6 +39,12 @@ def validate_groupby_domains(
         - for each column, all values in its domain are valid values w.r.t the
           input domain AND
         - for each column, each value in its domain is distinct.
+
+    Note:
+        The two backends' table domains are checked identically: this only
+        reads a column descriptor's
+        :meth:`~tmlt.core.domains.spark_domains.SparkColumnDescriptor.valid_py_value`,
+        which both families implement.
     """
     for column, domain in groupby_domains.items():
         if not domain:

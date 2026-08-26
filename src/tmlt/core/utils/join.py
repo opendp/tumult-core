@@ -126,14 +126,24 @@ def columns_after_join(
     return output_columns
 
 
+#: The join types :func:`join` accepts.
+JOIN_TYPES = frozenset({"left", "right", "inner", "outer", "left_anti"})
+
+
 @typechecked
-def _validate_join(
-    left_schema: SparkColumnsDescriptor,
-    right_schema: SparkColumnsDescriptor,
+def _validate_join_columns(
+    left_columns: List[str],
+    right_columns: List[str],
     on: Optional[List[str]],
     how: str,
 ) -> None:
-    """Check for any problems in the join.
+    """Check for any problems in the join that the column names alone reveal.
+
+    This is the part of :func:`_validate_join` that does not look at column
+    types, split out because the two backends have different things to say
+    about types -- Spark has one descriptor family and pandas another, and
+    :func:`tmlt.core.utils.pandas_join.join` has only dtypes -- while the checks
+    here are the column names' algebra and so the same on both.
 
     Checks:
 
@@ -141,11 +151,15 @@ def _validate_join(
         - Join columns are in both tables.
         - None of the column names are duplicated in any of the inputs.
         - No name collisions when adding _left or _right to a column name.
+
+    Args:
+        left_columns: Columns of the left table.
+        right_columns: Columns of the right table.
+        on: Columns to join on. If None, join on all columns with the same name.
+        how: Join type.
     """
-    left_columns = left_schema.keys()
-    right_columns = right_schema.keys()
     if on is None:
-        on = natural_join_columns(list(left_columns), list(right_columns))
+        on = natural_join_columns(left_columns, right_columns)
     if len(on) == 0:
         raise ValueError("Join must involve at least one column.")
     for column in on:
@@ -160,7 +174,7 @@ def _validate_join(
     if len(set(right_columns)) != len(right_columns):
         raise ValueError("Right columns contain duplicates.")
 
-    if how not in {"left", "right", "inner", "outer", "left_anti"}:
+    if how not in JOIN_TYPES:
         raise ValueError(
             "Join type (`how`) must be one of 'left', 'right', 'inner', 'outer', or "
             f"'left_anti', not '{how}'."
@@ -190,6 +204,26 @@ def _validate_join(
                 "the output."
             )
 
+
+@typechecked
+def _validate_join(
+    left_schema: SparkColumnsDescriptor,
+    right_schema: SparkColumnsDescriptor,
+    on: Optional[List[str]],
+    how: str,
+) -> None:
+    """Check for any problems in the join.
+
+    Checks:
+
+        - All checks from :func:`_validate_join_columns`.
+        - Join columns have the same data type.
+    """
+    left_columns = list(left_schema)
+    right_columns = list(right_schema)
+    _validate_join_columns(left_columns, right_columns, on=on, how=how)
+    if on is None:
+        on = natural_join_columns(left_columns, right_columns)
     for column in on:
         left_dtype = left_schema[column].data_type
         right_dtype = right_schema[column].data_type
@@ -199,6 +233,72 @@ def _validate_join(
                 f"({str(left_dtype).replace('()', '')}) and right "
                 f"({str(right_dtype).replace('()', '')}) domains."
             )
+
+
+#: Which join types can leave a side's rows with no matching row on the other
+#: side, and so with nothing for the other side's columns to hold there.
+_UNMATCHABLE_JOINS: Dict[str, Tuple[str, ...]] = {
+    "left": ("right", "outer"),
+    "right": ("left", "outer"),
+}
+
+
+def _side_unmatchable(side: str, how: str) -> bool:
+    """Returns whether a join can leave a side's rows without a matching row.
+
+    The *other* side's columns then have rows they contributed no value to,
+    which is where a join puts a null: this is what decides whether a non-join
+    output column allows nulls, and -- in
+    :mod:`tmlt.core.utils.pandas_join`, which has to make room for a missing
+    value before merging rather than after -- what decides its dtype.
+
+    Args:
+        side: The side to ask about, "left" or "right".
+        how: The join type.
+    """
+    return how in _UNMATCHABLE_JOINS[side]
+
+
+def _join_flag(how: str, left: bool, right: bool) -> bool:
+    """Returns a join column descriptor's flag after a join.
+
+    An output join column's values come from the left side, the right side, or
+    either, depending on the join type, and a flag is allowed in the output
+    exactly when every side a value can come from allows it.
+
+    Args:
+        how: The join type, one of "left", "right", "inner" or "outer".
+        left: The flag's value in the left descriptor.
+        right: The flag's value in the right descriptor.
+    """
+    if how == "left":
+        return left
+    if how == "right":
+        return right
+    if how == "inner":
+        return left and right
+    assert how == "outer"
+    return left or right
+
+
+def _join_allows_null(
+    left_allows_null: bool, right_allows_null: bool, how: str, nulls_are_equal: bool
+) -> bool:
+    """Returns whether an output join column may hold a null.
+
+    This is :func:`_join_flag` with one exception: under ``=``, where a null key
+    matches nothing, an inner join keeps no null-keyed row at all, whatever the
+    two sides allow.
+
+    Args:
+        left_allows_null: Whether the left descriptor allows nulls.
+        right_allows_null: Whether the right descriptor allows nulls.
+        how: The join type, one of "left", "right", "inner" or "outer".
+        nulls_are_equal: If True, treats null values as equal.
+    """
+    if how == "inner" and not nulls_are_equal:
+        return False
+    return _join_flag(how, left_allows_null, right_allows_null)
 
 
 @typechecked
@@ -263,14 +363,15 @@ def domain_after_join(
             assert right_descriptor is not None
             output_descriptors[output_column] = dataclasses.replace(  # type: ignore
                 right_descriptor,
-                allow_null=right_descriptor.allow_null or how in ["left", "outer"],
+                allow_null=right_descriptor.allow_null
+                or _side_unmatchable("right", how),
             )
             continue
         if right_descriptor is None:
             assert left_descriptor is not None
             output_descriptors[output_column] = dataclasses.replace(  # type: ignore
                 left_descriptor,
-                allow_null=left_descriptor.allow_null or how in ["right", "outer"],
+                allow_null=left_descriptor.allow_null or _side_unmatchable("left", how),
             )
             continue
         assert left_descriptor is not None
@@ -279,20 +380,12 @@ def domain_after_join(
         assert output_column in on
 
         # All column types are nullable
-        allow_null = None
-        if how == "left":
-            allow_null = left_descriptor.allow_null
-        elif how == "right":
-            allow_null = right_descriptor.allow_null
-        elif how == "inner":
-            allow_null = (
-                left_descriptor.allow_null and right_descriptor.allow_null
-                if nulls_are_equal
-                else False
-            )
-        elif how == "outer":
-            allow_null = left_descriptor.allow_null or right_descriptor.allow_null
-        assert allow_null is not None
+        allow_null = _join_allows_null(
+            left_descriptor.allow_null,
+            right_descriptor.allow_null,
+            how,
+            nulls_are_equal,
+        )
         new_descriptor: SparkColumnDescriptor
         if isinstance(left_descriptor, SparkIntegerColumnDescriptor):
             assert isinstance(right_descriptor, SparkIntegerColumnDescriptor)
@@ -302,22 +395,12 @@ def domain_after_join(
             )
         elif isinstance(left_descriptor, SparkFloatColumnDescriptor):
             assert isinstance(right_descriptor, SparkFloatColumnDescriptor)
-            allow_nan = None
-            allow_inf = None
-            if how == "left":
-                allow_nan = left_descriptor.allow_nan
-                allow_inf = left_descriptor.allow_inf
-            elif how == "right":
-                allow_nan = right_descriptor.allow_nan
-                allow_inf = right_descriptor.allow_inf
-            elif how == "inner":
-                allow_nan = left_descriptor.allow_nan and right_descriptor.allow_nan
-                allow_inf = left_descriptor.allow_inf and right_descriptor.allow_inf
-            elif how == "outer":
-                allow_nan = left_descriptor.allow_nan or right_descriptor.allow_nan
-                allow_inf = left_descriptor.allow_inf or right_descriptor.allow_inf
-            assert allow_nan is not None
-            assert allow_inf is not None
+            allow_nan = _join_flag(
+                how, left_descriptor.allow_nan, right_descriptor.allow_nan
+            )
+            allow_inf = _join_flag(
+                how, left_descriptor.allow_inf, right_descriptor.allow_inf
+            )
             assert left_descriptor.size == right_descriptor.size
             new_descriptor = SparkFloatColumnDescriptor(
                 allow_nan=allow_nan,

@@ -58,6 +58,7 @@ def get_immutable_types() -> Tuple[Type, ...]:
     from pyspark.sql.types import DataType, StructType  # noqa: PLC0415
 
     from tmlt.core.domains.base import Domain  # noqa: PLC0415
+    from tmlt.core.domains.pandas_domains import PandasColumnDescriptor  # noqa: PLC0415
     from tmlt.core.domains.spark_domains import SparkColumnDescriptor  # noqa: PLC0415
     from tmlt.core.measurements.base import Measurement  # noqa: PLC0415
     from tmlt.core.measures import Measure  # noqa: PLC0415
@@ -83,8 +84,11 @@ def get_immutable_types() -> Tuple[Type, ...]:
         StructType,
         sp.Expr,
         np.number,
+        np.dtype,
+        pd.api.extensions.ExtensionDtype,
         Enum,
         type,
+        PandasColumnDescriptor,
         SparkColumnDescriptor,
         frozenset,
     )

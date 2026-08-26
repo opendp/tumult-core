@@ -116,17 +116,17 @@ When constructing quantile measurements that work on :class:`~.SparkDataFrameDom
 GroupBy
 -------
 
-For a :class:`~.GroupBy` transformation, a group key can contain a null
+For a :class:`~tmlt.core.transformations.spark_transformations.groupby.GroupBy` transformation, a group key can contain a null
 only if the input domain permits nulls in the corresponding :class:`~.SparkColumnDescriptor`. 
 A group key containing a null (or one that is a null -- when grouping by a single column) is treated
 like any other value - i.e. all rows with this key are grouped together.
-Since :class:`~.GroupBy` does not permit grouping on :class:`~.SparkFloatColumnDescriptor`
+Since :class:`~tmlt.core.transformations.spark_transformations.groupby.GroupBy` does not permit grouping on :class:`~.SparkFloatColumnDescriptor`
 columns, group keys cannot contain NaNs or infs.
 
 Joins
 -----
 
-Both :class:`~.PrivateJoin` and :class:`~.PublicJoin` use the :code:`=` semantics described above by default.
+Both :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoin` and :class:`~.PublicJoin` use the :code:`=` semantics described above by default.
 Consequently, all null values on the join columns are dropped. In order to join on nulls, construct the transformation with :code:`join_on_nulls=True` to use the :code:`<=>` semantics.
 
 Removing NaNs, nulls, and infs

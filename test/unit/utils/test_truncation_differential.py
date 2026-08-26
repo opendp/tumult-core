@@ -33,7 +33,6 @@ Spark does.
 import math
 import random
 import struct
-from contextlib import contextmanager
 from dataclasses import replace
 from decimal import Decimal
 from test.unit.utils.truncation_testing import (
@@ -48,9 +47,8 @@ from test.unit.utils.truncation_testing import (
     label_value,
     random_frame,
     spark_df_from_case,
-    utc_session_timezone,
 )
-from typing import Any, Iterator, List, Sequence, Set, Tuple
+from typing import Any, List, Sequence, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -119,59 +117,6 @@ DOUBLE_FORMATTER_SEED = 11223344
 
 #: Seed for the float32 formatter classification test.
 FLOAT_FORMATTER_SEED = 44332211
-
-_SHUFFLE_PARTITIONS_KEY = "spark.sql.shuffle.partitions"
-
-
-################################################################################
-# Fixtures
-################################################################################
-
-
-@contextmanager
-def _few_shuffle_partitions(spark: SparkSession, partitions: int = 4) -> Iterator[None]:
-    """Lowers Spark's shuffle partition count, restoring it on exit.
-
-    The truncation functions use window functions, so each call shuffles; with
-    the default of 200 partitions the fixed per-partition overhead dominates the
-    runtime of these tiny frames. The partition count changes how much work
-    Spark does, not what it computes.
-
-    Args:
-        spark: The Spark session to configure.
-        partitions: The shuffle partition count to use.
-
-    Yields:
-        Nothing; the setting applies for the duration of the ``with`` block.
-    """
-    previous = spark.conf.get(_SHUFFLE_PARTITIONS_KEY, None)
-    spark.conf.set(_SHUFFLE_PARTITIONS_KEY, str(partitions))
-    try:
-        yield
-    finally:
-        if previous is None:
-            spark.conf.unset(_SHUFFLE_PARTITIONS_KEY)
-        else:
-            spark.conf.set(_SHUFFLE_PARTITIONS_KEY, previous)
-
-
-@pytest.fixture(name="utc_spark")
-def utc_spark_fixture(spark: SparkSession) -> Iterator[SparkSession]:
-    """Yields the session-scoped Spark session, configured for these tests.
-
-    The session timezone is UTC for the duration of each test, which is what
-    makes naive timestamps mean the same wall clock on both sides, and the
-    shuffle partition count is lowered. Both settings are restored afterwards.
-
-    Args:
-        spark: The session-scoped Spark session.
-
-    Yields:
-        The same Spark session.
-    """
-    with utc_session_timezone(spark), _few_shuffle_partitions(spark):
-        yield spark
-
 
 ################################################################################
 # Running and comparing the two implementations

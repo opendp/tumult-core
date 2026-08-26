@@ -35,6 +35,25 @@ MIN_COVERAGE = 75
 """For test suites where we track coverage (i.e. the fast tests and the full
 test suite), fail if test coverage falls below this percentage."""
 
+NOJVM_TEST_PATHS = [
+    CWD / "test" / "unit" / "utils",
+    CWD / "test" / "unit" / "domains",
+    CWD / "test" / "unit" / "transformations" / "pandas_transformations",
+    CWD / "test" / "unit" / "measurements" / "pandas_measurements" / "test_table.py",
+    CWD / "test" / "unit" / "measurements" / "test_pandas_aggregations.py",
+    CWD / "test" / "unit" / "test_backends_harness.py",
+    CWD / "test" / "unit" / "test_metrics_pandas_grouped.py",
+    CWD / "test" / "unit" / "test_pandas_metrics.py",
+]
+"""Test paths the test-nojvm session runs.
+
+This is the part of the suite with a pandas-capable surface today -- the
+truncation, grouping and join utilities and their neighbours, the domains,
+the pandas transformations and measurements, plus the self-tests of the parity
+harness they are written against. It will grow as more of the pandas backend
+lands; everything under it that still needs Spark is marked and deselected
+rather than excluded by path."""
+
 
 def is_mac():
     """Returns true if the current system is a mac."""
@@ -186,6 +205,30 @@ sm.test()
 sm.test_fast()
 sm.test_slow()
 sm.test_doctest()
+
+
+@session(name="test-nojvm", tags=["test"], python="3.10")
+@sm._install_package
+@install_group("test")
+def test_nojvm(sess):
+    """Run the tests that must not start a JVM.
+
+    pyspark is installed here exactly as it is everywhere else -- it is an
+    unconditional dependency, and modules like tmlt.core.metrics import it at
+    module scope. What this session checks is the stronger, and more useful,
+    property that the pandas code paths never *start* one: TMLT_FORBID_JVM
+    makes the guard in test/conftest.py replace pyspark's launch_gateway, so
+    any test that reaches for a Spark session fails loudly instead of quietly
+    booting a JVM. The Spark-dependent tests are deselected by
+    '-m "not spark"'.
+
+    This reuses SessionManager's private helpers rather than duplicating its
+    pytest invocation. noxfile.py is not linted, and keeping the argument list
+    in one place is worth the private access.
+    """
+    sess.env["TMLT_FORBID_JVM"] = "1"
+    sm._test(sess, "not spark", min_coverage=0, test_paths=NOJVM_TEST_PATHS)
+
 
 sm.docs_linkcheck()
 sm.docs_doctest()

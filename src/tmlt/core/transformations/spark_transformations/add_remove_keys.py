@@ -9,7 +9,10 @@ Note that several of the transformations in :mod:`~.dictionary` also support
 
 The transformations defined in this module are required because
 :class:`~.AugmentDictTransformation` is not stable under :class:`~.AddRemoveKeys` for
-all transformations.
+all transformations. Each is a subclass of
+:class:`~tmlt.core.transformations.dictionary.TransformValue`, which is engine-agnostic
+and defined there; it is re-exported here, so importing it from this module still
+works.
 
 For example, consider the following example:
 
@@ -116,13 +119,13 @@ from typeguard import typechecked
 
 from tmlt.core.domains.collections import DictDomain
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
-from tmlt.core.exceptions import (
-    DomainKeyError,
-    DomainMismatchError,
-    UnsupportedMetricError,
-)
 from tmlt.core.metrics import AddRemoveKeys, IfGroupedBy, SymmetricDifference
-from tmlt.core.transformations.base import Transformation
+
+# TransformValue is engine-agnostic and lives with the rest of the dictionary
+# transformations. Importing it here is what every subclass below is built on,
+# and it also keeps this module's name for it working, which is the path
+# tmlt.analytics and the existing tests reach it by.
+from tmlt.core.transformations.dictionary import TransformValue
 from tmlt.core.transformations.spark_transformations.filter import Filter
 from tmlt.core.transformations.spark_transformations.join import PublicJoin
 from tmlt.core.transformations.spark_transformations.map import (
@@ -153,173 +156,14 @@ from tmlt.core.transformations.spark_transformations.truncation import (
     LimitRowsPerGroup,
     LimitRowsPerKeyPerGroup,
 )
-from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
-
-
-class TransformValue(Transformation):
-    """Base class transforming a specified key using an existing transformation.
-
-    This class can be subclassed for the purposes of making a claim that a kind of
-    Transformation (like :class:`~.Filter`) can be applied to a DataFrame and augment
-    the input dictionary with the output without violating the closeness of neighboring
-    dataframes with :class:`~.AddRemoveKeys`.
-
-    NOTE: This class cannot be instantiated directly.
-    """
-
-    @typechecked
-    def __init__(
-        self,
-        input_domain: DictDomain,
-        input_metric: AddRemoveKeys,
-        transformation: Transformation,
-        key: Any,
-        new_key: Any,
-    ):
-        """Constructor.
-
-        Args:
-            input_domain: The Domain of the input dictionary of Spark DataFrames.
-            input_metric: The input metric for the outer dictionary to dictionary
-                transformation.
-            transformation: The DataFrame to DataFrame transformation to
-                apply. Input and output metric must both be
-                ``IfGroupedBy({column}, SymmetricDifference())`` using the same
-                ``column``.
-            key: The key for the DataFrame to transform.
-            new_key: The key to put the transformed output in. The key must not already
-                be in the input domain.
-        """
-        if self.__class__ == TransformValue:
-            raise ValueError(
-                "Cannot instantiate a TransformValue transformation directly. "
-                "Use one of the subclasses deriving this."
-            )
-        if key not in input_domain.key_to_domain:
-            raise DomainKeyError(
-                input_domain, key, f"{repr(key)} is not one of the input domain's keys"
-            )
-        if new_key in input_domain.key_to_domain:
-            raise ValueError(f"{repr(new_key)} is already a key in the input domain")
-        if transformation.input_domain != input_domain.key_to_domain[key]:
-            raise DomainMismatchError(
-                (transformation.input_domain, input_domain),
-                (
-                    f"Input domain's value for {repr(key)} does not match"
-                    " transformation's input domain"
-                ),
-            )
-        if not (
-            isinstance(transformation.input_metric, IfGroupedBy)
-            and isinstance(
-                transformation.input_metric.inner_metric, SymmetricDifference
-            )
-        ):
-            raise UnsupportedMetricError(
-                transformation.input_metric,
-                (
-                    "Transformation's input metric must be "
-                    "IfGroupedBy({column}, SymmetricDifference())"
-                ),
-            )
-        if len(transformation.input_metric.columns) != 1:
-            raise UnsupportedMetricError(
-                transformation.input_metric,
-                (
-                    "Transformation's input metric must have a "
-                    "single grouping column, but found "
-                    f"{transformation.input_metric.columns}"
-                ),
-            )
-        if not (
-            isinstance(transformation.output_metric, IfGroupedBy)
-            and isinstance(
-                transformation.output_metric.inner_metric, SymmetricDifference
-            )
-        ):
-            raise UnsupportedMetricError(
-                transformation.output_metric,
-                (
-                    "Transformation's output metric must be "
-                    "IfGroupedBy({column}, SymmetricDifference())"
-                ),
-            )
-        if len(transformation.output_metric.columns) != 1:
-            raise UnsupportedMetricError(
-                transformation.output_metric,
-                (
-                    "Transformation's output metric must have a "
-                    "single grouping column, but found "
-                    f"{transformation.output_metric.columns}"
-                ),
-            )
-        input_column = next(iter(transformation.input_metric.columns))
-        if input_metric.df_to_key_column[key] != input_column:
-            raise ValueError(
-                f"Transformation's input metric grouping column, {input_column}, does"
-                " not match the dataframe's key column,"
-                f" {input_metric.df_to_key_column[key]}."
-            )
-        output_column = next(iter(transformation.output_metric.columns))
-        output_metric = AddRemoveKeys(
-            {**input_metric.df_to_key_column, new_key: output_column}
-        )
-        output_domain = DictDomain(
-            {**input_domain.key_to_domain, new_key: transformation.output_domain}
-        )
-        self._transformation = transformation
-        self._key = key
-        self._new_key = new_key
-        # __init__ checks that domain and metric are compatible (multiple useful checks)
-        super().__init__(
-            input_domain=input_domain,
-            input_metric=input_metric,
-            output_domain=output_domain,
-            output_metric=output_metric,
-        )
-
-    @property
-    def transformation(self) -> Transformation:
-        """Returns the transformation that will be applied to create the new element."""
-        return self._transformation
-
-    @property
-    def key(self) -> Any:
-        """Returns the key for the DataFrame to transform."""
-        return self._key
-
-    @property
-    def new_key(self) -> Any:
-        """Returns the new key for the transformed DataFrame."""
-        return self._new_key
-
-    @typechecked
-    def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
-        """Returns the smallest d_out satisfied by the transformation.
-
-        See the privacy and stability tutorial (add link?) for more information.
-
-        Args:
-            d_in: Distance between inputs under input_metric.
-
-        Raises:
-            NotImplementedError: If not overridden.
-        """
-        self.input_metric.validate(d_in)
-        return ExactNumber(d_in)
-
-    def __call__(self, data: Dict[Any, DataFrame]) -> Dict[Any, DataFrame]:
-        """Returns a new dictionary augmented with the transformed DataFrame."""
-        output = data.copy()
-        output[self.new_key] = self.transformation(output[self.key])
-        return output
 
 
 class LimitRowsPerGroupValue(TransformValue):
-    """Applies a :class:`~.LimitRowsPerGroup` to the specified key.
+    """Applies a ``LimitRowsPerGroup`` to the specified key.
 
-    See :class:`~.TransformValue` and :class:`~.LimitRowsPerGroup` for more
-    information.
+    See :class:`~.TransformValue` and
+    :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerGroup`
+    for more information.
     """
 
     @typechecked
@@ -353,10 +197,11 @@ class LimitRowsPerGroupValue(TransformValue):
 
 
 class LimitKeysPerGroupValue(TransformValue):
-    """Applies a :class:`~.LimitKeysPerGroup` to the specified key.
+    """Applies a ``LimitKeysPerGroup`` to the specified key.
 
-    See :class:`~.TransformValue` and :class:`~.LimitKeysPerGroup` for more
-    information.
+    See :class:`~.TransformValue` and
+    :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitKeysPerGroup`
+    for more information.
     """
 
     @typechecked
@@ -393,10 +238,11 @@ class LimitKeysPerGroupValue(TransformValue):
 
 
 class LimitRowsPerKeyPerGroupValue(TransformValue):
-    """Applies a :class:`~.LimitRowsPerKeyPerGroup` to the specified key.
+    """Applies a ``LimitRowsPerKeyPerGroup`` to the specified key.
 
-    See :class:`~.TransformValue` and :class:`~.LimitRowsPerKeyPerGroup` for more
-    information.
+    See :class:`~.TransformValue` and
+    :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerKeyPerGroup`
+    for more information.
     """
 
     @typechecked
@@ -600,9 +446,11 @@ class FlatMapValue(TransformValue):
 
 
 class MapValue(TransformValue):
-    """Applies a :class:`~.Map` to create a new element from specified value.
+    """Applies a ``Map`` to create a new element from specified value.
 
-    See :class:`~.TransformValue`, and :class:`~.Map` for more information.
+    See :class:`~.TransformValue`, and
+    :class:`~tmlt.core.transformations.spark_transformations.map.Map` for more
+    information.
     """
 
     @typechecked
@@ -955,9 +803,11 @@ class SparkActionValue(TransformValue):
 
 
 class RenameValue(TransformValue):
-    """Applies a :class:`~.Rename` to create a new element from specified value.
+    """Applies a ``Rename`` to create a new element from specified value.
 
-    See :class:`~.TransformValue`, and :class:`~.Rename` for more information.
+    See :class:`~.TransformValue`, and
+    :class:`~tmlt.core.transformations.spark_transformations.rename.Rename` for
+    more information.
     """
 
     @typechecked
@@ -992,9 +842,11 @@ class RenameValue(TransformValue):
 
 
 class SelectValue(TransformValue):
-    """Applies a :class:`~.Select` to create a new element from specified value.
+    """Applies a ``Select`` to create a new element from specified value.
 
-    See :class:`~.TransformValue`, and :class:`~.Select` for more information.
+    See :class:`~.TransformValue`, and
+    :class:`~tmlt.core.transformations.spark_transformations.select.Select` for
+    more information.
     """
 
     @typechecked

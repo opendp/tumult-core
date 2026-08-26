@@ -174,7 +174,6 @@ Fast paths:
 # Copyright Tumult Labs 2026
 
 import datetime
-import enum
 import hashlib
 import math
 from decimal import ROUND_HALF_EVEN, Context, Decimal
@@ -182,8 +181,6 @@ from typing import (
     Any,
     Callable,
     Collection,
-    Dict,
-    Iterator,
     List,
     Mapping,
     NamedTuple,
@@ -196,7 +193,30 @@ from typing import (
 import numpy as np
 import pandas as pd
 
-_SUPPORTED_FLOAT_DTYPES = (np.dtype("float32"), np.dtype("float64"))
+from tmlt.core.utils.pandas_grouping import (
+    _NAN_ORDER,
+    _NULL_ORDER,
+    _SUPPORTED_FLOAT_DTYPES,
+    _VALUE_ORDER,
+    _canonical_array,
+    _column_class,
+    _column_values,
+    _ColumnClass,
+    _dense_codes,
+    _FactorizeMemo,
+    _first_occurrences,
+    _group_codes,
+    _group_ids,
+    _group_key,
+    _is_null,
+    _memoized_factorization,
+    _memoized_null_and_nan_masks,
+    _microsecond_keys,
+    _nullable_int_values,
+    _object_kind,
+    _reindexed_from_zero,
+    _require_columns,
+)
 
 _UNSUPPORTED_EXTENSION_DTYPES = (
     pd.CategoricalDtype,
@@ -205,24 +225,10 @@ _UNSUPPORTED_EXTENSION_DTYPES = (
     pd.SparseDtype,
 )
 
-# The three classes of value Spark's ascending order puts in this order: nulls
-# first, then every ordinary value, then NaNs.
-_NULL_ORDER = 0
-_VALUE_ORDER = 1
-_NAN_ORDER = 2
-
 #: Code marking a null value in a digest-code array. A null has no digest and
 #: is skipped by the combiner, so it cannot share a code with any real value.
 #: It coincides with the sentinel ``pd.factorize`` uses for missing values.
 _NULL_DIGEST_CODE = -1
-
-#: Object-column kinds, as reported by
-#: ``pandas.api.types.infer_dtype(skipna=True)``, whose values are all
-#: renderable and all faithfully factorized by ``pd.factorize``. Kinds like
-#: ``mixed`` (which covers bytearrays, unhashable by ``pd.factorize``) and
-#: ``mixed-integer-float`` (where ``pd.factorize`` merges ``1`` with ``1.0``,
-#: which render differently) are deliberately absent.
-_HOMOGENEOUS_OBJECT_KINDS = frozenset({"string", "bytes", "empty"})
 
 #: Object-column kinds whose non-NA values are all renderable, so that
 #: validation needs no per-value scan (the NA-like values, which the
@@ -362,11 +368,6 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _is_null(value: Any) -> bool:
-    """Returns whether a value is a null value, as opposed to a float NaN."""
-    return value is None or value is pd.NA or value is pd.NaT
-
-
 def _render_value(value: Any) -> Optional[bytes]:
     """Renders a single value as the bytes Spark hashes for it.
 
@@ -479,17 +480,6 @@ def _combined_hash(values: Sequence[Any]) -> str:
     return _combine_digests([_hash_value(value) for value in values])
 
 
-def _column_values(column: pd.Series) -> Iterator[Any]:
-    """Returns the values of a column, with the precision of its dtype."""
-    if column.dtype == np.dtype("float32"):
-        # Iterating a numpy float32 series yields Python floats, which are
-        # double precision and would be rendered with too many digits.
-        return iter(column.to_numpy(dtype=np.float32))
-    if isinstance(column.dtype, pd.Float32Dtype):
-        return iter(column.array)
-    return iter(column)
-
-
 def _validate_column(
     column: pd.Series, name: str, memo: Optional["_FactorizeMemo"] = None
 ) -> None:
@@ -595,8 +585,9 @@ def _render_nan_classified_values(values: np.ndarray, nan_mask: np.ndarray) -> N
 
     Args:
         values: The object array whose NaN-classified values are rendered.
-        nan_mask: The array's NaN mask, as :func:`_null_and_nan_masks`
-            returns it -- possibly shared through a :class:`_FactorizeMemo`.
+        nan_mask: The array's NaN mask, as
+            :func:`tmlt.core.utils.pandas_grouping._null_and_nan_masks` returns
+            it -- possibly shared through a :class:`_FactorizeMemo`.
     """
     for position in np.flatnonzero(nan_mask):
         _render_value(values[position])
@@ -688,326 +679,6 @@ def _encode_string_batch(batch: Sequence[str], name: str) -> None:
             "be encoded as UTF-8, which usually means it contains an "
             "unpaired surrogate"
         ) from error
-
-
-def _object_kind(column: pd.Series) -> str:
-    """Returns the inferred kind of an object column's values.
-
-    Returns:
-        The value of ``pandas.api.types.infer_dtype(column, skipna=True)``.
-    """
-    return pd.api.types.infer_dtype(column, skipna=True)
-
-
-def _null_and_nan_masks(values: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Returns the null and NaN masks of an object array.
-
-    ``pandas.isna`` marks ``None``, ``pd.NA``, ``pd.NaT`` and float ``NaN``
-    alike, but this module treats a float ``NaN`` in an object column as a
-    value that hashes to ``b"nan"`` and sorts last, and only the first three
-    as nulls. The ambiguous positions -- which are few in every realistic
-    frame -- are therefore resolved one at a time with :func:`_is_null`.
-
-    Args:
-        values: The object array to inspect.
-
-    Returns:
-        A boolean mask of the null positions and a boolean mask of the NaN
-        positions. The two never overlap.
-    """
-    missing = pd.isna(values)
-    null_mask = np.zeros(len(values), dtype=bool)
-    nan_mask = np.zeros(len(values), dtype=bool)
-    for position in np.flatnonzero(missing):
-        if _is_null(values[position]):
-            null_mask[position] = True
-        else:
-            nan_mask[position] = True
-    return null_mask, nan_mask
-
-
-class _ColumnClass(enum.Enum):
-    """The column classes the vectorized paths dispatch on.
-
-    :func:`_digest_codes`, :func:`_group_codes` and :func:`_order_keys` all
-    dispatch on :func:`_column_class`, so a column takes the corresponding
-    branch in each of them and the three cannot drift apart: a dtype is either
-    vectorized everywhere or falls back everywhere.
-    """
-
-    NULLABLE_FLOAT = enum.auto()  #: pd.Float32Dtype or pd.Float64Dtype
-    NULLABLE_INT = enum.auto()  #: a pandas nullable integer dtype
-    STRING = enum.auto()  #: a pandas string dtype
-    NUMPY_INT = enum.auto()  #: a numpy signed or unsigned integer dtype
-    NUMPY_FLOAT = enum.auto()  #: numpy float32 or float64
-    DATETIME = enum.auto()  #: datetime64, timezone-naive
-    HOMOGENEOUS_OBJECT = enum.auto()  #: object, of a faithfully factorizable kind
-    FALLBACK = enum.auto()  #: everything else: the per-value paths
-
-
-def _column_class(column: pd.Series) -> _ColumnClass:
-    """Classifies a column for the vectorized paths.
-
-    Returns:
-        The class whose branch the vectorized functions take for this column.
-    """
-    dtype = column.dtype
-    if isinstance(dtype, (pd.Float32Dtype, pd.Float64Dtype)):
-        return _ColumnClass.NULLABLE_FLOAT
-    if pd.api.types.is_integer_dtype(dtype) and not isinstance(dtype, np.dtype):
-        return _ColumnClass.NULLABLE_INT
-    if isinstance(dtype, pd.StringDtype):
-        return _ColumnClass.STRING
-    if not isinstance(dtype, np.dtype):
-        # Extension dtypes with no vectorized path, e.g. the categorical and
-        # boolean columns drop_large_groups accepts without validation.
-        return _ColumnClass.FALLBACK
-    if dtype.kind in "iu":
-        return _ColumnClass.NUMPY_INT
-    if dtype in _SUPPORTED_FLOAT_DTYPES:
-        return _ColumnClass.NUMPY_FLOAT
-    if pd.api.types.is_datetime64_dtype(dtype):
-        return _ColumnClass.DATETIME
-    if dtype == np.dtype(object) and _object_kind(column) in _HOMOGENEOUS_OBJECT_KINDS:
-        return _ColumnClass.HOMOGENEOUS_OBJECT
-    return _ColumnClass.FALLBACK
-
-
-def _codes_with_sentinels(values: Any, *masks: np.ndarray) -> np.ndarray:
-    """Factorizes ``values``, giving each mask's positions a code of their own.
-
-    Args:
-        values: The values to factorize, as ``pd.factorize`` accepts them.
-        masks: Disjoint boolean masks, each marking positions that are one
-            class of their own, distinct from every value and from the other
-            masks' classes. Together they must cover every position
-            ``pd.factorize`` marks as missing, or the missing-value sentinel
-            would leak into the result as a class of its own.
-
-    Returns:
-        A non-negative int64 array aligned with ``values``.
-    """
-    return _factorization_with_sentinels(pd.factorize(values), *masks)
-
-
-def _factorization_with_sentinels(
-    factorization: Tuple[np.ndarray, Sequence[Any]], *masks: np.ndarray
-) -> np.ndarray:
-    """Writes each mask's sentinel code into a factorization's codes.
-
-    This is the sentinel step of :func:`_codes_with_sentinels`, split out so
-    that the canonical factorizations a :class:`_FactorizeMemo` shares can
-    take it without being factorized again. The codes must be the caller's
-    own -- fresh from ``pd.factorize``, or copied out of the memo -- because
-    the sentinels are written into them in place.
-
-    Args:
-        factorization: The ``(codes, uniques)`` pair whose codes are written.
-        masks: Disjoint boolean masks, as :func:`_codes_with_sentinels`
-            takes them.
-
-    Returns:
-        A non-negative int64 array aligned with the codes.
-    """
-    codes, uniques = factorization
-    codes = codes.astype(np.int64, copy=False)
-    for offset, mask in enumerate(masks):
-        codes[mask] = len(uniques) + offset
-    return codes
-
-
-def _nullable_int_values(column: pd.Series) -> np.ndarray:
-    """Returns a nullable integer column's values, with nulls reading as 0.
-
-    Unsigned values above ``2**63 - 1`` would not survive a cast to int64, so
-    unsigned dtypes are materialized as ``uint64``. The caller separates the
-    nulls out again with the column's own null mask.
-
-    Returns:
-        An int64 or uint64 array aligned with ``column``.
-    """
-    target: Any = (
-        np.uint64 if pd.api.types.is_unsigned_integer_dtype(column.dtype) else np.int64
-    )
-    return column.to_numpy(target, na_value=0)
-
-
-def _microsecond_keys(column: pd.Series) -> np.ndarray:
-    """Returns int64 keys grouping and ordering a datetime column like Spark.
-
-    Two rows share a key exactly when their values agree at Spark's
-    microsecond resolution, and the keys ascend in Spark's timestamp order.
-    A nanosecond column is floored to microseconds, merging the
-    sub-microsecond distinctions Spark cannot see; numpy's cast floors toward
-    negative infinity, like ``Timestamp.floor``. A column in a coarser unit
-    ('s', 'ms' or 'us', which pandas 2 allows) already carries no
-    sub-microsecond precision, so its own representation is the key:
-    converting it to nanoseconds, as ``to_numpy("datetime64[ns]")`` would,
-    silently wraps values outside the nanosecond range, such as 9999-12-31
-    in a microsecond column. ``NaT`` keeps its own sentinel value.
-
-    Returns:
-        An int64 array aligned with ``column``. Only equality and relative
-        order are meaningful; the unit is the column's own.
-    """
-    values = column.to_numpy()
-    if values.dtype == np.dtype("datetime64[ns]"):
-        values = values.astype("datetime64[us]")
-    return values.view("int64")
-
-
-def _canonical_array(column: pd.Series, klass: _ColumnClass) -> np.ndarray:
-    """Returns the array a column's class canonically factorizes.
-
-    The canonical array is the exact array the class's branches in
-    :func:`_validate_column`, :func:`_group_codes` and :func:`_digest_codes`
-    all factorize -- the *identical* input, so one factorization serves all
-    three, which is what lets a :class:`_FactorizeMemo` share it.
-    :func:`_order_keys` ranks the same array, and derives those ranks from
-    the shared factorization rather than building another one (see
-    :func:`_dense_ranks_from_factorization`). The float and datetime classes
-    have no canonical array: their consumers factorize *different* derived
-    arrays (bit patterns versus values, raw versus microsecond-floored),
-    which must never be merged.
-
-    Args:
-        column: The column whose canonical array is built.
-        klass: The column's :func:`_column_class`, which every caller has
-            already computed. It must be one of the four classes named here.
-
-    Returns:
-        The array the class's consumers factorize.
-    """
-    if klass is _ColumnClass.NULLABLE_INT:
-        return _nullable_int_values(column)
-    if klass is _ColumnClass.NUMPY_INT:
-        return column.to_numpy()
-    if klass is _ColumnClass.STRING:
-        return column.to_numpy(object, na_value=None)
-    if klass is _ColumnClass.HOMOGENEOUS_OBJECT:
-        return column.to_numpy()
-    raise AssertionError(f"No canonical factorization for {klass}")
-
-
-def _canonical_factorization(
-    column: pd.Series, klass: _ColumnClass
-) -> Tuple[np.ndarray, Sequence[Any]]:
-    """Returns ``pd.factorize`` of a column's :func:`_canonical_array`.
-
-    Args:
-        column: The column to factorize.
-        klass: The column's :func:`_column_class`, as
-            :func:`_canonical_array` takes it.
-
-    Returns:
-        The ``(codes, uniques)`` pair as ``pd.factorize`` returns it, with
-        the column's nulls carrying the missing-value sentinel; the callers'
-        masks are what separate those out.
-
-    Raises:
-        TypeError: From ``pd.factorize``, for a homogeneous object column
-            holding a value it cannot hash, such as a bytearray. The
-            callers' fallbacks expect exactly this.
-    """
-    return pd.factorize(_canonical_array(column, klass))
-
-
-class _FactorizeMemo:
-    """A per-call cache of canonical factorizations and null/NaN masks.
-
-    Within one call of a hashing truncation function, the same full-frame
-    column is factorized by several consumers -- validation's UTF-8
-    encodability check, :func:`_group_codes`, the :func:`_digest_codes`
-    behind :func:`limit_keys_per_group`'s refined budget test and behind the
-    row hashing itself, and the dense ranks of :func:`_order_keys` -- and for
-    the classes :func:`_canonical_array` covers, those are factorizations of
-    the identical array. The public functions pass one memo down so that the
-    factorization, the most expensive per-column step, runs once per column
-    however many of those consumers ask for it; the object columns'
-    :func:`_null_and_nan_masks`, recomputed by the same consumers, are shared
-    the same way. :func:`_order_keys` needs that factorization's codes in the
-    ascending order of its uniques, and derives them from the shared
-    factorization without a second pass over the rows (see
-    :func:`_dense_ranks_from_factorization`).
-
-    The memo is keyed by column name, so a memo must only ever see columns
-    of the one frame its call is truncating -- in particular never the fast
-    paths' frames of selected or representative rows, whose columns share
-    names with the full frame's but hold fewer rows. The row-hashing call
-    sites therefore pass it only on the branches where the frame they hash
-    *is* the full frame.
-    """
-
-    def __init__(self) -> None:
-        """Constructor."""
-        self._factorizations: Dict[Any, Optional[Tuple[np.ndarray, Sequence[Any]]]] = {}
-        self._masks: Dict[Any, Tuple[np.ndarray, np.ndarray]] = {}
-
-    def factorization(
-        self, column: pd.Series, klass: _ColumnClass
-    ) -> Tuple[np.ndarray, Sequence[Any]]:
-        """Returns the column's canonical factorization, computed once per call.
-
-        Some consumers write sentinel codes into the codes they are handed,
-        so the stored codes are copied out on every request and the caller
-        owns its copy -- a copy costs microseconds where the factorization
-        it saves costs milliseconds. The uniques are only ever read, and are
-        returned as stored.
-
-        Raises:
-            TypeError: When the column has no faithful factorization (a
-                homogeneous object column holding a value ``pd.factorize``
-                cannot hash). The failure is remembered, so the failing
-                factorization is not run a second time either.
-        """
-        name = column.name
-        if name not in self._factorizations:
-            try:
-                self._factorizations[name] = _canonical_factorization(column, klass)
-            except TypeError:
-                self._factorizations[name] = None
-        factorization = self._factorizations[name]
-        if factorization is None:
-            raise TypeError(f"no faithful factorization for column {name}")
-        codes, uniques = factorization
-        return codes.copy(), uniques
-
-    def null_and_nan_masks(self, column: pd.Series) -> Tuple[np.ndarray, np.ndarray]:
-        """Returns the column's :func:`_null_and_nan_masks`, computed once per call.
-
-        The masks are shared, not copied: every consumer only reads them.
-        """
-        name = column.name
-        if name not in self._masks:
-            self._masks[name] = _null_and_nan_masks(column.to_numpy())
-        return self._masks[name]
-
-
-def _memoized_factorization(
-    column: pd.Series, klass: _ColumnClass, memo: Optional[_FactorizeMemo]
-) -> Tuple[np.ndarray, Sequence[Any]]:
-    """Returns the canonical factorization, through the memo when one is given.
-
-    Either way the caller owns the returned codes and may write into them:
-    without a memo they are fresh from ``pd.factorize``, and the memo copies
-    its shared codes out (see :meth:`_FactorizeMemo.factorization`).
-    """
-    if memo is None:
-        return _canonical_factorization(column, klass)
-    return memo.factorization(column, klass)
-
-
-def _memoized_null_and_nan_masks(
-    column: pd.Series, memo: Optional[_FactorizeMemo]
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Returns an object column's null and NaN masks, through the memo if given.
-
-    The memo's masks are shared between its consumers, all of which only
-    read them.
-    """
-    if memo is None:
-        return _null_and_nan_masks(column.to_numpy())
-    return memo.null_and_nan_masks(column)
 
 
 def _digest_codes(
@@ -1189,74 +860,6 @@ def _hash_columns(df: pd.DataFrame, columns: List[str]) -> pd.Series:
     return pd.Series(hashes, index=df.index, dtype=object)
 
 
-def _group_key(value: Any) -> Tuple[int, Any]:
-    """Returns the key Spark groups and orders a value by.
-
-    Spark's window partitioning and ordering differ from what a pandas
-    ``groupby`` or ``sort_values`` does in four ways, all of which this key
-    encodes:
-
-    * A null and a NaN are different partitions, and ascending order puts nulls
-      first and NaNs last, while pandas puts both in the same group and, with
-      ``na_position``, in the same place. This is reachable in an ``object``
-      column, which can hold both.
-    * ``-0.0`` and ``0.0`` are one partition, and tie in an ordering, even
-      though they hash differently. Two Python floats already behave that way.
-    * Binary values are compared by content, and a ``bytearray`` is not even
-      hashable, so binary values are keyed by their bytes.
-    * Timestamps have microsecond resolution. Values are hashed with
-      sub-microsecond precision discarded, so grouping and ordering have to
-      discard it too, or a ``datetime64[ns]`` column would split a Spark
-      partition in two.
-
-    Returns:
-        A hashable key whose natural order is Spark's ascending order.
-    """
-    if _is_null(value):
-        return (_NULL_ORDER, 0)
-    if isinstance(value, (float, np.floating)):
-        if math.isnan(value):
-            return (_NAN_ORDER, 0)
-        return (_VALUE_ORDER, float(value))
-    if isinstance(value, (bytes, bytearray)):
-        return (_VALUE_ORDER, bytes(value))
-    if isinstance(value, pd.Timestamp) and value.nanosecond:
-        # Flooring to microseconds must not construct another Timestamp:
-        # for values within a microsecond of Timestamp.min, floor("us")
-        # lands below the nanosecond bound and raises OverflowError. The
-        # stdlib datetime has no such bound, and dropping the nanosecond
-        # field is the same floor -- the wall-clock fields already carry
-        # the microsecond part, with the nanoseconds a non-negative
-        # remainder on top, pre-epoch values included. A plain datetime
-        # also compares and hashes equal to an equal Timestamp, so this
-        # key unifies with the keys of the datetime.datetime values an
-        # object column can hold alongside Timestamps.
-        return (_VALUE_ORDER, value.to_pydatetime(warn=False))
-    if pd.api.types.is_scalar(value) and pd.isna(value):
-        # An NA-like value outside the branches above -- Decimal("NaN"), or a
-        # raw np.datetime64("NaT") in an object column -- compares unequal to
-        # itself, so keying it by value would make every occurrence a
-        # partition of its own and let an oversized group of them slip past
-        # drop_large_groups. Such values are keyed like the float NaNs they
-        # behave as, which is also where :func:`_null_and_nan_masks` puts
-        # them on the vectorized paths.
-        return (_NAN_ORDER, 0)
-    # pd.factorize over the keys, and the set/sort in the ordering fallback,
-    # need the key to be hashable; a value with no Python hash -- a dict or
-    # a list in an object column -- would otherwise surface as a bare
-    # TypeError from inside pandas. Spark cannot hold such a value either,
-    # so it is reported as the unsupported value it is, in the same form
-    # _render_value uses. (A bytearray, equally unhashable, never reaches
-    # this probe: it was keyed by its bytes above.)
-    try:
-        hash(value)
-    except TypeError as error:
-        raise NotImplementedError(
-            f"Unsupported data type {type(value).__name__}"
-        ) from error
-    return (_VALUE_ORDER, value)
-
-
 def _sorted_keys(keys: Set[Tuple[int, Any]]) -> List[Tuple[int, Any]]:
     """Returns a column's group keys in Spark's ascending order.
 
@@ -1270,105 +873,6 @@ def _sorted_keys(keys: Set[Tuple[int, Any]]) -> List[Tuple[int, Any]]:
         # since a Spark column has a single type. Falling back to ordering such
         # values by type name keeps the sort deterministic rather than failing.
         return sorted(keys, key=lambda key: (key[0], type(key[1]).__name__, key[1]))
-
-
-def _dense_codes(codes: Sequence[np.ndarray]) -> np.ndarray:
-    """Combines several code arrays into one dense code per distinct combination.
-
-    Args:
-        codes: The code arrays to combine, at least one.
-
-    Returns:
-        An int64 array of codes in ``range(number of distinct combinations)``,
-        numbered in order of first appearance.
-    """
-    # The host series exists only to give groupby a frame-shaped anchor; the
-    # keys carry all the information.
-    return (
-        pd.Series(0, index=range(len(codes[0])))
-        .groupby(list(codes), sort=False, dropna=False)
-        .ngroup()
-        .to_numpy()
-    )
-
-
-def _fallback_group_codes(column: pd.Series) -> np.ndarray:
-    """Returns group codes by building every row's :func:`_group_key`.
-
-    This is the exact, per-value path for the columns the vectorized cases in
-    :func:`_group_codes` cannot handle faithfully.
-
-    Returns:
-        A non-negative int64 array aligned with ``column``.
-    """
-    keys = pd.Series(
-        [_group_key(value) for value in _column_values(column)], dtype=object
-    )
-    # Every key is a tuple, so pd.factorize marks nothing as missing and no
-    # sentinel masks are needed.
-    return _codes_with_sentinels(keys)
-
-
-def _group_codes(
-    column: pd.Series, memo: Optional[_FactorizeMemo] = None
-) -> np.ndarray:
-    """Returns one dense code per Spark partition key of a column.
-
-    Two rows share a code exactly when :func:`_group_key` gives them the same
-    key, so grouping by these codes forms the partitions Spark would form.
-    Unlike :func:`_digest_codes`, this factorization must be exact in both
-    directions: an over-split (``0.0`` versus ``-0.0``, ``bytes`` versus
-    ``bytearray``) would change which rows share a group.
-
-    Args:
-        column: The column to code.
-        memo: A per-call memo sharing the canonical factorizations and masks
-            with the other consumers, or None to compute everything here.
-
-    Returns:
-        A non-negative int64 array aligned with ``column``.
-    """
-    dtype = column.dtype
-    klass = _column_class(column)
-    if klass is _ColumnClass.NULLABLE_FLOAT:
-        float_dtype = np.float32 if isinstance(dtype, pd.Float32Dtype) else np.float64
-        floats = column.to_numpy(float_dtype, na_value=np.nan)
-        # Factorizing the values, not the bit patterns, makes 0.0 and -0.0
-        # one partition, as _group_key does. NaNs come out as missing
-        # alongside the nulls and the two are then separated by their masks.
-        null_mask = column.isna().to_numpy()
-        return _codes_with_sentinels(floats, np.isnan(floats) & ~null_mask, null_mask)
-    if klass is _ColumnClass.NULLABLE_INT:
-        return _factorization_with_sentinels(
-            _memoized_factorization(column, klass, memo), column.isna().to_numpy()
-        )
-    if klass is _ColumnClass.STRING:
-        # The nulls are one partition.
-        return _factorization_with_sentinels(
-            _memoized_factorization(column, klass, memo), column.isna().to_numpy()
-        )
-    if klass is _ColumnClass.NUMPY_INT:
-        return _factorization_with_sentinels(
-            _memoized_factorization(column, klass, memo)
-        )
-    if klass is _ColumnClass.NUMPY_FLOAT:
-        # The NaNs are one partition.
-        floats = column.to_numpy()
-        return _codes_with_sentinels(floats, np.isnan(floats))
-    if klass is _ColumnClass.DATETIME:
-        # NaT keeps its own sentinel value and so its own partition.
-        return _codes_with_sentinels(_microsecond_keys(column))
-    if klass is _ColumnClass.HOMOGENEOUS_OBJECT:
-        null_mask, nan_mask = _memoized_null_and_nan_masks(column, memo)
-        try:
-            # A pandas groupby would put NaNs and nulls in one group; Spark
-            # makes them two partitions.
-            return _factorization_with_sentinels(
-                _memoized_factorization(column, klass, memo), nan_mask, null_mask
-            )
-        except TypeError:
-            return _fallback_group_codes(column)
-    return _fallback_group_codes(column)
 
 
 class _OrderKeys(NamedTuple):
@@ -1440,8 +944,9 @@ def _dense_ranks_from_factorization(
 
     Args:
         factorization: The ``(codes, uniques)`` pair, as
-            :func:`_canonical_factorization` returns it, with the missing
-            positions carrying ``pd.factorize``'s sentinel.
+            :func:`tmlt.core.utils.pandas_grouping._canonical_factorization`
+            returns it, with the missing positions carrying ``pd.factorize``'s
+            sentinel.
 
     Returns:
         An int64 array aligned with the codes.
@@ -1628,27 +1133,6 @@ def _hash_sort_order(
     return np.lexsort([*tie_keys(), digest_key])
 
 
-def _first_occurrences(codes: np.ndarray) -> np.ndarray:
-    """Returns the position of each code's first occurrence, in code order.
-
-    ``codes`` must be first-occurrence dense -- ``pd.factorize`` or
-    :func:`_dense_codes` output, numbered ``0, 1, ...`` in order of first
-    appearance. A position is then a first occurrence exactly when its code
-    exceeds every earlier code, and first occurrences appear in code order,
-    so this equals ``np.unique(codes, return_index=True)[1]`` without the
-    O(n log n) sort.
-
-    Returns:
-        An int64 array with one position per distinct code.
-    """
-    if not len(codes):
-        return np.zeros(0, dtype=np.int64)
-    is_first = np.empty(len(codes), dtype=bool)
-    is_first[0] = True
-    is_first[1:] = codes[1:] > np.maximum.accumulate(codes)[:-1]
-    return np.flatnonzero(is_first)
-
-
 def _prefix_ranks(ids: np.ndarray) -> np.ndarray:
     """Returns each element's one-based rank among prior elements of its id.
 
@@ -1660,48 +1144,6 @@ def _prefix_ranks(ids: np.ndarray) -> np.ndarray:
     """
     series = pd.Series(ids)
     return (series.groupby(series, sort=False).cumcount() + 1).to_numpy()
-
-
-def _group_ids(codes: Sequence[np.ndarray], n_rows: int) -> np.ndarray:
-    """Returns one dense group id per row, treating no columns as one group.
-
-    Args:
-        codes: One array per grouping column, as :func:`_group_codes` returns
-            them, possibly none at all.
-        n_rows: The number of rows, which fixes the result's length when
-            there are no grouping columns.
-
-    Returns:
-        A non-negative int64 array aligned with the frame. Every consumer is
-        label-agnostic, so a single column's codes already are its ids.
-    """
-    if not codes:
-        return np.zeros(n_rows, dtype=np.int64)
-    if len(codes) == 1:
-        return codes[0]
-    return _dense_codes(codes)
-
-
-def _require_columns(df: pd.DataFrame, columns: Collection[str]) -> None:
-    """Raises KeyError when a named column is not a column of ``df``.
-
-    The truncation functions call this before their threshold early returns,
-    so that an unknown column raises whatever the threshold is.
-    """
-    for column in columns:
-        if column not in df.columns:
-            raise KeyError(column)
-
-
-def _reindexed_from_zero(selection: pd.DataFrame) -> pd.DataFrame:
-    """Returns a frame selected out of another, reindexed from zero.
-
-    ``selection`` must be a fresh mask or ``iloc`` selection: such a selection
-    is already a copy, so replacing its index in place costs nothing, where
-    ``reset_index`` would copy the whole frame a second time.
-    """
-    selection.index = pd.RangeIndex(len(selection))
-    return selection
 
 
 def _survivors_in_input_order(

@@ -46,10 +46,10 @@ from collections import Counter
 from test.unit.utils.truncation_testing import (
     CJK,
     COLUMN_KINDS,
-    EDGE_CASES,
-    EMOJI,
     E_ACUTE,
     E_COMBINING_ACUTE,
+    EDGE_CASES,
+    EMOJI,
     EdgeCase,
     is_null_value,
     label_value,

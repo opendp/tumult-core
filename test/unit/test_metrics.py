@@ -24,7 +24,13 @@ from tmlt.core.domains.numpy_domains import (
     NumpyIntegerDomain,
     NumpyStringDomain,
 )
-from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
+from tmlt.core.domains.pandas_domains import (
+    PandasDataFrameDomain,
+    PandasFloatColumnDescriptor,
+    PandasSeriesDomain,
+    PandasStringColumnDescriptor,
+    PandasTableDomain,
+)
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
     SparkFloatColumnDescriptor,
@@ -2739,3 +2745,81 @@ class TestAddRemoveKeys(PySparkTest):
             for key, (data, schema) in value2.items()
         }
         self.assertEqual(metric.distance(value1, value2, domain), distance)
+
+
+class TestPandasTableDomainSupport:
+    """Tests for the metrics' support of :class:`.PandasTableDomain`.
+
+    :class:`.SymmetricDifference` and :class:`.AddRemoveKeys` accept pandas
+    tables so that the transformations in
+    :mod:`tmlt.core.transformations.pandas_transformations` can be built under
+    them. Nothing here needs a Spark session.
+    """
+
+    DOMAIN = PandasTableDomain(
+        {
+            "A": PandasStringColumnDescriptor(allow_null=True),
+            "B": PandasFloatColumnDescriptor(allow_nan=True),
+        }
+    )
+
+    def test_symmetric_difference_supports_the_domain(self):
+        """The metric accepts a PandasTableDomain."""
+        assert SymmetricDifference().supports_domain(self.DOMAIN)
+
+    def test_symmetric_difference_distance(self):
+        """Distances are multiset symmetric differences of rows."""
+        value1 = pd.DataFrame({"A": ["x", None, "y"], "B": [1.0, float("nan"), 2.0]})
+        value2 = pd.DataFrame({"A": ["x", None], "B": [1.0, float("nan")]})
+        assert SymmetricDifference().distance(value1, value2, self.DOMAIN) == 1
+        assert SymmetricDifference().distance(value2, value1, self.DOMAIN) == 1
+
+    def test_symmetric_difference_distance_keys_rows_null_safely(self):
+        """A frame is at distance zero from a copy of itself, NaNs included.
+
+        Keying rows by tuple -- as the :class:`.PandasDataFrameDomain` branch
+        does -- would not manage this: a tuple holding a NaN does not compare
+        equal to an equal tuple built separately.
+        """
+        value = pd.DataFrame({"A": [None, None], "B": [float("nan"), float("nan")]})
+        assert SymmetricDifference().distance(value, value.copy(), self.DOMAIN) == 0
+
+    def test_add_remove_keys_supports_a_dictionary_of_tables(self):
+        """The metric accepts a DictDomain of PandasTableDomains."""
+        domain = DictDomain(
+            {
+                "a": PandasTableDomain({"K": PandasStringColumnDescriptor()}),
+                "b": PandasTableDomain({"K": PandasStringColumnDescriptor()}),
+            }
+        )
+        assert AddRemoveKeys({"a": "K", "b": "K"}).supports_domain(domain)
+
+    def test_add_remove_keys_rejects_a_float_key_column(self):
+        """A float key column is unsupported, as it is for Spark dataframes."""
+        domain = DictDomain(
+            {"a": PandasTableDomain({"K": PandasFloatColumnDescriptor()})}
+        )
+        assert not AddRemoveKeys({"a": "K"}).supports_domain(domain)
+
+    def test_add_remove_keys_rejects_a_mixed_dictionary(self):
+        """A dictionary mixing pandas tables with Spark dataframes is rejected."""
+        domain = DictDomain(
+            {
+                "a": PandasTableDomain({"K": PandasStringColumnDescriptor()}),
+                "b": SparkDataFrameDomain({"K": SparkStringColumnDescriptor()}),
+            }
+        )
+        assert not AddRemoveKeys({"a": "K", "b": "K"}).supports_domain(domain)
+
+    def test_add_remove_keys_distance_over_pandas_tables(self):
+        """A dictionary of pandas tables measures a distance of zero to itself.
+
+        The full cross-backend distance parity for :class:`AddRemoveKeys` over
+        pandas tables lives in ``test_pandas_metrics.py``; this pins only that
+        the pandas branch is wired in at all.
+        """
+        domain = DictDomain(
+            {"a": PandasTableDomain({"K": PandasStringColumnDescriptor()})}
+        )
+        value = {"a": pd.DataFrame({"K": ["k1"]})}
+        assert AddRemoveKeys({"a": "K"}).distance(value, value, domain) == 0
