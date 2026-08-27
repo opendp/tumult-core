@@ -123,6 +123,9 @@ nitpick_ignore = [
     ("py:class", "tmlt.core.measures.PrivacyBudgetValue"),
     ("py:class", "SparkColumnsDescriptor"),
     ("py:class", "PandasColumnsDescriptor"),
+    ("py:class", "PandasTableColumnsDescriptor"),
+    ("py:class", "PandasDtype"),
+    ("py:class", "tmlt.core.domains.pandas_domains.PandasDtype"),
     ("py:class", "tmlt.core.utils.exact_number.ExactNumberInput"),
     # Numpy dtypes
     ("py:class", "numpy.str_"),
@@ -130,6 +133,7 @@ nitpick_ignore = [
     ("py:class", "numpy.int64"),
     ("py:class", "numpy.float32"),
     ("py:class", "numpy.float64"),
+    ("py:class", "numpy.dtype"),
     # TypeVar support: https://github.com/agronholm/sphinx-autodoc-typehints/issues/39
     ("py:class", "Ellipsis"),
     ("py:class", "T"),

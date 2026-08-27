@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -39,6 +39,7 @@ from tmlt.core.transformations.spark_transformations.agg import (
     create_count_distinct_aggregation,
     create_sum_aggregation,
 )
+from tmlt.core.transformations.spark_transformations.groupby import GroupBy
 from tmlt.core.utils.exact_number import ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.testing import (
@@ -1362,3 +1363,50 @@ class TestDerivedTransformations(PySparkTest):
         self.assertEqual(
             count_distinct_transformation.output_metric, expected_output_metric
         )
+
+
+class TestGroupedOutputColumnOrder(PySparkTest):
+    """The order an aggregation's groupby columns come out in."""
+
+    @parameterized.expand([(["A", "B", "C"],), (["C", "B", "A"],), (["B", "A", "C"],)])
+    def test_output_domain_orders_groupby_columns_as_the_schema_does(
+        self, grouping: List[str]
+    ):
+        """The output's columns are the schema's order, whatever the keys' order.
+
+        An aggregation emits the groupby columns in the order the *group keys*
+        have them, and declares them in the order the *schema* has them. Those
+        are one order because
+        :class:`~tmlt.core.transformations.spark_transformations.groupby.GroupBy`
+        puts the group keys in the schema's order and the output domain is
+        built by walking the schema rather than the ``groupby_columns``
+        frozenset, whose iteration order is a function of PYTHONHASHSEED.
+
+        Args:
+            grouping: The order the group keys' columns are given in.
+        """
+        schema: SparkColumnsDescriptor = {
+            "A": SparkStringColumnDescriptor(),
+            "B": SparkStringColumnDescriptor(),
+            "C": SparkStringColumnDescriptor(),
+            "X": SparkIntegerColumnDescriptor(),
+        }
+        dataframe = self.spark.createDataFrame(
+            pd.DataFrame({"A": ["a1"], "B": ["b1"], "C": ["c1"], "X": [1]})
+        )
+        groupby = GroupBy(
+            input_domain=SparkDataFrameDomain(schema),
+            input_metric=SymmetricDifference(),
+            use_l2=False,
+            group_keys=dataframe.select(*grouping),
+        )
+        self.assertEqual(groupby.groupby_columns, ["A", "B", "C"])
+        grouped_domain = cast(SparkGroupedDataFrameDomain, groupby.output_domain)
+        for transformation_type in (CountGrouped, CountDistinctGrouped):
+            transformation = transformation_type(
+                input_domain=grouped_domain,
+                input_metric=SumOf(SymmetricDifference()),
+            )
+            output = transformation(groupby(dataframe))
+            self.assertEqual(output.columns[:3], ["A", "B", "C"])
+            self.assertIn(output, transformation.output_domain)

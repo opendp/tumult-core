@@ -136,6 +136,7 @@ Examples:
 # Copyright Tumult Labs 2026
 
 from fractions import Fraction
+from functools import lru_cache
 from typing import Any, Union
 
 import sympy as sp
@@ -203,9 +204,69 @@ def _verify_expr_is_an_exact_number(expr: sp.Expr) -> None:
     raise UnsupportedSympyExprError(expr, f"unsupported SymPy expression: {expr}")
 
 
+_MEMOIZED_INPUT_TYPES = (int, str)
+"""The input types :func:`_to_sympy` memoizes its conversion of.
+
+An :class:`int` or a :class:`str` is looked up by value, and the *exact* type is
+required: a :class:`bool` is an :class:`int` that hashes and compares equal to
+one, and so is a :class:`float`, and neither may share an entry with it. The
+other input types are excluded for want of a reason rather than a hazard --
+converting an :class:`~.ExactNumber` is already free, a float is either an
+infinity or an error, and a :class:`sympy.Expr` arrives already built.
+"""
+
+_MEMO_SIZE = 4096
+"""How many conversions to remember.
+
+Bounded so that a long-running process converting many distinct values does not
+accumulate them all. The entries a real workload repeats -- small integers, and
+the handful of budget strings a query is written with -- are far fewer than
+this.
+"""
+
+
+@lru_cache(maxsize=_MEMO_SIZE)
+def _memoized_to_sympy(value: Union[int, str]) -> sp.Expr:
+    """Returns :func:`_converted_to_sympy` of a value, remembering the result.
+
+    Sharing the returned expression between callers is safe: a
+    :class:`sympy.Expr` is immutable, and sympy shares its own small integers
+    the same way. Building one is not cheap -- ``sp.simplify`` alone dominates
+    the cost of an ``ExactNumber``, and a privacy calculation builds tens of
+    thousands of them from a handful of distinct values.
+
+    An input that raises is not remembered, since :func:`functools.lru_cache`
+    does not cache exceptions; it simply raises again.
+
+    Args:
+        value: The value to convert, of one of :data:`_MEMOIZED_INPUT_TYPES`.
+    """
+    return _converted_to_sympy(value)
+
+
 @typechecked
 def _to_sympy(value: "ExactNumberInput") -> sp.Expr:
     """Returns a :class:`sympy.Expr` representing the input value.
+
+    Raises:
+        ValueError: If ``value`` cannot be converted to an :class:`sympy.Expr` or the
+            resulting expression is not an exact real number or +/- infinity.
+    """
+    if isinstance(value, ExactNumber):
+        return value.expr
+    if type(value) in _MEMOIZED_INPUT_TYPES:
+        return _memoized_to_sympy(value)
+    return _converted_to_sympy(value)
+
+
+def _converted_to_sympy(value: "ExactNumberInput") -> sp.Expr:
+    """Returns a :class:`sympy.Expr` representing the input value.
+
+    This is :func:`_to_sympy` without its memo, which is where every conversion
+    that is not answered from one ends up.
+
+    Args:
+        value: The value to convert.
 
     Raises:
         ValueError: If ``value`` cannot be converted to an :class:`sympy.Expr` or the

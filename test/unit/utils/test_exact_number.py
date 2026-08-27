@@ -2,12 +2,19 @@
 
 import itertools
 from fractions import Fraction
+from typing import ClassVar
 from unittest import TestCase
 
 import sympy as sp
 from parameterized import parameterized
 
-from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.exceptions import UnsupportedSympyExprError
+from tmlt.core.utils.exact_number import (
+    _MEMO_SIZE,
+    ExactNumber,
+    ExactNumberInput,
+    _memoized_to_sympy,
+)
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
@@ -195,3 +202,61 @@ class TestExactNumber(TestCase):
             expected = bool(compare(ExactNumber(value1).expr, ExactNumber(value2)))
             self.assertEqual(compare(ExactNumber(value1), value2), expected)
             self.assertEqual(compare(value1, ExactNumber(value2)), expected)
+
+
+class TestToSympyMemo(TestCase):
+    """The memo in front of the conversion changes nothing but its cost."""
+
+    #: One value of every input type, and the ExactNumber each must give.
+    CASES: ClassVar = [
+        (5, "5"),
+        (-1000000000000000, "-1000000000000000"),
+        (0, "0"),
+        (1, "1"),
+        (True, "1"),
+        (False, "0"),
+        (Fraction(1, 10), "1/10"),
+        ("0.5", "1/2"),
+        ("2 + 7**2", "51"),
+        ("2 * pi**2", "2*pi**2"),
+        ("sqrt(5/3)", "sqrt(15)/3"),
+        (float("inf"), "oo"),
+        (-float("inf"), "-oo"),
+        (sp.Integer(7), "7"),
+        (sp.Rational(3, 4), "3/4"),
+        (sp.oo, "oo"),
+    ]
+
+    @parameterized.expand(CASES)
+    def test_conversion_is_unchanged(self, value: ExactNumberInput, expected: str):
+        """Every input type converts to what it did before, twice running."""
+        self.assertEqual(ExactNumber(value), ExactNumber(expected))
+        self.assertEqual(ExactNumber(value), ExactNumber(expected))
+
+    def test_a_float_does_not_share_an_integer_s_entry(self):
+        """A memo keyed by value alone would answer 1.0 with 1.
+
+        ``hash(1) == hash(1.0) == hash(True)`` and the three compare equal, so
+        only memoizing the *exact* types int and str keeps them apart. A float
+        that is not an infinity is an error, and has to stay one after an equal
+        integer has been converted.
+        """
+        self.assertEqual(ExactNumber(1), ExactNumber("1"))
+        with self.assertRaisesRegex(ValueError, r"Expected \+/-float\('inf'\)"):
+            ExactNumber(1.0)
+        self.assertEqual(ExactNumber(0), ExactNumber("0"))
+        with self.assertRaisesRegex(ValueError, r"Expected \+/-float\('inf'\)"):
+            ExactNumber(0.0)
+
+    def test_an_invalid_string_raises_every_time(self):
+        """A conversion that fails is not remembered as a success."""
+        for _ in range(2):
+            with self.assertRaises(UnsupportedSympyExprError):
+                ExactNumber("x + 1")
+
+    def test_the_memo_is_bounded(self):
+        """Converting many distinct values does not accumulate all of them."""
+        _memoized_to_sympy.cache_clear()
+        for value in range(_MEMO_SIZE + 100):
+            ExactNumber(value)
+        self.assertLessEqual(_memoized_to_sympy.cache_info().currsize, _MEMO_SIZE)

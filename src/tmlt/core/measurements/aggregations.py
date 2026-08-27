@@ -155,6 +155,53 @@ def _total_groupby_for_scalar(
     )
 
 
+def _add_noise_to_series(
+    noise_mechanism: NoiseMechanism, noise_scale: ExactNumber
+) -> AddNoiseToSeries:
+    """Returns the series measurement adding a mechanism's noise at a given scale.
+
+    This block was identical in :func:`create_count_measurement` and
+    :func:`create_count_distinct_measurement`, and is shared with their pandas
+    counterparts in :mod:`tmlt.core.measurements.pandas_aggregations`, which
+    build the same noise measurements over the same mechanisms.
+
+    Args:
+        noise_mechanism: Noise mechanism to add noise with.
+        noise_scale: The scale to add noise at.
+
+    Raises:
+        UnsupportedNoiseMechanismError: If the noise mechanism is not recognized.
+    """
+    add_noise_to_series: AddNoiseToSeries
+    if noise_mechanism == NoiseMechanism.LAPLACE:
+        add_noise_to_series = AddNoiseToSeries(
+            AddLaplaceNoise(scale=noise_scale, input_domain=NumpyIntegerDomain())
+        )
+    elif noise_mechanism == NoiseMechanism.GEOMETRIC:
+        add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
+    elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
+        add_noise_to_series = AddNoiseToSeries(
+            AddDiscreteGaussianNoise(sigma_squared=noise_scale**2)
+        )
+    elif noise_mechanism == NoiseMechanism.GAUSSIAN:
+        add_noise_to_series = AddNoiseToSeries(
+            AddGaussianNoise(
+                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
+            )
+        )
+
+    else:
+        raise UnsupportedNoiseMechanismError(
+            noise_mechanism,
+            (
+                f"Unrecognized noise mechanism {noise_mechanism}. "
+                "Supported noise mechanisms are LAPLACE, "
+                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
+            ),
+        )
+    return add_noise_to_series
+
+
 @typechecked
 def create_count_measurement(
     input_domain: SparkDataFrameDomain,
@@ -306,33 +353,7 @@ def create_count_measurement(
     noise_scale = calculate_noise_scale(
         d_in=d_mid, d_out=d_out, output_measure=output_measure
     )
-    add_noise_to_series: AddNoiseToSeries
-    if noise_mechanism == NoiseMechanism.LAPLACE:
-        add_noise_to_series = AddNoiseToSeries(
-            AddLaplaceNoise(scale=noise_scale, input_domain=NumpyIntegerDomain())
-        )
-    elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-        add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
-    elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
-        add_noise_to_series = AddNoiseToSeries(
-            AddDiscreteGaussianNoise(sigma_squared=noise_scale**2)
-        )
-    elif noise_mechanism == NoiseMechanism.GAUSSIAN:
-        add_noise_to_series = AddNoiseToSeries(
-            AddGaussianNoise(
-                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
-            )
-        )
-
-    else:
-        raise UnsupportedNoiseMechanismError(
-            noise_mechanism,
-            (
-                f"Unrecognized noise mechanism {noise_mechanism}. "
-                "Supported noise mechanisms are LAPLACE, "
-                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
-            ),
-        )
+    add_noise_to_series = _add_noise_to_series(noise_mechanism, noise_scale)
 
     assert isinstance(groupby_count.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -519,32 +540,7 @@ def create_count_distinct_measurement(
     noise_scale = calculate_noise_scale(
         d_in=d_mid, d_out=d_out, output_measure=output_measure
     )
-    add_noise_to_series: AddNoiseToSeries
-    if noise_mechanism == NoiseMechanism.LAPLACE:
-        add_noise_to_series = AddNoiseToSeries(
-            AddLaplaceNoise(scale=noise_scale, input_domain=NumpyIntegerDomain())
-        )
-    elif noise_mechanism == NoiseMechanism.GEOMETRIC:
-        add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
-    elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
-        add_noise_to_series = AddNoiseToSeries(
-            AddDiscreteGaussianNoise(sigma_squared=noise_scale**2)
-        )
-    elif noise_mechanism == NoiseMechanism.GAUSSIAN:
-        add_noise_to_series = AddNoiseToSeries(
-            AddGaussianNoise(
-                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
-            )
-        )
-    else:
-        raise UnsupportedNoiseMechanismError(
-            noise_mechanism,
-            (
-                f"Unrecognized noise mechanism {noise_mechanism}. "
-                "Supported noise mechanisms are LAPLACE, "
-                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
-            ),
-        )
+    add_noise_to_series = _add_noise_to_series(noise_mechanism, noise_scale)
     assert isinstance(groupby_count_distinct.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
         input_domain=groupby_count_distinct.output_domain,

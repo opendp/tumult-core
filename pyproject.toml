@@ -5,7 +5,17 @@ readme = "README.md"
 authors = []
 license = "Apache-2.0"
 
-dynamic = ["version"]
+# NOTE (The-Everyone-Project fork): this integration branch pins a static
+# PEP 440 local version instead of deriving it from the git tag, for the same
+# reason as the release/0.19.1-ep-pandas branch: the 0.19.1 tag is not an
+# ancestor of main, so the dynamic version resolves to ~0.18.2+dist -- which
+# fails tmlt.analytics' `tmlt.core >=0.19.1,<0.20` pin for editable installs.
+# `+ep.backend.N` sorts with 0.19.1, satisfies the pin, and cannot be uploaded
+# to PyPI. Contents: upstream main (76d80fb) + pandas_truncation (12acfb2) +
+# the pandas-backend work packages, and the review, simplify and comment passes
+# over them. Upstream PRs are cut from the pr/* branches, never from this
+# branch. Bump N when cutting fork wheels.
+version = "0.19.1+ep.backend.3"
 
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -109,18 +119,28 @@ scripting = [
 # Build configuration
 
 [build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.version]
-source = "uv-dynamic-versioning"
-
+# NOTE (The-Everyone-Project fork): `[tool.hatch.version]` is intentionally
+# removed -- the build no longer derives a version from git, it uses the static
+# `version` in `[project]` above.
+#
+# `[tool.uv-dynamic-versioning]` below is kept only because tmlt.nox_utils reads
+# it (via uv_dynamic_versioning.main.get_version) when noxfile.py is imported;
+# without it, every nox session dies with
+# `AttributeError: 'NoneType' object has no attribute 'vcs'`. The constant
+# `format-jinja` makes it report the same version the build produces rather than
+# a tag-derived version, and `fallback-version` covers shallow CI clones where
+# no tag is reachable.
 [tool.uv-dynamic-versioning]
 vcs = "git"
 style = "semver"
 # The default configuration expect vX.Y.Z, but we haven't been using the 'v' prefix.
 pattern = "^(?P<base>\\d+\\.\\d+\\.\\d+)(-(?P<stage>[a-zA-Z]+)\\.(?P<revision>\\d+))?"
 commit-length = 8
+format-jinja = "0.19.1+ep.backend.3"
+fallback-version = "0.19.1+ep.backend.3"
 
 [tool.hatch.build.hooks.version]
 path = "src/tmlt/core/_version.py"
@@ -177,7 +197,10 @@ archs = ["x86_64"]
 # Test configuration
 
 [tool.pytest.ini_options]
-markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
+markers = [
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "spark: marks tests that need a Spark session (deselect with '-m \"not spark\"')",
+]
 
 [tool.coverage.run]
 omit = ["**/core/ext/*"]

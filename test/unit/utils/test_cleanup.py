@@ -1,9 +1,14 @@
 """Unit tests for :mod:`tmlt.core.utils.cleanup`."""
 
+import subprocess
+import sys
 from pathlib import Path
 from random import choice, randint
 from string import ascii_letters, digits
+from textwrap import dedent
 from uuid import uuid4
+
+import pytest
 
 from tmlt.core.utils.cleanup import cleanup, remove_all_temp_tables
 from tmlt.core.utils.configuration import Config
@@ -11,6 +16,139 @@ from tmlt.core.utils.testing import PySparkTest
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
+
+_IMPORT_CLEANUP_AND_EXIT = '''
+"""Imports the cleanup module with a JVM launch forbidden, then exits."""
+
+import pyspark.context
+import pyspark.java_gateway
+
+
+def forbidden(*args, **kwargs):
+    """Stands in for launch_gateway.
+
+    Raises:
+        AssertionError: Always.
+    """
+    raise AssertionError("a JVM was started")
+
+
+# getOrCreate() calls the launch_gateway name that pyspark.context imported,
+# not the one pyspark.java_gateway defines, so both bindings have to go.
+pyspark.java_gateway.launch_gateway = forbidden
+pyspark.context.launch_gateway = forbidden
+
+import tmlt.core.utils.cleanup  # noqa: E402,F401
+'''
+
+_CLEANUP_A_THREAD_CREATED_SESSION = '''
+"""Builds a Spark session on a worker thread, then cleans up from the main one."""
+
+import sys
+import threading
+
+from pyspark.sql import SparkSession
+
+from tmlt.core.utils.cleanup import cleanup
+from tmlt.core.utils.configuration import Config
+
+WAREHOUSE = sys.argv[1]
+
+built = {}
+
+
+def build_session():
+    """Builds the session, on this thread and no other."""
+    built["session"] = (
+        SparkSession.builder.appName("thread_created")
+        .master("local[1]")
+        .config("spark.sql.warehouse.dir", WAREHOUSE)
+        .config("spark.driver.host", "127.0.0.1")
+        .config("spark.driver.bindAddress", "127.0.0.1")
+        .config("spark.ui.showConsoleProgress", "false")
+        .getOrCreate()
+    )
+
+
+worker = threading.Thread(target=build_session)
+worker.start()
+worker.join()
+
+spark = built["session"]
+spark.sql(f"CREATE DATABASE IF NOT EXISTS `{Config.temp_db_name()}`")
+
+# The precondition this is all about: the active session is thread-scoped, so
+# the thread an atexit hook runs on -- this one -- does not have one.
+print("ACTIVE_ON_MAIN", SparkSession.getActiveSession())
+
+cleanup()
+
+databases = [db.name for db in spark.catalog.listDatabases()]
+print("TEMP_DB_PRESENT", Config.temp_db_name() in databases)
+spark.stop()
+'''
+
+
+def test_atexit_hook_does_not_start_a_jvm(tmp_path: Path) -> None:
+    """Importing the module does not start a JVM at interpreter exit.
+
+    ``_cleanup_temp`` is registered with ``atexit``. When it asked for its Spark
+    session with ``getOrCreate`` it built one -- JVM and all -- on the way out of
+    every process that had imported the module, including processes that never
+    touched Spark and so cannot have left a temporary database behind.
+
+    This runs in a subprocess because the hook only fires when an interpreter
+    shuts down, and it inspects stderr rather than the exit status because an
+    exception raised in an ``atexit`` hook is printed and then ignored: the
+    process still exits 0.
+
+    Args:
+        tmp_path: Directory to write the subprocess' script into.
+    """
+    script = tmp_path / "import_cleanup.py"
+    script.write_text(dedent(_IMPORT_CLEANUP_AND_EXIT))
+
+    result = subprocess.run(
+        [sys.executable, str(script)], capture_output=True, text=True, check=True
+    )
+
+    assert "a JVM was started" not in result.stderr, result.stderr
+    assert "atexit" not in result.stderr, result.stderr
+
+
+@pytest.mark.spark
+def test_cleanup_finds_a_session_built_on_another_thread(tmp_path: Path) -> None:
+    """A session built on a worker thread is still cleaned up from the main one.
+
+    ``SparkSession.getActiveSession`` answers for the *calling thread*. A
+    process that builds its session on a worker thread -- a web request handler,
+    a thread pool -- therefore has no active session on the main thread, which
+    is where the ``atexit`` hook runs, and the temporary database holding
+    private intermediates was left behind. ``cleanup`` falls back to the
+    process' instantiated session, which any thread may use.
+
+    This runs in a subprocess: it needs a Spark session that is *not* the one
+    the test session's fixture built on the main thread, and its own warehouse
+    directory so that nothing it drops is shared with another test.
+
+    Args:
+        tmp_path: Directory for the subprocess' script and Spark warehouse.
+    """
+    script = tmp_path / "thread_created_session.py"
+    script.write_text(dedent(_CLEANUP_A_THREAD_CREATED_SESSION))
+    warehouse = tmp_path / "warehouse"
+    warehouse.mkdir()
+
+    result = subprocess.run(
+        [sys.executable, str(script), str(warehouse)],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=tmp_path,
+    )
+
+    assert "ACTIVE_ON_MAIN None" in result.stdout, result.stdout
+    assert "TEMP_DB_PRESENT False" in result.stdout, result.stdout
 
 
 class TestCleanup(PySparkTest):

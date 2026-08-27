@@ -3,6 +3,54 @@
 Changelog
 =========
 
+.. _v0.19.1-ep-backend-3:
+
+0.19.1+ep.backend.3 - 2026-08-13
+--------------------------------
+A fork build: official tmlt.core 0.19.1, everything in the Unreleased section
+below -- the pandas backend work packages -- and the reuse and efficiency
+changes listed here. Not an official Tumult Labs release, and never published
+to PyPI.
+
+Changed
+~~~~~~~
+
+- The column-name validation and the nullability algebra a join's output domain
+  is computed with are shared between the two backends rather than copied.
+  :mod:`tmlt.core.utils.join` grew ``_validate_join_columns``, ``_join_flag``,
+  ``_join_allows_null`` and ``_side_unmatchable``, which
+  :mod:`tmlt.core.utils.pandas_join` now calls; the pandas module's own copies
+  are gone. The two backends have to agree about which joins are legal and about
+  which output columns can hold a null, and sharing the code is what guarantees
+  they keep agreeing. No behavior changed.
+- The pandas grouped aggregations count without materializing a frame per group.
+  :class:`~tmlt.core.utils.pandas_grouped_table.PandasGroupedTable` grew
+  ``agg_by_position``, which hands an aggregation the *positions* of a group's
+  rows rather than the rows themselves; it makes every promise ``agg`` makes
+  about the output. The two count transformations in
+  :mod:`tmlt.core.transformations.pandas_transformations.agg` use it, and
+  ``CountDistinctGrouped`` additionally numbers the frame's rows once for the
+  whole frame rather than once per group -- two rows are the same row, or not,
+  wherever they sit. On 200k rows in 1000 groups the count is 65% cheaper and
+  the distinct count 87% cheaper, for identical answers.
+- :func:`tmlt.core.utils.pandas_join.join` numbers two join columns of the same
+  dtype together, by grouping the concatenation of the two, instead of numbering
+  each side and reconciling the two numberings through a Python key per distinct
+  value. Join columns of *different* dtypes -- an ``int64`` joined to an
+  ``Int64`` -- still take the reconciling path, since concatenating those would
+  have pandas choose a common dtype for them. Joining on 100k distinct keys is
+  92% cheaper for object keys and 96% for integers, with byte-identical
+  numbering.
+- An augmenting
+  :class:`~tmlt.core.transformations.pandas_transformations.map.RowToRowTransformation`
+  builds the domain it validates its function's output against once per set of
+  row columns rather than once per row. It depends on the row's columns and not
+  on its values, and every row of a frame has the same columns. Mapping 200k
+  rows of 6 columns is 54% cheaper.
+- Both backend arms of :meth:`.IfGroupedBy.distance` ask one helper for the
+  groupby columns in the table's own column order, rather than each writing out
+  the same comprehension over the domain's schema. No behavior changed.
+
 Unreleased
 ----------
 
@@ -10,6 +58,257 @@ Added
 ~~~~~
 
 - :class:`.Transformation`\s, :class:`.Measurement`\ s, and :class:`.Domain`\ s have a new ``format`` method, which renders a human-readable string showing the structure of the object to aid in visualization and debugging.
+- Added :mod:`tmlt.core.utils.pandas_grouping`, which groups pandas dataframes the way
+  Spark groups them (``group_codes``, ``group_ids``, ``row_keys``, ``distinct_rows``,
+  and ``group_indices``). ``NULL`` and ``NaN`` are different groups, ``-0.0`` and
+  ``0.0`` are one, binary values group by content, and timestamps group at Spark's
+  microsecond resolution -- none of which a pandas ``groupby`` or ``drop_duplicates``
+  gets right on its own. :mod:`tmlt.core.utils.pandas_truncation` is built on this
+  module, which it was extracted from.
+- Added :mod:`tmlt.core.utils.pandas_truncation`, pandas counterparts of the Spark
+  truncation utilities in :mod:`tmlt.core.utils.truncation` (``truncate_large_groups``,
+  ``drop_large_groups``, and ``limit_keys_per_group``). For the column types supported
+  by the Spark implementations, the pandas functions hash values identically and keep
+  exactly the same rows, so results are directly comparable across backends. The one
+  exception is floating point columns: Spark renders those values with the JVM's
+  ``Double.toString``/``Float.toString``, and a JVM older than 19 renders some values
+  with more digits than the shortest that round-trips, which hashes differently. See
+  the module documentation for details.
+- Added :mod:`tmlt.core.utils.pandas_join`, the pandas counterpart of
+  :mod:`tmlt.core.utils.join` (``join`` and ``domain_after_join``). It reproduces
+  Spark's join semantics, which a pandas ``merge`` does not: a ``NULL`` key never
+  matches another ``NULL`` key unless ``nulls_are_equal`` is set, while a ``NaN`` key
+  always matches a ``NaN`` key (``NaN = NaN`` is true in Spark -- a NaN is a value,
+  not a null) and never matches a ``NULL``. Output columns are also given the dtypes
+  of the domain ``domain_after_join`` computes rather than whatever a merge widens
+  them to, so an integer column that a left or outer join leaves unmatched comes back
+  as ``Int64`` rather than as ``float64``, and values above :math:`2^{53}` survive.
+- Added a column-descriptor family to :mod:`tmlt.core.domains.pandas_domains`:
+  :class:`.PandasColumnDescriptor` with an integer, float, string, date, and timestamp
+  subclass, collected in a :class:`.PandasTableDomain`. These describe a pandas
+  DataFrame the way :class:`.SparkDataFrameDomain` describes a Spark one and carry the
+  same information, so that both backends can describe the same table; each descriptor
+  also fixes which dtypes a column it describes may have, since pandas -- unlike Spark
+  -- can hold the same values in a numpy array or in a nullable extension array. The
+  existing :class:`.PandasSeriesDomain` and :class:`.PandasDataFrameDomain`, which
+  describe a DataFrame through the numpy domain of each column's elements, are
+  unchanged.
+- Added :class:`.PandasRowDomain`, the domain of the rows
+  :class:`~tmlt.core.transformations.pandas_transformations.map.Map` applies a function
+  to. A row is a :class:`dict`, and a missing value in one is ``None`` whatever marker
+  its column stores -- ``pd.NA``, ``NaT``, or ``None`` -- while a NaN in a floating
+  point column stays a NaN, since there it is a value rather than a missing value. The
+  full per-dtype mapping is documented on
+  :mod:`tmlt.core.transformations.pandas_transformations.map`.
+- The table-level metrics in :mod:`tmlt.core.metrics` -- :class:`.SymmetricDifference`,
+  :class:`.HammingDistance`, :class:`.OnColumn`, :class:`.OnColumns` and
+  :class:`.AddRemoveKeys` -- now accept :class:`.PandasTableDomain` alongside
+  :class:`.SparkDataFrameDomain`, and give the same distance for the same data under
+  either backend. Rows and keys are compared with
+  :mod:`tmlt.core.utils.pandas_grouping`, so a ``NULL`` and a ``NaN`` are different
+  values, ``-0.0`` and ``0.0`` are one, and each column is compared in its own dtype.
+  The branches for the older :class:`.PandasDataFrameDomain` and
+  :class:`.PandasSeriesDomain` are unchanged; note that the former compares whole rows
+  as Python tuples of ``DataFrame.values``, which merges integers differing only past
+  ``2**53`` when a float column is present, and never finds a NaN-bearing row equal to
+  itself. :class:`.AddRemoveKeys` requires a dictionary's dataframes to be all Spark or
+  all pandas, and says so rather than silently reporting every key as changed.
+- Added :mod:`tmlt.core.transformations.pandas_transformations`, holding
+  :class:`~tmlt.core.transformations.pandas_transformations.select.Select`,
+  :class:`~tmlt.core.transformations.pandas_transformations.rename.Rename`,
+  :class:`~tmlt.core.transformations.pandas_transformations.map.Map` and
+  :class:`~tmlt.core.transformations.pandas_transformations.map.RowToRowTransformation`
+  over :class:`.PandasTableDomain`. Each mirrors its counterpart in
+  :mod:`tmlt.core.transformations.spark_transformations`: it takes the same metrics,
+  rejects the same arguments with the same errors, and has the same stability
+  function. The pandas transformations additionally guarantee that they do not modify
+  the frame they are given, and that the rows of their result are in the order they
+  arrived in.
+- Added the pandas grouped-table stack, the counterpart of the Spark one: a
+  :class:`.PandasGroupedTable` in :mod:`tmlt.core.utils.pandas_grouped_table`, holding
+  a frame together with an explicit frame of public group keys; a
+  :class:`.PandasGroupedTableDomain` describing one; branches in
+  :class:`.IfGroupedBy`, :class:`.SumOf` and :class:`.RootSumOfSquared` for the two new
+  domains; and, in :mod:`tmlt.core.transformations.pandas_transformations`,
+  :class:`~tmlt.core.transformations.pandas_transformations.groupby.GroupBy` (and its
+  two constructor helpers) and the
+  :class:`~tmlt.core.transformations.pandas_transformations.agg.CountGrouped` and
+  :class:`~tmlt.core.transformations.pandas_transformations.agg.CountDistinctGrouped`
+  aggregations. As in the Spark implementation, an aggregation produces exactly one
+  row per declared group key, filling the keys with no rows and dropping the groups
+  that were not declared; unlike it, the output is ordered by the group keys, so that
+  an input's row order cannot be observed through its output's. Grouping goes through
+  :mod:`tmlt.core.utils.pandas_grouping`, so the two backends agree about which rows
+  share a group.
+- Added :mod:`tmlt.core.transformations.pandas_transformations.join`, with
+  :class:`~tmlt.core.transformations.pandas_transformations.join.PrivateJoin` and
+  :class:`~tmlt.core.transformations.pandas_transformations.join.PrivateJoinOnKey` over
+  :class:`.PandasTableDomain`\ s. These mirror their counterparts in
+  :mod:`tmlt.core.transformations.spark_transformations.join`: same constructor
+  checks, same output domain, and the same stability functions. They share that
+  module's ``TruncationStrategy``, which names a strategy and is engine-neutral, and
+  truncate through :mod:`tmlt.core.utils.pandas_truncation`.
+- Added :mod:`tmlt.core.transformations.pandas_transformations.truncation`, holding
+  :class:`~tmlt.core.transformations.pandas_transformations.truncation.LimitRowsPerGroup`,
+  :class:`~tmlt.core.transformations.pandas_transformations.truncation.LimitKeysPerGroup`
+  and
+  :class:`~tmlt.core.transformations.pandas_transformations.truncation.LimitRowsPerKeyPerGroup`
+  over :class:`.PandasTableDomain`. Each takes the same arguments as its counterpart in
+  :mod:`tmlt.core.transformations.spark_transformations.truncation`, rejects the same
+  ones with the same errors, and has the same stability function; the truncation itself
+  is :mod:`tmlt.core.utils.pandas_truncation`, so the two backends keep the same rows.
+  As with the other pandas transformations, the frame they are given is not modified,
+  and the surviving rows are returned in the order they arrived in, reindexed from 0.
+- Added :mod:`tmlt.core.transformations.pandas_transformations.add_remove_keys`, the
+  pandas counterpart of
+  :mod:`tmlt.core.transformations.spark_transformations.add_remove_keys`: the
+  ``LimitRowsPerGroupValue``, ``LimitKeysPerGroupValue``,
+  ``LimitRowsPerKeyPerGroupValue``, ``MapValue``, ``RenameValue`` and ``SelectValue``
+  wrappers, which apply one pandas transformation to one table of a dictionary under
+  :class:`.AddRemoveKeys` and augment the dictionary with the result. Each takes the
+  same arguments as the Spark wrapper of the same name, rejects the same ones with
+  the same errors, and has the same stability function. The wrappers for the
+  operations the pandas backend has no transformation for -- filtering, public joins,
+  flat maps, and dropping or replacing nulls, NaNs and infinities -- and the ones
+  wrapping Spark's persistence machinery have no counterpart here.
+- Added the pandas measurement layer, closing the counts-only pandas slice:
+  :class:`tmlt.core.measurements.pandas_measurements.table.AddNoiseToColumn`, which
+  adds an :class:`.AddNoiseToSeries`' noise to one aggregated column of a
+  :class:`.PandasTableDomain` frame, and
+  :mod:`tmlt.core.measurements.pandas_aggregations`, with
+  :func:`~tmlt.core.measurements.pandas_aggregations.create_count_measurement` and
+  :func:`~tmlt.core.measurements.pandas_aggregations.create_count_distinct_measurement`.
+  Each factory has the same signature as its twin in
+  :mod:`tmlt.core.measurements.aggregations` -- same parameter names, order and
+  defaults, typed on the pandas domains and transformations -- and, over the same
+  query, the same privacy function: the two backends spend identical budget and
+  reject identical budget/mechanism combinations. Unlike the Spark ``count``
+  factory, both pandas factories report an unusable ``groupby_transformation``
+  with :class:`.UnsupportedDomainError` or :class:`.UnsupportedMetricError` rather
+  than a bare assertion, following the Spark ``count_distinct`` factory. The
+  pandas ``AddNoiseToColumn`` subclasses :class:`.Measurement` directly rather
+  than mirroring ``SparkMeasurement``, since a pandas frame is eager and its noise
+  cannot be redrawn by a later collect; it never modifies the frame it is given,
+  reindexes its output from zero, and casts the noised column explicitly (integral
+  for the geometric and discrete Gaussian mechanisms, floating point for the
+  Laplace and Gaussian ones) so that an empty frame comes back with the same dtype
+  a non-empty one would have.
+
+Changed
+~~~~~~~
+
+- The block building an :class:`.AddNoiseToSeries` from a
+  :class:`~tmlt.core.measurements.aggregations.NoiseMechanism` and a noise scale,
+  which was duplicated between
+  :func:`~tmlt.core.measurements.aggregations.create_count_measurement` and
+  :func:`~tmlt.core.measurements.aggregations.create_count_distinct_measurement`,
+  is now a private helper the two call and the pandas factories share. No
+  behavior changed.
+- Moved :class:`~tmlt.core.transformations.dictionary.TransformValue` from
+  :mod:`tmlt.core.transformations.spark_transformations.add_remove_keys` to
+  :mod:`tmlt.core.transformations.dictionary`. The class only constrains the domains
+  and metrics of a dictionary and of the transformation applied to one of its values,
+  none of which is Spark-specific, so it can be the base class of both backends'
+  wrappers. It is re-exported under its old name, and the Spark wrappers derived from
+  it are unchanged, so nothing that imports it moves.
+- Both backends' ``GroupBy`` now put their group keys' columns in the input
+  domain's order, whatever order they were given in, and the Spark grouped
+  aggregations build their output schema by walking that domain's schema rather
+  than iterating the ``groupby_columns`` frozenset, as the pandas ones already
+  did. An aggregation emits its groupby columns in the group keys' order and
+  declares them in the schema's order, and nothing validates that those agree,
+  so this is a fix as well as a change: group keys built from a keyset whose
+  columns are not in the input domain's order produced an output frame that the
+  transformation's own output domain rejected, and Spark's *declared* order
+  additionally depended on ``PYTHONHASHSEED`` and so varied from run to run.
+  **This changes the column order of such an aggregation's result**, on both
+  backends at once so that they stay in step; an aggregation whose keyset was
+  already in the input domain's order is unaffected.
+- :class:`~tmlt.core.utils.exact_number.ExactNumber` remembers the conversion of
+  the integers and strings it is built from, up to a bounded number of them.
+  Building the :class:`sympy.Expr` -- ``sympy.simplify`` above all -- dominates
+  the cost of an :class:`~.ExactNumber`, and a privacy calculation builds tens
+  of thousands of them from a handful of distinct values. A ``sympy.Expr`` is
+  immutable, so sharing one between callers changes nothing but the cost;
+  floats and booleans are deliberately not remembered, since each hashes and
+  compares equal to an integer and would share its entry.
+- Deleted the re-exports in
+  :mod:`tmlt.core.transformations.pandas_transformations`' ``__init__``, which
+  nothing imported, matching the Spark package's. Import the leaf modules, as
+  everything already did.
+- The two grouped-domain arms of :meth:`.SymmetricDifference.distance`,
+  :meth:`.AggregationMetric.distance` and
+  :meth:`.AggregationMetric.supports_domain`, and the two backend arms of
+  :meth:`.AddRemoveKeys.distance`, are each one arm now: the algorithm was the
+  same in both, and only how a group is asked whether it is empty, or how a
+  dataframe's keys are enumerated and its rows selected, actually differed. No
+  behavior changed.
+
+Fixed
+~~~~~
+
+- Importing :mod:`tmlt.core.utils.cleanup` no longer starts a JVM at interpreter
+  exit. Its ``atexit`` hook asked for a Spark session with ``getOrCreate``, which
+  built one -- JVM included -- in any process that had not already made one, purely
+  to drop a temporary database that such a process cannot have created. It now
+  looks for a session the process already has, and returns when there is none.
+  A process that does use Spark still has its temporary database dropped, but
+  one detail of *how* the session is found changed: the hook takes the calling
+  thread's active session if there is one and the process' instantiated session
+  otherwise, rather than building a session. That fallback matters because the
+  active session is thread-scoped while the hook runs on the main thread, so a
+  session built on a worker thread is not found by the first lookup alone.
+- :class:`tmlt.core.measurements.pandas_measurements.table.AddNoiseToColumn`
+  resolves the dtype of the column it noises when it is built rather than when
+  the column is written. A mechanism that was a *subclass* of one of the four
+  it knows -- which the Spark twin handles by asking the mechanism for its
+  ``output_type`` -- raised a bare :class:`KeyError` out of ``__call__``, after
+  the noise had been drawn and the budget spent. Subclasses are accepted now,
+  and a mechanism that cannot be resolved is reported when the measurement is
+  constructed.
+- The column descriptors in :mod:`tmlt.core.domains.pandas_domains` and a column
+  they describe now agree about which of its values are null. The per-value
+  check recognised ``float("nan")`` but not ``numpy.float32("nan")`` -- which is
+  not a :class:`float`, where a ``numpy.float64`` is -- nor a raw
+  ``numpy.datetime64("NaT")``, while :meth:`pandas.Series.isna`, which column
+  validation goes through, makes no such distinction: an object column holding a
+  ``float32`` NaN validated while the same value, handed to a map function's
+  output row, did not. A NaN in a *float* column is still a value gated by
+  ``allow_nan``, as before.
+- :meth:`.PandasTimestampColumnDescriptor.valid_py_value` no longer accepts
+  ``NaT`` when ``allow_null`` is False. ``NaTType`` subclasses
+  :class:`datetime.datetime`, so a ``NaT`` was answered as an ordinary
+  timezone-naive timestamp and the nullability branch was dead. It also rejects
+  a value outside :attr:`pandas.Timestamp.min`/:attr:`~pandas.Timestamp.max`,
+  which a described column's canonical ``datetime64[ns]`` dtype cannot hold:
+  such a value passed validation and then failed, as a raw
+  ``OutOfBoundsDatetime``, inside whatever went on to build the column. This is
+  narrower than Spark's ``TimestampType``, which covers years 1 to 9999, and is
+  documented on the descriptor as the engine limit it is.
+- :func:`tmlt.core.utils.pandas_join.join` brings two ``datetime64`` join
+  columns to the finer of their two units before comparing them, and returns the
+  output join column in that unit. On pandas 2 the two sides need not be in the
+  same unit; the output column was built in the left frame's dtype, so a
+  right-only ``12:00:00.500`` came back as ``12:00:00`` against a left column of
+  seconds, and a value outside the nanosecond range crashed with a
+  pandas-internal ``AssertionError``. A value the finer unit cannot represent is
+  now reported by name, with the column and both units.
+- :func:`tmlt.core.utils.pandas_join.join` rejects two categorical join columns
+  whose categories differ, instead of running as an inner or left join and
+  raising a bare ``TypeError`` from inside pandas as an outer or right one.
+- A categorical column's missing entries are nulls to
+  :mod:`tmlt.core.utils.pandas_grouping` and to the join built on it. A
+  categorical spells one as the code ``-1``, which reads back as ``np.nan`` --
+  in a float or object column a *value* here, but in a categorical the only
+  spelling there is, since pandas does not allow a NaN to be a category. They
+  were grouped as NaNs, which gave a left join's fill of a categorical payload
+  column a group of its own rather than the null group, and made
+  ``nulls_are_equal`` inert for a categorical key.
+- :class:`~tmlt.core.transformations.pandas_transformations.map.RowToRowTransformation`
+  reports a map function that returns something other than a :class:`dict` --
+  a :class:`~pyspark.sql.Row`, say, which the Spark implementation accepts --
+  with an :class:`~.OutOfDomainError` naming what was returned and what is
+  wanted, rather than with a bare assert that ``-O`` strips.
 
 .. _v0.19.1:
 
@@ -103,7 +402,7 @@ Changed
 
 0.17.0 - 2024-10-02
 -------------------
-This release changes the behavior of :class:`~.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` (and thus :class:`~.Map`, :class:`~.FlatMap`, and :class:`~.FlatMapByKey`) so that they catch many function outputs that would be invalid under their output domains.
+This release changes the behavior of :class:`~tmlt.core.transformations.spark_transformations.map.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` (and thus :class:`~tmlt.core.transformations.spark_transformations.map.Map`, :class:`~.FlatMap`, and :class:`~.FlatMapByKey`) so that they catch many function outputs that would be invalid under their output domains.
 
 .. note::
 
@@ -112,9 +411,9 @@ This release changes the behavior of :class:`~.RowToRowTransformation`, :class:`
 
 Fixed
 ~~~~~
-- :class:`~.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` now all check that their outputs match their output domains, raising an exception if they do not.
+- :class:`~tmlt.core.transformations.spark_transformations.map.RowToRowTransformation`, :class:`~.RowToRowsTransformation`, and :class:`~.RowsToRowsTransformation` now all check that their outputs match their output domains, raising an exception if they do not.
   This should not impact correct Tumult Core programs, but may catch a few incorrect ones that were previously missed, and will improve the error messages produced in these cases.
-- :class:`~.RowToRowTransformation` and :class:`~.RowToRowsTransformation` now disallow mapping functions that produce values for the input columns when augmenting.
+- :class:`~tmlt.core.transformations.spark_transformations.map.RowToRowTransformation` and :class:`~.RowToRowsTransformation` now disallow mapping functions that produce values for the input columns when augmenting.
 
 .. _v0.16.5:
 
@@ -262,7 +561,7 @@ Changed
 - Adjusted error messages related to spending privacy budgets in classes of type :class:`~.PrivacyBudget`.
 - Moved InsufficientBudgetError from :mod:`~.interactive_measurements` to :mod:`~.measures`.
 - Adjusted :meth:`tmlt.core.measurements.aggregations.create_variance_measurement` and :meth:`tmlt.core.measurements.aggregations.create_standard_deviation_measurement` to calculate sample variance and sample standard deviation instead of population variance and population standard deviation.
-- In :class:`~.GroupBy` and :class:`~.GroupedDataFrame` removed restriction on empty dataframes with non-empty columns.
+- In :class:`~tmlt.core.transformations.spark_transformations.groupby.GroupBy` and :class:`~.GroupedDataFrame` removed restriction on empty dataframes with non-empty columns.
 
 Fixed
 ~~~~~
@@ -283,13 +582,17 @@ Added
 
 Changed
 ~~~~~~~
-- Changed :func:`~.truncate_large_groups` and :func:`~.limit_keys_per_group` to use
+- Changed :func:`~tmlt.core.utils.truncation.truncate_large_groups` and
+  :func:`~tmlt.core.utils.truncation.limit_keys_per_group` to use
   SHA-2 (256 bits) instead of Spark's default hash (Murmur3). This results in a minor
   performance hit, but these functions should be less likely to have collisions which
   could impact utility. **Note that this may change the output of transformations which
-  use these functions.** In particular, :class:`~.PrivateJoin`,
-  :class:`~.LimitRowsPerGroup`, :class:`~.LimitKeysPerGroup`, and
-  :class:`~.LimitRowsPerKeyPerGroup`.
+  use these functions.** In particular,
+  :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoin`,
+  :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerGroup`,
+  :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitKeysPerGroup`,
+  and
+  :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerKeyPerGroup`.
 - Expanded the explanation of :class:`~.GroupingFlatMap`'s stability.
 - Support all metrics for the flat map transformation.
 
@@ -417,7 +720,7 @@ Changed
 
 Fixed
 ~~~~~
-- Fixed bug in :func:`~.limit_keys_per_group`.
+- Fixed bug in :func:`~tmlt.core.utils.truncation.limit_keys_per_group`.
 - Fixed bug in :func:`~.gaussian`.
 - :func:`~tmlt.core.utils.cleanup.cleanup` now emits a warning rather than an exception if it fails to get a Spark session.
   This should prevent unexpected exceptions in the ``atexit`` cleanup handler.
@@ -451,8 +754,8 @@ Added
 Changed
 ~~~~~~~
 
-- :func:`~.truncate_large_groups` does not clump identical records together in hash-based ordering.
-- :class:`~.TransformValue` no longer fails when renaming the id column using :class:`~.RenameValue`.
+- :func:`~tmlt.core.utils.truncation.truncate_large_groups` does not clump identical records together in hash-based ordering.
+- :class:`~.TransformValue` no longer fails when renaming the id column using :class:`~tmlt.core.transformations.spark_transformations.add_remove_keys.RenameValue`.
 
 Fixed
 ~~~~~
@@ -478,11 +781,11 @@ Changed
 
 Added
 ~~~~~
-- Added :class:`~.LimitKeysPerGroupValue` transformation
+- Added :class:`~tmlt.core.transformations.spark_transformations.add_remove_keys.LimitKeysPerGroupValue` transformation
 
 Changed
 ~~~~~~~
-- Updated :class:`~.LimitKeysPerGroup` to require an output metric, and to support the
+- Updated :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitKeysPerGroup` to require an output metric, and to support the
   ``IfGroupedBy(grouping_column, SymmetricDifference())`` output metric. Dropped the ``use_l2`` parameter.
 
 .. _v0.8.1:
@@ -493,7 +796,7 @@ Changed
 Added
 ~~~~~
 
-- Added :class:`~.LimitRowsPerKeyPerGroup` and :class:`~.LimitRowsPerKeyPerGroupValue` transformations
+- Added :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerKeyPerGroup` and :class:`~tmlt.core.transformations.spark_transformations.add_remove_keys.LimitRowsPerKeyPerGroupValue` transformations
 
 Changed
 ~~~~~~~
@@ -508,12 +811,12 @@ Changed
 Added
 ~~~~~
 
-- Added :class:`~.LimitRowsPerGroupValue` transformation
+- Added :class:`~tmlt.core.transformations.spark_transformations.add_remove_keys.LimitRowsPerGroupValue` transformation
 
 Changed
 ~~~~~~~
 
-- Updated :class:`~.LimitRowsPerGroup` to require an output metric, and to support the
+- Updated :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerGroup` to require an output metric, and to support the
   ``IfGroupedBy(column, SymmetricDifference())`` output metric.
 - Added a check so that :class:`~.TransformValue` can no longer be instantiated without
   subclassing.

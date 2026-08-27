@@ -3,12 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
+import itertools
 from typing import Any, Callable, Dict, List
 
 import pandas as pd
+import pytest
 from parameterized import parameterized
 
-from tmlt.core.utils.misc import copy_if_mutable, get_nonconflicting_string
+from tmlt.core.utils.misc import (
+    copy_if_mutable,
+    get_nonconflicting_string,
+    print_pandas,
+)
 from tmlt.core.utils.testing import (
     Case,
     PySparkTest,
@@ -94,3 +100,43 @@ def test_get_nonconflicting_string(strings: List[str]):
     """Tests that get_nonconflicting_string works."""
     non_conflicting_string = get_nonconflicting_string(strings)
     assert non_conflicting_string.upper() not in [string.upper() for string in strings]
+
+
+class TestPrintPandas:
+    """Tests for print_pandas."""
+
+    def test_sortable_frame_prints_sorted(self, capsys: pytest.CaptureFixture):
+        """A sortable frame keeps the original sorted, zero-indexed rendering."""
+        df = pd.DataFrame({"A": ["b", "a"], "B": [2, 1]}, index=[7, 3])
+        print_pandas(df)
+        expected = pd.DataFrame({"A": ["a", "b"], "B": [1, 2]})
+        assert capsys.readouterr().out == f"{expected}\n"
+
+    def test_mixed_type_object_column_prints_deterministically(
+        self, capsys: pytest.CaptureFixture
+    ):
+        """A mixed-type object column prints instead of raising a TypeError.
+
+        The truncation utilities in
+        :mod:`~tmlt.core.utils.pandas_truncation` accept such columns (they
+        order them with a type-name fallback), so the deterministic printer
+        must accept their outputs too. Determinism is checked by printing
+        every permutation of the rows.
+        """
+        rows = [(1, "p"), ("x", "q"), (2.5, "r"), (None, "s")]
+        outputs = set()
+        for permutation in itertools.permutations(rows):
+            df = pd.DataFrame(
+                {
+                    "A": pd.Series([row[0] for row in permutation], dtype=object),
+                    "B": [row[1] for row in permutation],
+                }
+            )
+            print_pandas(df)
+            outputs.add(capsys.readouterr().out)
+        assert len(outputs) == 1
+
+    def test_zero_column_frame_prints(self, capsys: pytest.CaptureFixture):
+        """A frame with no columns at all prints instead of raising."""
+        print_pandas(pd.DataFrame(index=range(3)))
+        assert "Empty DataFrame" in capsys.readouterr().out

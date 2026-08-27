@@ -5,10 +5,17 @@
 # and if this is a production release, also publish the docs.
 name: Release Pipeline
 
+#
+# NOTE (The-Everyone-Project fork): only the three Package-* jobs are enabled
+# on this fork; they build the wheels that are attached to a GitHub Release on
+# the fork. Every other job -- including Publish-To-PyPI and Push-Docs -- keeps
+# its original `github.repository == 'opendp/tumult-core'` guard and therefore
+# never runs here. Nothing from this fork is ever published to PyPI.
 on:
   push:
     tags:
       - '**'
+  workflow_dispatch:
 
 
 env:
@@ -27,10 +34,13 @@ jobs:
             exit 1
           fi
 
+  # `needs: Check-Tag-Pattern` is dropped from the three Package jobs on the
+  # fork: Check-Tag-Pattern is still guarded to opendp/tumult-core, so here it
+  # is skipped, and a skipped dependency would skip the Package jobs too. Its
+  # regex also rejects the fork's tag format by design.
   Package-linux:
-    if: github.repository == 'opendp/tumult-core'
+    if: github.repository == 'The-Everyone-Project/tumult-core'
     runs-on: ubuntu-latest
-    needs: Check-Tag-Pattern
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,9 +59,8 @@ jobs:
           path: dist/*.tar.gz
 
   Package-macos-intel:
-    if: github.repository == 'opendp/tumult-core'
+    if: github.repository == 'The-Everyone-Project/tumult-core'
     runs-on: macos-15-intel
-    needs: Check-Tag-Pattern
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -65,9 +74,8 @@ jobs:
           path: dist/*.whl
 
   Package-macos-arm:
-    if: github.repository == 'opendp/tumult-core'
+    if: github.repository == 'The-Everyone-Project/tumult-core'
     runs-on: macos-latest
-    needs: Check-Tag-Pattern
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

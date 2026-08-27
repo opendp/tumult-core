@@ -4,7 +4,10 @@ Note that while most transformations in this module (:class:`~.CreateDictFromVal
 :class:`~.Subset`, and :class:`~.GetValue`) support the metric :class:`~.AddRemoveKeys`,
 :class:`~.AugmentDictTransformation` does not. Because of this, none of the included
 derived transformations (such as :func:`create_copy_and_transform_value`) support
-:class:`~.AddRemoveKeys`. Instead, use transformations in :mod:`~.add_remove_keys`.
+:class:`~.AddRemoveKeys`. Instead, use :class:`~.TransformValue`, whose per-backend
+subclasses live in
+:mod:`tmlt.core.transformations.spark_transformations.add_remove_keys` and
+:mod:`tmlt.core.transformations.pandas_transformations.add_remove_keys`.
 """
 
 # SPDX-License-Identifier: Apache-2.0
@@ -34,6 +37,7 @@ from tmlt.core.metrics import (
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.transformations.chaining import ChainTT
 from tmlt.core.transformations.identity import Identity
+from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.misc import get_nonconflicting_string
 
 
@@ -374,6 +378,171 @@ class GetValue(Transformation):
     def __call__(self, input_dict: Any) -> Any:
         """Returns value for specified key."""
         return input_dict[self.key]
+
+
+class TransformValue(Transformation):
+    """Base class transforming a specified key using an existing transformation.
+
+    This class can be subclassed for the purposes of making a claim that a kind of
+    Transformation (like
+    :class:`~tmlt.core.transformations.spark_transformations.filter.Filter`) can be
+    applied to a dataframe and augment the input dictionary with the output without
+    violating the closeness of neighboring dataframes with :class:`~.AddRemoveKeys`.
+
+    The class is engine-agnostic: it constrains the domains and metrics of the
+    dictionary and of the transformation it is given, and applies that transformation
+    to one of the dictionary's values, none of which depends on what kind of dataframe
+    the values are. The subclasses that name a particular transformation live with
+    that transformation's engine, in
+    :mod:`tmlt.core.transformations.spark_transformations.add_remove_keys` and
+    :mod:`tmlt.core.transformations.pandas_transformations.add_remove_keys`.
+
+    NOTE: This class cannot be instantiated directly.
+    """
+
+    @typechecked
+    def __init__(
+        self,
+        input_domain: DictDomain,
+        input_metric: AddRemoveKeys,
+        transformation: Transformation,
+        key: Any,
+        new_key: Any,
+    ):
+        """Constructor.
+
+        Args:
+            input_domain: The Domain of the input dictionary of dataframes.
+            input_metric: The input metric for the outer dictionary to dictionary
+                transformation.
+            transformation: The dataframe to dataframe transformation to
+                apply. Input and output metric must both be
+                ``IfGroupedBy({column}, SymmetricDifference())`` using the same
+                ``column``.
+            key: The key for the dataframe to transform.
+            new_key: The key to put the transformed output in. The key must not already
+                be in the input domain.
+        """
+        if self.__class__ == TransformValue:
+            raise ValueError(
+                "Cannot instantiate a TransformValue transformation directly. "
+                "Use one of the subclasses deriving this."
+            )
+        if key not in input_domain.key_to_domain:
+            raise DomainKeyError(
+                input_domain, key, f"{repr(key)} is not one of the input domain's keys"
+            )
+        if new_key in input_domain.key_to_domain:
+            raise ValueError(f"{repr(new_key)} is already a key in the input domain")
+        if transformation.input_domain != input_domain.key_to_domain[key]:
+            raise DomainMismatchError(
+                (transformation.input_domain, input_domain),
+                (
+                    f"Input domain's value for {repr(key)} does not match"
+                    " transformation's input domain"
+                ),
+            )
+        if not (
+            isinstance(transformation.input_metric, IfGroupedBy)
+            and isinstance(
+                transformation.input_metric.inner_metric, SymmetricDifference
+            )
+        ):
+            raise UnsupportedMetricError(
+                transformation.input_metric,
+                (
+                    "Transformation's input metric must be "
+                    "IfGroupedBy({column}, SymmetricDifference())"
+                ),
+            )
+        if len(transformation.input_metric.columns) != 1:
+            raise UnsupportedMetricError(
+                transformation.input_metric,
+                (
+                    "Transformation's input metric must have a "
+                    "single grouping column, but found "
+                    f"{transformation.input_metric.columns}"
+                ),
+            )
+        if not (
+            isinstance(transformation.output_metric, IfGroupedBy)
+            and isinstance(
+                transformation.output_metric.inner_metric, SymmetricDifference
+            )
+        ):
+            raise UnsupportedMetricError(
+                transformation.output_metric,
+                (
+                    "Transformation's output metric must be "
+                    "IfGroupedBy({column}, SymmetricDifference())"
+                ),
+            )
+        if len(transformation.output_metric.columns) != 1:
+            raise UnsupportedMetricError(
+                transformation.output_metric,
+                (
+                    "Transformation's output metric must have a "
+                    "single grouping column, but found "
+                    f"{transformation.output_metric.columns}"
+                ),
+            )
+        input_column = next(iter(transformation.input_metric.columns))
+        if input_metric.df_to_key_column[key] != input_column:
+            raise ValueError(
+                f"Transformation's input metric grouping column, {input_column}, does"
+                " not match the dataframe's key column,"
+                f" {input_metric.df_to_key_column[key]}."
+            )
+        output_column = next(iter(transformation.output_metric.columns))
+        output_metric = AddRemoveKeys(
+            {**input_metric.df_to_key_column, new_key: output_column}
+        )
+        output_domain = DictDomain(
+            {**input_domain.key_to_domain, new_key: transformation.output_domain}
+        )
+        self._transformation = transformation
+        self._key = key
+        self._new_key = new_key
+        # __init__ checks that domain and metric are compatible (multiple useful checks)
+        super().__init__(
+            input_domain=input_domain,
+            input_metric=input_metric,
+            output_domain=output_domain,
+            output_metric=output_metric,
+        )
+
+    @property
+    def transformation(self) -> Transformation:
+        """Returns the transformation that will be applied to create the new element."""
+        return self._transformation
+
+    @property
+    def key(self) -> Any:
+        """Returns the key for the dataframe to transform."""
+        return self._key
+
+    @property
+    def new_key(self) -> Any:
+        """Returns the new key for the transformed dataframe."""
+        return self._new_key
+
+    @typechecked
+    def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
+        """Returns the smallest d_out satisfied by the transformation.
+
+        See the privacy and stability tutorial (add link?) for more information.
+
+        Args:
+            d_in: Distance between inputs under input_metric.
+        """
+        self.input_metric.validate(d_in)
+        return ExactNumber(d_in)
+
+    def __call__(self, data: Dict[Any, Any]) -> Dict[Any, Any]:
+        """Returns a new dictionary augmented with the transformed dataframe."""
+        output = data.copy()
+        output[self.new_key] = self.transformation(output[self.key])
+        return output
 
 
 def create_copy_and_transform_value(
