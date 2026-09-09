@@ -355,14 +355,14 @@ class TestPublicJoin(TestComponent):
                 ["B", "C"],
                 ["B"],
                 ["C"],
-                re.escape("['C'] are overlapping columns but not join keys"),
+                re.escape("['C'] are overlapping columns but not used as join columns"),
                 SymmetricDifference(),
             ),
             (
                 ["B", "C"],
                 ["B"],
                 ["B", "C"],
-                re.escape("['C'] are overlapping columns but not join keys"),
+                re.escape("['C'] are overlapping columns but not used as join columns"),
                 SymmetricDifference(),
             ),
             (

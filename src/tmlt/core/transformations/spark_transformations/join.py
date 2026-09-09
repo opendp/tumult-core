@@ -330,7 +330,7 @@ class PublicJoin(Transformation):
             if bad_groupby_columns:
                 raise ValueError(
                     f"IfGroupedBy columns {bad_groupby_columns} are overlapping"
-                    " columns but not join keys."
+                    " columns but not used as join columns."
                 )
 
         public_df_join_columns = public_df.select(*join_cols)

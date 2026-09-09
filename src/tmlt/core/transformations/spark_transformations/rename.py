@@ -124,7 +124,7 @@ class Rename(Transformation):
             raise DomainColumnError(
                 input_domain,
                 nonexistent_columns,
-                f"Non existent keys in rename_mapping : {nonexistent_columns}",
+                f"Non existent columns in rename_mapping : {nonexistent_columns}",
             )
         for old, new in rename_mapping.items():
             if new in input_domain.schema and new != old:

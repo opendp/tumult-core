@@ -275,7 +275,7 @@ class TestLimitGroupsPerID(PySparkTest):
             sf.count_distinct("C").alias("count")
         )
         self.assertTrue(
-            all([row["count"] <= threshold for row in keys_per_group.collect()])
+            all([row["count"] <= threshold for row in groups_by_id.collect()])
         )
 
     @parameterized.expand(
