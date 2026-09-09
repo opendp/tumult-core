@@ -936,6 +936,9 @@ def create_average_measurement(
         ),
     )
 
+    lower_clamp, upper_clamp = _get_clamping_bounds(
+        input_domain, measure_column, lower, upper
+    )
     deviations_column = get_nonconflicting_string(list(input_domain.schema))
     deviations_map = Map(
         row_transformer=RowToRowTransformation(
@@ -944,7 +947,10 @@ def create_average_measurement(
                 {**input_domain.schema, deviations_column: input_domain[measure_column]}
             ),
             trusted_f=lambda row: {
-                deviations_column: row[measure_column] - midpoint_of_measure_column
+                deviations_column: min(
+                    max(row[measure_column], lower_clamp), upper_clamp
+                )
+                - midpoint_of_measure_column
             },
             augment=True,
         ),
@@ -1849,6 +1855,20 @@ def get_midpoint(
     return midpoint, exact_midpoint
 
 
+def _get_clamping_bounds(
+    input_domain: SparkDataFrameDomain,
+    measure_column: str,
+    lower: ExactNumber,
+    upper: ExactNumber,
+) -> Tuple[Union[int, float], Union[int, float]]:
+    """Returns appropriately rounded and typed clamping bounds."""
+    lower_ceil = lower.to_float(round_up=True)
+    upper_floor = lower_ceil if lower == upper else upper.to_float(round_up=False)
+    if isinstance(input_domain[measure_column], SparkFloatColumnDescriptor):
+        return float(lower_ceil), float(upper_floor)
+    return int(lower_ceil), int(upper_floor)
+
+
 def _create_map_to_compute_deviations(
     input_domain: SparkDataFrameDomain,
     input_metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
@@ -1869,6 +1889,20 @@ def _create_map_to_compute_deviations(
         ExactNumber(0) if lower <= 0 <= upper else min(lower**2, upper**2)
     )
     upper_after_squaring: ExactNumber = max(lower**2, upper**2)
+    measure_column_descriptor = input_domain[measure_column]
+    if isinstance(measure_column_descriptor, SparkIntegerColumnDescriptor):
+        int_max = measure_column_descriptor.SIZE_TO_MIN_MAX[
+            measure_column_descriptor.size
+        ][1]
+        if upper_after_squaring > int_max:
+            raise ValueError(
+                "The squares of the clamping bounds must fit in the measure column's"
+                f" integer type, but max(lower^2, upper^2) = {upper_after_squaring}"
+                f" exceeds {int_max}. Use smaller bounds or a float column."
+            )
+    lower_clamp, upper_clamp = _get_clamping_bounds(
+        input_domain, measure_column, lower, upper
+    )
     (midpoint_of_squared_measure_column, _) = get_midpoint(
         lower_after_squaring,
         upper_after_squaring,
@@ -1894,8 +1928,14 @@ def _create_map_to_compute_deviations(
                     }
                 ),
                 trusted_f=lambda row: {
-                    deviations_column: row[measure_column] - midpoint_of_measure_column,
-                    squared_deviations_column: row[measure_column] ** 2
+                    deviations_column: min(
+                        max(row[measure_column], lower_clamp), upper_clamp
+                    )
+                    - midpoint_of_measure_column,
+                    squared_deviations_column: min(
+                        max(row[measure_column], lower_clamp), upper_clamp
+                    )
+                    ** 2
                     - midpoint_of_squared_measure_column,
                 },
                 augment=True,
