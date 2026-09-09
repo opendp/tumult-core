@@ -118,7 +118,7 @@ class LimitRowsPerID(Transformation):
             output_metric: Distance metric for output DataFrames. This should be
                 ``SymmetricDifference()`` or
                 ``IfGroupedBy(id_columns, SymmetricDifference())``.
-            id_columns: Names of the columns the contain the IDs for each row.
+            id_columns: Names of the columns that contain the IDs for each row.
             threshold: The maximum number of rows per ID after truncation.
         """
         if threshold < 0:
