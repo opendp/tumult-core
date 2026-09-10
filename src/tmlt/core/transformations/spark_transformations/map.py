@@ -1219,8 +1219,8 @@ class Map(Transformation):
         return mapped_sdf
 
 
-class FlatMapByKey(Transformation):
-    """Applies a :class:`~.RowsToRowsTransformation` to rows, grouped by key.
+class FlatMapByID(Transformation):
+    """Applies a :class:`~.RowsToRowsTransformation` to rows, grouped by ID.
 
     .. note::
         The transformation function must not contain any objects that
@@ -1241,7 +1241,7 @@ class FlatMapByKey(Transformation):
             >>> # the udf fails to pickle the RowsToRowsTransformation
             >>> from tmlt.core.transformations.spark_transformations.map import (
             ...     RowsToRowsTransformation,
-            ...     FlatMapByKey,
+            ...     FlatMapByID,
             ... )
             >>> from tmlt.core.utils.misc import print_sdf
             >>> spark = SparkSession.builder.getOrCreate()
@@ -1255,7 +1255,7 @@ class FlatMapByKey(Transformation):
             ... )
             >>> def sum_v(rows: List[Row]) -> List[Row]:
             ...     return [{"sum": sum(r["v"] for r in rows)}]
-            >>> sum_by_key_transformation = RowsToRowsTransformation(
+            >>> sum_by_id_transformation = RowsToRowsTransformation(
             ...     input_domain=ListDomain(SparkRowDomain({
             ...         "id": SparkStringColumnDescriptor(),
             ...         "v": SparkIntegerColumnDescriptor(),
@@ -1275,14 +1275,14 @@ class FlatMapByKey(Transformation):
         1  b  2
         2  c  3
         3  c  4
-        >>> # sum_by_key_transformation is a RowsToRowsTransformation that sums column v
+        >>> # sum_by_id_transformation is a RowsToRowsTransformation that sums column v
         >>> # for each ID group.
-        >>> sum_by_key = FlatMapByKey(
+        >>> sum_by_id = FlatMapByID(
         ...     metric=IfGroupedBy({"id"}, SymmetricDifference()),
-        ...     row_transformer=sum_by_key_transformation,
+        ...     row_transformer=sum_by_id_transformation,
         ... )
         >>> # Apply transformation to data
-        >>> transformed_spark_dataframe = sum_by_key(spark_dataframe)
+        >>> transformed_spark_dataframe = sum_by_id(spark_dataframe)
         >>> print_sdf(transformed_spark_dataframe)
           id  sum
         0  a    1
@@ -1296,17 +1296,17 @@ class FlatMapByKey(Transformation):
           inner metric :class:`~.SymmetricDifference`
         * Output metric - :class:`~.IfGroupedBy` (matches input metric)
 
-        >>> sum_by_key.input_domain
+        >>> sum_by_id.input_domain
         SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'v': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
-        >>> sum_by_key.output_domain
+        >>> sum_by_id.output_domain
         SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'sum': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
-        >>> sum_by_key.input_metric
+        >>> sum_by_id.input_metric
         IfGroupedBy(columns={'id'}, inner_metric=SymmetricDifference())
-        >>> sum_by_key.output_metric
+        >>> sum_by_id.output_metric
         IfGroupedBy(columns={'id'}, inner_metric=SymmetricDifference())
 
         Stability Guarantee:
-            :class:`~.FlatMapByKey`'s :meth:`~.stability_function` returns ``d_in``.
+            :class:`~.FlatMapByID`'s :meth:`~.stability_function` returns ``d_in``.
     """  # noqa: E501
 
     @typechecked
@@ -1320,8 +1320,8 @@ class FlatMapByKey(Transformation):
         Args:
             metric: Distance metric for input and output DataFrames.
             row_transformer: Transformation to apply to each group of rows. This
-                transformation should have the key column in its input domain,
-                but it must *not* include the key column in its output domain.
+                transformation should have the ID column in its input domain,
+                but it must *not* include the ID column in its output domain.
         """
         # NOTE: asserts are redundant but needed for mypy
         assert isinstance(row_transformer.input_domain, ListDomain)
@@ -1337,13 +1337,13 @@ class FlatMapByKey(Transformation):
         if len(metric.columns) > 1:
             raise UnsupportedMetricError(
                 metric,
-                "Keys must be contained in a single column, but FlatMapByKey "
+                "IDs must be contained in a single column, but FlatMapByID "
                 "got an IfGroupedBy with multiple columns.",
             )
 
-        self._key_column = next(iter(metric.columns))
+        self._id_column = next(iter(metric.columns))
         output_schema = OrderedDict(row_transformer.output_domain.element_domain.schema)
-        if self._key_column in output_schema:
+        if self._id_column in output_schema:
             raise UnsupportedDomainError(
                 row_transformer.output_domain,
                 "Transformer output rows must not contain grouping column.",
@@ -1354,7 +1354,7 @@ class FlatMapByKey(Transformation):
         )
 
         # Determining the output domain requires that the input domain is valid
-        # (in particular, that the key column exists in it), so do this check
+        # (in particular, that the ID column exists in it), so do this check
         # early to prevent that case.
         if not metric.supports_domain(input_domain):
             raise UnsupportedCombinationError(
@@ -1365,11 +1365,11 @@ class FlatMapByKey(Transformation):
                 ),
             )
 
-        # Add the key column back to the schema, ensuring it is the first column.
-        output_schema[self._key_column] = (
-            row_transformer.input_domain.element_domain.schema[self._key_column]
+        # Add the ID column back to the schema, ensuring it is the first column.
+        output_schema[self._id_column] = (
+            row_transformer.input_domain.element_domain.schema[self._id_column]
         )
-        output_schema.move_to_end(self._key_column, last=False)
+        output_schema.move_to_end(self._id_column, last=False)
 
         super().__init__(
             input_domain=input_domain,
@@ -1431,35 +1431,36 @@ class FlatMapByKey(Transformation):
         #
         # Instead, what's going on here is:
         # * The rows of the input dataframe are converted to the following format:
-        #       Row(key=<id>, row=Row(<all of the fields in the original row>))
-        # * Then, this transformed dataframe is grouped by key and aggregated
+        #       Row(id=<id>, row=Row(<all of the fields in the original row>))
+        # * Then, this transformed dataframe is grouped by id and aggregated
         #   using collect_list, which converts it into a dataframe with one row
-        #   for each key, and the "collect_list(row)" column containing an array
-        #   of all of the rows in the original dataframe that had that key.
+        #   for each id, and the "collect_list(row)" column containing an array
+        #   of all of the rows in the original dataframe that had that id.
         # * From here, we call apply_udf to apply the row transformer to
         #   "collect_list(row)", break out each of the original rows
-        #   into its own row again, and re-add the key column.
+        #   into its own row again, and re-add the id column.
         # There's probably a more efficient way of doing this that doesn't
         # involve going back and forth between DataFrames and RDDs as many
         # times, but this seems to work.
 
         def apply_udf(grouped_rows: Row) -> List[Row]:
-            key = grouped_rows["key"]
+            identifier = grouped_rows["id"]
             rows = grouped_rows["collect_list(row)"]
             transformed_rows = self.row_transformer(rows)
             # PySpark doesn't handle empty rows very gracefully, so if the
             # output rows are empty, don't bother looking at them.
             if len(transformer_output_schema) == 0:
-                return [Row(**{self._key_column: key}) for _ in transformed_rows]
+                return [Row(**{self._id_column: identifier}) for _ in transformed_rows]
             return [
-                Row(**{self._key_column: key}, **r.asDict()) for r in transformed_rows
+                Row(**{self._id_column: identifier}, **r.asDict())
+                for r in transformed_rows
             ]
 
         grouped_df = (
             spark.createDataFrame(
-                sdf.rdd.keyBy(lambda r: r[self._key_column]), ["key", "row"]
+                sdf.rdd.keyBy(lambda r: r[self._id_column]), ["id", "row"]
             )
-            .groupby("key")
+            .groupby("id")
             .agg(sf.collect_list("row"))
         )
         return spark.createDataFrame(

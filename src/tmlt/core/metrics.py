@@ -1333,24 +1333,28 @@ class DictMetric(Metric):
         )
 
 
-class AddRemoveKeys(Metric):
-    """The number of keys that dictionaries of dataframe differ by.
+class AddRemoveIDs(Metric):
+    """The number of IDs that dictionaries of dataframe differ by.
+
+    The metric compares dictionaries of dataframes where each row has an associated
+    ID. It compares the set of IDs across all dataframes in the dictionary, and
+    computes the symmetric difference.
 
     This metric can be thought of as a extension of :class:`IfGroupedBy` with inner
     metric :class:`~SymmetricDifference`, except it is applied to a dictionary of
     dataframes, instead of a single dataframe.
 
-    ``AddRemoveKeys(X)`` can be described in the following way:
+    ``AddRemoveIDs(X)`` can be described in the following way:
 
-    Sum over each key that appears in the key column in either
-    neighbor, where the key column for dataframe df is given by ``X[df]``.
+    Sum over each ID that appears in the ID column in either
+    neighbor, where the ID column for dataframe df is given by ``X[df]``.
 
-    - 0 if both neighbors "match" for ``X[df] = key``
-    - 1 if only one neighbor has records for ``X[df] = key``
-    - 2 if both neighbor have records for ``X[df] = key``, but they don't "match"
+    - 0 if both neighbors "match" for ``X[df] = ID``
+    - 1 if only one neighbor has records for ``X[df] = ID``
+    - 2 if both neighbor have records for ``X[df] = ID``, but they don't "match"
 
-    The key column cannot contain floating point values, and all dataframes must have
-    the same type for the key column. The key columns for the different dataframes may
+    The ID column cannot contain floating point values, and all dataframes must have
+    the same type for the ID column. The ID columns for the different dataframes may
     have different names.
 
     Examples:
@@ -1377,8 +1381,8 @@ class AddRemoveKeys(Metric):
         ...         ),
         ...     }
         ... )
-        >>> metric = AddRemoveKeys({1: "A", 2: "C"})
-        >>> # key=1 matches, key=2 is only in value1, key=3 is only in value2, key=4
+        >>> metric = AddRemoveIDs({1: "A", 2: "C"})
+        >>> # ID=1 matches, ID=2 is only in value1, ID=3 is only in value2, ID=4
         >>> # differs
         >>> value1 = {
         ...     1: spark.createDataFrame(
@@ -1420,23 +1424,23 @@ class AddRemoveKeys(Metric):
         4
     """
 
-    FORMAT_EXCLUDED_ATTRS = Metric.FORMAT_EXCLUDED_ATTRS | {"df_to_key_column"}
+    FORMAT_EXCLUDED_ATTRS = Metric.FORMAT_EXCLUDED_ATTRS | {"df_to_id_column"}
     """Attributes hidden from the formatted output. @nodoc"""
 
     @typechecked
-    def __init__(self, df_to_key_column: Mapping[Any, str]):
+    def __init__(self, df_to_id_column: Mapping[Any, str]):
         """Constructor.
 
         Args:
-            df_to_key_column: A dictionary mapping dataframe names to the name of the
-                key column in that dataframe.
+            df_to_id_column: A dictionary mapping dataframe names to the name of the
+                ID column in that dataframe.
         """
-        self._df_to_key_column: Dict[Any, str] = dict(df_to_key_column.items())
+        self._df_to_id_column: Dict[Any, str] = dict(df_to_id_column.items())
 
     @property
-    def df_to_key_column(self) -> Dict[Any, str]:
+    def df_to_id_column(self) -> Dict[Any, str]:
         """Returns the key column."""
-        return self._df_to_key_column.copy()
+        return self._df_to_id_column.copy()
 
     @typechecked
     def validate(self, value: ExactNumberInput) -> None:
@@ -1472,11 +1476,11 @@ class AddRemoveKeys(Metric):
         if isinstance(domain, DictDomain):
             column_descriptor = None
             if set(domain.key_to_domain).symmetric_difference(
-                set(self.df_to_key_column)
+                set(self.df_to_id_column)
             ):
                 return False
-            for key, element_domain in domain.key_to_domain.items():
-                id_column = self.df_to_key_column[key]
+            for table_name, element_domain in domain.key_to_domain.items():
+                id_column = self.df_to_id_column[table_name]
                 if not isinstance(element_domain, SparkDataFrameDomain):
                     return False
                 if id_column not in element_domain.schema:
@@ -1502,63 +1506,63 @@ class AddRemoveKeys(Metric):
         """
         self._validate_distance_arguments(value1, value2, domain)
         assert isinstance(domain, DictDomain)
-        keys_in_value1_elements = {}
-        keys_in_value2_elements = {}
-        for dict_key in domain.key_to_domain:
-            keys_in_value1_elements[dict_key] = set(
-                value1[dict_key]
-                .select(self.df_to_key_column[dict_key])
+        ids_in_value1_elements = {}
+        ids_in_value2_elements = {}
+        for table_name in domain.key_to_domain:
+            ids_in_value1_elements[table_name] = set(
+                value1[table_name]
+                .select(self.df_to_id_column[table_name])
                 .distinct()
                 .rdd.map(lambda x: x[0])
                 .collect()
             )
-            keys_in_value2_elements[dict_key] = set(
-                value2[dict_key]
-                .select(self.df_to_key_column[dict_key])
+            ids_in_value2_elements[table_name] = set(
+                value2[table_name]
+                .select(self.df_to_id_column[table_name])
                 .distinct()
                 .rdd.map(lambda x: x[0])
                 .collect()
             )
-        value1_keys = reduce(lambda x, y: x | y, keys_in_value1_elements.values())
-        value2_keys = reduce(lambda x, y: x | y, keys_in_value2_elements.values())
-        added_keys = value2_keys - value1_keys
-        removed_keys = value1_keys - value2_keys
+        value1_ids = reduce(lambda x, y: x | y, ids_in_value1_elements.values())
+        value2_ids = reduce(lambda x, y: x | y, ids_in_value2_elements.values())
+        added_ids = value2_ids - value1_ids
+        removed_ids = value1_ids - value2_ids
 
-        # keys which may have changed
-        for key in value1_keys & value2_keys:
-            for dict_key in domain.key_to_domain:
-                df1 = value1[dict_key].filter(
-                    sf.col(self.df_to_key_column[dict_key]).eqNullSafe(key)
+        # ids which may have changed
+        for identifier in value1_ids & value2_ids:
+            for table_name in domain.key_to_domain:
+                df1 = value1[table_name].filter(
+                    sf.col(self.df_to_id_column[table_name]).eqNullSafe(identifier)
                 )
-                df2 = value2[dict_key].filter(
-                    sf.col(self.df_to_key_column[dict_key]).eqNullSafe(key)
+                df2 = value2[table_name].filter(
+                    sf.col(self.df_to_id_column[table_name]).eqNullSafe(identifier)
                 )
                 if (
                     SymmetricDifference().distance(
-                        df1, df2, domain.key_to_domain[dict_key]
+                        df1, df2, domain.key_to_domain[table_name]
                     )
                     > 0
                 ):
-                    added_keys.add(key)
-                    removed_keys.add(key)
+                    added_ids.add(identifier)
+                    removed_ids.add(identifier)
                     break
-        distance = ExactNumber(len(added_keys) + len(removed_keys))
+        distance = ExactNumber(len(added_ids) + len(removed_ids))
         self.validate(distance)
         return distance
 
     def __repr__(self) -> str:
         """Returns string representation."""
         return (
-            f"{self.__class__.__name__}(df_to_key_column={repr(self.df_to_key_column)})"
+            f"{self.__class__.__name__}(df_to_id_column={repr(self.df_to_id_column)})"
         )
 
     def _format_children(self) -> str:
         """Render each dataframe's key column on a separate labeled line."""
-        if not self._df_to_key_column:
+        if not self._df_to_id_column:
             return ""
         labels_and_values = [
-            (str(key), self.df_to_key_column[key])
-            for key in sorted(self.df_to_key_column, key=str)
+            (str(table_name), self.df_to_id_column[table_name])
+            for table_name in sorted(self.df_to_id_column, key=str)
         ]
         width = max(len(label) for label, _ in labels_and_values) + 2
         return "\n".join(
