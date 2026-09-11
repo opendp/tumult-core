@@ -10,18 +10,45 @@ import numpy as np
 from randomgen.rdrand import RDRAND
 from randomgen.wrapper import UserBitGenerator
 
-try:
-    _core_privacy_prng = np.random.Generator(RDRAND())
-except RuntimeError:
 
-    def _random_raw(_: Any) -> int:
-        return int.from_bytes(os.urandom(8), "big")
+def _random_raw(_: Any) -> int:
+    return int.from_bytes(os.urandom(8), "big")
 
-    _core_privacy_prng = np.random.Generator(UserBitGenerator(_random_raw, 64))
+
+def _create_prng() -> np.random.Generator:
+    """Returns a fresh generator backed by RDRAND, or by ``os.urandom`` without it."""
+    try:
+        return np.random.Generator(RDRAND())
+    except RuntimeError:
+        return np.random.Generator(UserBitGenerator(_random_raw, 64))
+
+
+_core_privacy_prng = _create_prng()
+
+
+def _reset_prng_after_fork() -> None:
+    """Replaces the generator in a child process created by :func:`os.fork`.
+
+    The RDRAND bit generator keeps a buffer of random words in user space.
+    After ``fork()`` the child inherits a copy of that buffer, so without this
+    hook the parent and every child would produce the same noise until the
+    buffer is exhausted. Building a new generator discards the inherited
+    buffer; RDRAND is stateless underneath, so nothing is lost.
+    """
+    global _core_privacy_prng  # noqa: PLW0603
+    _core_privacy_prng = _create_prng()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_prng_after_fork)
 
 
 def prng() -> np.random.Generator:
-    """Getter for prng."""
+    """Getter for prng.
+
+    Always call this rather than caching the returned generator: it is replaced
+    in child processes after ``fork()``.
+    """
     return _core_privacy_prng
 
 
