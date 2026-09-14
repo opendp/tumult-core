@@ -1860,7 +1860,7 @@ def _get_clamping_bounds(
     measure_column: str,
     lower: ExactNumber,
     upper: ExactNumber,
-) -> Tuple[Union[int, float], Union[int, float]]:
+) -> Tuple[int, int] | Union[float, float]:
     """Returns appropriately rounded and typed clamping bounds."""
     lower_ceil = lower.to_float(round_up=True)
     upper_floor = lower_ceil if lower == upper else upper.to_float(round_up=False)
