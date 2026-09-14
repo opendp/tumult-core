@@ -5,7 +5,7 @@
 import functools
 import random
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union, cast
-from unittest import TestCase, assertAlmostEqual, assertRaisesRegex
+from unittest import TestCase
 
 import numpy as np
 import pandas as pd
@@ -2104,9 +2104,7 @@ class TestBounds:
             ),
             (
                 SparkFloatColumnDescriptor(),
-                pd.DataFrame(
-                    {"X": [-(2**-99.5)] * 8 + [0.0] * 10 + [2**-99.5] * 8}
-                ),
+                pd.DataFrame({"X": [-(2**-99.5)] * 8 + [0.0] * 10 + [2**-99.5] * 8}),
                 0.95,
                 2**-99,
             ),
@@ -2233,21 +2231,20 @@ class TestBounds:
         assert_dataframe_equal(output, expected_df)
         assert measurement.privacy_function(1) == sp.oo
 
+
 INT_DOMAIN = SparkDataFrameDomain({"X": SparkIntegerColumnDescriptor()})
 FLOAT_DOMAIN = SparkDataFrameDomain({"X": SparkFloatColumnDescriptor()})
 
-def _df(self, domain: SparkDataFrameDomain, values: List[Any]) -> DataFrame:
-    return self.spark.createDataFrame(
-        [(v,) for v in values], schema=domain.spark_schema
-    )
 
-@parameterized.expand(
-    [
-        (create_variance_measurement, 1),
-        (create_standard_deviation_measurement, 0.5),
-    ]
+def _df(spark, domain: SparkDataFrameDomain, values: List[Any]) -> DataFrame:
+    return spark.createDataFrame([(v,) for v in values], schema=domain.spark_schema)
+
+
+@parametrize(
+    Case("variance")(factory=create_variance_measurement, power=1),
+    Case("stdev")(factory=create_standard_deviation_measurement, power=0.5),
 )
-def test_integer_outliers_do_not_overflow(factory: Callable, power: float):
+def test_integer_outliers_do_not_overflow(spark, factory: Callable, power: float):
     """Variance & stdev of an integer column with huge outliers are finite."""
     values = [
         10,
@@ -2270,16 +2267,15 @@ def test_integer_outliers_do_not_overflow(factory: Callable, power: float):
         lower=0,
         upper=100,
     )
-    answer = measurement(_df(INT_DOMAIN, values))
-    assertAlmostEqual(float(answer), expected, places=6)
+    answer = measurement(_df(spark, INT_DOMAIN, values))
+    assert float(answer) == pytest.approx(expected)
 
-@parameterized.expand(
-    [
-        (create_variance_measurement, 1),
-        (create_standard_deviation_measurement, 0.5),
-    ]
+
+@parametrize(
+    Case("variance")(factory=create_variance_measurement, power=1),
+    Case("stdev")(factory=create_standard_deviation_measurement, power=0.5),
 )
-def test_float_outliers_do_not_overflow(factory: Callable, power: float):
+def test_float_outliers_do_not_overflow(spark, factory: Callable, power: float):
     """Variance & stdev of float values that square to infinity are finite."""
     values = [1.0, 2.0, 1e200, -1e200]
     expected = float(np.var(np.clip(values, 0.0, 100.0), ddof=1)) ** power
@@ -2293,10 +2289,11 @@ def test_float_outliers_do_not_overflow(factory: Callable, power: float):
         lower=0,
         upper=100,
     )
-    answer = measurement(_df(FLOAT_DOMAIN, values))
-    assertAlmostEqual(float(answer), expected, places=6)
+    answer = measurement(_df(spark, FLOAT_DOMAIN, values))
+    assert float(answer) == pytest.approx(expected)
 
-def test_average_integer_extremes_do_not_overflow():
+
+def test_average_integer_extremes_do_not_overflow(spark):
     """Average of an integer column with values at the int64 limits."""
     values = [10, 20, -(2**63), 2**63 - 1]
     expected = float(np.mean(np.clip(values, 0, 100)))
@@ -2310,13 +2307,18 @@ def test_average_integer_extremes_do_not_overflow():
         lower=0,
         upper=100,
     )
-    answer = measurement(_df(INT_DOMAIN, values))
-    assertAlmostEqual(float(answer), expected, places=6)
+    answer = measurement(_df(spark, INT_DOMAIN, values))
+    assert float(answer) == pytest.approx(expected)
 
-def test_integer_bounds_whose_squares_overflow_are_rejected():
+
+@parametrize(
+    Case("variance")(factory=create_variance_measurement),
+    Case("stdev")(factory=create_standard_deviation_measurement),
+)
+def test_integer_bounds_whose_squares_overflow_are_rejected(spark, factory: Callable):
     """Bounds whose squares do not fit in int64 are rejected at construction."""
-    with assertRaisesRegex(ValueError, "squares of the clamping bounds"):
-        create_variance_measurement(
+    with pytest.raises(ValueError, match="squares of the clamping bounds"):
+        factory(
             input_domain=INT_DOMAIN,
             input_metric=SymmetricDifference(),
             output_measure=PureDP(),
