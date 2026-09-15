@@ -27,7 +27,7 @@ Changed
 
 Fixed
 ~~~~~
-- The random number generator used for noise is now rebuilt in child processes created by ``fork()``. Previously a child inherited the parent's buffered random words, so the parent and all of its children produced the same noise until the buffer was exhausted.
+- The random number generator used for noise is now rebuilt when it is first used in a new process. Previously a process created by ``fork()`` inherited the parent's buffered random words, so the parent and all of its children produced the same noise until the buffer was exhausted.
 
 
 .. _v0.19.1:

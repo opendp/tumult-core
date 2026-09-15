@@ -46,22 +46,28 @@ class TestRNG(TestCase):
             tmlt.core.random.rng.prng().bit_generator, UserBitGenerator
         )
 
-    def test_reset_after_fork_replaces_generator(self):
-        """The after-fork hook installs a fresh generator of the same kind."""
+    def test_same_process_keeps_generator(self):
+        """Repeated calls in one process return the same generator object."""
+        self.assertIs(tmlt.core.random.rng.prng(), tmlt.core.random.rng.prng())
+
+    def test_pid_change_replaces_generator(self):
+        """A changed process ID makes prng() build a fresh generator, once."""
         before = tmlt.core.random.rng.prng()
-        tmlt.core.random.rng._reset_prng_after_fork()  # noqa: SLF001
-        after = tmlt.core.random.rng.prng()
-        self.assertIsNot(after, before)
-        self.assertIs(type(after.bit_generator), type(before.bit_generator))
-        self.assertTrue(0 <= after.uniform() <= 1)
+        with patch("tmlt.core.random.rng.os.getpid", return_value=os.getpid() + 1):
+            after = tmlt.core.random.rng.prng()
+            self.assertIsNot(after, before)
+            self.assertIs(type(after.bit_generator), type(before.bit_generator))
+            self.assertTrue(0 <= after.uniform() <= 1)
+            # Rebuilt once for the new PID, not on every call.
+            self.assertIs(tmlt.core.random.rng.prng(), after)
 
     @skipUnless(hasattr(os, "fork"), "requires os.fork")
     def test_child_processes_do_not_replay_parent_randomness(self):
         """Random words drawn after fork() differ between parent and children.
 
         The RDRAND bit generator buffers random words in user space; a child
-        created by fork() inherits the buffer. Without the after-fork hook the
-        parent and every child continue from the same buffered words.
+        created by fork() inherits the buffer. Without the PID check in prng()
+        the parent and every child continue from the same buffered words.
         """
 
         def draw() -> list:
