@@ -10,18 +10,37 @@ import numpy as np
 from randomgen.rdrand import RDRAND
 from randomgen.wrapper import UserBitGenerator
 
-try:
-    _core_privacy_prng = np.random.Generator(RDRAND())
-except RuntimeError:
 
-    def _random_raw(_: Any) -> int:
-        return int.from_bytes(os.urandom(8), "big")
+def _random_raw(_: Any) -> int:
+    return int.from_bytes(os.urandom(8), "big")
 
-    _core_privacy_prng = np.random.Generator(UserBitGenerator(_random_raw, 64))
+
+def _create_prng() -> np.random.Generator:
+    """Returns a fresh generator backed by RDRAND, or by ``os.urandom`` without it."""
+    try:
+        return np.random.Generator(RDRAND())
+    except RuntimeError:
+        return np.random.Generator(UserBitGenerator(_random_raw, 64))
+
+
+_core_privacy_prng = _create_prng()
+_core_privacy_prng_pid = os.getpid()
 
 
 def prng() -> np.random.Generator:
-    """Getter for prng."""
+    """Getter for prng. Always call this rather than caching the returned generator.
+
+    RDRAND keeps a buffer of random words in user space. A process created by ``fork()``
+    inherits a copy of that buffer, so by default the parent and every child would
+    produce the same noise until the buffer is exhausted. To avoid this, we compare the
+    current process ID with the one the generator was created in and build a fresh
+    generator on a mismatch.
+    """
+    global _core_privacy_prng, _core_privacy_prng_pid  # noqa: PLW0603
+    pid = os.getpid()
+    if pid != _core_privacy_prng_pid:
+        _core_privacy_prng = _create_prng()
+        _core_privacy_prng_pid = pid
     return _core_privacy_prng
 
 
