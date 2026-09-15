@@ -350,6 +350,11 @@ class PublicJoin(Transformation):
                 .to_list(),
                 default=0,
             )
+            if how == "left":
+                # A left join keeps every private row at least once, so the stability is
+                # at least 1 even if the public table is empty (or has only null join
+                # keys with join_on_nulls=False).
+                self._join_stability = max(self._join_stability, 1)
 
         super().__init__(
             input_domain=input_domain,
