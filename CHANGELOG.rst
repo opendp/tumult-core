@@ -27,8 +27,8 @@ Changed
 
 Fixed
 ~~~~~
-- :class:`~tmlt.core.transformations.spark_transformations.join.PublicJoin` with ``how="left"`` now reports a stability of at least 1, even if the public table is empty, or has only null join keys with ``join_on_nulls=False``. Previously it would report a stability of 0.
-
+- :class:`~tmlt.core.transformations.spark_transformations.join.PublicJoin` with ``how="left"`` now reports a stability of at least 1, even if the public table is empty, or has only null join keys with ``join_on_nulls=False``. Previously it would incorrectly report a stability of 0.
+- The random number generator used for noise is now rebuilt when it is first used in a new process. Previously a process created by ``fork()`` inherited the parent's buffered random words, so the parent and all of its children produced the same noise until the buffer was exhausted.
 
 .. _v0.19.1:
 
