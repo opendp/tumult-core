@@ -472,130 +472,175 @@ class TestPublicJoin(TestComponent):
 
     @parameterized.expand(
         [
+            # (name, private rows, private B nullable, public rows, join_cols,
+            #  join_on_nulls, how, expected stability, expected output rows)
             (
+                "join_on_nulls",
+                [(1.2, "X"), (0.5, None)],
                 True,
-                pd.DataFrame(
-                    [["X", 1.2, 1.1], [None, 0.1, 1.2], [None, 0.1, 2.1]],
-                    columns=["B", "A", "C"],
-                ),
+                [(None, 2.1), (None, 1.2), ("X", 1.1)],
+                None,
+                True,
+                "inner",
+                2,
+                [("X", 1.2, 1.1), (None, 0.5, 2.1), (None, 0.5, 1.2)],
             ),
-            (False, pd.DataFrame([["X", 1.2, 1.1]], columns=["B", "A", "C"])),
+            (
+                "nulls_not_joined_on",
+                [(1.2, "X"), (0.5, None)],
+                True,
+                [(None, 2.1), (None, 1.2), ("X", 1.1)],
+                None,
+                False,
+                "inner",
+                1,
+                [("X", 1.2, 1.1)],
+            ),
+            (
+                "empty_public_table_inner",
+                [(1.2, "X"), (0.1, "Y")],
+                False,
+                [],
+                ["B"],
+                False,
+                "inner",
+                0,
+                [],
+            ),
+            (
+                "empty_public_table_left",
+                [(1.2, "X"), (0.1, "Y")],
+                False,
+                [],
+                ["B"],
+                False,
+                "left",
+                1,
+                [("X", 1.2, None), ("Y", 0.1, None)],
+            ),
+            (
+                "only_null_keys_inner",
+                [(1.2, "X"), (0.1, "Y")],
+                False,
+                [(None, 1.0), (None, 2.0)],
+                ["B"],
+                False,
+                "inner",
+                0,
+                [],
+            ),
+            (
+                "only_null_keys_left",
+                [(1.2, "X"), (0.1, "Y")],
+                False,
+                [(None, 1.0), (None, 2.0)],
+                ["B"],
+                False,
+                "left",
+                1,
+                [("X", 1.2, None), ("Y", 0.1, None)],
+            ),
+            (
+                "unmatched_private_row_left",
+                [(1.2, "X"), (0.1, "Y")],
+                False,
+                [("X", 1.1), ("Z", 1.2)],
+                ["B"],
+                False,
+                "left",
+                1,
+                [("X", 1.2, 1.1), ("Y", 0.1, None)],
+            ),
+            (
+                "multiplicity_2_inner",
+                [(1.2, "X"), (0.1, "Y")],
+                False,
+                [("X", 1.0), ("X", 2.0)],
+                ["B"],
+                False,
+                "inner",
+                2,
+                [("X", 1.2, 1.0), ("X", 1.2, 2.0)],
+            ),
+            (
+                "multiplicity_2_unmatched",
+                [(1.2, "X"), (0.1, "Y")],
+                False,
+                [("Z", 1.0), ("Z", 2.0)],
+                ["B"],
+                False,
+                "inner",
+                2,
+                [],
+            ),
+            (
+                "multiplicity_2_left",
+                [(1.2, "X"), (0.1, "Y")],
+                False,
+                [("X", 1.0), ("X", 2.0)],
+                ["B"],
+                False,
+                "left",
+                2,
+                [("X", 1.2, 1.0), ("X", 1.2, 2.0), ("Y", 0.1, None)],
+            ),
         ]
     )
-    def test_join_null_behavior(self, join_on_nulls: bool, expected: pd.DataFrame):
-        """Tests that PublicJoin deals with null values on join columns correctly."""
+    def test_join_stability_and_output(
+        self,
+        _name: str,
+        private_rows: List[tuple],
+        private_b_nullable: bool,
+        public_rows: List[tuple],
+        join_cols: Optional[List[str]],
+        join_on_nulls: bool,
+        how: str,
+        expected_stability: int,
+        expected_rows: List[tuple],
+    ):
+        """PublicJoin's stability and output is correct across join settings."""
         public_join = PublicJoin(
             input_domain=SparkDataFrameDomain(
                 {
                     "A": SparkFloatColumnDescriptor(),
-                    "B": SparkStringColumnDescriptor(allow_null=True),
+                    "B": SparkStringColumnDescriptor(allow_null=private_b_nullable),
                 }
             ),
             metric=SymmetricDifference(),
             public_df=self.spark.createDataFrame(
-                [(None, 2.1), (None, 1.2), ("X", 1.1)], schema=["B", "C"]
+                public_rows,
+                schema=st.StructType(
+                    [
+                        st.StructField("B", st.StringType(), nullable=True),
+                        st.StructField("C", st.DoubleType(), nullable=False),
+                    ]
+                ),
             ),
             public_df_domain=SparkDataFrameDomain(
                 {
                     "B": SparkStringColumnDescriptor(allow_null=True),
-                    "C": SparkFloatColumnDescriptor(allow_null=True),
+                    "C": SparkFloatColumnDescriptor(),
                 }
             ),
+            join_cols=join_cols,
             join_on_nulls=join_on_nulls,
+            how=how,
         )
+        self.assertEqual(public_join.stability, expected_stability)
+        self.assertEqual(public_join.stability_function(1), expected_stability)
         private_df = self.spark.createDataFrame(
-            [(1.2, "X"), (0.1, None)], schema=["A", "B"]
-        )
-        actual = public_join(private_df)
-        assert_dataframe_equal(actual, expected)
-
-    def test_join_on_nulls_stability(self):
-        """Tests that PublicJoin computes stability correctly when joining on nulls."""
-        public_join = PublicJoin(
-            input_domain=self.input_domain,
-            metric=SymmetricDifference(),
-            public_df=self.spark.createDataFrame(
-                [(None, 2.1), (None, 1.2), ("X", 1.1)],
-                schema=st.StructType(
-                    [
-                        st.StructField("B", st.StringType()),
-                        st.StructField("C", st.DoubleType(), nullable=False),
-                    ]
-                ),
+            private_rows,
+            schema=st.StructType(
+                [
+                    st.StructField("A", st.DoubleType(), nullable=False),
+                    st.StructField("B", st.StringType(), nullable=private_b_nullable),
+                ]
             ),
-            public_df_domain=SparkDataFrameDomain(
-                {
-                    "B": SparkStringColumnDescriptor(allow_null=True),
-                    "C": SparkFloatColumnDescriptor(),
-                }
-            ),
-            join_on_nulls=True,
         )
-        self.assertTrue(public_join.stability == 2)
-
-    def test_join_stability_ignores_nulls(self):
-        """Tests that stability is correct when join_on_nulls is False."""
-        public_join = PublicJoin(
-            input_domain=self.input_domain,
-            metric=SymmetricDifference(),
-            public_df=self.spark.createDataFrame(
-                [(None, 2.1), (None, 1.2), ("X", 1.1)],
-                schema=st.StructType(
-                    [
-                        st.StructField("B", st.StringType()),
-                        st.StructField("C", st.DoubleType(), nullable=False),
-                    ]
-                ),
-            ),
-            public_df_domain=SparkDataFrameDomain(
-                {
-                    "B": SparkStringColumnDescriptor(allow_null=True),
-                    "C": SparkFloatColumnDescriptor(),
-                }
-            ),
-            join_on_nulls=False,
+        assert_dataframe_equal(
+            public_join(private_df),
+            pd.DataFrame(expected_rows, columns=["B", "A", "C"]),
         )
-        self.assertTrue(public_join.stability == 1)
-
-    def test_empty_public_dataframe(self):
-        """Tests that PublicJoin works with empty public DataFrame."""
-        public_join_transformation = PublicJoin(
-            input_domain=self.input_domain,
-            metric=SymmetricDifference(),
-            public_df=self.spark.createDataFrame([], schema=self.public_df.schema),
-            join_cols=["B"],
-        )
-        actual = public_join_transformation(self.private_df)
-        expected = pd.DataFrame({"B": [], "A": [], "C": []})
-        assert_dataframe_equal(actual, expected)
-
-    def test_left_join(self):
-        """Tests that PublicJoin works with left join."""
-        # (The left table)
-        private_df = self.spark.createDataFrame(
-            [(1.2, "X"), (0.1, "Y")], schema=["A", "B"]
-        )
-        # (The right table)
-        public_df = self.spark.createDataFrame(
-            [("X", 1.1), ("Z", 1.2)], schema=["B", "C"]
-        )
-        public_join = PublicJoin(
-            input_domain=SparkDataFrameDomain(
-                {
-                    "A": SparkFloatColumnDescriptor(),
-                    "B": SparkStringColumnDescriptor(),
-                }
-            ),
-            metric=SymmetricDifference(),
-            public_df=public_df,
-            join_cols=["B"],
-            how="left",
-        )
-        actual = public_join(private_df)
-        expected = pd.DataFrame(
-            [[1.2, "X", 1.1], [0.1, "Y", None]], columns=["A", "B", "C"]
-        )
-        assert_dataframe_equal(actual, expected)
 
     def test_invalid_how(self):
         """Tests that PublicJoin raises error for invalid how."""

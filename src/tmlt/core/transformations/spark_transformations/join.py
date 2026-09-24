@@ -39,7 +39,7 @@ from tmlt.core.utils.truncation import drop_large_groups, truncate_large_groups
 
 
 class PublicJoin(Transformation):
-    """Join a Spark DataFrame with a public Pandas DataFrame.
+    """Join a Spark DataFrame with a public Spark DataFrame.
 
     Performs an inner join. By default, this mimics the behavior of a PySpark join, but
     it can also be set to consider null values equal to each other (unlike PySpark).
@@ -209,7 +209,9 @@ class PublicJoin(Transformation):
 
             :class:`~.PublicJoin`'s :meth:`~.stability_function` returns the ``d_in``
             times the maximum count of any combination of values in the join columns of
-            ``public_df``.
+            ``public_df``. The one exception is left joins with a public table that has
+            no valid join keys; in this case, :meth:`~.stability_function` returns 1 and
+            not 0.
 
             >>> # Both example transformations had a stability of 2
             >>> natural_join.join_cols
@@ -350,6 +352,11 @@ class PublicJoin(Transformation):
                 .to_list(),
                 default=0,
             )
+            if how == "left":
+                # A left join keeps every private row at least once, so the stability is
+                # at least 1 even if the public table is empty (or has only null join
+                # keys with join_on_nulls=False).
+                self._join_stability = max(self._join_stability, 1)
 
         super().__init__(
             input_domain=input_domain,
@@ -375,26 +382,22 @@ class PublicJoin(Transformation):
 
     @property
     def join_cols(self) -> List[str]:
-        """Returns list of columns to be joined on."""
+        """Returns the list of columns that are joined on."""
         return self._join_cols.copy()
 
     @property
     def public_df(self) -> DataFrame:
-        """Returns Pandas DataFrame being joined with."""
+        """Returns the Spark DataFrame being joined with."""
         return self._public_df
 
     @property
     def how(self) -> str:
-        """Returns type of join to perform."""
+        """Returns the type of join to perform."""
         return self._how
 
     @property
     def stability(self) -> int:
-        """Returns stability of public join.
-
-        The stability is the maximum count of any combination of values in the join
-        columns.
-        """
+        """Returns the stability of the public join."""
         return self._join_stability
 
     @typechecked
@@ -410,7 +413,7 @@ class PublicJoin(Transformation):
         return ExactNumber(d_in) * self.stability
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
-        """Perform public join.
+        """Performs the public join.
 
         Args:
             sdf: Private DataFrame to join public DataFrame with.
