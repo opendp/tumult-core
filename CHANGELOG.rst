@@ -27,7 +27,7 @@ Changed
 
 Fixed
 ~~~~~
-- :class:`~tmlt.core.transformations.spark_transformations.join.PublicJoin` with ``how="left"`` now reports a stability of at least 1, even if the public table is empty, or has only null join keys with ``join_on_null=False``. Previously it would report a stability of 0.
+- :class:`~tmlt.core.transformations.spark_transformations.join.PublicJoin` with ``how="left"`` now reports a stability of at least 1, even if the public table is empty, or has only null join keys with ``join_on_nulls=False``. Previously it would report a stability of 0.
 
 
 .. _v0.19.1:
