@@ -25,6 +25,10 @@ Changed
   - ``PrivateJoinOnKey`` -> :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnIDs`
   - ``FlatMapByKey`` -> :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByID`
 
+Fixed
+~~~~~
+- The random number generator used for noise is now rebuilt when it is first used in a new process. Previously a process created by ``fork()`` inherited the parent's buffered random words, so the parent and all of its children produced the same noise until the buffer was exhausted.
+
 
 .. _v0.19.1:
 
