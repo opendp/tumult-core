@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
+import json
+import os
 from importlib import reload
-from unittest import TestCase
+from unittest import TestCase, skipUnless
 from unittest.mock import Mock, patch
 
 from randomgen import UserBitGenerator
@@ -43,3 +45,52 @@ class TestRNG(TestCase):
         self.assertIsInstance(
             tmlt.core.random.rng.prng().bit_generator, UserBitGenerator
         )
+
+    def test_same_process_keeps_generator(self):
+        """Repeated calls in one process return the same generator object."""
+        self.assertIs(tmlt.core.random.rng.prng(), tmlt.core.random.rng.prng())
+
+    def test_pid_change_replaces_generator(self):
+        """A changed process ID makes prng() build a fresh generator, once."""
+        before = tmlt.core.random.rng.prng()
+        with patch("tmlt.core.random.rng.os.getpid", return_value=os.getpid() + 1):
+            after = tmlt.core.random.rng.prng()
+            self.assertIsNot(after, before)
+            self.assertIs(type(after.bit_generator), type(before.bit_generator))
+            self.assertTrue(0 <= after.uniform() <= 1)
+            # Rebuilt once for the new PID, not on every call.
+            self.assertIs(tmlt.core.random.rng.prng(), after)
+
+    @skipUnless(hasattr(os, "fork"), "requires os.fork")
+    def test_child_processes_do_not_replay_parent_randomness(self):
+        """Random words drawn after fork() differ between parent and children.
+
+        The RDRAND bit generator buffers random words in user space; a child
+        created by fork() inherits the buffer. Without the PID check in prng()
+        the parent and every child continue from the same buffered words.
+        """
+
+        def draw() -> list:
+            return [int(x) for x in tmlt.core.random.rng.prng().integers(2**62, size=8)]
+
+        draw()  # make sure the buffer is filled before forking
+        children = []
+        for _ in range(2):
+            read_end, write_end = os.pipe()
+            pid = os.fork()
+            if pid == 0:  # child
+                os.close(read_end)
+                try:
+                    os.write(write_end, json.dumps(draw()).encode())
+                finally:
+                    os.close(write_end)
+                    os._exit(0)
+            os.close(write_end)
+            _, status = os.waitpid(pid, 0)
+            self.assertEqual(status, 0)
+            with os.fdopen(read_end) as reader:
+                children.append(json.loads(reader.read()))
+        parent = draw()
+        self.assertNotEqual(children[0], children[1])
+        self.assertNotEqual(children[0], parent)
+        self.assertNotEqual(children[1], parent)
