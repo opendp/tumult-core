@@ -1608,6 +1608,122 @@ class TestPrivacyAccountant(PySparkTest):
         self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore # noqa: SLF001
         self.assertIsNone(accountant._pending_transformation)  # noqa: SLF001
 
+    def _split_into_waiting_accountant(self) -> PrivacyAccountant:
+        """Launches an accountant and splits it, so that it is WAITING_FOR_CHILDREN."""
+        accountant = PrivacyAccountant.launch(
+            measurement=self.measurement, data=self.data
+        )
+        split_transformation = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=ListDomain(element_domain=NumpyIntegerDomain(), length=2),
+            output_metric=self.splitting_output_metric,
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            return_value=[np.int64(2), np.int64(3)],
+        )
+        accountant.split(
+            splitting_transformation=split_transformation,
+            privacy_budget=self.budget_quarters[1],
+        )
+        self.assertEqual(accountant.state, PrivacyAccountantState.WAITING_FOR_CHILDREN)
+        return accountant
+
+    def test_queue_transformation_with_valid_d_out(self):
+        """A d_out satisfying the stability relation is accepted while inactive."""
+        accountant = self._split_into_waiting_accountant()
+        transformation = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=NumpyIntegerDomain(),
+            output_metric=AbsoluteDifference(),
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            stability_relation_return_value=True,
+            return_value=np.int64(2),
+        )
+        accountant.queue_transformation(transformation=transformation, d_out=12)
+        transformation.stability_relation.assert_called_once_with(1, 12)
+        self.assertEqual(accountant.d_in, 12)
+        for child in accountant.children:
+            child.retire()
+        self.assertEqual(accountant.state, PrivacyAccountantState.ACTIVE)
+        self.assertEqual(accountant.d_in, 12)
+        self.assertEqual(accountant._queryable._data, np.int64(2))  # type: ignore # noqa: SLF001
+
+    def test_queue_transformation_with_invalid_d_out(self):
+        """A d_out violating the stability relation is rejected while inactive."""
+        accountant = self._split_into_waiting_accountant()
+        transformation = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=NumpyIntegerDomain(),
+            output_metric=AbsoluteDifference(),
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            stability_relation_return_value=False,
+        )
+        with self.assertRaisesRegex(ValueError, "does not satisfy"):
+            accountant.queue_transformation(transformation=transformation, d_out=5)
+        transformation.stability_relation.assert_called_once_with(1, 5)
+        # Nothing was queued and the accountant's view of the data is unchanged.
+        self.assertEqual(accountant.d_in, 1)
+        self.assertEqual(accountant.input_metric, SymmetricDifference())
+        self.assertIsNone(accountant._pending_transformation)  # noqa: SLF001
+
+    def test_queue_transformation_d_out_checked_against_pending_d_in(self):
+        """A second queued transformation is checked against the updated d_in."""
+        accountant = self._split_into_waiting_accountant()
+        first = create_mock_transformation(
+            input_domain=SparkDataFrameDomain(
+                {
+                    "A": SparkIntegerColumnDescriptor(),
+                    "B": SparkStringColumnDescriptor(),
+                }
+            ),
+            input_metric=SymmetricDifference(),
+            output_domain=NumpyIntegerDomain(),
+            output_metric=AbsoluteDifference(),
+            stability_function_implemented=True,
+            stability_function_return_value=10,
+            return_value=np.int64(2),
+        )
+        second = create_mock_transformation(
+            input_domain=NumpyIntegerDomain(),
+            input_metric=AbsoluteDifference(),
+            output_domain=NumpyIntegerDomain(),
+            output_metric=AbsoluteDifference(),
+            stability_function_implemented=True,
+            stability_function_return_value=20,
+            stability_relation_return_value=True,
+            return_value=np.int64(4),
+        )
+        accountant.queue_transformation(transformation=first)
+        self.assertEqual(accountant.d_in, 10)
+        accountant.queue_transformation(transformation=second, d_out=30)
+        # The check must start from the d_in after `first`, not from the original 1.
+        second.stability_relation.assert_called_once_with(10, 30)
+        self.assertEqual(accountant.d_in, 30)
+        for child in accountant.children:
+            child.retire()
+        self.assertEqual(accountant.state, PrivacyAccountantState.ACTIVE)
+        self.assertEqual(accountant._queryable._data, np.int64(4))  # type: ignore # noqa: SLF001
+
     @parameterized.expand(
         [
             (

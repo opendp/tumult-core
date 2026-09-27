@@ -1734,19 +1734,14 @@ class PrivacyAccountant:
             self.transform_in_place(transformation, d_out=d_out)
         else:
             # Keep track of whether there was already a pending transformation,
-            # so that we can give friendlier error messages
-            no_transformation = False
-            if self._pending_transformation is None:
-                self._pending_transformation = Identity(
-                    self.input_metric, self.input_domain
-                )
-                no_transformation = True
-            # if you don't do this, mypy will complain about the if-statements below
-            assert self._pending_transformation is not None
-            if (
-                transformation.input_domain
-                != self._pending_transformation.output_domain
-            ):
+            # so that we can give friendlier error messages.
+            no_transformation = self._pending_transformation is None
+            pending = (
+                Identity(self.input_metric, self.input_domain)
+                if self._pending_transformation is None
+                else self._pending_transformation
+            )
+            if transformation.input_domain != pending.output_domain:
                 if no_transformation:
                     raise ValueError(
                         "Transformation's input domain does not match"
@@ -1756,36 +1751,24 @@ class PrivacyAccountant:
                     "Transformation's input domain does not match the"
                     " output domain of the last transformation."
                 )
-            if (
-                transformation.input_metric
-                != self._pending_transformation.output_metric
-            ):
+            if transformation.input_metric != pending.output_metric:
                 if no_transformation:
                     raise MetricMismatchError(
-                        (
-                            transformation.input_metric,
-                            self._pending_transformation.output_metric,
-                        ),
+                        (transformation.input_metric, pending.output_metric),
                         (
                             "Transformation's input metric does not match"
                             " PrivacyAccountant's input metric."
                         ),
                     )
                 raise MetricMismatchError(
-                    (
-                        transformation.input_metric,
-                        self._pending_transformation.output_metric,
-                    ),
+                    (transformation.input_metric, pending.output_metric),
                     (
                         "Transformation's input metric does not match the"
                         " output metric of the last transformation."
                     ),
                 )
 
-            new_transformation = ChainTT(
-                self._pending_transformation, transformation, hint=lambda _, __: d_out
-            )
-            if d_out is not None and new_transformation.stability_relation(
+            if d_out is not None and not transformation.stability_relation(
                 self.d_in, d_out
             ):
                 raise ValueError(
@@ -1793,7 +1776,10 @@ class PrivacyAccountant:
                     " stability relation w.r.t PrivacyAccountant's d_in"
                     f" {(self.d_in)}."
                 )
-            self._pending_transformation = new_transformation
+            # Only assign the new transformation to self if it passed all the checks.
+            self._pending_transformation = ChainTT(
+                pending, transformation, hint=lambda _, __: d_out
+            )
             self._d_in = (
                 d_out if d_out else transformation.stability_function(self.d_in)
             )
