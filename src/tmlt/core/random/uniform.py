@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
+from flint import arb, ctx
+
 from tmlt.core.random.inverse_cdf import construct_inverse_sampler
-from tmlt.core.utils import arb
 
 
-def uniform_inverse_cdf(l: float, u: float, p: arb.Arb, prec: int) -> arb.Arb:
+def uniform_inverse_cdf(l: float, u: float, p: arb, prec: int) -> arb:
     """Returns the value of inverse CDF of the uniform distribution from ``l`` to ``u``.
 
     Args:
@@ -16,19 +17,12 @@ def uniform_inverse_cdf(l: float, u: float, p: arb.Arb, prec: int) -> arb.Arb:
         p: Probability to compute the inverse CDF at.
         prec: Precision to compute the CDF with.
     """
-    assert arb.Arb.from_int(0) <= p <= arb.Arb.from_int(1), (
-        f"`p` should be in [0,1], not {p}"
-    )
+    assert arb(0) <= p <= arb(1), f"`p` should be in [0,1], not {p}"
     assert l <= u, f"`l` should not be larger than `u`, but {l} > {u}"
     # The following code-block is equivalent to:
     #   return l * (1 - p) + p * u
-    return arb.arb_add(
-        arb.arb_mul(
-            arb.Arb.from_float(l), arb.arb_sub(arb.Arb.from_int(1), p, prec), prec
-        ),
-        arb.arb_mul(p, arb.Arb.from_float(u), prec),
-        prec,
-    )
+    with ctx.workprec(prec):
+        return (arb(l) * (arb(1) - p)) + (p * arb(u))
 
 
 def uniform(lower: float, upper: float, step_size: int = 63) -> float:

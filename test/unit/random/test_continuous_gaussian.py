@@ -6,11 +6,11 @@
 import math
 from unittest import TestCase
 
+from flint import arb
 from parameterized import parameterized
 from scipy.stats import norm
 
 from tmlt.core.random.continuous_gaussian import gaussian_inverse_cdf
-from tmlt.core.utils.arb import Arb
 
 
 class TestContinuousGaussianInverseCDF(TestCase):
@@ -30,7 +30,7 @@ class TestContinuousGaussianInverseCDF(TestCase):
     def test_bad_arguments(self, u: float, b: float, p: float, error_msg: str):
         """`gaussian_inverse_cdf` raises error when called with bad arguments."""
         with self.assertRaisesRegex(ValueError, error_msg):
-            gaussian_inverse_cdf(u, b, Arb.from_float(p), 63)
+            gaussian_inverse_cdf(u, b, arb(p), 63)
 
     @parameterized.expand(
         [
@@ -48,6 +48,6 @@ class TestContinuousGaussianInverseCDF(TestCase):
     def test_correctness(self, u: float, sigma_squared: float, p: float):
         """Sanity tests for :func:`gaussian_inverse_cdf`."""
         self.assertAlmostEqual(
-            float(gaussian_inverse_cdf(u, sigma_squared, Arb.from_float(p), 63)),
+            float(gaussian_inverse_cdf(u, sigma_squared, arb(p), 63)),
             norm.ppf(p, loc=u, scale=math.sqrt(sigma_squared)),
         )

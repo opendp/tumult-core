@@ -5,11 +5,11 @@
 
 from unittest import TestCase
 
+from flint import arb
 from parameterized import parameterized
 from scipy.stats import laplace
 
 from tmlt.core.random.laplace import laplace_inverse_cdf
-from tmlt.core.utils.arb import Arb
 
 
 class TestLaplaceInverseCDF(TestCase):
@@ -39,7 +39,7 @@ class TestLaplaceInverseCDF(TestCase):
     def test_bad_arguments(self, u: float, b: float, p: float, error_msg: str):
         """`laplace_inverse_cdf` raises error when called with bad arguments."""
         with self.assertRaisesRegex(ValueError, error_msg):
-            laplace_inverse_cdf(u, b, Arb.from_float(p), 63)
+            laplace_inverse_cdf(u, b, arb(p), 63)
 
     @parameterized.expand(
         [
@@ -54,6 +54,6 @@ class TestLaplaceInverseCDF(TestCase):
     def test_correctness(self, u: float, b: float, p: float):
         """Sanity tests for :func:`laplace_inverse_cdf`."""
         self.assertAlmostEqual(
-            float(laplace_inverse_cdf(u, b, Arb.from_float(p), 63)),
+            float(laplace_inverse_cdf(u, b, arb(p), 63)),
             laplace.ppf(p, loc=u, scale=b),
         )
