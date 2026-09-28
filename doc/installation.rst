@@ -28,8 +28,6 @@ Since Tumult Core uses PySpark for computation, users must have Python, Java, an
 
 See Apache Spark’s official PySpark and Java installation guide <https://spark.apache.org/docs/4.1.1/#downloading>__ for setup details.
 
-Tumult Core supports the ``x86_64`` processor architecture, as well as Apple silicon.
-
 Below are instructions for installing these prerequisites on several common platforms.
 If none of these apply to you, install Python 3 and Java from your OS package manager.
 If you encounter any issues during the installation process, please `let us know <https://github.com/opendp/tumult-core/issues>`__!
