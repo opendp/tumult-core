@@ -13,6 +13,8 @@ Added
 
 Changed
 ~~~~~~~
+- Core now uses the `python-flint <https://pypi.org/project/python-flint/>`__ package for arbitrary-precision arithmetic, instead of bundling its own builds of FLINT, Arb, GMP, and MPFR.
+  As a result, Core is now distributed as a pure-Python wheel and no longer builds C dependencies when installed from source.
 - Renamed many components to refer to "IDs" (when appropriate) rather than groups or keys. Specifically:
   - ``limit_keys_per_group()`` -> :func:`~tmlt.core.utils.truncation.limit_groups_per_id`
   - ``LimitRowsPerGroup`` -> :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerID`
