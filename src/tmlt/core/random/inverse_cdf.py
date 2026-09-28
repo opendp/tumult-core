@@ -5,12 +5,14 @@
 
 from typing import Callable
 
+from flint import arb
+
 from tmlt.core.random.rng import prng
-from tmlt.core.utils import arb
+from tmlt.core.utils.arb import to_only_float
 
 
 def construct_inverse_sampler(
-    inverse_cdf: Callable[[arb.Arb, int], arb.Arb], step_size: int = 63
+    inverse_cdf: Callable[[arb, int], arb], step_size: int = 63
 ) -> Callable[[], float]:
     """Returns a sampler for the distribution corresponding to ``inverse_cdf``.
 
@@ -32,14 +34,14 @@ def construct_inverse_sampler(
                 prng().integers(pow(2, step_size))
             )
             value = inverse_cdf(
-                arb.Arb.from_midpoint_radius(
-                    mid=arb.Arb.from_man_exp(2 * random_bits + 1, -n - 1),
-                    rad=arb.Arb.from_man_exp(1, -n - 1),
+                arb(
+                    mid=arb(mid=(2 * random_bits + 1, -n - 1)),
+                    rad=arb(mid=(1, -n - 1)),
                 ),
                 n,
             )
             try:
-                return value.to_float(n)
+                return to_only_float(value, n)
             except (ValueError, OverflowError):
                 pass
 
