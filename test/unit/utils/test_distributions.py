@@ -3,14 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2026
 
+import inspect
 import unittest
 from typing import Any
+from unittest.mock import patch
 
 import numpy as np
 import sympy as sp
 from parameterized import parameterized
 from scipy.stats import geom, norm
 
+from tmlt.core.utils import distributions
 from tmlt.core.utils.distributions import (
     discrete_gaussian_cmf,
     discrete_gaussian_inverse_cmf,
@@ -206,6 +209,49 @@ class TestDiscreteGaussian(unittest.TestCase):
         )
         expected = 1
         np.testing.assert_allclose(actual, expected)
+
+    def _limit_precision(self, func_name: str) -> Any:
+        """Patch ``func_name`` to fail if it is called with too much precision.
+
+        :func:`discrete_gaussian_pmf` and :func:`discrete_gaussian_cmf` retry
+        with doubled precision until the result pins down a single float. If
+        the precision grows without bound, they loop forever, so this turns
+        that into a test failure instead of a hang.
+        """
+        original = getattr(distributions, func_name)
+        signature = inspect.signature(original)
+
+        def bounded(*args: Any, **kwargs: Any) -> Any:
+            prec = signature.bind(*args, **kwargs).arguments["prec"]
+            if prec > 800:
+                raise AssertionError(
+                    f"{func_name} called with prec={prec}; the result should "
+                    "have been converted to a float at a much lower precision"
+                )
+            return original(*args, **kwargs)
+
+        return patch.object(distributions, func_name, side_effect=bounded)
+
+    def test_pmf_near_float_rounding_boundary(self):
+        """The pmf terminates for values close to a float rounding boundary.
+
+        The pmf at these inputs is close enough to the midpoint between two
+        adjacent floats that its 64-bit lower and upper bounds round to
+        different floats, so converting at a fixed 64 bits never succeeds no
+        matter how precisely the pmf is computed.
+        """
+        with self._limit_precision("_discrete_gaussian_pmf"):
+            actual = discrete_gaussian_pmf(4, sigma_squared=17.25)
+        self.assertEqual(actual, 0.06040926928180338)
+
+    def test_cmf_near_float_rounding_boundary(self):
+        """The cmf terminates for values close to a float rounding boundary.
+
+        See :meth:`test_pmf_near_float_rounding_boundary`.
+        """
+        with self._limit_precision("_discrete_gaussian_cmf"):
+            actual = discrete_gaussian_cmf(9, sigma_squared=21.5)
+        self.assertEqual(actual, 0.9799541543146085)
 
     def test_cmf_monotonically_increases_from_zero_to_one(self):
         """The cmf should monotonically increase from zero to one."""

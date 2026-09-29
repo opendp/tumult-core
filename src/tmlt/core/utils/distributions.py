@@ -436,7 +436,7 @@ def discrete_gaussian_pmf(
     while True:
         try:
             return to_only_float(
-                _discrete_gaussian_pmf(k, sigma_squared_arb, n_terms, prec)
+                _discrete_gaussian_pmf(k, sigma_squared_arb, n_terms, prec), prec
             )
         except ValueError:
             prec *= 2
@@ -481,7 +481,7 @@ def discrete_gaussian_cmf(
     while True:
         try:
             return to_only_float(
-                _discrete_gaussian_cmf(k, arb(sigma_squared), n_terms, prec)
+                _discrete_gaussian_cmf(k, arb(sigma_squared), n_terms, prec), prec
             )
         except ValueError:
             prec *= 2
