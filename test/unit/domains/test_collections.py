@@ -470,6 +470,27 @@ class TestDictDomain(DomainTests):
         """
         super().test_property_immutability(domain)
 
+    def test_key_to_domain_returns_independent_copy(self):
+        """Mutating the returned mapping does not affect the domain."""
+        domain = DictDomain({"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()})
+        assert domain.key_to_domain is not domain.key_to_domain
+        key_to_domain = domain.key_to_domain
+        key_to_domain["A"] = NumpyFloatDomain()
+        del key_to_domain["B"]
+        key_to_domain["C"] = NumpyIntegerDomain()
+        assert domain["A"] == NumpyIntegerDomain()
+        assert domain["B"] == NumpyFloatDomain()
+        with pytest.raises(KeyError):
+            _ = domain["C"]
+        assert domain.length == 2
+        assert domain == DictDomain(
+            {"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}
+        )
+        assert domain != DictDomain(key_to_domain)
+        domain.validate({"A": np.int64(1), "B": np.float64(2.5)})
+        with pytest.raises(OutOfDomainError, match="Keys are not as expected"):
+            domain.validate({"A": np.int64(1), "C": np.int64(2)})
+
     @pytest.mark.parametrize(
         "domain, candidate, expectation, exception_properties",
         [

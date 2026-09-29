@@ -2299,6 +2299,99 @@ class TestDictMetric(TestCase):
         metric = DictMetric({})
         self.assertEqual(metric.distance({}, {}, domain), {})
 
+    def test_key_to_metric_returns_independent_copy(self):
+        """Mutating the returned mapping does not affect the metric."""
+        metric = DictMetric({"A": SymmetricDifference(), "B": AbsoluteDifference()})
+        domain = DictDomain(
+            {
+                "A": SparkDataFrameDomain({"A": SparkIntegerColumnDescriptor()}),
+                "B": NumpyIntegerDomain(),
+            }
+        )
+        assert metric.key_to_metric is not metric.key_to_metric
+        key_to_metric = metric.key_to_metric
+        key_to_metric["A"] = HammingDistance()
+        del key_to_metric["B"]
+        key_to_metric["C"] = AbsoluteDifference()
+        assert metric["A"] == SymmetricDifference()
+        assert metric["B"] == AbsoluteDifference()
+        with pytest.raises(KeyError):
+            _ = metric["C"]
+        assert len(metric) == 2
+        assert metric.key_to_metric == {
+            "A": SymmetricDifference(),
+            "B": AbsoluteDifference(),
+        }
+        assert repr(metric) == (
+            "DictMetric(key_to_metric={'A': SymmetricDifference(), 'B': "
+            "AbsoluteDifference()})"
+        )
+        assert metric.supports_domain(domain)
+
+    @parameterized.expand(
+        [
+            (  # Same keys, different order
+                DictMetric(
+                    {
+                        "B": IfGroupedBy(["id"], SumOf(SymmetricDifference())),
+                        "A": SymmetricDifference(),
+                    }
+                ),
+                True,
+            ),
+            (  # Metric has a subset of the domain's keys
+                DictMetric({"A": SymmetricDifference()}),
+                False,
+            ),
+            (  # Metric has a superset of the domain's keys
+                DictMetric(
+                    {
+                        "A": SymmetricDifference(),
+                        "B": SymmetricDifference(),
+                        "C": SymmetricDifference(),
+                    }
+                ),
+                False,
+            ),
+            (  # Same keys, but a value metric doesn't support its domain
+                DictMetric(
+                    {
+                        "A": IfGroupedBy(["id"], SumOf(SymmetricDifference())),
+                        "B": IfGroupedBy(["id"], SumOf(SymmetricDifference())),
+                    }
+                ),
+                False,
+            ),
+        ]
+    )
+    def test_supports_domain_keys_and_values(
+        self, metric: DictMetric, is_supported: bool
+    ):
+        """supports_domain checks both the key set and each key's metric/domain."""
+        domain = DictDomain(
+            {
+                "A": SparkDataFrameDomain({"x": SparkIntegerColumnDescriptor()}),
+                "B": SparkDataFrameDomain(
+                    {
+                        "id": SparkIntegerColumnDescriptor(),
+                        "x": SparkIntegerColumnDescriptor(),
+                    }
+                ),
+            }
+        )
+        assert metric.supports_domain(domain) == is_supported
+        # The domain is not modified by the check.
+        assert set(domain.key_to_domain) == {"A", "B"}
+
+    def test_supports_domain_non_dict_domain(self):
+        """supports_domain is False for domains that are not DictDomains."""
+        metric = DictMetric({"A": SymmetricDifference()})
+        assert not metric.supports_domain(
+            SparkDataFrameDomain({"A": SparkIntegerColumnDescriptor()})
+        )
+        assert DictMetric({}).supports_domain(DictDomain({}))
+        assert not DictMetric({}).supports_domain(NumpyIntegerDomain())
+
 
 class TestAddRemoveIDs(PySparkTest):
     """TestCase for AddRemoveIDs."""
@@ -2545,6 +2638,94 @@ class TestAddRemoveIDs(PySparkTest):
         self, metric: AddRemoveIDs, domain: Domain, is_supported: bool
     ):
         """Test that supports_domain correctly identifies supported domains."""
+        self.assertEqual(metric.supports_domain(domain), is_supported)
+
+    def test_df_to_id_column_returns_independent_copy(self):
+        """Mutating the returned mapping does not affect the metric."""
+        metric = AddRemoveIDs({"key1": "A", "key2": "A"})
+        domain = DictDomain(
+            {
+                "key1": SparkDataFrameDomain({"A": SparkIntegerColumnDescriptor()}),
+                "key2": SparkDataFrameDomain({"A": SparkIntegerColumnDescriptor()}),
+            }
+        )
+        assert metric.df_to_id_column is not metric.df_to_id_column
+        df_to_id_column = metric.df_to_id_column
+        df_to_id_column["key1"] = "B"
+        del df_to_id_column["key2"]
+        assert metric.df_to_id_column == {"key1": "A", "key2": "A"}
+        assert (
+            repr(metric) == "AddRemoveIDs(df_to_id_column={'key1': 'A', 'key2': 'A'})"
+        )
+        assert metric.supports_domain(domain)
+
+    @parameterized.expand(
+        [
+            (  # Same keys, different order
+                AddRemoveIDs({"key2": "B", "key1": "A"}),
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {"A": SparkIntegerColumnDescriptor()}
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {"B": SparkIntegerColumnDescriptor()}
+                        ),
+                    }
+                ),
+                True,
+            ),
+            (  # Domain has a superset of the metric's keys
+                AddRemoveIDs({"key1": "A"}),
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {"A": SparkIntegerColumnDescriptor()}
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {"A": SparkIntegerColumnDescriptor()}
+                        ),
+                    }
+                ),
+                False,
+            ),
+            (  # Element domain is not a SparkDataFrameDomain
+                AddRemoveIDs({"key1": "A", "key2": "A"}),
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {"A": SparkIntegerColumnDescriptor()}
+                        ),
+                        "key2": NumpyIntegerDomain(),
+                    }
+                ),
+                False,
+            ),
+            (  # ID columns have different descriptors (nullability)
+                AddRemoveIDs({"key1": "A", "key2": "A"}),
+                DictDomain(
+                    {
+                        "key1": SparkDataFrameDomain(
+                            {"A": SparkIntegerColumnDescriptor()}
+                        ),
+                        "key2": SparkDataFrameDomain(
+                            {"A": SparkIntegerColumnDescriptor(allow_null=True)}
+                        ),
+                    }
+                ),
+                False,
+            ),
+            (  # Empty metric and domain
+                AddRemoveIDs({}),
+                DictDomain({}),
+                True,
+            ),
+        ]
+    )
+    def test_supports_domain_additional(
+        self, metric: AddRemoveIDs, domain: Domain, is_supported: bool
+    ):
+        """Additional supports_domain cases for matching/mismatching keys/domains."""
         self.assertEqual(metric.supports_domain(domain), is_supported)
 
     @parameterized.expand(

@@ -269,9 +269,8 @@ class Subset(Transformation):
                 )
             output_metric = DictMetric({k: input_metric[k] for k in keys})
         else:
-            output_metric = AddRemoveIDs(
-                {k: input_metric.df_to_id_column[k] for k in keys}
-            )
+            df_to_id_column = input_metric.df_to_id_column
+            output_metric = AddRemoveIDs({k: df_to_id_column[k] for k in keys})
         super().__init__(
             input_domain=input_domain,
             input_metric=input_metric,

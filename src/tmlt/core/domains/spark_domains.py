@@ -6,7 +6,6 @@
 import datetime
 import warnings
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, ClassVar, Collection, Mapping, Optional, Sequence
 
@@ -37,6 +36,15 @@ from tmlt.core.domains.numpy_domains import (
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain
 from tmlt.core.utils.format import Formattable, format_labeled_siblings
 from tmlt.core.utils.misc import ConciseFrozenSet, escape_column_name, get_fullname
+
+
+def _schemas_equal(schema1: Mapping[str, Any], schema2: Mapping[str, Any]) -> bool:
+    """Returns True if both schemas have the same columns, in the same order.
+
+    Equivalent to ``OrderedDict(schema1) == OrderedDict(schema2)``, without copying
+    either schema.
+    """
+    return schema1 == schema2 and list(schema1) == list(schema2)
 
 
 class SparkColumnDescriptor(Formattable, ABC):
@@ -318,7 +326,7 @@ class SparkRowDomain(Domain):
 
     def __repr__(self) -> str:
         """Return string representation of the object."""
-        return f"{self.__class__.__name__}(schema={self.schema})"
+        return f"{self.__class__.__name__}(schema={self._schema})"
 
     @property
     def schema(self) -> SparkColumnsDescriptor:
@@ -337,7 +345,7 @@ class SparkRowDomain(Domain):
         """Return True if the classes are equivalent."""
         if self.__class__ != other.__class__:
             return False
-        return OrderedDict(self.schema) == OrderedDict(other.schema)
+        return _schemas_equal(self._schema, other._schema)
 
     @property
     def carrier_type(self) -> type:
@@ -375,7 +383,7 @@ class SparkDataFrameDomain(Domain):
 
     def __repr__(self) -> str:
         """Return string representation of the object."""
-        return f"{self.__class__.__name__}(schema={self.schema})"
+        return f"{self.__class__.__name__}(schema={self._schema})"
 
     @property
     def schema(self) -> SparkColumnsDescriptor:
@@ -407,7 +415,7 @@ class SparkDataFrameDomain(Domain):
                 self, value, f"Some columns are duplicated, {sorted(duplicates)}"
             )
 
-        schema_columns = list(self.schema.keys())
+        schema_columns = list(self._schema.keys())
         if value_columns != schema_columns:
             raise OutOfDomainError(
                 self,
@@ -419,9 +427,9 @@ class SparkDataFrameDomain(Domain):
                 ),
             )
 
-        for column in self.schema:
+        for column, descriptor in self._schema.items():
             try:
-                self.schema[column].validate_column(value, column)
+                descriptor.validate_column(value, column)
             except ValueError as exception:
                 raise OutOfDomainError(
                     self,
@@ -433,7 +441,7 @@ class SparkDataFrameDomain(Domain):
         """Return True if the classes are equivalent."""
         if self.__class__ != other.__class__:
             return False
-        return OrderedDict(self.schema) == OrderedDict(other.schema)
+        return _schemas_equal(self._schema, other._schema)
 
     @property
     def carrier_type(self) -> type:
@@ -442,7 +450,7 @@ class SparkDataFrameDomain(Domain):
 
     def __getitem__(self, col_name: str) -> SparkColumnDescriptor:
         """Returns column descriptor for given column."""
-        return self.schema[col_name]
+        return self._schema[col_name]
 
     @classmethod
     def from_spark_schema(cls, schema: StructType) -> "SparkDataFrameDomain":
@@ -471,7 +479,7 @@ class SparkDataFrameDomain(Domain):
         return StructType(
             [
                 StructField(col, desc.data_type, desc.allow_null)
-                for col, desc in self.schema.items()
+                for col, desc in self._schema.items()
             ]
         )
 
@@ -480,13 +488,17 @@ class SparkDataFrameDomain(Domain):
 
         The column ordering of the schema is used if it differs from the input ordering.
         """
-        unexpected_columns = set(cols) - set(self.schema)
+        unexpected_columns = set(cols) - self._schema.keys()
         if unexpected_columns:
             raise ValueError(
                 f"Columns {unexpected_columns} do not exist in this schema."
             )
         return SparkDataFrameDomain(
-            {column: domain for column, domain in self.schema.items() if column in cols}
+            {
+                column: domain
+                for column, domain in self._schema.items()
+                if column in cols
+            }
         )
 
     def _format_children(self) -> str:
@@ -575,7 +587,7 @@ class SparkGroupedDataFrameDomain(Domain):
     def __repr__(self) -> str:
         """Return string representation of the object."""
         return (
-            f"{self.__class__.__name__}(schema={self.schema},"
+            f"{self.__class__.__name__}(schema={self._schema},"
             f" groupby_columns={self.groupby_columns})"
         )
 
@@ -601,7 +613,7 @@ class SparkGroupedDataFrameDomain(Domain):
         return StructType(
             [
                 StructField(col, desc.data_type, desc.allow_null)
-                for col, desc in self.schema.items()
+                for col, desc in self._schema.items()
             ]
         )
 
@@ -612,7 +624,7 @@ class SparkGroupedDataFrameDomain(Domain):
 
         super().validate(value)
         assert isinstance(value, GroupedDataFrame)
-        inner_df_domain = SparkDataFrameDomain(self.schema)
+        inner_df_domain = SparkDataFrameDomain(self._schema)
         try:
             inner_df_domain.validate(value.dataframe)
         except OutOfDomainError as exception:
@@ -623,8 +635,8 @@ class SparkGroupedDataFrameDomain(Domain):
         group_key_domain = SparkDataFrameDomain(
             {
                 column: desc
-                for column, desc in self.schema.items()
-                if column in self.groupby_columns
+                for column, desc in self._schema.items()
+                if column in self._groupby_columns
             }
         )
         if value.group_keys is None:
@@ -646,8 +658,8 @@ class SparkGroupedDataFrameDomain(Domain):
         """Return the domain for one of the groups."""
         group_schema = {
             column: v
-            for column, v in self.schema.items()
-            if column not in self.groupby_columns
+            for column, v in self._schema.items()
+            if column not in self._groupby_columns
         }
         return SparkDataFrameDomain(group_schema)
 
@@ -655,7 +667,7 @@ class SparkGroupedDataFrameDomain(Domain):
         """Return True if the schemas and group keys are identical."""
         if self.__class__ != other.__class__:
             return False
-        if OrderedDict(self.schema) != OrderedDict(other.schema):
+        if not _schemas_equal(self._schema, other._schema):
             return False
         if self.groupby_columns != other.groupby_columns:
             return False
@@ -663,7 +675,7 @@ class SparkGroupedDataFrameDomain(Domain):
 
     def __getitem__(self, col_name: str) -> SparkColumnDescriptor:
         """Returns column descriptor for given column."""
-        return self.schema[col_name]
+        return self._schema[col_name]
 
     def _format_children(self) -> str:
         """Render the column schema as labeled siblings."""

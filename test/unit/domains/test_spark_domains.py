@@ -520,6 +520,55 @@ def _WidenContextManager(cm: Any) -> ContextManager:
     return cm
 
 
+def test_spark_dataframe_domain_schema_returns_independent_copy():
+    """Mutating the returned schema does not affect the SparkDataFrameDomain."""
+    schema = {
+        "A": SparkIntegerColumnDescriptor(),
+        "B": SparkStringColumnDescriptor(),
+    }
+    domain = SparkDataFrameDomain(schema)
+    assert domain.schema is not domain.schema
+    returned = domain.schema
+    returned["A"] = SparkFloatColumnDescriptor()
+    returned["C"] = SparkIntegerColumnDescriptor()
+    assert domain["A"] == SparkIntegerColumnDescriptor()
+    with pytest.raises(KeyError):
+        _ = domain["C"]
+    assert domain.schema == schema
+    assert domain == SparkDataFrameDomain(schema)
+    assert domain != SparkDataFrameDomain(returned)
+    assert domain.spark_schema.fieldNames() == ["A", "B"]
+
+
+def test_spark_grouped_dataframe_domain_schema_returns_independent_copy():
+    """Mutating the returned schema does not affect the grouped domain."""
+    schema = {
+        "A": SparkIntegerColumnDescriptor(),
+        "B": SparkStringColumnDescriptor(),
+    }
+    domain = SparkGroupedDataFrameDomain(schema, ["A"])
+    returned = domain.schema
+    returned["B"] = SparkFloatColumnDescriptor()
+    assert domain["B"] == SparkStringColumnDescriptor()
+    assert domain == SparkGroupedDataFrameDomain(schema, ["A"])
+    assert domain.get_group_domain() == SparkDataFrameDomain(
+        {"B": SparkStringColumnDescriptor()}
+    )
+
+
+def test_spark_grouped_dataframe_domain_eq_column_order():
+    """Grouped domains whose schemas differ only in column order are not equal."""
+    domain = SparkGroupedDataFrameDomain(
+        {"A": SparkIntegerColumnDescriptor(), "B": SparkStringColumnDescriptor()},
+        ["A"],
+    )
+    shuffled = SparkGroupedDataFrameDomain(
+        {"B": SparkStringColumnDescriptor(), "A": SparkIntegerColumnDescriptor()},
+        ["A"],
+    )
+    assert domain != shuffled
+
+
 @pytest.mark.usefixtures("class_spark")
 class TestSparkGroupedDataFrameDomain(DomainTests):
     """Testing :class:`~tmlt.core.domains.spark_domains.SparkGroupedDataFrameDomain`."""
