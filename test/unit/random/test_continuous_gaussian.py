@@ -6,7 +6,7 @@
 import math
 from unittest import TestCase
 
-from flint import arb
+from flint import arb, ctx
 from parameterized import parameterized
 from scipy.stats import norm
 
@@ -30,7 +30,7 @@ class TestContinuousGaussianInverseCDF(TestCase):
     def test_bad_arguments(self, u: float, b: float, p: float, error_msg: str):
         """`gaussian_inverse_cdf` raises error when called with bad arguments."""
         with self.assertRaisesRegex(ValueError, error_msg):
-            gaussian_inverse_cdf(u, b, arb(p), 63)
+            gaussian_inverse_cdf(u, b, arb(p))
 
     @parameterized.expand(
         [
@@ -47,8 +47,10 @@ class TestContinuousGaussianInverseCDF(TestCase):
     )
     def test_correctness(self, u: float, sigma_squared: float, p: float):
         """Sanity tests for :func:`gaussian_inverse_cdf`."""
+        with ctx.workprec(63):
+            actual = float(gaussian_inverse_cdf(u, sigma_squared, arb(p)))
         self.assertAlmostEqual(
-            float(gaussian_inverse_cdf(u, sigma_squared, arb(p), 63)),
+            actual,
             norm.ppf(p, loc=u, scale=math.sqrt(sigma_squared)),
         )
 

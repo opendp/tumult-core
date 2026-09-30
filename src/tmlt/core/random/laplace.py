@@ -5,19 +5,20 @@
 
 import math
 
-from flint import arb, ctx
+from flint import arb
 
 from tmlt.core.random.inverse_cdf import construct_inverse_sampler
 
 
-def laplace_inverse_cdf(u: float, b: float, p: arb, prec: int) -> arb:
+def laplace_inverse_cdf(u: float, b: float, p: arb) -> arb:
     """Returns inverse CDF for Lap(u,b) at p.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
 
     Args:
         u: The mean of the distribution. Must be finite and non-nan.
         b: The scale of the distribution. Must be finite, non-nan and non-negative.
         p: Probability to compute the CDF at.
-        prec: Precision to use for computing CDF.
     """
     if not 0 < p < 1:
         raise ValueError(f"`p` should be in (0,1), not {p}")
@@ -30,9 +31,8 @@ def laplace_inverse_cdf(u: float, b: float, p: arb, prec: int) -> arb:
 
     # The following code corresponds to:
     #   return u - b * sgn(p-0.5) * log(1 - 2 * abs(p-0.5))
-    with ctx.workprec(prec):
-        term2 = b * (p - 0.5).sgn() * (1 - 2 * abs(p - 0.5)).log()
-        return u - term2
+    term2 = b * (p - 0.5).sgn() * (1 - 2 * abs(p - 0.5)).log()
+    return u - term2
 
 
 def laplace(u: float, b: float, step_size: int = 63) -> float:
@@ -44,6 +44,6 @@ def laplace(u: float, b: float, step_size: int = 63) -> float:
         step_size: How many bits of probability to sample at a time.
     """
     return construct_inverse_sampler(
-        inverse_cdf=lambda p, prec: laplace_inverse_cdf(u, b, p, prec),
+        inverse_cdf=lambda p: laplace_inverse_cdf(u, b, p),
         step_size=step_size,
     )()

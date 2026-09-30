@@ -3,18 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
-from flint import arb
+from flint import arb, ctx
 
 from tmlt.core.random.uniform import uniform, uniform_inverse_cdf
 
 
 def test_uniform_inverse_cdf():
     """Tests for :func:`~.uniform_inverse_cdf`."""
-    assert uniform_inverse_cdf(10, 100, arb(0.0), 63) == arb(10.0)
-    assert uniform_inverse_cdf(-100, -10, arb(1.0), 63) == arb(-10.0)
-    assert uniform_inverse_cdf(10, 100, arb(0.5), 63) == arb(55.0)
-    assert uniform_inverse_cdf(0, 1, arb(0.2), 63) == arb(0.2)
-    assert uniform_inverse_cdf(0, 1, arb(0.75), 63) == arb(0.75)
+    with ctx.workprec(63):
+        assert uniform_inverse_cdf(10, 100, arb(0.0)) == arb(10.0)
+        assert uniform_inverse_cdf(-100, -10, arb(1.0)) == arb(-10.0)
+        assert uniform_inverse_cdf(10, 100, arb(0.5)) == arb(55.0)
+        assert uniform_inverse_cdf(0, 1, arb(0.2)) == arb(0.2)
+        assert uniform_inverse_cdf(0, 1, arb(0.75)) == arb(0.75)
 
 
 def test_uniform_works_with_sampler():

@@ -6,7 +6,7 @@
 import math
 from typing import Union
 
-from flint import arb, ctx
+from flint import arb
 
 from tmlt.core.random.inverse_cdf import construct_inverse_sampler
 
@@ -15,16 +15,16 @@ def gaussian_inverse_cdf(
     u: Union[int, float, arb],
     sigma_squared: Union[int, float, arb],
     p: arb,
-    prec: int,
 ) -> arb:
     """Returns inverse CDF for N(u,sigma_squared) at p.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
 
     Args:
         u: The mean of the distribution. Must be finite and non-nan.
         sigma_squared: The variance of the distribution.
                        Must be finite, non-nan and non-negative.
         p: Probability to compute the CDF at.
-        prec: Precision to use for computing CDF.
     """
     if not 0 < p < 1:
         raise ValueError(f"`p` should be in (0,1), not {p}")
@@ -51,8 +51,7 @@ def gaussian_inverse_cdf(
     )
     # The following code corresponds to:
     #   return u + sigma * sqrt(2) * erfinv(2 * p - 1)
-    with ctx.workprec(prec):
-        return u + sigma_squared_arb.sqrt() * arb(2).sqrt() * (2 * p - 1).erfinv()
+    return u + sigma_squared_arb.sqrt() * arb(2).sqrt() * (2 * p - 1).erfinv()
 
 
 def gaussian(
@@ -72,6 +71,6 @@ def gaussian(
         step_size: How many bits of probability to sample at a time.
     """
     return construct_inverse_sampler(
-        inverse_cdf=lambda p, prec: gaussian_inverse_cdf(u, sigma_squared, p, prec),
+        inverse_cdf=lambda p: gaussian_inverse_cdf(u, sigma_squared, p),
         step_size=step_size,
     )()

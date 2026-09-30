@@ -5,7 +5,7 @@
 
 import numpy as np
 import pytest
-from flint import arb
+from flint import arb, ctx
 from scipy.stats import gennorm, ttest_ind
 
 from tmlt.core.utils.arb import to_only_float
@@ -256,23 +256,19 @@ class TestPRDPAdditiveMechanisms:
     )
     def test_exponential_polylogarithmic_inverse_cdf(self, p: float, expected: float):
         """Tests the inverse CDF for the exponential polylogarithmic distribution."""
-        actual = to_only_float(
-            exponential_polylogarithmic_inverse_cdf(
-                x=arb(p),
-                d=arb(1),
-                a=arb(4),
-                sigma=arb(1),
-                prec=100,
+        with ctx.workprec(100):
+            value = exponential_polylogarithmic_inverse_cdf(
+                x=arb(p), d=arb(1), a=arb(4), sigma=arb(1)
             )
-        )
+        actual = to_only_float(value)
         assert actual == pytest.approx(expected)
 
     @pytest.mark.parametrize("p", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     def test_square_root_gaussian_inverse_cdf(self, p: float):
         """Tests the inverse CDF for the square root Gaussian distribution."""
-        actual = to_only_float(
-            square_root_gaussian_inverse_cdf(x=arb(p), sigma=arb(1), prec=200)
-        )
+        with ctx.workprec(200):
+            value = square_root_gaussian_inverse_cdf(x=arb(p), sigma=arb(1))
+        actual = to_only_float(value)
         assert gennorm.cdf(actual, beta=0.5, scale=1) == pytest.approx(p), f"{actual}"
 
     @pytest.mark.parametrize("sigma", [1, 10, 100, 1000])

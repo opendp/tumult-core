@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
-import inspect
 import unittest
 from typing import Any
 from unittest.mock import patch
 
 import numpy as np
 import sympy as sp
+from flint import ctx
 from parameterized import parameterized
 from scipy.stats import geom, norm
 
@@ -216,13 +216,13 @@ class TestDiscreteGaussian(unittest.TestCase):
         :func:`discrete_gaussian_pmf` and :func:`discrete_gaussian_cmf` retry
         with doubled precision until the result pins down a single float. If
         the precision grows without bound, they loop forever, so this turns
-        that into a test failure instead of a hang.
+        that into a test failure instead of a hang. The precision is read from
+        the python-flint context that ``func_name`` is called in.
         """
         original = getattr(distributions, func_name)
-        signature = inspect.signature(original)
 
         def bounded(*args: Any, **kwargs: Any) -> Any:
-            prec = signature.bind(*args, **kwargs).arguments["prec"]
+            prec = ctx.prec
             if prec > 800:
                 raise AssertionError(
                     f"{func_name} called with prec={prec}; the result should "
