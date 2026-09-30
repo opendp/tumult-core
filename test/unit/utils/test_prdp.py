@@ -1,7 +1,7 @@
 """Test for :mod:`tmlt.core.utils.prdp`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2024 - 2025, and the Tumult Core Contributors 2025-present
+# Copyright Tumult Labs 2024-2025, and the Tumult Core Contributors 2025-present
 
 import numpy as np
 import pytest

@@ -1,7 +1,7 @@
 """Module for sampling from a continuous Gaussian distribution."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2023 - 2025, and the Tumult Core Contributors 2025-present
+# Copyright Tumult Labs 2023-2025, and the Tumult Core Contributors 2025-present
 
 import math
 from typing import Union
