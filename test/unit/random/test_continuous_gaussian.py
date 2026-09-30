@@ -10,7 +10,7 @@ from flint import arb
 from parameterized import parameterized
 from scipy.stats import norm
 
-from tmlt.core.random.continuous_gaussian import gaussian_inverse_cdf
+from tmlt.core.random.continuous_gaussian import gaussian, gaussian_inverse_cdf
 
 
 class TestContinuousGaussianInverseCDF(TestCase):
@@ -51,3 +51,13 @@ class TestContinuousGaussianInverseCDF(TestCase):
             float(gaussian_inverse_cdf(u, sigma_squared, arb(p), 63)),
             norm.ppf(p, loc=u, scale=math.sqrt(sigma_squared)),
         )
+
+
+def test_gaussian_works_with_sampler():
+    """Checks that the inverse cdf function works with the inverse sampler.
+
+    We use a parameter range that has caused problems (p not in [0, 1]) before.
+    """
+    for _ in range(100):
+        sample = gaussian(1, step_size=1)
+        assert isinstance(sample, float) and math.isfinite(sample)

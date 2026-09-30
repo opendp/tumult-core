@@ -33,13 +33,15 @@ def construct_inverse_sampler(
             random_bits = (random_bits << step_size) + int(
                 prng().integers(pow(2, step_size))
             )
-            value = inverse_cdf(
-                arb(
-                    mid=arb(mid=(2 * random_bits + 1, -n - 1)),
-                    rad=arb(mid=(1, -n - 1)),
-                ),
-                n,
+            p = arb(
+                mid=arb(mid=(2 * random_bits + 1, -n - 1)),
+                rad=arb(mid=(1, -n - 1)),
             )
+            # python-flint rounds the radius up slightly, so when the random bits
+            # are all 0s or all 1s, p extends just past 0 or 1. Sample more bits.
+            if not arb(0) < p < arb(1):
+                continue
+            value = inverse_cdf(p, n)
             try:
                 return to_only_float(value, n)
             except (ValueError, OverflowError):

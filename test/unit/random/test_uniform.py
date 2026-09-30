@@ -5,7 +5,7 @@
 
 from flint import arb
 
-from tmlt.core.random.uniform import uniform_inverse_cdf
+from tmlt.core.random.uniform import uniform, uniform_inverse_cdf
 
 
 def test_uniform_inverse_cdf():
@@ -15,3 +15,13 @@ def test_uniform_inverse_cdf():
     assert uniform_inverse_cdf(10, 100, arb(0.5), 63) == arb(55.0)
     assert uniform_inverse_cdf(0, 1, arb(0.2), 63) == arb(0.2)
     assert uniform_inverse_cdf(0, 1, arb(0.75), 63) == arb(0.75)
+
+
+def test_uniform_works_with_sampler():
+    """Checks that the inverse cdf function works with the inverse sampler.
+
+    We use a parameter range that has caused problems (p not in [0, 1]) before.
+    """
+    for _ in range(100):
+        sample = uniform(0, 1, step_size=1)
+        assert 0 <= sample <= 1
