@@ -402,61 +402,63 @@ def _select_quantile_interval(
             n += step_size
             prec = n
 
-            # sample Gumbel noise with more bits
-            gumbel_p_bits = [
-                (old_bits << step_size) + int(new_bits)
-                for old_bits, new_bits in zip(
-                    gumbel_p_bits,
-                    prng().integers(pow(2, step_size), size=len(gumbel_p_bits)),
-                )
-            ]
-            probabilities = [
-                arb(mid=arb(mid=(p_bits, -n)), rad=arb(mid=(1, -n)))
-                for p_bits in gumbel_p_bits
-            ]
-            # probabilities for sampling Gumbel noise using the inverse CDF
-
-            gumbels = [-(-(p.log())).log() for p in probabilities]
-
-            noisy_scores = [
-                # arb.log(u - l) -
-                # ((abs(rank - target_rank) * epsilon) / (2 * delta_u)) + noise
-                (
-                    (
-                        (u - l).log()
-                        - (
-                            (abs((rank - target_rank)) * arb(epsilon))
-                            / (arb(2) * delta_u)
-                        )
+            with ctx.workprec(prec):
+                # sample Gumbel noise with more bits
+                gumbel_p_bits = [
+                    (old_bits << step_size) + int(new_bits)
+                    for old_bits, new_bits in zip(
+                        gumbel_p_bits,
+                        prng().integers(pow(2, step_size), size=len(gumbel_p_bits)),
                     )
-                    + noise
-                )
-                for noise, (rank, l, u) in zip(gumbels, intervals)
-            ]
+                ]
+                probabilities = [
+                    arb(mid=arb(mid=(p_bits, -n)), rad=arb(mid=(1, -n)))
+                    for p_bits in gumbel_p_bits
+                ]
+                # probabilities for sampling Gumbel noise using the inverse CDF
 
-            # try to get a noisy score which is above most others
-            approx_max = arb(float("-inf"))
-            # Unclear if max works correctly with Arb, and arb_max performs a
-            # somewhat different operation than this comparison.
-            for noisy_score in noisy_scores:
-                if noisy_score > approx_max:  # noqa: PLR1730
-                    # only if noisy_score.lower > approx_max.upper
-                    approx_max = noisy_score
+                gumbels = [-(-(p.log())).log() for p in probabilities]
 
-            # do another pass to eliminate other intervals
-            new_gumbel_p_bits = []
-            remaining_intervals: List[_RankedInterval] = []
-            for i, noisy_score in enumerate(noisy_scores):
-                if not (
-                    noisy_score < approx_max
-                    # NOT the same as noisy_score >= approx_max
-                    # A < B only returns true if A.upper < B.lower
-                    # true if A.upper < B.lower
-                ):
-                    new_gumbel_p_bits.append(gumbel_p_bits[i])
-                    remaining_intervals.append(intervals[i])
-            gumbel_p_bits = new_gumbel_p_bits
-            intervals = remaining_intervals
+                noisy_scores = [
+                    # arb.log(u - l) -
+                    # ((abs(rank - target_rank) * epsilon) / (2 * delta_u)) + noise
+                    (
+                        (
+                            (u - l).log()
+                            - (
+                                (abs((rank - target_rank)) * arb(epsilon))
+                                / (arb(2) * delta_u)
+                            )
+                        )
+                        + noise
+                    )
+                    for noise, (rank, l, u) in zip(gumbels, intervals)
+                ]
+
+                # try to get a noisy score which is above most others
+                approx_max = arb(float("-inf"))
+                # Unclear if max works correctly with Arb, and arb_max performs a
+                # somewhat different operation than this comparison.
+                for noisy_score in noisy_scores:
+                    if noisy_score > approx_max:  # noqa: PLR1730
+                        # only if noisy_score.lower > approx_max.upper
+                        approx_max = noisy_score
+
+                # do another pass to eliminate other intervals
+                new_gumbel_p_bits = []
+                remaining_intervals: List[_RankedInterval] = []
+                for i, noisy_score in enumerate(noisy_scores):
+                    if not (
+                        noisy_score
+                        < approx_max
+                        # NOT the same as noisy_score >= approx_max
+                        # A < B only returns true if A.upper < B.lower
+                        # true if A.upper < B.lower
+                    ):
+                        new_gumbel_p_bits.append(gumbel_p_bits[i])
+                        remaining_intervals.append(intervals[i])
+                gumbel_p_bits = new_gumbel_p_bits
+                intervals = remaining_intervals
         assert len(intervals) == 1
         _, l, u = intervals[0]
         return to_only_float(l), to_only_float(u)

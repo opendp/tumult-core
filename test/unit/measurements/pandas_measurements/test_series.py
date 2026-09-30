@@ -27,6 +27,7 @@ from tmlt.core.measurements.noise_mechanisms import (
     AddGeometricNoise,
     AddLaplaceNoise,
 )
+from tmlt.core.measurements.pandas_measurements import series as series_module
 from tmlt.core.measurements.pandas_measurements.series import (
     AddNoiseToSeries,
     NoisyQuantile,
@@ -238,6 +239,49 @@ class TestNoisyQuantile(TestCase):
         self.assertTrue(measurement.privacy_relation(1, 0))
         self.assertTrue(measurement.privacy_relation(1, 1))
         self.assertTrue(22 <= measurement(pd.Series([23, 25])) <= 29)
+
+    def test_noisy_scores_use_increasing_precision(self):
+        """Noisy scores are computed with more precision as more bits are sampled.
+
+        With values=[2], lower=0, upper=4, and quantile=0.5 there are two
+        intervals, [0, 2] and [2, 4], whose scores before noise are identical.
+        The fake RNG below gives both intervals the same Gumbel bits for the
+        first four rounds (60 bits), then different bits, so their noisy scores
+        differ by roughly 2^-62. Telling them apart requires computing the
+        scores with more than 53 bits of precision; if the precision is not
+        increased along with the number of sampled bits, the scores never
+        separate and the refinement loop runs forever.
+        """
+
+        class FakeRng:
+            """Stands in for the Gumbel noise RNG."""
+
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def integers(self, high: int, size: int) -> np.ndarray:
+                self.calls += 1
+                if self.calls > 20:
+                    raise AssertionError(
+                        f"Intervals still not separated after {self.calls - 1} "
+                        "rounds of Gumbel bits"
+                    )
+                if self.calls <= 4:
+                    return np.full(size, high // 2)
+                # The second interval, [2, 4], gets larger bits, so it wins.
+                return np.array([high // 2, high // 2 + high // 4])
+
+        measurement = NoisyQuantile(
+            PandasSeriesDomain(NumpyIntegerDomain()),
+            output_measure=PureDP(),
+            quantile=0.5,
+            lower=0,
+            upper=4,
+            epsilon=1,
+        )
+        with patch.object(series_module, "prng", return_value=FakeRng()):
+            output = measurement(pd.Series([2]))
+        self.assertTrue(2 <= output <= 4)
 
 
 class TestAddNoiseToSeries(TestCase):
