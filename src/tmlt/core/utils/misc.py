@@ -1,7 +1,7 @@
 """Miscellaneous helper functions and classes."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2022 - 2025, and the Tumult Core Contributors 2025-present
 
 import copy
 import re

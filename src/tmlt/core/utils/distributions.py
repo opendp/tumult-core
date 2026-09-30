@@ -1,7 +1,7 @@
 """Probability functions for distributions commonly used in differential privacy."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2022 - 2025, and the Tumult Core Contributors 2025-present
 
 from functools import lru_cache
 from typing import Union, overload

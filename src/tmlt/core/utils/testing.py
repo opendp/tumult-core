@@ -5,7 +5,7 @@ extra, e.g. via ``pip install tmlt.core[testing]``.
 """
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2022 - 2025, and the Tumult Core Contributors 2025-present
 
 # TODO(#1218): Move dummy aggregate class back to the test.
 

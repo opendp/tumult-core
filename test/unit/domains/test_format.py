@@ -1,7 +1,7 @@
 """Tests for :meth:`tmlt.core.domains.base.Domain.format` and its overrides."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright the Tumult Core Contributors
 
 import textwrap
 
