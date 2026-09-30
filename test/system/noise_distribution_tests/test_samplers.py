@@ -1,7 +1,7 @@
 """Statistical tests for samplers in :mod:`tmlt.core.random`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
 from test.system.noise_distribution_tests import P_THRESHOLD, SAMPLE_SIZE
 

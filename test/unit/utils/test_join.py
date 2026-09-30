@@ -1,7 +1,7 @@
 """Unit tests for :mod:`tmlt.core.utils.join`."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2023-2025, and the Tumult Core Contributors 2025-present
 
 import re
 from contextlib import nullcontext as does_not_raise

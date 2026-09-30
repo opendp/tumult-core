@@ -1,7 +1,7 @@
 """Derived measurements for computing noisy aggregates on spark DataFrames."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
 from enum import Enum
 from math import ceil, log2
@@ -248,7 +248,7 @@ def create_count_measurement(
         ):
             if delta > 0:
                 # Once supported, we will compute the corresponding zCDP budget and set
-                # the ouptut measure to zCDP.
+                # the output measure to zCDP.
                 raise UnsupportedCombinationError(
                     (noise_mechanism, output_measure, d_out),
                     (
@@ -445,7 +445,7 @@ def create_count_distinct_measurement(
         ):
             if delta > 0:
                 # Once supported, we will compute the corresponding zCDP budget and set
-                # the ouptut measure to zCDP.
+                # the output measure to zCDP.
                 raise UnsupportedCombinationError(
                     (noise_mechanism, output_measure, d_out),
                     (
@@ -666,7 +666,7 @@ def create_sum_measurement(
         ):
             if delta > 0:
                 # Once supported, we will compute the corresponding zCDP budget and set
-                # the ouptut measure to zCDP.
+                # the output measure to zCDP.
                 raise UnsupportedCombinationError(
                     (noise_mechanism, output_measure, d_out),
                     (
@@ -776,6 +776,22 @@ def create_sum_measurement(
     return sum_measurement
 
 
+def _validate_continuous_noise_mechanism(
+    noise_mechanism: NoiseMechanism, aggregation: str
+) -> None:
+    """Raises an error unless ``noise_mechanism`` is LAPLACE or GAUSSIAN."""
+    if noise_mechanism not in (NoiseMechanism.LAPLACE, NoiseMechanism.GAUSSIAN):
+        raise UnsupportedNoiseMechanismError(
+            noise_mechanism,
+            (
+                f"The {aggregation} measurement computes its intermediate values in"
+                " floating point and only supports continuous noise. Use"
+                f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GAUSSIAN}, not"
+                f" {noise_mechanism}."
+            ),
+        )
+
+
 @typechecked
 def create_average_measurement(
     input_domain: SparkDataFrameDomain,
@@ -817,7 +833,8 @@ def create_average_measurement(
             interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
             is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
             :class:`~.ApproxDP`.
-        noise_mechanism: Noise mechanism to apply.
+        noise_mechanism: Noise mechanism to apply. Must be
+            :attr:`~.NoiseMechanism.LAPLACE` or :attr:`~.NoiseMechanism.GAUSSIAN`.
         measure_column: Name to column to compute average of.
         lower: Lower clipping bound for ``measure_column``.
         upper: Upper clipping bound for ``measure_column``.
@@ -842,6 +859,7 @@ def create_average_measurement(
             ``average_column``, ``sod(<measure_column>)``, ``count``, and
             ``midpoint(<measure_column>)``.
     """
+    _validate_continuous_noise_mechanism(noise_mechanism, "average")
     if not average_column:
         average_column = f"avg({measure_column})"
     sum_column = f"sod({measure_column})"
@@ -869,7 +887,7 @@ def create_average_measurement(
         return PostProcess(groupby_average, lambda x: x.head()[average_column])
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
-        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+        if noise_mechanism == NoiseMechanism.LAPLACE:
             if delta > 0:
                 raise UnsupportedCombinationError(
                     (noise_mechanism, output_measure, d_out),
@@ -894,31 +912,24 @@ def create_average_measurement(
                     keep_intermediates=keep_intermediates,
                 )
             )
-        elif noise_mechanism in (
-            NoiseMechanism.GAUSSIAN,
-            NoiseMechanism.DISCRETE_GAUSSIAN,
-        ):
-            if delta > 0:
-                # Once supported, we will compute the corresponding zCDP budget and set
-                # the ouptut measure to zCDP.
-                raise UnsupportedCombinationError(
-                    (noise_mechanism, output_measure, d_out),
-                    (
-                        "Spending an ApproxDP budget with delta > 0 using mechanism"
-                        f" {noise_mechanism} is not yet supported. Use either"
-                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
-                    ),
-                )
+        if delta > 0:
+            # Once supported, we will compute the corresponding zCDP budget and set
+            # the output measure to zCDP.
             raise UnsupportedCombinationError(
                 (noise_mechanism, output_measure, d_out),
                 (
-                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                    f" {NoiseMechanism.GEOMETRIC}."
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {NoiseMechanism.GAUSSIAN} is not yet supported. Use"
+                    f" {NoiseMechanism.LAPLACE}."
                 ),
             )
-        else:
-            assert False
+        raise UnsupportedCombinationError(
+            (noise_mechanism, output_measure, d_out),
+            (
+                f"Cannot spend a budget with delta = 0 using {NoiseMechanism.GAUSSIAN}."
+                f" Set delta > 0 or use {NoiseMechanism.LAPLACE}."
+            ),
+        )
     elif isinstance(output_measure, (RhoZCDP, PureDP)):
         d_out = PrivacyBudget.cast(output_measure, d_out).value
     else:
@@ -929,11 +940,7 @@ def create_average_measurement(
     # help mypy
     assert isinstance(output_measure, (PureDP, RhoZCDP))
     midpoint_of_measure_column, exact_midpoint_of_measure_column = get_midpoint(
-        lower=lower,
-        upper=upper,
-        integer_midpoint=isinstance(
-            input_domain[measure_column], SparkIntegerColumnDescriptor
-        ),
+        lower, upper
     )
 
     lower_clamp, upper_clamp = _get_clamping_bounds(
@@ -944,11 +951,11 @@ def create_average_measurement(
         row_transformer=RowToRowTransformation(
             input_domain=SparkRowDomain(input_domain.schema),
             output_domain=SparkRowDomain(
-                {**input_domain.schema, deviations_column: input_domain[measure_column]}
+                {**input_domain.schema, deviations_column: SparkFloatColumnDescriptor()}
             ),
             trusted_f=lambda row: {
-                deviations_column: min(
-                    max(row[measure_column], lower_clamp), upper_clamp
+                deviations_column: float(
+                    min(max(row[measure_column], lower_clamp), upper_clamp)
                 )
                 - midpoint_of_measure_column
             },
@@ -1159,7 +1166,8 @@ def create_variance_measurement(
             interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
             is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
             :class:`~.ApproxDP`.
-        noise_mechanism: Noise mechanism to apply.
+        noise_mechanism: Noise mechanism to apply. Must be
+            :attr:`~.NoiseMechanism.LAPLACE` or :attr:`~.NoiseMechanism.GAUSSIAN`.
         measure_column: Name to column to compute variance of.
         lower: Lower clipping bound for ``measure_column``.
         upper: Upper clipping bound for ``measure_column``.
@@ -1186,6 +1194,7 @@ def create_variance_measurement(
             "count", "midpoint(<measure_column>)", and
             "midpoint_of_squares(<measure_column>)".
     """
+    _validate_continuous_noise_mechanism(noise_mechanism, "variance")
     if variance_column is None:
         variance_column = f"var({measure_column})"
     sum_of_deviations_column = f"sod({measure_column})"
@@ -1214,7 +1223,7 @@ def create_variance_measurement(
         return PostProcess(groupby_variance, lambda x: x.head()[variance_column])
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
-        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+        if noise_mechanism == NoiseMechanism.LAPLACE:
             if delta > 0:
                 raise UnsupportedCombinationError(
                     (noise_mechanism, output_measure, d_out),
@@ -1239,31 +1248,24 @@ def create_variance_measurement(
                     keep_intermediates=keep_intermediates,
                 )
             )
-        elif noise_mechanism in (
-            NoiseMechanism.GAUSSIAN,
-            NoiseMechanism.DISCRETE_GAUSSIAN,
-        ):
-            if delta > 0:
-                # Once supported, we will compute the corresponding zCDP budget and set
-                # the ouptut measure to zCDP.
-                raise UnsupportedCombinationError(
-                    (noise_mechanism, output_measure, d_out),
-                    (
-                        "Spending an ApproxDP budget with delta > 0 using mechanism"
-                        f" {noise_mechanism} is not yet supported. Use either"
-                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
-                    ),
-                )
+        if delta > 0:
+            # Once supported, we will compute the corresponding zCDP budget and set
+            # the output measure to zCDP.
             raise UnsupportedCombinationError(
                 (noise_mechanism, output_measure, d_out),
                 (
-                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                    f" {NoiseMechanism.GEOMETRIC}."
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {NoiseMechanism.GAUSSIAN} is not yet supported. Use"
+                    f" {NoiseMechanism.LAPLACE}."
                 ),
             )
-        else:
-            assert False
+        raise UnsupportedCombinationError(
+            (noise_mechanism, output_measure, d_out),
+            (
+                f"Cannot spend a budget with delta = 0 using {NoiseMechanism.GAUSSIAN}."
+                f" Set delta > 0 or use {NoiseMechanism.LAPLACE}."
+            ),
+        )
     elif isinstance(output_measure, (RhoZCDP, PureDP)):
         d_out = PrivacyBudget.cast(output_measure, d_out).value
     else:
@@ -1275,11 +1277,7 @@ def create_variance_measurement(
     upper = ExactNumber(upper)
     d_in = ExactNumber(d_in)
     midpoint_of_measure_column, exact_midpoint_of_measure_column = get_midpoint(
-        lower,
-        upper,
-        integer_midpoint=isinstance(
-            input_domain[measure_column], SparkIntegerColumnDescriptor
-        ),
+        lower, upper
     )
 
     lower_after_squaring: ExactNumber = (
@@ -1289,13 +1287,7 @@ def create_variance_measurement(
     (
         midpoint_of_squared_measure_column,
         exact_midpoint_of_squared_measure_column,
-    ) = get_midpoint(
-        lower_after_squaring,
-        upper_after_squaring,
-        integer_midpoint=isinstance(
-            input_domain[measure_column], SparkIntegerColumnDescriptor
-        ),
-    )
+    ) = get_midpoint(lower_after_squaring, upper_after_squaring)
     (
         deviations_map,
         deviations_column,
@@ -1525,7 +1517,8 @@ def create_standard_deviation_measurement(
             interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
             is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
             :class:`~.ApproxDP`.
-        noise_mechanism: Noise mechanism to apply.
+        noise_mechanism: Noise mechanism to apply. Must be
+            :attr:`~.NoiseMechanism.LAPLACE` or :attr:`~.NoiseMechanism.GAUSSIAN`.
         measure_column: Name to column to compute standard deviation of.
         lower: Lower clipping bound for ``measure_column``.
         upper: Upper clipping bound for ``measure_column``.
@@ -1553,9 +1546,10 @@ def create_standard_deviation_measurement(
             "sos(<measure_column>)", "count", "midpoint(<measure_column>)", and
             "midpoint_of_squares(<measure_column>)".
     """
+    _validate_continuous_noise_mechanism(noise_mechanism, "standard deviation")
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
-        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+        if noise_mechanism == NoiseMechanism.LAPLACE:
             if delta > 0:
                 raise UnsupportedCombinationError(
                     (noise_mechanism, output_measure, d_out),
@@ -1580,31 +1574,24 @@ def create_standard_deviation_measurement(
                     keep_intermediates=keep_intermediates,
                 )
             )
-        elif noise_mechanism in (
-            NoiseMechanism.GAUSSIAN,
-            NoiseMechanism.DISCRETE_GAUSSIAN,
-        ):
-            if delta > 0:
-                # Once supported, we will compute the corresponding zCDP budget and set
-                # the ouptut measure to zCDP.
-                raise UnsupportedCombinationError(
-                    (noise_mechanism, output_measure, d_out),
-                    (
-                        "Spending an ApproxDP budget with delta > 0 using mechanism"
-                        f" {noise_mechanism} is not yet supported. Use either"
-                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
-                    ),
-                )
+        if delta > 0:
+            # Once supported, we will compute the corresponding zCDP budget and set
+            # the output measure to zCDP.
             raise UnsupportedCombinationError(
                 (noise_mechanism, output_measure, d_out),
                 (
-                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                    f" {NoiseMechanism.GEOMETRIC}."
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {NoiseMechanism.GAUSSIAN} is not yet supported. Use"
+                    f" {NoiseMechanism.LAPLACE}."
                 ),
             )
-        else:
-            assert False
+        raise UnsupportedCombinationError(
+            (noise_mechanism, output_measure, d_out),
+            (
+                f"Cannot spend a budget with delta = 0 using {NoiseMechanism.GAUSSIAN}."
+                f" Set delta > 0 or use {NoiseMechanism.LAPLACE}."
+            ),
+        )
     elif isinstance(output_measure, (RhoZCDP, PureDP)):
         d_out = PrivacyBudget.cast(output_measure, d_out).value
     else:
@@ -1826,12 +1813,9 @@ def create_quantile_measurement(
 
 
 def get_midpoint(
-    lower: ExactNumberInput, upper: ExactNumberInput, integer_midpoint: bool = False
-) -> Tuple[Union[float, int], ExactNumber]:
+    lower: ExactNumberInput, upper: ExactNumberInput
+) -> Tuple[float, ExactNumber]:
     """Returns the midpoint of lower and upper.
-
-    If integer_midpoint is True, the midpoint is rounded to the nearest integer using
-    :func:`round`.
 
     Examples:
         >>> get_midpoint(1, 2)
@@ -1840,16 +1824,11 @@ def get_midpoint(
         (3.0, 3)
         >>> get_midpoint("0.2", "0.3")
         (0.25, 1/4)
-        >>> get_midpoint(1, 9, integer_midpoint=True)
-        (5, 5)
     """
     lower = ExactNumber(lower)
     upper = ExactNumber(upper)
     lower_ceil = lower.to_float(round_up=True)
     upper_floor = upper.to_float(round_up=False)
-    if integer_midpoint:
-        midpoint: Union[int, float] = round(lower_ceil * 0.5 + upper_floor * 0.5)
-        return (midpoint, ExactNumber(int(midpoint)))
     midpoint = lower_ceil * 0.5 + upper_floor * 0.5
     exact_midpoint = (lower + upper) / 2
     return midpoint, exact_midpoint
@@ -1877,44 +1856,30 @@ def _create_map_to_compute_deviations(
     upper: ExactNumber,
 ) -> Tuple[Map, str, str]:
     """Returns a map to produce deviations and squared deviations of measure column."""
-    midpoint_of_measure_column, _ = get_midpoint(
-        lower,
-        upper,
-        integer_midpoint=isinstance(
-            input_domain[measure_column], SparkIntegerColumnDescriptor
-        ),
-    )
+    midpoint_of_measure_column, _ = get_midpoint(lower, upper)
 
     lower_after_squaring: ExactNumber = (
         ExactNumber(0) if lower <= 0 <= upper else min(lower**2, upper**2)
     )
     upper_after_squaring: ExactNumber = max(lower**2, upper**2)
-    measure_column_descriptor = input_domain[measure_column]
-    if isinstance(measure_column_descriptor, SparkIntegerColumnDescriptor):
-        int_max = measure_column_descriptor.SIZE_TO_MIN_MAX[
-            measure_column_descriptor.size
-        ][1]
-        if upper_after_squaring > int_max:
-            raise ValueError(
-                "The squares of the clamping bounds must fit in the measure column's"
-                f" integer type, but max(lower^2, upper^2) = {upper_after_squaring}"
-                f" exceeds {int_max}. Use smaller bounds or a float column."
-            )
     lower_clamp, upper_clamp = _get_clamping_bounds(
         input_domain, measure_column, lower, upper
     )
     (midpoint_of_squared_measure_column, _) = get_midpoint(
-        lower_after_squaring,
-        upper_after_squaring,
-        integer_midpoint=isinstance(
-            input_domain[measure_column], SparkIntegerColumnDescriptor
-        ),
+        lower_after_squaring, upper_after_squaring
     )
 
     deviations_column = get_nonconflicting_string(list(input_domain.schema))
     squared_deviations_column = get_nonconflicting_string(
         [*input_domain.schema, deviations_column]
     )
+
+    def compute_deviations(row: Row) -> Dict[str, float]:
+        clamped = float(min(max(row[measure_column], lower_clamp), upper_clamp))
+        return {
+            deviations_column: clamped - midpoint_of_measure_column,
+            squared_deviations_column: clamped**2 - midpoint_of_squared_measure_column,
+        }
 
     return (
         Map(
@@ -1923,21 +1888,11 @@ def _create_map_to_compute_deviations(
                 output_domain=SparkRowDomain(
                     {
                         **input_domain.schema,
-                        deviations_column: input_domain[measure_column],
-                        squared_deviations_column: input_domain[measure_column],
+                        deviations_column: SparkFloatColumnDescriptor(),
+                        squared_deviations_column: SparkFloatColumnDescriptor(),
                     }
                 ),
-                trusted_f=lambda row: {
-                    deviations_column: min(
-                        max(row[measure_column], lower_clamp), upper_clamp
-                    )
-                    - midpoint_of_measure_column,
-                    squared_deviations_column: min(
-                        max(row[measure_column], lower_clamp), upper_clamp
-                    )
-                    ** 2
-                    - midpoint_of_squared_measure_column,
-                },
+                trusted_f=compute_deviations,
                 augment=True,
             ),
             metric=input_metric,

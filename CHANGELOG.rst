@@ -24,11 +24,12 @@ Changed
   - ``AddRemoveKeys`` -> :class:`~tmlt.core.metrics.AddRemoveIDs`
   - ``PrivateJoinOnKey`` -> :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnIDs`
   - ``FlatMapByKey`` -> :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByID`
+- :func:`~tmlt.core.measurements.aggregations.create_average_measurement`, :func:`~tmlt.core.measurements.aggregations.create_variance_measurement`, and :func:`~tmlt.core.measurements.aggregations.create_standard_deviation_measurement` now only accept the ``LAPLACE`` and ``GAUSSIAN`` noise mechanisms, so large integer values can no longer overflow the intermediate aggregations. The ``integer_midpoint`` argument of :func:`~tmlt.core.measurements.aggregations.get_midpoint` was removed.
 
 Fixed
 ~~~~~
+- :class:`~tmlt.core.transformations.spark_transformations.join.PublicJoin` with ``how="left"`` now reports a stability of at least 1, even if the public table is empty, or has only null join keys with ``join_on_nulls=False``. Previously it would incorrectly report a stability of 0.
 - The random number generator used for noise is now rebuilt when it is first used in a new process. Previously a process created by ``fork()`` inherited the parent's buffered random words, so the parent and all of its children produced the same noise until the buffer was exhausted.
-
 
 .. _v0.19.1:
 

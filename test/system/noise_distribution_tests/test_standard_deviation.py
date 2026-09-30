@@ -1,9 +1,9 @@
 """Tests `create_standard_deviation_measurement` noise distributions are as expected."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
-from typing import Dict, List, Union
+from typing import Dict, List
 
 import pytest
 from pyspark.sql import DataFrame
@@ -18,7 +18,6 @@ from tmlt.core.measurements.aggregations import (
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import SymmetricDifference
 from tmlt.core.utils.testing import (
-    ChiSquaredTestCase,
     FixedGroupDataSet,
     KSTestCase,
     PySparkTest,
@@ -26,7 +25,6 @@ from tmlt.core.utils.testing import (
     get_prob_functions,
     get_sampler,
     get_values_summing_to_loc,
-    run_test_using_chi_squared_test,
     run_test_using_ks_test,
 )
 
@@ -43,15 +41,7 @@ def _get_var_stddev_test_cases(
     and corresponding cdfs (if noise_mechanism is Laplace) or cmfs and pmfs (otherwise)
     """
     test_cases = []
-    sum_locations: Union[List[float], List[int]]
-    supports_continuous = noise_mechanism in (
-        NoiseMechanism.LAPLACE,
-        NoiseMechanism.GAUSSIAN,
-    )
-    if not supports_continuous:
-        sum_locations = [100, 14]
-    else:
-        sum_locations = [99.78, 13.63]
+    sum_locations = [99.78, 13.63]
     count_locations = [8, 5]
     privacy_budgets = ["3.4", "1.1"]
     for sum_loc, count_loc, budget in zip(
@@ -61,7 +51,7 @@ def _get_var_stddev_test_cases(
         dataset = FixedGroupDataSet(
             group_vals=group_values,
             num_groups=SAMPLE_SIZE,
-            float_measure_column=supports_continuous,
+            float_measure_column=True,
         )
         create_measurement = (
             create_standard_deviation_measurement
@@ -72,10 +62,7 @@ def _get_var_stddev_test_cases(
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
             output_measure=(
-                PureDP()
-                if noise_mechanism
-                not in (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN)
-                else RhoZCDP()
+                PureDP() if noise_mechanism == NoiseMechanism.LAPLACE else RhoZCDP()
             ),
             measure_column="B",
             lower=dataset.lower,
@@ -86,20 +73,15 @@ def _get_var_stddev_test_cases(
             keep_intermediates=True,
         )
 
-        true_answers: Dict[str, Union[float, int]] = {
+        true_answers: Dict[str, float] = {
             "count": len(dataset.group_vals),
             "sum": sum(dataset.group_vals),
             "sum_of_squares": sum(val**2 for val in dataset.group_vals),
         }
-        midpoint_sod, _ = get_midpoint(
-            dataset.lower,
-            dataset.upper,
-            integer_midpoint=not dataset.float_measure_column,
-        )
+        midpoint_sod, _ = get_midpoint(dataset.lower, dataset.upper)
         midpoint_sos, _ = get_midpoint(
             0 if dataset.lower <= 0 <= dataset.upper else dataset.lower**2,
             dataset.upper**2,
-            integer_midpoint=not dataset.float_measure_column,
         )
 
         def postprocessor(
@@ -141,28 +123,6 @@ def _get_var_stddev_test_cases(
 
 class TestStandardDeviationNoiseDistributions(PySparkTest):
     """Noise distribution tests for standard deviation measurement."""
-
-    @pytest.mark.slow
-    def test_stddev_with_geometric_noise(self):
-        """`create_standard_deviation_measurement` adds appropriate geometric noise."""
-        cases = [
-            ChiSquaredTestCase.from_dict(e)
-            for e in _get_var_stddev_test_cases(NoiseMechanism.GEOMETRIC, stddev=True)
-        ]
-        for case in cases:
-            run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
-
-    @pytest.mark.slow
-    def test_stddev_with_discrete_gaussian_noise(self):
-        """`create_standard_deviation_measurement` adds appropriate Gaussian noise."""
-        cases = [
-            ChiSquaredTestCase.from_dict(e)
-            for e in _get_var_stddev_test_cases(
-                NoiseMechanism.DISCRETE_GAUSSIAN, stddev=True
-            )
-        ]
-        for case in cases:
-            run_test_using_chi_squared_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
 
     @pytest.mark.slow
     def test_stddev_with_laplace_noise(self):
