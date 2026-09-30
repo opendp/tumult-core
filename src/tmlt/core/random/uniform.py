@@ -22,7 +22,7 @@ def uniform_inverse_cdf(l: float, u: float, p: arb, prec: int) -> arb:
     # The following code-block is equivalent to:
     #   return l * (1 - p) + p * u
     with ctx.workprec(prec):
-        return (arb(l) * (arb(1) - p)) + (p * arb(u))
+        return arb(l) * (arb(1) - p) + p * arb(u)
 
 
 def uniform(lower: float, upper: float, step_size: int = 63) -> float:

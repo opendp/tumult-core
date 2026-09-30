@@ -33,8 +33,8 @@ def laplace_inverse_cdf(u: float, b: float, p: arb, prec: int) -> arb:
     with ctx.workprec(prec):
         p_minus_half = p - arb(0.5)
         arb_u = arb(u)
-        term2 = (arb(b) * p_minus_half.sgn()) * (
-            (arb(1) + (arb(-2) * abs(p_minus_half))).log()
+        term2 = (
+            arb(b) * p_minus_half.sgn() * (arb(1) + arb(-2) * abs(p_minus_half)).log()
         )
         return arb_u - term2
 

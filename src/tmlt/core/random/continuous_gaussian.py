@@ -55,10 +55,9 @@ def gaussian_inverse_cdf(
     # The following code corresponds to:
     #   return u + sigma * sqrt(2) * erfinv(2 * p - 1)
     with ctx.workprec(prec):
-        return u_arb + (
-            (sigma_squared_arb).sqrt()
-            * (arb(2)).sqrt()
-            * ((arb(2) * p) - arb(1)).erfinv()
+        return (
+            u_arb
+            + sigma_squared_arb.sqrt() * arb(2).sqrt() * (arb(2) * p - arb(1)).erfinv()
         )
 
 

@@ -383,7 +383,7 @@ def _select_quantile_interval(
 
         if epsilon == float("inf"):
             intervals_with_scores = [
-                (-(abs((rank - target_rank))), l, u) for rank, l, u in intervals
+                (-abs(rank - target_rank), l, u) for rank, l, u in intervals
             ]
             _, l, u = sorted(intervals_with_scores, reverse=True)[0]
             l_float = to_only_float(l)
@@ -417,21 +417,14 @@ def _select_quantile_interval(
                 ]
                 # probabilities for sampling Gumbel noise using the inverse CDF
 
-                gumbels = [-(-(p.log())).log() for p in probabilities]
+                gumbels = [-(-p.log()).log() for p in probabilities]
 
                 noisy_scores = [
                     # arb.log(u - l) -
                     # ((abs(rank - target_rank) * epsilon) / (2 * delta_u)) + noise
-                    (
-                        (
-                            (u - l).log()
-                            - (
-                                (abs((rank - target_rank)) * arb(epsilon))
-                                / (arb(2) * delta_u)
-                            )
-                        )
-                        + noise
-                    )
+                    (u - l).log()
+                    - abs(rank - target_rank) * arb(epsilon) / (arb(2) * delta_u)
+                    + noise
                     for noise, (rank, l, u) in zip(gumbels, intervals)
                 ]
 
@@ -449,8 +442,7 @@ def _select_quantile_interval(
                 remaining_intervals: List[_RankedInterval] = []
                 for i, noisy_score in enumerate(noisy_scores):
                     if not (
-                        noisy_score
-                        < approx_max
+                        noisy_score < approx_max
                         # NOT the same as noisy_score >= approx_max
                         # A < B only returns true if A.upper < B.lower
                         # true if A.upper < B.lower

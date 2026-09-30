@@ -23,12 +23,12 @@ def fourth_root_transformation_mechanism(
     def inverse_cdf(p: arb, prec: int) -> arb:
         """Inverse CDF for the post-processed Gaussian distribution."""
         with ctx.workprec(prec):
-            u_arb = (x_arb + offset_arb) ** (one_fourth)
-            sigma_squared_arb = sigma_arb ** (two)
+            u_arb = (x_arb + offset_arb) ** one_fourth
+            sigma_squared_arb = sigma_arb**two
             gaussian_sample = gaussian_inverse_cdf(
                 u=u_arb, sigma_squared=sigma_squared_arb, p=p, prec=prec
             )
-            return gaussian_sample ** (four) - offset_arb
+            return gaussian_sample**four - offset_arb
 
     return construct_inverse_sampler(inverse_cdf=inverse_cdf)()
 
@@ -46,11 +46,11 @@ def square_root_transformation_mechanism(
         """Inverse CDF for the post-processed Gaussian distribution."""
         with ctx.workprec(prec):
             u_arb = (x_arb + offset_arb).sqrt()
-            sigma_squared_arb = sigma_arb ** (two)
+            sigma_squared_arb = sigma_arb**two
             gaussian_sample = gaussian_inverse_cdf(
                 u=u_arb, sigma_squared=sigma_squared_arb, p=p, prec=prec
             )
-            return gaussian_sample ** (two) - offset_arb
+            return gaussian_sample**two - offset_arb
 
     return construct_inverse_sampler(inverse_cdf=inverse_cdf)()
 
@@ -66,7 +66,7 @@ def log_transformation_mechanism(x: float, offset: float, sigma: float) -> float
         """Inverse CDF for the post-processed Gaussian distribution."""
         with ctx.workprec(prec):
             u_arb = (x_arb + offset_arb).log()
-            sigma_squared_arb = sigma_arb ** (two)
+            sigma_squared_arb = sigma_arb**two
             gaussian_sample = gaussian_inverse_cdf(
                 u=u_arb, sigma_squared=sigma_squared_arb, p=p, prec=prec
             )
@@ -104,16 +104,16 @@ def square_root_gaussian_inverse_cdf(x: arb, sigma: arb, prec: int) -> arb:
         e_arb = one.exp()
 
         if x > half:
-            lambertw_arg = ((arb(2) * x) - two) / e_arb
+            lambertw_arg = (arb(2) * x - two) / e_arb
             lambertw_branch = 0 if lambertw_arg >= zero else -1
             lambert_term = lambertw_arg.lambertw(branch=lambertw_branch)
-            return sigma * (lambert_term + one) ** (two)
+            return sigma * (lambert_term + one) ** two
 
         if x < half:
-            lambertw_arg = (arb(2).neg() * x) / e_arb
+            lambertw_arg = arb(2).neg() * x / e_arb
             lambertw_branch = 0 if lambertw_arg >= zero else -1
             lambert_term = lambertw_arg.lambertw(branch=lambertw_branch)
-            return sigma.neg() * (lambert_term + one) ** (two)
+            return sigma.neg() * (lambert_term + one) ** two
 
         # NOTE: It is possible that none of the above conditions are true.
         # In this case, we return the interval (-inf, inf). The inverse CDF
@@ -140,7 +140,7 @@ def _phi(x: arb, prec: int) -> arb:
 def _phi_inv(p: arb, prec: int) -> arb:
     """Inverse CDF for the unit Gaussian distribution N(0, 1)."""
     with ctx.workprec(prec):
-        return arb(2).sqrt() * ((arb(2) * p) - arb(1)).erfinv()
+        return arb(2).sqrt() * (arb(2) * p - arb(1)).erfinv()
 
 
 def exponential_polylogarithmic_inverse_cdf(
@@ -171,7 +171,7 @@ def exponential_polylogarithmic_inverse_cdf(
         one = arb(1)
         two_d = arb(2) * d
 
-        two_x_minus_1 = (arb(2) * x) - one
+        two_x_minus_1 = arb(2) * x - one
         one_minux_2_x = two_x_minus_1.neg()
 
         log_a = a.log()
@@ -189,31 +189,23 @@ def exponential_polylogarithmic_inverse_cdf(
             return (
                 minus_sigma
                 * (
-                    (
-                        one_div_sqrt_2d
-                        * _phi_inv(
-                            ((one_minus_phi_term * one_minux_2_x) + phi_term),
-                            prec=prec,
-                        )
-                    )
+                    one_div_sqrt_2d
+                    * _phi_inv(one_minus_phi_term * one_minux_2_x + phi_term, prec=prec)
                     + one_div_2d
                 ).exp()
-            ) + sigma_times_a
+                + sigma_times_a
+            )
 
         if x > half:
             return (
                 sigma
                 * (
-                    (
-                        one_div_sqrt_2d
-                        * _phi_inv(
-                            ((one_minus_phi_term * two_x_minus_1) + phi_term),
-                            prec=prec,
-                        )
-                    )
+                    one_div_sqrt_2d
+                    * _phi_inv(one_minus_phi_term * two_x_minus_1 + phi_term, prec=prec)
                     + one_div_2d
                 ).exp()
-            ) - sigma_times_a
+                - sigma_times_a
+            )
         # NOTE: It is possible that none of the above conditions are true.
         # In this case, we return the interval (-inf, inf). The inverse CDF
         # sampler should re-try with more precision.

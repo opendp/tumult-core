@@ -237,7 +237,7 @@ def _discrete_gaussian_unnormalized_mass_from_k_to_inf(
             return (
                 (arb.pi() / arb(2)).sqrt()
                 * sigma
-                * ((arb(int(n)) / (arb(2).sqrt() * sigma)).erfc())
+                * (arb(int(n)) / (arb(2).sqrt() * sigma)).erfc()
             )
 
         lower = integral(k)
