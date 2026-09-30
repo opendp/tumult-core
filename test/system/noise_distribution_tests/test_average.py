@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import pytest
 from pyspark.sql import functions as sf
@@ -29,7 +29,9 @@ from tmlt.core.utils.testing import (
 from . import NOISE_SCALE_FUDGE_FACTOR, P_THRESHOLD, SAMPLE_SIZE
 
 
-def _get_average_test_cases(noise_mechanism: NoiseMechanism) -> List[Dict]:
+def _get_average_test_cases(
+    noise_mechanism: NoiseMechanism, output_measure: Union[PureDP, RhoZCDP]
+) -> List[Dict]:
     """Returns average test cases.
 
     This returns a list of test instances specifying the sampler (that produces
@@ -52,9 +54,7 @@ def _get_average_test_cases(noise_mechanism: NoiseMechanism) -> List[Dict]:
         measurement = create_average_measurement(
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
-            output_measure=(
-                PureDP() if noise_mechanism == NoiseMechanism.LAPLACE else RhoZCDP()
-            ),
+            output_measure=output_measure,
             measure_column="B",
             lower=dataset.lower,
             upper=dataset.upper,
@@ -99,7 +99,7 @@ class TestAverageNoiseDistributions(PySparkTest):
         """Average adds noise from expected Laplace distribution."""
         cases = [
             KSTestCase.from_dict(e)
-            for e in _get_average_test_cases(NoiseMechanism.LAPLACE)
+            for e in _get_average_test_cases(NoiseMechanism.LAPLACE, PureDP())
         ]
         for case in cases:
             run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)
@@ -109,7 +109,7 @@ class TestAverageNoiseDistributions(PySparkTest):
         """Average adds noise from expected Gaussian distribution."""
         cases = [
             KSTestCase.from_dict(e)
-            for e in _get_average_test_cases(NoiseMechanism.GAUSSIAN)
+            for e in _get_average_test_cases(NoiseMechanism.GAUSSIAN, RhoZCDP())
         ]
         for case in cases:
             run_test_using_ks_test(case, P_THRESHOLD, NOISE_SCALE_FUDGE_FACTOR)

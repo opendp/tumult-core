@@ -1677,73 +1677,70 @@ def test_create_scalar_measurement_errors(
         )
 
 
+_BOUNDED_B = {"lower": sp.Integer(0), "upper": sp.Integer(10), "measure_column": "B"}
+
+
 @parametrize(
-    Case("discrete gaussian")(noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN),
-    Case("gaussian")(noise_mechanism=NoiseMechanism.GAUSSIAN),
-)
-@parametrize(
-    Case("count")(
-        create_measurement_method=create_count_measurement,
-        extra_args={},
-    ),
-    Case("count distinct")(
-        create_measurement_method=create_count_distinct_measurement,
-        extra_args={},
-    ),
-    Case("sum")(
-        create_measurement_method=create_sum_measurement,
-        extra_args={
-            "lower": sp.Integer(0),
-            "upper": sp.Integer(10),
-            "measure_column": "B",
-        },
-    ),
-    Case("average")(
-        create_measurement_method=create_average_measurement,
-        extra_args={
-            "lower": sp.Integer(0),
-            "upper": sp.Integer(10),
-            "measure_column": "B",
-        },
-    ),
-    Case("standard deviation")(
-        create_measurement_method=create_standard_deviation_measurement,
-        extra_args={
-            "lower": sp.Integer(0),
-            "upper": sp.Integer(10),
-            "measure_column": "B",
-        },
-    ),
-    Case("variance")(
-        create_measurement_method=create_variance_measurement,
-        extra_args={
-            "lower": sp.Integer(0),
-            "upper": sp.Integer(10),
-            "measure_column": "B",
-        },
-    ),
+    *[
+        Case(f"{name}-{mechanism.name.lower()}")(
+            create_measurement_method=method,
+            extra_args=extra_args,
+            noise_mechanism=mechanism,
+        )
+        for name, method, extra_args, mechanisms in [
+            (
+                "count",
+                create_count_measurement,
+                {},
+                (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN),
+            ),
+            (
+                "count distinct",
+                create_count_distinct_measurement,
+                {},
+                (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN),
+            ),
+            (
+                "sum",
+                create_sum_measurement,
+                _BOUNDED_B,
+                (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN),
+            ),
+            # Integer mechanisms are rejected by average, variance, and standard
+            # deviation; see test_integer_noise_mechanisms_are_rejected.
+            (
+                "average",
+                create_average_measurement,
+                _BOUNDED_B,
+                (NoiseMechanism.GAUSSIAN,),
+            ),
+            (
+                "standard deviation",
+                create_standard_deviation_measurement,
+                _BOUNDED_B,
+                (NoiseMechanism.GAUSSIAN,),
+            ),
+            (
+                "variance",
+                create_variance_measurement,
+                _BOUNDED_B,
+                (NoiseMechanism.GAUSSIAN,),
+            ),
+        ]
+        for mechanism in mechanisms
+    ]
 )
 def test_unsupported_output_measure_for_noise_mechanism(
     create_measurement_method, extra_args, noise_mechanism: NoiseMechanism
 ):
-    """Gaussian mechanisms reject PureDP as an output measure.
-
-    Average, variance, and standard deviation reject DISCRETE_GAUSSIAN outright.
-    """
+    """Gaussian mechanisms reject PureDP as an output measure."""
     input_domain = SparkDataFrameDomain(
         {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
     )
-    error, message = UnsupportedMeasureError, "is not supported by noise mechanism"
-    if noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN and (
-        create_measurement_method
-        in (
-            create_average_measurement,
-            create_variance_measurement,
-            create_standard_deviation_measurement,
-        )
+    with pytest.raises(
+        UnsupportedMeasureError,
+        match="is not supported by noise mechanism",
     ):
-        error, message = UnsupportedNoiseMechanismError, "only supports continuous"
-    with pytest.raises(error, match=message):
         create_measurement_method(
             input_domain=input_domain,
             input_metric=SymmetricDifference(),
@@ -1886,90 +1883,108 @@ INPUT_DOMAIN = SparkDataFrameDomain(
 )
 
 
+# Each function, with the error it raises for an integer noise mechanism.
+_BAD_DELTA_FUNCTIONS = [
+    (
+        functools.partial(
+            create_count_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            output_measure=ApproxDP(),
+        ),
+        UnsupportedCombinationError,
+    ),
+    (
+        functools.partial(
+            create_count_distinct_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            output_measure=ApproxDP(),
+        ),
+        UnsupportedCombinationError,
+    ),
+    (
+        functools.partial(
+            create_sum_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            measure_column="B",
+            upper=sp.Integer(10),
+            lower=sp.Integer(0),
+            output_measure=ApproxDP(),
+        ),
+        UnsupportedCombinationError,
+    ),
+    (
+        functools.partial(
+            create_average_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            measure_column="B",
+            upper=sp.Integer(10),
+            lower=sp.Integer(0),
+            output_measure=ApproxDP(),
+        ),
+        UnsupportedNoiseMechanismError,
+    ),
+    (
+        functools.partial(
+            create_standard_deviation_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            measure_column="B",
+            upper=sp.Integer(10),
+            lower=sp.Integer(0),
+            output_measure=ApproxDP(),
+        ),
+        UnsupportedNoiseMechanismError,
+    ),
+    (
+        functools.partial(
+            create_variance_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            measure_column="B",
+            upper=sp.Integer(10),
+            lower=sp.Integer(0),
+            output_measure=ApproxDP(),
+        ),
+        UnsupportedNoiseMechanismError,
+    ),
+]
+
+
 class TestBadDelta(TestCase):
     """Tests for :mod:`tmlt.core.measurements.aggregations`."""
 
     @parameterized.expand(
         [
-            (noise_mechanism, d_out, f)
+            (noise_mechanism, d_out, f, UnsupportedCombinationError)
             for noise_mechanism, d_out in [
                 (NoiseMechanism.LAPLACE, (sp.Integer(1), sp.Rational(1, 2))),
-                (NoiseMechanism.GEOMETRIC, (sp.Integer(1), sp.Rational(1, 2))),
                 (NoiseMechanism.GAUSSIAN, (sp.Integer(1), sp.Rational(1, 2))),
-                (NoiseMechanism.DISCRETE_GAUSSIAN, (sp.Integer(1), sp.Rational(1, 2))),
                 (NoiseMechanism.GAUSSIAN, (sp.Integer(1), sp.Integer(0))),
+            ]
+            for f, _ in _BAD_DELTA_FUNCTIONS
+        ]
+        + [
+            (noise_mechanism, d_out, f, integer_mechanism_error)
+            for noise_mechanism, d_out in [
+                (NoiseMechanism.GEOMETRIC, (sp.Integer(1), sp.Rational(1, 2))),
+                (NoiseMechanism.DISCRETE_GAUSSIAN, (sp.Integer(1), sp.Rational(1, 2))),
                 (NoiseMechanism.DISCRETE_GAUSSIAN, (sp.Integer(1), sp.Integer(0))),
             ]
-            for f in [
-                functools.partial(
-                    create_count_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    output_measure=ApproxDP(),
-                ),
-                functools.partial(
-                    create_count_distinct_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    output_measure=ApproxDP(),
-                ),
-                functools.partial(
-                    create_sum_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    measure_column="B",
-                    upper=sp.Integer(10),
-                    lower=sp.Integer(0),
-                    output_measure=ApproxDP(),
-                ),
-                functools.partial(
-                    create_average_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    measure_column="B",
-                    upper=sp.Integer(10),
-                    lower=sp.Integer(0),
-                    output_measure=ApproxDP(),
-                ),
-                functools.partial(
-                    create_standard_deviation_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    measure_column="B",
-                    upper=sp.Integer(10),
-                    lower=sp.Integer(0),
-                    output_measure=ApproxDP(),
-                ),
-                functools.partial(
-                    create_variance_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    measure_column="B",
-                    upper=sp.Integer(10),
-                    lower=sp.Integer(0),
-                    output_measure=ApproxDP(),
-                ),
-            ]
+            for f, integer_mechanism_error in _BAD_DELTA_FUNCTIONS
         ]
     )
     def test_functions_with_noise_mechanism(
-        self, noise_mechanism: NoiseMechanism, d_out: PrivacyBudgetInput, f: Callable
+        self,
+        noise_mechanism: NoiseMechanism,
+        d_out: PrivacyBudgetInput,
+        f: Callable,
+        expected_error: type,
     ) -> None:
-        """Test error is raised for invalid delta/noise mechanism combination.
-
-        Average, variance, and standard deviation reject integer noise mechanisms
-        outright, before looking at the budget.
-        """
-        expected_error: type = UnsupportedCombinationError
-        if f.func in (
-            create_average_measurement,
-            create_variance_measurement,
-            create_standard_deviation_measurement,
-        ) and noise_mechanism in (
-            NoiseMechanism.GEOMETRIC,
-            NoiseMechanism.DISCRETE_GAUSSIAN,
-        ):
-            expected_error = UnsupportedNoiseMechanismError
+        """Test error is raised for invalid delta/noise mechanism combination."""
         with self.assertRaises(expected_error):
             f(noise_mechanism=noise_mechanism, d_out=d_out)
 
@@ -2527,128 +2542,86 @@ def test_float_outliers_do_not_overflow(spark, factory: Callable, stat: Callable
     assert float(answer) == pytest.approx(expected)
 
 
-class TestFloatingPointArithmetic(PySparkTest):
-    """Average, variance, and stdev compute their intermediates in floating point.
-
-    Deviations from the midpoint are computed as doubles before being summed, so
-    large integer values cannot overflow the column type, and the integer noise
-    mechanisms are rejected.
-    """
-
-    def setUp(self):
-        """Set up test."""
-        self.domain = SparkDataFrameDomain({"X": SparkIntegerColumnDescriptor()})
-
-    @parameterized.expand(
-        [
-            (create_average_measurement, np.mean, 2**62, NoiseMechanism.LAPLACE),
-            (create_average_measurement, np.mean, 2**62, NoiseMechanism.GAUSSIAN),
+@parametrize(
+    *[
+        Case(f"{name}-{mechanism.name.lower()}")(
+            factory=factory, stat=stat, big=big, mechanism=mechanism, measure=measure
+        )
+        for name, factory, stat, big in [
+            ("average", create_average_measurement, np.mean, 2**62),
             (
+                "variance",
                 create_variance_measurement,
                 lambda v: np.var(v, ddof=1),
                 2**31,
-                NoiseMechanism.LAPLACE,
             ),
             (
-                create_variance_measurement,
-                lambda v: np.var(v, ddof=1),
-                2**31,
-                NoiseMechanism.GAUSSIAN,
-            ),
-            (
+                "stdev",
                 create_standard_deviation_measurement,
                 lambda v: np.std(v, ddof=1),
                 2**31,
-                NoiseMechanism.LAPLACE,
             ),
         ]
-    )
-    def test_large_integer_values_do_not_overflow(
-        self, factory: Callable, stat: Callable, big: int, mechanism: NoiseMechanism
-    ):
-        """Deviations whose int64 sum would wrap are handled correctly.
-
-        Twenty values of ``big`` and one of 0 have deviations (for average) or
-        squared deviations (for variance and stdev) summing past 2**63.
-        """
-        values = [big] * 20 + [0]
-        expected = float(stat(values))
-        measure = PureDP() if mechanism == NoiseMechanism.LAPLACE else RhoZCDP()
-        measurement = factory(
-            input_domain=self.domain,
-            input_metric=SymmetricDifference(),
-            output_measure=measure,
-            d_out=sp.oo,
-            noise_mechanism=mechanism,
-            measure_column="X",
-            lower=0,
-            upper=big,
-        )
-        answer = measurement(self.spark.createDataFrame([(v,) for v in values], ["X"]))
-        self.assertAlmostEqual(float(answer) / expected, 1.0, places=9)
-
-    def test_integer_column_intermediates_are_floating_point(self):
-        """The intermediate columns are doubles and the midpoints are exact."""
-        measurement = create_variance_measurement(
-            input_domain=self.domain,
-            input_metric=SymmetricDifference(),
-            output_measure=PureDP(),
-            d_out=sp.oo,
-            noise_mechanism=NoiseMechanism.LAPLACE,
-            measure_column="X",
-            lower=0,
-            upper=9,
-            groupby_transformation=GroupBy(
-                input_domain=self.domain,
-                input_metric=SymmetricDifference(),
-                use_l2=False,
-                group_keys=self.spark.createDataFrame([], StructType([])),
-            ),
-            keep_intermediates=True,
-        )
-        output = measurement(self.spark.createDataFrame([(1,), (2,), (3,)], ["X"]))
-        types = {field.name: type(field.dataType).__name__ for field in output.schema}
-        self.assertEqual(types["sod(X)"], "DoubleType")
-        self.assertEqual(types["sos(X)"], "DoubleType")
-        row = output.collect()[0]
-        # Exact midpoints, not integer-rounded ones: (0 + 9) / 2 and (0 + 81) / 2.
-        self.assertEqual(row["midpoint(X)"], 4.5)
-        self.assertEqual(row["midpoint_of_squared(X)"], 40.5)
-        self.assertEqual(row["sod(X)"], (1 + 2 + 3) - 3 * 4.5)
-        self.assertEqual(row["sos(X)"], (1 + 4 + 9) - 3 * 40.5)
-
-    @parameterized.expand(
-        [
-            (factory, mechanism, measure)
-            for factory in (
-                create_average_measurement,
-                create_variance_measurement,
-                create_standard_deviation_measurement,
-            )
-            for mechanism, measure in (
-                (NoiseMechanism.GEOMETRIC, PureDP()),
-                (NoiseMechanism.DISCRETE_GAUSSIAN, RhoZCDP()),
-            )
+        for mechanism, measure in [
+            (NoiseMechanism.LAPLACE, PureDP()),
+            (NoiseMechanism.GAUSSIAN, RhoZCDP()),
         ]
+    ]
+)
+def test_large_integer_values_do_not_overflow(
+    spark,
+    factory: Callable,
+    stat: Callable,
+    big: int,
+    mechanism: NoiseMechanism,
+    measure: Union[PureDP, RhoZCDP],
+):
+    """Deviations whose int64 sum would wrap are handled correctly.
+
+    Twenty values of ``big`` and one of 0 have deviations (for average) or
+    squared deviations (for variance and stdev) summing past 2**63.
+    """
+    values = [big] * 20 + [0]
+    measurement = factory(
+        input_domain=INT_DOMAIN,
+        input_metric=SymmetricDifference(),
+        output_measure=measure,
+        d_out=sp.oo,
+        noise_mechanism=mechanism,
+        measure_column="X",
+        lower=0,
+        upper=big,
     )
-    def test_integer_noise_mechanisms_are_rejected(
-        self, factory: Callable, mechanism: NoiseMechanism, measure
-    ):
-        """GEOMETRIC and DISCRETE_GAUSSIAN are rejected, whatever the column type."""
-        for domain in (
-            self.domain,
-            SparkDataFrameDomain({"X": SparkFloatColumnDescriptor()}),
-        ):
-            with self.assertRaisesRegex(
-                UnsupportedNoiseMechanismError, "only supports continuous noise"
-            ):
-                factory(
-                    input_domain=domain,
-                    input_metric=SymmetricDifference(),
-                    output_measure=measure,
-                    d_out=sp.Integer(1),
-                    noise_mechanism=mechanism,
-                    measure_column="X",
-                    lower=0,
-                    upper=10,
-                )
+    answer = measurement(_df(spark, INT_DOMAIN, values))
+    assert float(answer) == pytest.approx(float(stat(values)), rel=1e-9)
+
+
+def test_integer_column_intermediates_are_floating_point(spark):
+    """The intermediate columns are doubles and the midpoints are exact."""
+    measurement = create_variance_measurement(
+        input_domain=INT_DOMAIN,
+        input_metric=SymmetricDifference(),
+        output_measure=PureDP(),
+        d_out=sp.oo,
+        noise_mechanism=NoiseMechanism.LAPLACE,
+        measure_column="X",
+        lower=0,
+        upper=9,
+        groupby_transformation=GroupBy(
+            input_domain=INT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            use_l2=False,
+            group_keys=spark.createDataFrame([], StructType([])),
+        ),
+        keep_intermediates=True,
+    )
+    output = measurement(_df(spark, INT_DOMAIN, [1, 2, 3]))
+    types = {field.name: type(field.dataType).__name__ for field in output.schema}
+    assert types["sod(X)"] == "DoubleType"
+    assert types["sos(X)"] == "DoubleType"
+    row = output.collect()[0]
+    # Exact midpoints, not integer-rounded ones: (0 + 9) / 2 and (0 + 81) / 2.
+    assert row["midpoint(X)"] == 4.5
+    assert row["midpoint_of_squared(X)"] == 40.5
+    assert row["sod(X)"] == (1 + 2 + 3) - 3 * 4.5
+    assert row["sos(X)"] == (1 + 4 + 9) - 3 * 40.5

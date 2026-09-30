@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import pytest
 from pyspark.sql import DataFrame
@@ -32,7 +32,9 @@ from . import NOISE_SCALE_FUDGE_FACTOR, P_THRESHOLD, SAMPLE_SIZE
 
 
 def _get_var_stddev_test_cases(
-    noise_mechanism: NoiseMechanism, stddev: bool
+    noise_mechanism: NoiseMechanism,
+    output_measure: Union[PureDP, RhoZCDP],
+    stddev: bool,
 ) -> List[Dict]:
     """Returns variance or stddev test cases.
 
@@ -61,9 +63,7 @@ def _get_var_stddev_test_cases(
         measurement = create_measurement(
             input_domain=dataset.domain,
             input_metric=SymmetricDifference(),
-            output_measure=(
-                PureDP() if noise_mechanism == NoiseMechanism.LAPLACE else RhoZCDP()
-            ),
+            output_measure=output_measure,
             measure_column="B",
             lower=dataset.lower,
             upper=dataset.upper,
@@ -129,7 +129,9 @@ class TestVarianceNoiseDistributions(PySparkTest):
         """`create_variance_measurement` adds appropriate Laplace noise."""
         cases = [
             KSTestCase.from_dict(e)
-            for e in _get_var_stddev_test_cases(NoiseMechanism.LAPLACE, stddev=False)
+            for e in _get_var_stddev_test_cases(
+                NoiseMechanism.LAPLACE, PureDP(), stddev=False
+            )
         ]
         for case in cases:
             run_test_using_ks_test(
@@ -143,7 +145,9 @@ class TestVarianceNoiseDistributions(PySparkTest):
         """`create_variance_measurement` adds appropriate Gaussian noise."""
         cases = [
             KSTestCase.from_dict(e)
-            for e in _get_var_stddev_test_cases(NoiseMechanism.GAUSSIAN, stddev=False)
+            for e in _get_var_stddev_test_cases(
+                NoiseMechanism.GAUSSIAN, RhoZCDP(), stddev=False
+            )
         ]
         for case in cases:
             run_test_using_ks_test(
