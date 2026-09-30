@@ -39,7 +39,7 @@ def construct_inverse_sampler(
             )
             # python-flint rounds the radius up slightly, so when the random bits
             # are all 0s or all 1s, p extends just past 0 or 1. Sample more bits.
-            if not arb(0) < p < arb(1):
+            if not 0 < p < 1:
                 continue
             value = inverse_cdf(p, n)
             try:

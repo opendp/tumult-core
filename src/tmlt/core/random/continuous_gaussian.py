@@ -26,7 +26,7 @@ def gaussian_inverse_cdf(
         p: Probability to compute the CDF at.
         prec: Precision to use for computing CDF.
     """
-    if not arb(0) < p < arb(1):
+    if not 0 < p < 1:
         raise ValueError(f"`p` should be in (0,1), not {p}")
 
     if isinstance(u, (float, int)) and (math.isnan(u) or math.isinf(u)):
@@ -40,25 +40,19 @@ def gaussian_inverse_cdf(
             f"Scale should be finite, non-nan and non-negative, not {sigma_squared}"
         )
     if isinstance(sigma_squared, arb) and (
-        sigma_squared.is_nan()
-        or not sigma_squared.is_finite()
-        or sigma_squared < arb(0)
+        sigma_squared.is_nan() or not sigma_squared.is_finite() or sigma_squared < 0
     ):
         raise ValueError(
             f"Scale should be finite, non-nan and non-negative, not {sigma_squared}"
         )
 
-    u_arb = u if isinstance(u, arb) else arb(u)
     sigma_squared_arb = (
         sigma_squared if isinstance(sigma_squared, arb) else arb(sigma_squared)
     )
     # The following code corresponds to:
     #   return u + sigma * sqrt(2) * erfinv(2 * p - 1)
     with ctx.workprec(prec):
-        return (
-            u_arb
-            + sigma_squared_arb.sqrt() * arb(2).sqrt() * (arb(2) * p - arb(1)).erfinv()
-        )
+        return u + sigma_squared_arb.sqrt() * arb(2).sqrt() * (2 * p - 1).erfinv()
 
 
 def gaussian(

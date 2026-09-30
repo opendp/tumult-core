@@ -372,11 +372,11 @@ def _select_quantile_interval(
             where :math:`G` is a sampled from the standard Gumbel distribution.
         - Returns the interval with the highest noisy score.
     """  # noqa: E501
-    arb_q = arb(float(q))
+    arb_q = arb(q)
     prec = 53
     with ctx.workprec(prec):
         # target_rank = arb_q * len(values)
-        target_rank = arb_q * arb(len(values))
+        target_rank = arb_q * len(values)
 
         # Get bin ranks
         intervals = _get_intervals_with_ranks(values, lower, upper)
@@ -391,7 +391,7 @@ def _select_quantile_interval(
             return l_float, u_float
 
         # need to be calculated w/ arb, calculation on floats can be inexact
-        delta_u: arb = arb_q.max(arb(1) - arb_q)
+        delta_u: arb = arb_q.max(1 - arb_q)
 
         # select bin
         gumbel_p_bits = [0] * len(intervals)
@@ -423,7 +423,7 @@ def _select_quantile_interval(
                     # arb.log(u - l) -
                     # ((abs(rank - target_rank) * epsilon) / (2 * delta_u)) + noise
                     (u - l).log()
-                    - abs(rank - target_rank) * arb(epsilon) / (arb(2) * delta_u)
+                    - abs(rank - target_rank) * epsilon / (2 * delta_u)
                     + noise
                     for noise, (rank, l, u) in zip(gumbels, intervals)
                 ]

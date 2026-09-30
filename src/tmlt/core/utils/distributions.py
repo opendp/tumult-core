@@ -191,7 +191,7 @@ def _discrete_gaussian_unnormalized_pmf(k: int, sigma_squared: arb, prec: int) -
     See :func:`~._discrete_gaussian_normalizing_constant` for more information.
     """
     with ctx.workprec(prec):
-        return (arb(int(-(k**2))) / (arb(2) * sigma_squared)).exp()
+        return (int(-(k**2)) / (2 * sigma_squared)).exp()
 
 
 @lru_cache(maxsize=128)
@@ -231,13 +231,13 @@ def _discrete_gaussian_unnormalized_mass_from_k_to_inf(
     See :func:`~._discrete_gaussian_normalizing_constant` for more information.
     """
     with ctx.workprec(prec):
-        sigma = arb(sigma_squared).sqrt()
+        sigma = sigma_squared.sqrt()
 
         def integral(n: int) -> arb:
             return (
-                (arb.pi() / arb(2)).sqrt()
+                (arb.pi() / 2).sqrt()
                 * sigma
-                * (arb(int(n)) / (arb(2).sqrt() * sigma)).erfc()
+                * (int(n) / (arb(2).sqrt() * sigma)).erfc()
             )
 
         lower = integral(k)
@@ -371,13 +371,13 @@ def _discrete_gaussian_cmf(k: int, sigma_squared: arb, n_terms: int, prec: int) 
     """
     with ctx.workprec(prec):
         if k < 0:  # eliminates half of the cases
-            return arb(1) - _discrete_gaussian_cmf(-k - 1, sigma_squared, n_terms, prec)
+            return 1 - _discrete_gaussian_cmf(-k - 1, sigma_squared, n_terms, prec)
         result = _discrete_gaussian_unnormalized_cmf(
             k, sigma_squared, n_terms, prec
         ) / _discrete_gaussian_normalizing_constant(sigma_squared, n_terms, prec)
         # clamp to [0, 1]
-        result = result.min(arb(1))
-        result = result.max(arb(0))
+        result = result.min(1)
+        result = result.max(0)
         return result
 
 
@@ -521,9 +521,7 @@ def discrete_gaussian_inverse_cmf(
     if isinstance(p, np.ndarray):
         return np.vectorize(discrete_gaussian_inverse_cmf)(p, sigma_squared)
 
-    if isinstance(p, float):
-        p = arb(p)
-    elif isinstance(p, int):
+    if isinstance(p, (float, int)):
         p = arb(p)
 
     if not p.is_exact():
@@ -531,12 +529,10 @@ def discrete_gaussian_inverse_cmf(
             "p must be exact. If you want to use an approximate value, call this"
             " on p.lower() and p.upper() instead."
         )
-    if not arb(0) < p < arb(1):
+    if not 0 < p < 1:
         raise ValueError("p must be strictly between 0 and 1")
 
-    if isinstance(sigma_squared, float):
-        sigma_squared = arb(sigma_squared)
-    elif isinstance(sigma_squared, int):
+    if isinstance(sigma_squared, (float, int)):
         sigma_squared = arb(sigma_squared)
 
     if not sigma_squared.is_exact():
@@ -544,7 +540,7 @@ def discrete_gaussian_inverse_cmf(
             "sigma_squared must be exact. If you want to use an approximate value, call"
             " this on sigma_squared.lower() and sigma_squared.upper() instead."
         )
-    if sigma_squared <= arb(0):
+    if sigma_squared <= 0:
         raise ValueError("sigma_squared must be > 0")
 
     # Calculating the cmf is expensive, so we start with low precision, and gradually

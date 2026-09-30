@@ -23,7 +23,7 @@ def to_only_float(n: arb, prec: int = 64) -> float:
             if lower_float == upper_float:
                 return lower_float
     if not n.is_finite() and n.is_exact():
-        if n.mid() > arb(0):
+        if n.mid() > 0:
             return float("inf")
         return -float("inf")
     raise ValueError("Arb contains more than one float.")
