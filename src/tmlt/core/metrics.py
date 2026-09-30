@@ -1,7 +1,7 @@
 """Module containing metrics used for constructing measurements and transformations."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 """Benchmarking script for bounds aggregation."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2024-2025, and the Tumult Core Contributors 2025-present
 
 from math import log
 from random import randint

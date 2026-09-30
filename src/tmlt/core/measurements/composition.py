@@ -1,7 +1,7 @@
 """Measurement for combining multiple measurements into a single measurement."""
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
 from typing import Any, Callable, List, Optional, Sequence, Tuple
 

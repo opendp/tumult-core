@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2026
+# Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
 import datetime
 import logging
@@ -12,8 +12,8 @@ _logger = logging.getLogger(__name__)
 ### Project information
 
 project = "Tumult Core"
-author = "Tumult Labs"
-copyright = f"{datetime.date.today().year} Tumult Labs"
+author = "Tumult Labs and the Tumult Core Contributors"
+copyright = "2022-2025 Tumult Labs, and the Tumult Core Contributors 2025-present"
 # Note that this is the name of the module provided by the package, not
 # necessarily the name of the package as pip understands it.
 package_name = "tmlt.core"
