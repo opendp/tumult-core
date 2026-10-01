@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 import functools
-import re
 import random
+import re
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union, cast
 from unittest import TestCase
 
