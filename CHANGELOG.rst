@@ -24,7 +24,7 @@ Changed
   - ``AddRemoveKeys`` -> :class:`~tmlt.core.metrics.AddRemoveIDs`
   - ``PrivateJoinOnKey`` -> :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnIDs`
   - ``FlatMapByKey`` -> :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByID`
-- Single-key lookups and ``supports_domain`` checks on :class:`~tmlt.core.metrics.DictMetric`, :class:`~tmlt.core.metrics.AddRemoveIDs`, :class:`~tmlt.core.domains.collections.DictDomain` and the Spark/pandas DataFrame domains no longer copy the whole underlying dictionary or schema, so they are faster when there are many keys or tables. Public properties such as ``key_to_metric``, ``key_to_domain``, ``df_to_id_column`` and ``schema`` still return copies.
+- Improved performance of single-key lookups and ``supports_domain`` on :class:`~tmlt.core.metrics.DictMetric`, :class:`~tmlt.core.metrics.AddRemoveIDs`, :class:`~tmlt.core.domains.collections.DictDomain`, :class:`~tmlt.core.domains.spark_domains.SparkDataFrameDomain`, :class:`~tmlt.core.domains.spark_domains.SparkGroupedDataFrameDomain` and :class:`~tmlt.core.domains.pandas_domains.PandasDataFrameDomain`.
 
 Fixed
 ~~~~~

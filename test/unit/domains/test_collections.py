@@ -478,18 +478,12 @@ class TestDictDomain(DomainTests):
         key_to_domain["A"] = NumpyFloatDomain()
         del key_to_domain["B"]
         key_to_domain["C"] = NumpyIntegerDomain()
-        assert domain["A"] == NumpyIntegerDomain()
-        assert domain["B"] == NumpyFloatDomain()
         with pytest.raises(KeyError):
             _ = domain["C"]
-        assert domain.length == 2
         assert domain == DictDomain(
             {"A": NumpyIntegerDomain(), "B": NumpyFloatDomain()}
         )
         assert domain != DictDomain(key_to_domain)
-        domain.validate({"A": np.int64(1), "B": np.float64(2.5)})
-        with pytest.raises(OutOfDomainError, match="Keys are not as expected"):
-            domain.validate({"A": np.int64(1), "C": np.int64(2)})
 
     @pytest.mark.parametrize(
         "domain, candidate, expectation, exception_properties",

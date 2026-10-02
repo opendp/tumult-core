@@ -1282,7 +1282,6 @@ class DictMetric(Metric):
         """
         if not isinstance(domain, DictDomain):
             return False
-        # Read the domain's mapping once; each access of the property copies it.
         key_to_domain = domain.key_to_domain
         return self._key_to_metric.keys() == key_to_domain.keys() and all(
             metric.supports_domain(key_to_domain[k])
@@ -1476,7 +1475,6 @@ class AddRemoveIDs(Metric):
         """
         if isinstance(domain, DictDomain):
             column_descriptor = None
-            # Read the domain's mapping once; each access of the property copies it.
             key_to_domain = domain.key_to_domain
             if key_to_domain.keys() != self._df_to_id_column.keys():
                 return False
