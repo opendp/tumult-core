@@ -566,6 +566,7 @@ def create_count_distinct_measurement(
     assert count_distinct_measurement.privacy_function(d_in) == d_out
     return count_distinct_measurement
 
+
 def _validate_numeric_measure_column(
     input_domain: SparkDataFrameDomain, measure_column: str
 ) -> None:
@@ -744,6 +745,7 @@ def create_sum_measurement(
         d_in=d_mid, d_out=d_out, output_measure=output_measure
     )
     measure_column_domain = input_domain[measure_column].to_numpy_domain()
+    assert isinstance(measure_column_domain, (NumpyIntegerDomain, NumpyFloatDomain))
     if noise_mechanism == NoiseMechanism.LAPLACE:
         add_noise_to_series = AddNoiseToSeries(
             AddLaplaceNoise(scale=noise_scale, input_domain=measure_column_domain)
@@ -785,6 +787,7 @@ def create_sum_measurement(
         sum_measurement = PureDPToRhoZCDP(sum_measurement)
     assert sum_measurement.privacy_function(d_in) == d_out
     return sum_measurement
+
 
 def _validate_continuous_noise_mechanism(
     noise_mechanism: NoiseMechanism, aggregation: str
