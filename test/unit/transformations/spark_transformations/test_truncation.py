@@ -366,11 +366,13 @@ class TestLimitGroupsPerID(PySparkTest):
             (
                 {"output_metric": IfGroupedBy(["B"], SymmetricDifference())},
                 ValueError,
-                r"Output metric must be one of `IfGroupedBy\(\['B'\], "
-                r"SumOf\(IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)\)\)` "
-                r"or `IfGroupedBy\(\['B'\], RootSumOfSquared\(IfGroupedBy\(\['A'\],"
-                r" SymmetricDifference\(\)\)\)\)` "
-                r"or `IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)",
+                (
+                    r"Output metric must be one of `IfGroupedBy\(\['B'\], "
+                    r"SumOf\(IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)\)\)` "
+                    r"or `IfGroupedBy\(\['B'\], RootSumOfSquared\(IfGroupedBy\(\['A'\],"
+                    r" SymmetricDifference\(\)\)\)\)` "
+                    r"or `IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)"
+                ),
             ),
             (
                 {"id_columns": ["A", "B"], "grouping_column": "B"},
@@ -565,11 +567,13 @@ class TestLimitRowsPerGroupPerID(PySparkTest):
             (
                 {"input_metric": IfGroupedBy(["B"], SymmetricDifference())},
                 ValueError,
-                r"Input metric must be one of `IfGroupedBy\(\['B'\], "
-                r"SumOf\(IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)\)\)` "
-                r"or `IfGroupedBy\(\['B'\], RootSumOfSquared\(IfGroupedBy\(\['A'\],"
-                r" SymmetricDifference\(\)\)\)\)` "
-                r"or `IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)",
+                (
+                    r"Input metric must be one of `IfGroupedBy\(\['B'\], "
+                    r"SumOf\(IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)\)\)` "
+                    r"or `IfGroupedBy\(\['B'\], RootSumOfSquared\(IfGroupedBy\(\['A'\],"
+                    r" SymmetricDifference\(\)\)\)\)` "
+                    r"or `IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)"
+                ),
             ),
             (
                 {"id_columns": ["A", "B"], "grouping_column": "B"},

@@ -1068,8 +1068,10 @@ class TestPrivateJoin(PySparkTest):
                 "df2",
                 TruncationStrategy.TRUNCATE,
                 ["A"],
-                "Name collision, ['B_right'] would appear more than once in the "
-                "output.",
+                (
+                    "Name collision, ['B_right'] would appear more than once in the "
+                    "output."
+                ),
             ),
             (  # Invalid threshold for NO_TRUNCATION strategy
                 DictDomain(
@@ -1092,8 +1094,10 @@ class TestPrivateJoin(PySparkTest):
                 "df2",
                 TruncationStrategy.NO_TRUNCATION,
                 None,
-                "The left/right_truncation_threshold must be infinite if the "
-                "left/right_truncation_strategy is NO_TRUNCATION.",
+                (
+                    "The left/right_truncation_threshold must be infinite if the "
+                    "left/right_truncation_strategy is NO_TRUNCATION."
+                ),
             ),
         ]
     )

@@ -477,8 +477,10 @@ class TestNumpyFloatDomain(DomainTests):
             for to_validate, match in [
                 (
                     np.float64(1.0),
-                    f"Value must be {get_fullname(np.float32)}, instead it is "
-                    f"{get_fullname(np.float64)}.",
+                    (
+                        f"Value must be {get_fullname(np.float32)}, instead it is "
+                        f"{get_fullname(np.float64)}."
+                    ),
                 ),
                 (np.float32(float("inf")), "Value is infinite."),
                 (np.float32(-float("inf")), "Value is infinite."),
@@ -486,8 +488,10 @@ class TestNumpyFloatDomain(DomainTests):
                 # (np.float32(float("nan")), "Value is NaN."),
                 (
                     1,
-                    f"Value must be {get_fullname(np.float32)}, instead it is "
-                    f"{get_fullname(int)}.",
+                    (
+                        f"Value must be {get_fullname(np.float32)}, instead it is "
+                        f"{get_fullname(int)}."
+                    ),
                 ),
             ]
         ]

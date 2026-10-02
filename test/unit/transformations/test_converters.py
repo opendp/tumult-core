@@ -128,9 +128,11 @@ class TestUnwrapIfGroupedBy(TestComponent):
             (
                 IfGroupedBy(["B"], SymmetricDifference()),
                 ValueError,
-                "Inner metric for IfGroupedBy metric must be "
-                "SumOf(SymmetricDifference()), or "
-                "RootSumOfSquared(SymmetricDifference())",
+                (
+                    "Inner metric for IfGroupedBy metric must be "
+                    "SumOf(SymmetricDifference()), or "
+                    "RootSumOfSquared(SymmetricDifference())"
+                ),
             ),
             (
                 IfGroupedBy(["Z"], SumOf(SymmetricDifference())),

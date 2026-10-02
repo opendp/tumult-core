@@ -134,8 +134,10 @@ class TestGroupBy(PySparkTest):
                 IfGroupedBy(["A"], SumOf(SymmetricDifference())),
                 [("1",), ("2",)],
                 StructType([StructField("A", StringType())]),
-                f"Column must be {get_fullname(LongType)}; got "
-                f"{get_fullname(StringType)} instead",
+                (
+                    f"Column must be {get_fullname(LongType)}; got "
+                    f"{get_fullname(StringType)} instead"
+                ),
                 ValueError,
             ),
             (

@@ -790,15 +790,19 @@ class TestSum(PySparkTest):
                 "C",
                 1,
                 40,
-                r"Input domain must not allow nulls or NaNs on the measure column"
-                r" \(C\)",
+                (
+                    r"Input domain must not allow nulls or NaNs on the measure column"
+                    r" \(C\)"
+                ),
             ),
             (  # measure column permits nulls
                 "D",
                 1,
                 40,
-                r"Input domain must not allow nulls or NaNs on the measure column"
-                r" \(D\)",
+                (
+                    r"Input domain must not allow nulls or NaNs on the measure column"
+                    r" \(D\)"
+                ),
             ),
             ("E", 0, 2**970 + 1, r"Upper clipping bound should be at most 2\^970."),
             (
@@ -1026,8 +1030,10 @@ class TestSumGrouped(PySparkTest):
                 "sum(B)",
                 1,
                 40,
-                r"Input metric must be SumOf\(SymmetricDifference\(\)\) or"
-                r" RootSumOfSquared\(SymmetricDifference\(\)\)",
+                (
+                    r"Input metric must be SumOf\(SymmetricDifference\(\)\) or"
+                    r" RootSumOfSquared\(SymmetricDifference\(\)\)"
+                ),
             ),
             (  # Domain permits nans
                 SumOf(SymmetricDifference()),

@@ -316,8 +316,10 @@ class TestParallelComposition(PySparkTest):
                 SumOf(AbsoluteDifference()),
                 PureDP(),
                 [create_mock_measurement(is_interactive=True)],
-                r"Length of input domain \(2\) does not match the number of"
-                r" measurements \(1\)",
+                (
+                    r"Length of input domain \(2\) does not match the number of"
+                    r" measurements \(1\)"
+                ),
             ),
             (
                 ListDomain(NumpyIntegerDomain(), length=2),
@@ -1426,8 +1428,10 @@ class TestPrivacyAccountant(PySparkTest):
                 8,
             ),
             (
-                "The remaining privacy budget is (epsilon=10), which "
-                "is insufficient given the requested budget (epsilon=11).",
+                (
+                    "The remaining privacy budget is (epsilon=10), which "
+                    "is insufficient given the requested budget (epsilon=11)."
+                ),
                 NumpyIntegerDomain(),
                 AbsoluteDifference(),
                 ListDomain(NumpyIntegerDomain(), length=2),
