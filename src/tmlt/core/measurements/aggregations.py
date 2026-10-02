@@ -872,6 +872,7 @@ def create_average_measurement(
             ``average_column``, ``sod(<measure_column>)``, ``count``, and
             ``midpoint(<measure_column>)``.
     """
+    _validate_numeric_measure_column(input_domain, measure_column)
     _validate_continuous_noise_mechanism(noise_mechanism, "average")
     if not average_column:
         average_column = f"avg({measure_column})"
