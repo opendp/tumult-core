@@ -172,6 +172,7 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/pandas-docs/version/1.5/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
     "pyspark": ("https://downloads.apache.org/spark/docs/3.5.7/api/python/", None),
+    "flint": ("https://python-flint.readthedocs.io/en/latest/", None),
 }
 
 # The ACM website seems to have some sort of protection that foils the linkchecker.

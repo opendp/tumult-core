@@ -347,7 +347,7 @@ Fixed
    -  **It is strongly recommended to upgrade if you are using an older version of Core.**
    -  Also see the `GitHub Advisory entry <https://github.com/advisories/GHSA-5wvp-7f3h-6wmm>`__ for more information.
 
-- Fixed a reference to an uninitialized variable that could cause :func:`~.arb_union` to crash the Python interpreter.
+- Fixed a reference to an uninitialized variable that could cause :func:`!arb_union` to crash the Python interpreter.
 
 .. _v0.11.4:
 
@@ -411,7 +411,7 @@ Changed
 Added
 ~~~~~
 - Added support for Python 3.10.
-- Added the :func:`~.arb_exp`, :func:`~.arb_const_pi`, :func:`~.arb_neg`, :func:`~.arb_product`, :func:`~.arb_sum`, :func:`~.arb_union`, :func:`~.arb_erf`, and :func:`~.arb_erfc` functions.
+- Added the :func:`!arb_exp`, :func:`!arb_const_pi`, :func:`!arb_neg`, :func:`!arb_product`, :func:`!arb_sum`, :func:`!arb_union`, :func:`!arb_erf`, and :func:`!arb_erfc` functions.
 - Added a new error, :class:`~.DomainMismatchError`, which is raised when two or more domains should match but do not.
 - Added a new error, :class:`~.UnsupportedMetricError`, which is raised when an unsupported metric is used.
 - Added a new error, :class:`~.MetricMismatchError`, which is raised when two or more metrics should match but do not.
