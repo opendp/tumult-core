@@ -566,6 +566,14 @@ def create_count_distinct_measurement(
     assert count_distinct_measurement.privacy_function(d_in) == d_out
     return count_distinct_measurement
 
+def _validate_numeric_measure_column(
+    input_domain: SparkDataFrameDomain, measure_column: str
+) -> None:
+    """Raises an error unless ``measure_column`` is numeric."""
+    domain = input_domain[measure_column].to_numpy_domain()
+    if not isinstance(domain, (NumpyIntegerDomain, NumpyFloatDomain)):
+        raise ValueError(f"Measure column must be numeric, not {domain}")
+
 
 @typechecked
 def create_sum_measurement(
@@ -621,6 +629,7 @@ def create_sum_measurement(
             name to be used for sums in the DataFrame output by the measurement. If
             None, this column will be named "sum(<measure_column>)".
     """
+    _validate_numeric_measure_column(input_domain, measure_column)
     if groupby_transformation is None:
         groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
         grouped_sum = create_sum_measurement(
@@ -700,9 +709,6 @@ def create_sum_measurement(
     assert isinstance(output_measure, (PureDP, RhoZCDP))
     noise_mechanism.check_output_measure(output_measure)
     sum_aggregation: Transformation
-    measure_column_domain = input_domain[measure_column].to_numpy_domain()
-    if not isinstance(measure_column_domain, (NumpyIntegerDomain, NumpyFloatDomain)):
-        raise ValueError(f"Measure column must be numeric, not {measure_column_domain}")
     add_noise_to_series: AddNoiseToSeries
     assert isinstance(groupby_transformation.output_domain, SparkGroupedDataFrameDomain)
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
@@ -737,6 +743,7 @@ def create_sum_measurement(
     noise_scale = calculate_noise_scale(
         d_in=d_mid, d_out=d_out, output_measure=output_measure
     )
+    measure_column_domain = input_domain[measure_column].to_numpy_domain()
     if noise_mechanism == NoiseMechanism.LAPLACE:
         add_noise_to_series = AddNoiseToSeries(
             AddLaplaceNoise(scale=noise_scale, input_domain=measure_column_domain)
@@ -778,7 +785,6 @@ def create_sum_measurement(
         sum_measurement = PureDPToRhoZCDP(sum_measurement)
     assert sum_measurement.privacy_function(d_in) == d_out
     return sum_measurement
-
 
 def _validate_continuous_noise_mechanism(
     noise_mechanism: NoiseMechanism, aggregation: str
@@ -1198,6 +1204,7 @@ def create_variance_measurement(
             "count", "midpoint(<measure_column>)", and
             "midpoint_of_squares(<measure_column>)".
     """
+    _validate_numeric_measure_column(input_domain, measure_column)
     _validate_continuous_noise_mechanism(noise_mechanism, "variance")
     if variance_column is None:
         variance_column = f"var({measure_column})"
@@ -1550,6 +1557,7 @@ def create_standard_deviation_measurement(
             "sos(<measure_column>)", "count", "midpoint(<measure_column>)", and
             "midpoint_of_squares(<measure_column>)".
     """
+    _validate_numeric_measure_column(input_domain, measure_column)
     _validate_continuous_noise_mechanism(noise_mechanism, "standard deviation")
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
