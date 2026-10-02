@@ -50,6 +50,7 @@ dependencies = [
     # determine what versions are affected and, when possible, remove the extra
     # dependency.
     "setuptools >=70.0.0",
+    "python-flint>=0.9.0,<0.10.0",
 ]
 
 [project.optional-dependencies]
@@ -66,7 +67,6 @@ required-version = ">=0.7.0"
 default-groups = "all"
 
 [dependency-groups]
-build = ["cibuildwheel >=2,<3"]
 ruff = ["ruff >=0.14.3,<1"]
 isort = ["isort >=5.11,<6"]
 mypy = ["mypy >=1.14.0"]
@@ -129,14 +129,11 @@ template = '''
 __version__ = "{version}"
 '''
 
-[tool.hatch.build.hooks.custom]
-path = "ext/build.py"
 [tool.hatch.build.targets.sdist]
 only-include = [
   "CHANGELOG.rst",
   "benchmark/",
   "doc/",
-  "ext/",
   "src/",
   "test/",
   "LICENSE",
@@ -144,33 +141,6 @@ only-include = [
 ]
 [tool.hatch.build.targets.wheel]
 packages = ["src/tmlt"]
-artifacts = [
-    "src/tmlt/core/ext/__init__.py",
-    "src/tmlt/core/ext/lib/__init__.py",
-    # Only include the needed copy of each library -- the build process
-    # generates multiple symlinks to each library, which are converted into
-    # separate, identical files when building the wheel.
-    "src/tmlt/core/ext/lib/*.so.*.*.*",
-    "src/tmlt/core/ext/lib/libarb-*.dylib",
-    "src/tmlt/core/ext/lib/libflint-*.dylib",
-    "src/tmlt/core/ext/lib/libgmp.*.dylib",
-    "src/tmlt/core/ext/lib/libmpfr.*.dylib",
-]
-
-[tool.cibuildwheel]
-build = "cp310-* cp311-* cp312-*"
-skip = "*-musllinux*"
-before-all = """
-if [ -d src/tmlt/core/ext/lib ] && [ ! -z ${CI+x} ]; then
-  echo 'Found compiled vendor libraries, but these must be built fresh by cibuildwheel.'
-  exit 1
-fi"""
-
-[tool.cibuildwheel.macos]
-environment = "MACOSX_DEPLOYMENT_TARGET='11.0'"
-
-[tool.cibuildwheel.linux]
-archs = ["x86_64"]
 
 
 ################################################################################
@@ -178,9 +148,6 @@ archs = ["x86_64"]
 
 [tool.pytest.ini_options]
 markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
-
-[tool.coverage.run]
-omit = ["**/core/ext/*"]
 
 [tool.coverage.paths]
 # Treat all nox environments as the same for the purposes of coverage. This
@@ -265,10 +232,5 @@ warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 module = "test.*"
-disallow_untyped_defs = false
-check_untyped_defs = true
-
-[[tool.mypy.overrides]]
-module = "tmlt.core.utils.arb"
 disallow_untyped_defs = false
 check_untyped_defs = true

@@ -8,24 +8,10 @@ from typing import Union, overload
 
 import numpy as np
 import sympy as sp
+from flint import arb, ctx
 from scipy.stats import norm
 
-from tmlt.core.utils.arb import (
-    Arb,
-    arb_add,
-    arb_const_pi,
-    arb_div,
-    arb_erfc,
-    arb_exp,
-    arb_max,
-    arb_min,
-    arb_mul,
-    arb_product,
-    arb_sqrt,
-    arb_sub,
-    arb_sum,
-    arb_union,
-)
+from tmlt.core.utils.arb import to_only_float
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
@@ -196,44 +182,44 @@ def double_sided_geometric_inverse_cmf_exact(
     return ExactNumber(sp.ceiling(k))
 
 
-def _discrete_gaussian_unnormalized_pmf(k: int, sigma_squared: Arb, prec: int) -> Arb:
+def _discrete_gaussian_unnormalized_pmf(k: int, sigma_squared: arb) -> arb:
     r"""Returns the unnormalized pmf for a discrete gaussian distribution at k.
 
     :math:`e^\frac{-k^2}{2\sigma^2}`
 
     Notice that this is the numerator of the pmf for a discrete gaussian distribution.
     See :func:`~._discrete_gaussian_normalizing_constant` for more information.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
     """
-    return arb_exp(
-        arb_div(
-            Arb.from_int(-(k**2)), arb_mul(Arb.from_int(2), sigma_squared, prec), prec
-        ),
-        prec,
-    )
+    return (int(-(k**2)) / (2 * sigma_squared)).exp()
 
 
 @lru_cache(maxsize=128)
 def _discrete_gaussian_unnormalized_mass_from_k_to_n(
-    k: int, n: int, sigma_squared: Arb, prec: int
-) -> Arb:
+    k: int, n: int, sigma_squared: arb, prec: int
+) -> arb:
     """Returns the unnormalized mass for a discrete gaussian distribution from k to n.
 
     Includes both k and n.
 
+    ``prec`` is the working precision to compute with. It is passed explicitly, rather
+    than read from the context, because it must be part of the cache key.
+
     See :func:`~._discrete_gaussian_normalizing_constant` for more information.
     """
-    return arb_sum(
-        [
-            _discrete_gaussian_unnormalized_pmf(i, sigma_squared, prec)
+    with ctx.workprec(prec):
+        res = sum(
+            _discrete_gaussian_unnormalized_pmf(i, sigma_squared)
             for i in range(k, n + 1)
-        ],
-        prec,
-    )
+        )
+        assert isinstance(res, arb)
+        return res
 
 
 def _discrete_gaussian_unnormalized_mass_from_k_to_inf(
-    k: int, sigma_squared: Arb, prec: int
-) -> Arb:
+    k: int, sigma_squared: arb
+) -> arb:
     r"""Returns the unnormalized mass of a discrete gaussian distribution from k to inf.
 
     Includes k.
@@ -247,51 +233,37 @@ def _discrete_gaussian_unnormalized_mass_from_k_to_inf(
     The upper bound is the integral from k-1 to infinity.
 
     See :func:`~._discrete_gaussian_normalizing_constant` for more information.
-    """
-    sigma = arb_sqrt(sigma_squared, prec)
 
-    def integral(n: int) -> Arb:
-        return arb_product(
-            [
-                arb_sqrt(arb_div(arb_const_pi(prec), Arb.from_int(2), prec), prec),
-                sigma,
-                arb_erfc(
-                    arb_div(
-                        Arb.from_int(n),
-                        arb_mul(arb_sqrt(Arb.from_int(2), prec), sigma, prec),
-                        prec,
-                    ),
-                    prec,
-                ),
-            ],
-            prec,
-        )
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
+    """
+    sigma = sigma_squared.sqrt()
+
+    def integral(n: int) -> arb:
+        return (arb.pi() / 2).sqrt() * sigma * (int(n) / (arb(2).sqrt() * sigma)).erfc()
 
     lower = integral(k)
     upper = integral(k - 1)
-    return arb_union(lower, upper, prec)
+    return lower.union(upper)
 
 
 def _discrete_gaussian_unnormalized_mass_from_k_to_n_fast(
-    k: int, n: int, sigma_squared: Arb, prec: int
-) -> Arb:
+    k: int, n: int, sigma_squared: arb
+) -> arb:
     """Returns the unnormalized mass for a discrete gaussian distribution from k to n.
 
     Includes both k and n.
 
     Uses integral approximation. See
     :func:`_discrete_gaussian_unnormalized_mass_from_x_to_inf` for more information.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
     """
-    return arb_sub(
-        _discrete_gaussian_unnormalized_mass_from_k_to_inf(k, sigma_squared, prec),
-        _discrete_gaussian_unnormalized_mass_from_k_to_inf(n + 1, sigma_squared, prec),
-        prec,
-    )
+    return _discrete_gaussian_unnormalized_mass_from_k_to_inf(
+        k, sigma_squared
+    ) - _discrete_gaussian_unnormalized_mass_from_k_to_inf(n + 1, sigma_squared)
 
 
-def _discrete_gaussian_normalizing_constant(
-    sigma_squared: Arb, n_terms: int, prec: int
-) -> Arb:
+def _discrete_gaussian_normalizing_constant(sigma_squared: arb, n_terms: int) -> arb:
     """Returns the normalizing factor for discrete gaussian noise.
 
     The normalizing factor is the sum of the unnormalized pmf for all integers.
@@ -301,32 +273,29 @@ def _discrete_gaussian_normalizing_constant(
 
     Notice this is the denominator of the pmf for a discrete gaussian distribution.
     See :func:`~.discrete_gaussian_pmf` for more information.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
     """
-    mass_at_0 = _discrete_gaussian_unnormalized_pmf(0, sigma_squared, prec)
+    mass_at_0 = _discrete_gaussian_unnormalized_pmf(0, sigma_squared)
     mass_from_1_to_n_terms = _discrete_gaussian_unnormalized_mass_from_k_to_n(
-        1, n_terms, sigma_squared, prec
+        1, n_terms, sigma_squared, ctx.prec
     )
     mass_from_n_terms_plus_1_to_inf = (
-        _discrete_gaussian_unnormalized_mass_from_k_to_inf(
-            n_terms + 1, sigma_squared, prec
-        )
+        _discrete_gaussian_unnormalized_mass_from_k_to_inf(n_terms + 1, sigma_squared)
     )
     # all mass from -inf to inf
-    return arb_sum(
-        [
-            mass_from_n_terms_plus_1_to_inf,  # -inf to -(n_terms + 1)
-            mass_from_1_to_n_terms,  # -n_terms to -1
-            mass_at_0,  # 0
-            mass_from_1_to_n_terms,  # 1 to n_terms
-            mass_from_n_terms_plus_1_to_inf,  # (n_terms + 1) to inf
-        ],
-        prec,
+    return (
+        mass_from_n_terms_plus_1_to_inf  # -inf to -(n_terms + 1)
+        + mass_from_1_to_n_terms  # -n_terms to -1
+        + mass_at_0  # 0
+        + mass_from_1_to_n_terms  # 1 to n_terms
+        + mass_from_n_terms_plus_1_to_inf  # (n_terms + 1) to inf
     )
 
 
 def _discrete_gaussian_unnormalized_cmf(
-    k: int, sigma_squared: Arb, n_terms: int, prec: int
-) -> Arb:
+    k: int, sigma_squared: arb, n_terms: int
+) -> arb:
     """Returns the unnormalized cmf for a discrete gaussian distribution at k.
 
     The unnormalized cmf is the sum of the unnormalized pmf for all integers from -inf
@@ -336,88 +305,74 @@ def _discrete_gaussian_unnormalized_cmf(
     are approximated using the integral approximation.
 
     Only works for k >= 0.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
     """
     if k < 0:
         raise ValueError("k must be >= 0")
     assert n_terms >= 0
-    mass_at_0 = _discrete_gaussian_unnormalized_pmf(0, sigma_squared, prec)
+    mass_at_0 = _discrete_gaussian_unnormalized_pmf(0, sigma_squared)
     mass_from_1_to_n_terms = _discrete_gaussian_unnormalized_mass_from_k_to_n(
-        1, n_terms, sigma_squared, prec
+        1, n_terms, sigma_squared, ctx.prec
     )
     mass_from_n_terms_plus_1_to_inf = (
-        _discrete_gaussian_unnormalized_mass_from_k_to_inf(
-            n_terms + 1, sigma_squared, prec
-        )
+        _discrete_gaussian_unnormalized_mass_from_k_to_inf(n_terms + 1, sigma_squared)
     )
     # multiple cases, handled from k=0 to inf
     # all cases have terms from -inf to 0
-    result = arb_sum(
-        [
-            mass_from_n_terms_plus_1_to_inf,  # -inf to -(n_terms + 1)
-            mass_from_1_to_n_terms,  # -n_terms to -1
-            mass_at_0,  # 0
-        ],
-        prec,
+    result = (
+        mass_from_n_terms_plus_1_to_inf  # -inf to -(n_terms + 1)
+        + mass_from_1_to_n_terms  # -n_terms to -1
+        + mass_at_0  # 0
     )
     if k == 0:
         return result
     elif k <= n_terms:  # k is in the range [1, n_terms]
         # add terms from 1 to k, by explicitly calculating them
-        return arb_add(
-            result,  # -inf to 0
-            _discrete_gaussian_unnormalized_mass_from_k_to_n(  # 1 to k
-                1, k, sigma_squared, prec
-            ),
-            prec,
+        return (
+            result  # -inf to 0
+            + _discrete_gaussian_unnormalized_mass_from_k_to_n(  # 1 to k
+                1, k, sigma_squared, ctx.prec
+            )
         )
     else:
         assert k > n_terms  # k is in the range [n_terms + 1, inf)
-        return arb_sum(
-            [
-                result,  # -inf to 0
-                mass_from_1_to_n_terms,  # 1 to n_terms
-                _discrete_gaussian_unnormalized_mass_from_k_to_n_fast(
-                    n_terms + 1,
-                    k,
-                    sigma_squared,
-                    prec,
-                ),  # n_terms + 1 to k
-            ],
-            prec,
+        return (
+            result  # -inf to 0
+            + mass_from_1_to_n_terms  # 1 to n_terms
+            + _discrete_gaussian_unnormalized_mass_from_k_to_n_fast(  # n_terms + 1 to k
+                n_terms + 1, k, sigma_squared
+            )
         )
 
 
-def _discrete_gaussian_pmf(k: int, sigma_squared: Arb, n_terms: int, prec: int) -> Arb:
+def _discrete_gaussian_pmf(k: int, sigma_squared: arb, n_terms: int) -> arb:
     """Returns the pmf for a discrete gaussian distribution at k.
 
     See :func:`~.discrete_gaussian_pmf` for more information.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
     """
-    return arb_div(
-        _discrete_gaussian_unnormalized_pmf(k, sigma_squared, prec),
-        _discrete_gaussian_normalizing_constant(sigma_squared, n_terms, prec),
-        prec,
-    )
+    return _discrete_gaussian_unnormalized_pmf(
+        k, sigma_squared
+    ) / _discrete_gaussian_normalizing_constant(sigma_squared, n_terms)
 
 
-def _discrete_gaussian_cmf(k: int, sigma_squared: Arb, n_terms: int, prec: int) -> Arb:
+def _discrete_gaussian_cmf(k: int, sigma_squared: arb, n_terms: int) -> arb:
     """Returns the cmf for a discrete gaussian distribution at k.
 
     See :func:`~.discrete_gaussian_cmf` for more information.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
     """
     if k < 0:  # eliminates half of the cases
-        return arb_sub(
-            Arb.from_int(1),
-            _discrete_gaussian_cmf(-k - 1, sigma_squared, n_terms, prec),
-            prec,
-        )
-    result = arb_div(
-        _discrete_gaussian_unnormalized_cmf(k, sigma_squared, n_terms, prec),
-        _discrete_gaussian_normalizing_constant(sigma_squared, n_terms, prec),
-        prec,
-    )
+        return 1 - _discrete_gaussian_cmf(-k - 1, sigma_squared, n_terms)
+    result = _discrete_gaussian_unnormalized_cmf(
+        k, sigma_squared, n_terms
+    ) / _discrete_gaussian_normalizing_constant(sigma_squared, n_terms)
     # clamp to [0, 1]
-    result = arb_min(result, Arb.from_int(1), prec)
-    result = arb_max(result, Arb.from_int(0), prec)
+    result = result.min(1)
+    result = result.max(0)
     return result
 
 
@@ -471,13 +426,13 @@ def discrete_gaussian_pmf(
     # see https://gitlab.com/tumult-labs/tumult/-/issues/2358#note_1418996578 for more
     # information.
     n_terms = int(np.sqrt(sigma_squared) * 10) + 1
-    sigma_squared_arb = Arb.from_float(sigma_squared)
+    sigma_squared_arb = arb(sigma_squared)
     prec = 100
     while True:
         try:
-            return _discrete_gaussian_pmf(
-                k, sigma_squared_arb, n_terms, prec
-            ).to_float()
+            with ctx.workprec(prec):
+                pmf = _discrete_gaussian_pmf(k, sigma_squared_arb, n_terms)
+            return to_only_float(pmf, prec)
         except ValueError:
             prec *= 2
             n_terms *= 2
@@ -520,9 +475,9 @@ def discrete_gaussian_cmf(
     prec = 100
     while True:
         try:
-            return _discrete_gaussian_cmf(
-                k, Arb.from_float(sigma_squared), n_terms, prec
-            ).to_float()
+            with ctx.workprec(prec):
+                cmf = _discrete_gaussian_cmf(k, arb(sigma_squared), n_terms)
+            return to_only_float(cmf, prec)
         except ValueError:
             prec *= 2
             n_terms *= 2
@@ -539,11 +494,11 @@ def discrete_gaussian_inverse_cmf(
 
 
 @overload
-def discrete_gaussian_inverse_cmf(p: Arb, sigma_squared: Arb) -> int: ...
+def discrete_gaussian_inverse_cmf(p: arb, sigma_squared: arb) -> int: ...
 
 
 def discrete_gaussian_inverse_cmf(
-    p: Union[float, np.ndarray, Arb], sigma_squared: Union[float, Arb]
+    p: Union[float, np.ndarray, arb], sigma_squared: Union[float, arb]
 ) -> Union[int, np.ndarray]:
     """Returns the inverse cmf for a discrete gaussian distribution at p.
 
@@ -561,30 +516,26 @@ def discrete_gaussian_inverse_cmf(
     if isinstance(p, np.ndarray):
         return np.vectorize(discrete_gaussian_inverse_cmf)(p, sigma_squared)
 
-    if isinstance(p, float):
-        p = Arb.from_float(p)
-    elif isinstance(p, int):
-        p = Arb.from_int(p)
+    if isinstance(p, (float, int)):
+        p = arb(p)
 
     if not p.is_exact():
         raise ValueError(
             "p must be exact. If you want to use an approximate value, call this"
             " on p.lower() and p.upper() instead."
         )
-    if not Arb.from_int(0) < p < Arb.from_int(1):
+    if not 0 < p < 1:
         raise ValueError("p must be strictly between 0 and 1")
 
-    if isinstance(sigma_squared, float):
-        sigma_squared = Arb.from_float(sigma_squared)
-    elif isinstance(sigma_squared, int):
-        sigma_squared = Arb.from_int(sigma_squared)
+    if isinstance(sigma_squared, (float, int)):
+        sigma_squared = arb(sigma_squared)
 
     if not sigma_squared.is_exact():
         raise ValueError(
             "sigma_squared must be exact. If you want to use an approximate value, call"
             " this on sigma_squared.lower() and sigma_squared.upper() instead."
         )
-    if sigma_squared <= Arb.from_int(0):
+    if sigma_squared <= 0:
         raise ValueError("sigma_squared must be > 0")
 
     # Calculating the cmf is expensive, so we start with low precision, and gradually
@@ -592,15 +543,16 @@ def discrete_gaussian_inverse_cmf(
 
     # find initial value for lo, hi
     # Can get a very good initial guess by using the inverse of the normal distribution
-    guess = int(norm.ppf(p.to_float(), scale=np.sqrt(sigma_squared.to_float())))
+    guess = int(norm.ppf(to_only_float(p), scale=np.sqrt(to_only_float(sigma_squared))))
     distance = 0
     n_terms = 10
     prec = 30
     while True:
         lo = guess - distance - 1
         hi = guess + distance
-        lo_p_arb = _discrete_gaussian_cmf(lo, sigma_squared, n_terms, prec)
-        hi_p_arb = _discrete_gaussian_cmf(hi, sigma_squared, n_terms, prec)
+        with ctx.workprec(prec):
+            lo_p_arb = _discrete_gaussian_cmf(lo, sigma_squared, n_terms)
+            hi_p_arb = _discrete_gaussian_cmf(hi, sigma_squared, n_terms)
         if lo_p_arb < p < hi_p_arb:
             # [lo + 1, hi] contains k
             break
@@ -617,7 +569,8 @@ def discrete_gaussian_inverse_cmf(
     # now do binary search
     while hi - lo > 1:
         mid = (hi + lo) // 2
-        mid_cmf = _discrete_gaussian_cmf(mid, sigma_squared, n_terms, prec)
+        with ctx.workprec(prec):
+            mid_cmf = _discrete_gaussian_cmf(mid, sigma_squared, n_terms)
         if mid_cmf < p:
             # answer is in [mid + 1, hi]
             lo = mid

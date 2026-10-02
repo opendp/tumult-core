@@ -3,32 +3,26 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
+from flint import arb
+
 from tmlt.core.random.inverse_cdf import construct_inverse_sampler
-from tmlt.core.utils import arb
 
 
-def uniform_inverse_cdf(l: float, u: float, p: arb.Arb, prec: int) -> arb.Arb:
+def uniform_inverse_cdf(l: float, u: float, p: arb) -> arb:
     """Returns the value of inverse CDF of the uniform distribution from ``l`` to ``u``.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
 
     Args:
         l: Lower bound for the uniform distribution.
         u: Upper bound for the uniform distribution.
         p: Probability to compute the inverse CDF at.
-        prec: Precision to compute the CDF with.
     """
-    assert arb.Arb.from_int(0) <= p <= arb.Arb.from_int(1), (
-        f"`p` should be in [0,1], not {p}"
-    )
+    assert 0 <= p <= 1, f"`p` should be in [0,1], not {p}"
     assert l <= u, f"`l` should not be larger than `u`, but {l} > {u}"
     # The following code-block is equivalent to:
     #   return l * (1 - p) + p * u
-    return arb.arb_add(
-        arb.arb_mul(
-            arb.Arb.from_float(l), arb.arb_sub(arb.Arb.from_int(1), p, prec), prec
-        ),
-        arb.arb_mul(p, arb.Arb.from_float(u), prec),
-        prec,
-    )
+    return l * (1 - p) + p * u
 
 
 def uniform(lower: float, upper: float, step_size: int = 63) -> float:
@@ -41,6 +35,6 @@ def uniform(lower: float, upper: float, step_size: int = 63) -> float:
     """
     assert lower <= upper, f"`l` should not be larger than `u`, but {lower} > {upper}"
     return construct_inverse_sampler(
-        inverse_cdf=lambda p, prec: uniform_inverse_cdf(lower, upper, p, prec),
+        inverse_cdf=lambda p: uniform_inverse_cdf(lower, upper, p),
         step_size=step_size,
     )()

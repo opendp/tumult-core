@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
+import math
 from unittest import TestCase
 
+from flint import arb, ctx
 from parameterized import parameterized
-from scipy.stats import laplace
+from scipy.stats import laplace as scipy_laplace
 
-from tmlt.core.random.laplace import laplace_inverse_cdf
-from tmlt.core.utils.arb import Arb
+from tmlt.core.random.laplace import laplace, laplace_inverse_cdf
 
 
 class TestLaplaceInverseCDF(TestCase):
@@ -39,7 +40,7 @@ class TestLaplaceInverseCDF(TestCase):
     def test_bad_arguments(self, u: float, b: float, p: float, error_msg: str):
         """`laplace_inverse_cdf` raises error when called with bad arguments."""
         with self.assertRaisesRegex(ValueError, error_msg):
-            laplace_inverse_cdf(u, b, Arb.from_float(p), 63)
+            laplace_inverse_cdf(u, b, arb(p))
 
     @parameterized.expand(
         [
@@ -53,7 +54,19 @@ class TestLaplaceInverseCDF(TestCase):
     )
     def test_correctness(self, u: float, b: float, p: float):
         """Sanity tests for :func:`laplace_inverse_cdf`."""
+        with ctx.workprec(63):
+            actual = float(laplace_inverse_cdf(u, b, arb(p)))
         self.assertAlmostEqual(
-            float(laplace_inverse_cdf(u, b, Arb.from_float(p), 63)),
-            laplace.ppf(p, loc=u, scale=b),
+            actual,
+            scipy_laplace.ppf(p, loc=u, scale=b),
         )
+
+
+def test_laplace_works_with_sampler():
+    """Checks that the inverse cdf function works with the inverse sampler.
+
+    We use a parameter range that has caused problems (p not in [0, 1]) before.
+    """
+    for _ in range(100):
+        sample = laplace(0, 1, step_size=1)
+        assert isinstance(sample, float) and math.isfinite(sample)

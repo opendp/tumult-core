@@ -5,12 +5,14 @@
 
 from typing import Callable
 
+from flint import arb, ctx
+
 from tmlt.core.random.rng import prng
-from tmlt.core.utils import arb
+from tmlt.core.utils.arb import to_only_float
 
 
 def construct_inverse_sampler(
-    inverse_cdf: Callable[[arb.Arb, int], arb.Arb], step_size: int = 63
+    inverse_cdf: Callable[[arb], arb], step_size: int = 63
 ) -> Callable[[], float]:
     """Returns a sampler for the distribution corresponding to ``inverse_cdf``.
 
@@ -23,7 +25,7 @@ def construct_inverse_sampler(
 
     def sampler() -> float:
         """Returns a sample from the ``inverse_cdf`` distribution."""
-        n = 0  # used for both the argument to `inverse_cdf`, and the bits of precision
+        n = 0  # number of random bits sampled, also used as the working precision
         random_bits = 0  # random bits stored as an integer
 
         while True:
@@ -31,15 +33,18 @@ def construct_inverse_sampler(
             random_bits = (random_bits << step_size) + int(
                 prng().integers(pow(2, step_size))
             )
-            value = inverse_cdf(
-                arb.Arb.from_midpoint_radius(
-                    mid=arb.Arb.from_man_exp(2 * random_bits + 1, -n - 1),
-                    rad=arb.Arb.from_man_exp(1, -n - 1),
-                ),
-                n,
+            p = arb(
+                mid=arb(mid=(2 * random_bits + 1, -n - 1)),
+                rad=arb(mid=(1, -n - 1)),
             )
+            # python-flint rounds the radius up slightly, so when the random bits
+            # are all 0s or all 1s, p extends just past 0 or 1. Sample more bits.
+            if not 0 < p < 1:
+                continue
+            with ctx.workprec(n):
+                value = inverse_cdf(p)
             try:
-                return value.to_float(n)
+                return to_only_float(value, n)
             except (ValueError, OverflowError):
                 pass
 

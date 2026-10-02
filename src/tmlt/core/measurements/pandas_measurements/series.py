@@ -13,6 +13,7 @@ from typing import Any, List, NamedTuple, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
+from flint import arb, ctx
 from pyspark.sql.types import DataType, DoubleType
 from typeguard import typechecked
 
@@ -36,16 +37,7 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.random.rng import prng
 from tmlt.core.random.uniform import uniform
-from tmlt.core.utils.arb import (
-    Arb,
-    arb_abs,
-    arb_add,
-    arb_div,
-    arb_log,
-    arb_max,
-    arb_mul,
-    arb_sub,
-)
+from tmlt.core.utils.arb import to_only_float
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 
 
@@ -309,13 +301,13 @@ class AddNoiseToSeries(Measurement):
 class _RankedInterval(NamedTuple):
     """A interval and its rank w.r.t some list."""
 
-    rank: Arb
+    rank: arb
     """Rank of any number in this interval."""
 
-    lower: Arb
+    lower: arb
     """Lower endpoint of the interval."""
 
-    upper: Arb
+    upper: arb
     """Upper endpoint of the interval."""
 
 
@@ -343,24 +335,22 @@ def _get_intervals_with_ranks(
 
     intervals = []
     left_float = lower
-    left_arb = Arb.from_float(lower)
+    left_arb = arb(lower)
     for index in range(lower_index, upper_index):
         right_float = float(values[index])
         if left_float < right_float:
-            right_arb = Arb.from_float(right_float)
+            right_arb = arb(right_float)
             intervals.append(
-                _RankedInterval(
-                    rank=Arb.from_int(index), lower=left_arb, upper=right_arb
-                )
+                _RankedInterval(rank=arb(index), lower=left_arb, upper=right_arb)
             )
             left_float = right_float
             left_arb = right_arb
 
     intervals.append(
         _RankedInterval(
-            rank=Arb.from_int(int(upper_index)),
+            rank=arb(int(upper_index)),
             lower=left_arb,
-            upper=Arb.from_float(upper),
+            upper=arb(upper),
         )
     )
     # Note that the `_RankedInterval`s are constructed with exact arbs (with radius=0)
@@ -382,100 +372,85 @@ def _select_quantile_interval(
             where :math:`G` is a sampled from the standard Gumbel distribution.
         - Returns the interval with the highest noisy score.
     """  # noqa: E501
-    arb_q = Arb.from_float(float(q))
+    arb_q = arb(q)
     prec = 53
-    # target_rank = arb_q * len(values)
-    target_rank = arb_mul(arb_q, Arb.from_int(len(values)), prec)
+    with ctx.workprec(prec):
+        # target_rank = arb_q * len(values)
+        target_rank = arb_q * len(values)
 
-    # Get bin ranks
-    intervals = _get_intervals_with_ranks(values, lower, upper)
+        # Get bin ranks
+        intervals = _get_intervals_with_ranks(values, lower, upper)
 
-    if epsilon == float("inf"):
-        intervals_with_scores = [
-            (-arb_abs(arb_sub(rank, target_rank, prec)), l, u)
-            for rank, l, u in intervals
-        ]
-        _, l, u = sorted(intervals_with_scores, reverse=True)[0]
-        l_float = l.to_float()
-        u_float = u.to_float()
-        return l_float, u_float
+        if epsilon == float("inf"):
+            intervals_with_scores = [
+                (-abs(rank - target_rank), l, u) for rank, l, u in intervals
+            ]
+            _, l, u = sorted(intervals_with_scores, reverse=True)[0]
+            l_float = to_only_float(l)
+            u_float = to_only_float(u)
+            return l_float, u_float
 
-    # need to be calculated w/ arb, calculation on floats can be inexact
-    delta_u: Arb = arb_max(arb_q, arb_sub(Arb.from_int(1), arb_q, prec), prec)
+        # need to be calculated w/ arb, calculation on floats can be inexact
+        delta_u: arb = arb_q.max(1 - arb_q)
 
-    # select bin
-    gumbel_p_bits = [0] * len(intervals)
-    n = 0
+        # select bin
+        gumbel_p_bits = [0] * len(intervals)
+        n = 0
 
-    step_size = 15  # optimal step size from benchmarking
-    while len(intervals) > 1:
-        n += step_size
-        prec = n
+        step_size = 15  # optimal step size from benchmarking
+        while len(intervals) > 1:
+            n += step_size
+            prec = n
 
-        # sample Gumbel noise with more bits
-        gumbel_p_bits = [
-            (old_bits << step_size) + int(new_bits)
-            for old_bits, new_bits in zip(
-                gumbel_p_bits,
-                prng().integers(pow(2, step_size), size=len(gumbel_p_bits)),
-            )
-        ]
-        probabilities = [
-            Arb.from_midpoint_radius(
-                mid=Arb.from_man_exp(p_bits, -n), rad=Arb.from_man_exp(1, -n)
-            )
-            for p_bits in gumbel_p_bits
-        ]
-        # probabilities for sampling Gumbel noise using the inverse CDF
+            with ctx.workprec(prec):
+                # sample Gumbel noise with more bits
+                gumbel_p_bits = [
+                    (old_bits << step_size) + int(new_bits)
+                    for old_bits, new_bits in zip(
+                        gumbel_p_bits,
+                        prng().integers(pow(2, step_size), size=len(gumbel_p_bits)),
+                    )
+                ]
+                probabilities = [
+                    arb(mid=arb(mid=(p_bits, -n)), rad=arb(mid=(1, -n)))
+                    for p_bits in gumbel_p_bits
+                ]
+                # probabilities for sampling Gumbel noise using the inverse CDF
 
-        gumbels = [-arb_log(-arb_log(p, prec), prec) for p in probabilities]
+                gumbels = [-(-p.log()).log() for p in probabilities]
 
-        # arb.log(u - l) - ((abs(rank - target_rank) * epsilon) / (2 * delta_u)) + noise
-        noisy_scores = [
-            arb_add(
-                arb_sub(
-                    arb_log(arb_sub(u, l, prec), prec),
-                    arb_div(
-                        arb_mul(
-                            arb_abs(arb_sub(rank, target_rank, prec)),
-                            Arb.from_float(epsilon),
-                            prec,
-                        ),
-                        arb_mul(Arb.from_int(2), delta_u, prec),
-                        prec,
-                    ),
-                    prec,
-                ),
-                noise,
-                prec,
-            )
-            for noise, (rank, l, u) in zip(gumbels, intervals)
-        ]
+                noisy_scores = [
+                    # arb.log(u - l) -
+                    # ((abs(rank - target_rank) * epsilon) / (2 * delta_u)) + noise
+                    (u - l).log()
+                    - abs(rank - target_rank) * epsilon / (2 * delta_u)
+                    + noise
+                    for noise, (rank, l, u) in zip(gumbels, intervals)
+                ]
 
-        # try to get a noisy score which is above most others
-        approx_max = Arb.from_float(float("-inf"))
+                # try to get a noisy score which is above most others
+                approx_max = arb(float("-inf"))
+                # Unclear if max works correctly with Arb, and arb_max performs a
+                # somewhat different operation than this comparison.
+                for noisy_score in noisy_scores:
+                    if noisy_score > approx_max:  # noqa: PLR1730
+                        # only if noisy_score.lower > approx_max.upper
+                        approx_max = noisy_score
 
-        # Unclear if max works correctly with Arb, and arb_max performs a
-        # somewhat different operation than this comparison.
-        for noisy_score in noisy_scores:
-            if noisy_score > approx_max:  # noqa: PLR1730
-                # only if noisy_score.lower > approx_max.upper
-                approx_max = noisy_score
-
-        # do another pass to eliminate other intervals
-        new_gumbel_p_bits = []
-        remaining_intervals: List[_RankedInterval] = []
-        for i, noisy_score in enumerate(noisy_scores):
-            if not (
-                noisy_score < approx_max
-                # NOT the same as noisy_score >= approx_max
-                # A < B only returns true if A.upper < B.lower
-                # true if A.upper < B.lower
-            ):
-                new_gumbel_p_bits.append(gumbel_p_bits[i])
-                remaining_intervals.append(intervals[i])
-        gumbel_p_bits = new_gumbel_p_bits
-        intervals = remaining_intervals
-    assert len(intervals) == 1
-    _, l, u = intervals[0]
-    return l.to_float(), u.to_float()
+                # do another pass to eliminate other intervals
+                new_gumbel_p_bits = []
+                remaining_intervals: List[_RankedInterval] = []
+                for i, noisy_score in enumerate(noisy_scores):
+                    if not (
+                        noisy_score < approx_max
+                        # NOT the same as noisy_score >= approx_max
+                        # A < B only returns true if A.upper < B.lower
+                        # true if A.upper < B.lower
+                    ):
+                        new_gumbel_p_bits.append(gumbel_p_bits[i])
+                        remaining_intervals.append(intervals[i])
+                gumbel_p_bits = new_gumbel_p_bits
+                intervals = remaining_intervals
+        assert len(intervals) == 1
+        _, l, u = intervals[0]
+        return to_only_float(l), to_only_float(u)

@@ -123,15 +123,6 @@ wheels = [
 ]
 
 [[package]]
-name = "bashlex"
-version = "0.18"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/76/60/aae0bb54f9af5e0128ba90eb83d8d0d506ee8f0475c4fdda3deeda20b1d2/bashlex-0.18.tar.gz", hash = "sha256:5bb03a01c6d5676338c36fd1028009c8ad07e7d61d8a1ce3f513b7fff52796ee", size = 68742, upload-time = "2023-01-18T15:21:26.402Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/be/6985abb1011fda8a523cfe21ed9629e397d6e06fb5bae99750402b25c95b/bashlex-0.18-py2.py3-none-any.whl", hash = "sha256:91d73a23a3e51711919c1c899083890cdecffc91d8c088942725ac13e9dcfffa", size = 69539, upload-time = "2023-01-18T15:21:24.167Z" },
-]
-
-[[package]]
 name = "beautifulsoup4"
 version = "4.15.0"
 source = { registry = "https://pypi.org/simple" }
@@ -151,15 +142,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c4/cf/85379f13b76f3a69bca86b60237978af17d6aa0bc5998978c3b8cf05abb2/boolean_py-5.0.tar.gz", hash = "sha256:60cbc4bad079753721d32649545505362c754e121570ada4658b852a3a318d95", size = 37047, upload-time = "2025-04-03T10:39:49.734Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/ca/78d423b324b8d77900030fa59c4aa9054261ef0925631cd2501dd015b7b7/boolean_py-5.0-py3-none-any.whl", hash = "sha256:ef28a70bd43115208441b53a045d1549e2f0ec6e3d08a9d142cbc41c1938e8d9", size = 26577, upload-time = "2025-04-03T10:39:48.449Z" },
-]
-
-[[package]]
-name = "bracex"
-version = "3.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ac/01/5f394b8bcd6e5b92f73130990960423bbb19711f906bd9fe9ea5557c667c/bracex-3.0.1.tar.gz", hash = "sha256:4e38e32392e4a4780fe15d644bfc7c8514057cfc3861e060b11814ce829c25e4", size = 44019, upload-time = "2026-07-20T13:43:00.335Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/8f/6f7273a7adb8d73fc8d21ede4376a3e475e52f98435c6007f69100dec8ca/bracex-3.0.1-py3-none-any.whl", hash = "sha256:6523ad83aeb5098a4ee597cff0f964442ff74e460bd3fafaffab6a013ff2288c", size = 11940, upload-time = "2026-07-20T13:42:59.268Z" },
 ]
 
 [[package]]
@@ -260,26 +242,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9d/8a/b618149cc5207943a0242068d7a27897f56a62947b5a039085f2a22029f8/charset_normalizer-3.5.2-cp37-abi3-win_amd64.whl", hash = "sha256:9f56f72050826f63dcee7a7f55b0a77168cb3bfc553fd405e7f8f9ece75a4036", size = 200092, upload-time = "2026-09-30T04:38:49.707Z" },
     { url = "https://files.pythonhosted.org/packages/03/cf/4c66866fa9e2b1c78e3c911516d1de497a677b7ac60f1eceda74ce777ca3/charset_normalizer-3.5.2-cp37-abi3-win_arm64.whl", hash = "sha256:40ab6bffa02ae10a0581e6c198be7d2d8ca5c2a0c64e4ed3465d766df457573e", size = 294363, upload-time = "2026-09-30T04:38:51.312Z" },
     { url = "https://files.pythonhosted.org/packages/fc/ad/d07d7862a62ffa6d79d68074d14823243dd235a77c45262acbf6adeb28bf/charset_normalizer-3.5.2-py3-none-any.whl", hash = "sha256:b6b751274acb69d77b3323d6b7dbaa3c7fdfc1eb829b7eb61d262f32e1af9685", size = 68872, upload-time = "2026-09-30T04:39:21.828Z" },
-]
-
-[[package]]
-name = "cibuildwheel"
-version = "2.23.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "bashlex" },
-    { name = "bracex" },
-    { name = "certifi" },
-    { name = "dependency-groups" },
-    { name = "filelock" },
-    { name = "packaging" },
-    { name = "platformdirs" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/eb/6c/1934be8118ea842c3ee7542e6e2a0ff9299f632db531f61368b412bb75a7/cibuildwheel-2.23.4.tar.gz", hash = "sha256:5a3e4a3d9c18e77838c37c483642e4f071da06ec05c05336826cc46c97abb708", size = 294641, upload-time = "2026-03-16T19:33:13.649Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/00/c9e20a77dafae0ff9b02dfca1629950232278dc327d6231d0a0df128d99c/cibuildwheel-2.23.4-py3-none-any.whl", hash = "sha256:2f4300e9709bff0a83fd89d88f418df2c8da69bf40c010aa4a4b80156be3fbd5", size = 91284, upload-time = "2026-03-16T19:33:12.231Z" },
 ]
 
 [[package]]
@@ -1689,6 +1651,25 @@ wheels = [
 ]
 
 [[package]]
+name = "python-flint"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/d3/32226210a7703b0cfbe0f5b2c56e38b7b7177d4c69663247d8813352595c/python_flint-0.9.0.tar.gz", hash = "sha256:686b2907eedaf0c0842caefab29a5775d2e633fd5815b81e13b81ca2c6ad0a36", size = 486670, upload-time = "2026-07-03T23:29:23.737Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/20/42ec7f09155485314f97071e53e576bbf00c03cdfd52b37b8dced83a2baa/python_flint-0.9.0-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:be6f010e4c2dbe8994250e2ca218ff1e301ee143c03e712bab812ff9e6b4fc46", size = 8870927, upload-time = "2026-07-03T23:28:23.197Z" },
+    { url = "https://files.pythonhosted.org/packages/41/c3/2323ed921fa08ad2a0935775dddba8502d30bfdc3034920abfdac2138236/python_flint-0.9.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:025fd4e77f2cbbf40f63b9cd7571aad3803deb57aecd72e7c397480fe84921a0", size = 7882651, upload-time = "2026-07-03T23:28:25.477Z" },
+    { url = "https://files.pythonhosted.org/packages/db/3f/5f57004f9f43ac6508f874cc97123f11b27b6811b5bb0d320c43f600f0cb/python_flint-0.9.0-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:376b88cacd30612479e839ffdba887599d3f9c8c0e214852bf80bb2b194e4d76", size = 10125938, upload-time = "2026-07-03T23:28:27.426Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/43/fe3689c62e6e5bd2f511165b3baaa4edfce1db2f2c26d0108a0f753b2c49/python_flint-0.9.0-cp310-abi3-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0e681705564a22367def0e026185af43783fd466839493baf7bc21c9e506bf15", size = 10137028, upload-time = "2026-07-03T23:28:29.717Z" },
+    { url = "https://files.pythonhosted.org/packages/63/dd/4b49e36612e924707090c569cf5c3daa9ba3c3e3050897715e3136d055af/python_flint-0.9.0-cp310-abi3-win_amd64.whl", hash = "sha256:8f1059536b7393e48b1444894c3b54ce1b961e4aa4a356e19217b26690f20db0", size = 9593474, upload-time = "2026-07-03T23:28:31.729Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/0e/bf3ad3be80edf54cb98005e3dd19d9b0a8d3618f841f12b703c819b94282/python_flint-0.9.0-cp310-abi3-win_arm64.whl", hash = "sha256:4d78476bce46d28e3655ac5521c2af29a1928ac320aa7e6ace88ebe46fb136e2", size = 7874815, upload-time = "2026-07-03T23:28:33.696Z" },
+    { url = "https://files.pythonhosted.org/packages/05/eb/1b9529f194a5cc89461c2c9dfb667087f586b7cf6af3f8283fc2544474bf/python_flint-0.9.0-pp311-pypy311_pp73-macosx_10_15_x86_64.whl", hash = "sha256:5dc53894183513060acae21b561c635d85f8047b36fcfc466c7ab4d8bc55a604", size = 8838844, upload-time = "2026-07-03T23:29:13.219Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/66/2e0dc7974a3c44d9ff2a1e3b1c4632a905602c4ed6dd18e4aed68d3be9db/python_flint-0.9.0-pp311-pypy311_pp73-macosx_11_0_arm64.whl", hash = "sha256:aeb6910237dec55a640844c070c69953baed66b95dff1415ad8ef5fad5964ad5", size = 7791782, upload-time = "2026-07-03T23:29:15.696Z" },
+    { url = "https://files.pythonhosted.org/packages/14/15/67c02c259e175f6bbb0f803caf0a69048c2ca08b62aa20884ac16e2c4eec/python_flint-0.9.0-pp311-pypy311_pp73-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:cf7e2547cf9666905442402277f1b574806c06a1139f7bd00f370ddd1b0b5ede", size = 9969816, upload-time = "2026-07-03T23:29:17.754Z" },
+    { url = "https://files.pythonhosted.org/packages/71/94/5068c03cb72cbff2e3ed96c5b65c54b8632d975daf71b57afe957bcf85c6/python_flint-0.9.0-pp311-pypy311_pp73-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5b94f126e2ad8bbe783c9532677f190e0fd69bfa77018f47a0ddc2db6168c2cf", size = 9994765, upload-time = "2026-07-03T23:29:19.707Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/bd/2ab583796580cc7f348f2cbaf023f848b6342380c57bb8a6638ec5fd8f2c/python_flint-0.9.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:08022f399c747b75e863060775b74b435c0e62063e62edbd2b471ed24c3fcc78", size = 9463165, upload-time = "2026-07-03T23:29:21.778Z" },
+]
+
+[[package]]
 name = "pytz"
 version = "2026.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2207,6 +2188,7 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pyspark", version = "3.5.9", source = { registry = "https://pypi.org/simple" }, extra = ["sql"], marker = "python_full_version < '3.12'" },
     { name = "pyspark", version = "4.2.0", source = { registry = "https://pypi.org/simple" }, extra = ["sql"], marker = "python_full_version >= '3.12'" },
+    { name = "python-flint" },
     { name = "randomgen", version = "1.26.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "randomgen", version = "2.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -2224,9 +2206,6 @@ testing = [
 [package.dev-dependencies]
 audit = [
     { name = "pip-audit" },
-]
-build = [
-    { name = "cibuildwheel" },
 ]
 ci-tools = [
     { name = "requests" },
@@ -2282,6 +2261,7 @@ requires-dist = [
     { name = "pyspark", extras = ["sql"], marker = "python_full_version < '3.11' and sys_platform != 'darwin'", specifier = ">=3.3.1,<3.6" },
     { name = "pyspark", extras = ["sql"], marker = "python_full_version == '3.11.*' and sys_platform != 'darwin'", specifier = ">=3.4.0,<3.6" },
     { name = "pytest", marker = "extra == 'testing'", specifier = ">=9.0.3,<10" },
+    { name = "python-flint", specifier = ">=0.9.0,<0.10.0" },
     { name = "randomgen", marker = "python_full_version < '3.11'", specifier = ">=1.23.0,<=1.26.0" },
     { name = "randomgen", marker = "python_full_version >= '3.11'", specifier = ">=1.26.0,<=2.3.0" },
     { name = "scipy", marker = "python_full_version < '3.10'", specifier = ">=1.6.0,<2.0.0" },
@@ -2296,7 +2276,6 @@ provides-extras = ["testing"]
 
 [package.metadata.requires-dev]
 audit = [{ name = "pip-audit", specifier = ">=2.9.0,<3" }]
-build = [{ name = "cibuildwheel", specifier = ">=2,<3" }]
 ci-tools = [{ name = "requests", specifier = ">=2.31.0,<3" }]
 docs = [
     { name = "pydata-sphinx-theme", specifier = ">=0.14.4,<15" },

@@ -5,20 +5,22 @@
 
 import math
 
+from flint import arb
+
 from tmlt.core.random.inverse_cdf import construct_inverse_sampler
-from tmlt.core.utils import arb
 
 
-def laplace_inverse_cdf(u: float, b: float, p: arb.Arb, prec: int) -> arb.Arb:
+def laplace_inverse_cdf(u: float, b: float, p: arb) -> arb:
     """Returns inverse CDF for Lap(u,b) at p.
+
+    Computed at the current python-flint working precision (``flint.ctx.prec``).
 
     Args:
         u: The mean of the distribution. Must be finite and non-nan.
         b: The scale of the distribution. Must be finite, non-nan and non-negative.
         p: Probability to compute the CDF at.
-        prec: Precision to use for computing CDF.
     """
-    if not arb.Arb.from_int(0) < p < arb.Arb.from_int(1):
+    if not 0 < p < 1:
         raise ValueError(f"`p` should be in (0,1), not {p}")
     if math.isnan(u) or math.isinf(u):
         raise ValueError(f"Location `u` should be finite and non-nan, not {u}")
@@ -29,21 +31,8 @@ def laplace_inverse_cdf(u: float, b: float, p: arb.Arb, prec: int) -> arb.Arb:
 
     # The following code corresponds to:
     #   return u - b * sgn(p-0.5) * log(1 - 2 * abs(p-0.5))
-    p_minus_half = arb.arb_sub(p, arb.Arb.from_float(0.5), prec)
-    arb_u = arb.Arb.from_float(u)
-    term2 = arb.arb_mul(
-        arb.arb_mul(arb.Arb.from_float(b), arb.arb_sgn(p_minus_half), prec),
-        arb.arb_log(
-            arb.arb_add(
-                arb.Arb.from_int(1),
-                arb.arb_mul(arb.Arb.from_int(-2), arb.arb_abs(p_minus_half), prec),
-                prec,
-            ),
-            prec,
-        ),
-        prec,
-    )
-    return arb.arb_sub(arb_u, term2, prec)
+    term2 = b * (p - 0.5).sgn() * (1 - 2 * abs(p - 0.5)).log()
+    return u - term2
 
 
 def laplace(u: float, b: float, step_size: int = 63) -> float:
@@ -55,6 +44,6 @@ def laplace(u: float, b: float, step_size: int = 63) -> float:
         step_size: How many bits of probability to sample at a time.
     """
     return construct_inverse_sampler(
-        inverse_cdf=lambda p, prec: laplace_inverse_cdf(u, b, p, prec),
+        inverse_cdf=lambda p: laplace_inverse_cdf(u, b, p),
         step_size=step_size,
     )()
