@@ -96,9 +96,13 @@ class NoiseMechanism(Enum):
     """Enumerating noise mechanisms."""
 
     LAPLACE = 1
+    """Continuous Laplace noise."""
     GEOMETRIC = 2
+    """Geometric noise."""
     DISCRETE_GAUSSIAN = 3
+    """Discrete Gaussian noise."""
     GAUSSIAN = 4
+    """Continuous Gaussian noise."""
 
     def check_output_measure(self, output_measure: Union[PureDP, RhoZCDP]) -> None:
         """Checks if the specified output measure is supported."""
