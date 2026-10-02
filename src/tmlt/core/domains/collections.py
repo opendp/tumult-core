@@ -78,13 +78,13 @@ class DictDomain(Domain):
 
     def __repr__(self) -> str:
         """Return string representation of the object."""
-        return f"{self.__class__.__name__}(key_to_domain={self.key_to_domain})"
+        return f"{self.__class__.__name__}(key_to_domain={self._key_to_domain})"
 
     def __eq__(self, other: Any) -> bool:
         """Returns True if both domains are identical."""
         if other.__class__ != self.__class__:
             return False
-        return self.key_to_domain == other.key_to_domain
+        return self._key_to_domain == other._key_to_domain
 
     @property
     def key_to_domain(self) -> Dict[Any, Domain]:
@@ -94,11 +94,11 @@ class DictDomain(Domain):
     @property
     def length(self) -> int:
         """Returns number of keys in the domain."""
-        return len(self.key_to_domain)
+        return len(self._key_to_domain)
 
     def __getitem__(self, key: Any) -> Domain:
         """Returns domain associated with given key."""
-        return self.key_to_domain[key]
+        return self._key_to_domain[key]
 
     @property
     def carrier_type(self) -> type:
@@ -108,8 +108,8 @@ class DictDomain(Domain):
     def validate(self, value: Any) -> None:
         """Raises error if value is not in the domain."""
         super().validate(value)
-        value_keys, domain_keys = set(value), set(self.key_to_domain)
-        if value_keys != domain_keys:
+        if value.keys() != self._key_to_domain.keys():
+            value_keys, domain_keys = set(value), set(self._key_to_domain)
             raise OutOfDomainError(
                 self,
                 value_keys,
@@ -121,7 +121,7 @@ class DictDomain(Domain):
 
         for key in value:
             try:
-                self.key_to_domain[key].validate(value[key])
+                self._key_to_domain[key].validate(value[key])
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
                     self, value, f"Found invalid value at '{key}': {exception}"

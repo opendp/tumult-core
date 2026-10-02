@@ -24,6 +24,7 @@ Changed
   - ``AddRemoveKeys`` -> :class:`~tmlt.core.metrics.AddRemoveIDs`
   - ``PrivateJoinOnKey`` -> :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnIDs`
   - ``FlatMapByKey`` -> :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByID`
+- Improved performance of single-key lookups and ``supports_domain`` on :class:`~tmlt.core.metrics.DictMetric`, :class:`~tmlt.core.metrics.AddRemoveIDs`, :class:`~tmlt.core.domains.collections.DictDomain`, :class:`~tmlt.core.domains.spark_domains.SparkDataFrameDomain`, :class:`~tmlt.core.domains.spark_domains.SparkGroupedDataFrameDomain` and :class:`~tmlt.core.domains.pandas_domains.PandasDataFrameDomain`.
 
 Fixed
 ~~~~~

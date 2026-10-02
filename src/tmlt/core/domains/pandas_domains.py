@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
-from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, Dict
 
@@ -100,7 +99,7 @@ class PandasDataFrameDomain(Domain):
                 self, value, f"Some columns are duplicated, {sorted(duplicates)}"
             )
 
-        schema_columns = list(self.schema.keys())
+        schema_columns = list(self._schema.keys())
         if value_columns != schema_columns:
             raise OutOfDomainError(
                 self,
@@ -112,9 +111,9 @@ class PandasDataFrameDomain(Domain):
                 ),
             )
 
-        for column in self.schema:
+        for column, column_domain in self._schema.items():
             try:
-                self.schema[column].validate(value[column])
+                column_domain.validate(value[column])
             except OutOfDomainError as exception:
                 raise OutOfDomainError(
                     self,
@@ -126,7 +125,10 @@ class PandasDataFrameDomain(Domain):
         """Return True if the classes are equivalent."""
         if self.__class__ != other.__class__:
             return False
-        return OrderedDict(self.schema) == OrderedDict(other.schema)
+        # Same as comparing OrderedDicts (column order matters), without copying.
+        return self._schema == other._schema and list(self._schema) == list(
+            other._schema
+        )
 
     def _format_children(self) -> str:
         """Render the column schema as labeled siblings."""

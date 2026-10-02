@@ -1127,10 +1127,11 @@ class IfGroupedBy(ExactNumberMetric):
         """
         if not isinstance(domain, SparkDataFrameDomain):
             return False
+        schema = domain.schema
         for column in self.columns:
-            if column not in domain.schema:
+            if column not in schema:
                 return False
-        grouped_df_domain = SparkGroupedDataFrameDomain(domain.schema, self.columns)
+        grouped_df_domain = SparkGroupedDataFrameDomain(schema, self.columns)
         return self.inner_metric.supports_domain(grouped_df_domain)
 
     def distance(self, value1: Any, value2: Any, domain: Domain) -> ExactNumber:
@@ -1270,7 +1271,7 @@ class DictMetric(Metric):
         self.validate(value2)
         return all(
             metric.compare(value1[key], value2[key])
-            for key, metric in self.key_to_metric.items()
+            for key, metric in self._key_to_metric.items()
         )
 
     def supports_domain(self, domain: Domain) -> bool:
@@ -1279,15 +1280,12 @@ class DictMetric(Metric):
         Args:
             domain: The domain to check against.
         """
-        return (
-            isinstance(domain, DictDomain)
-            and set(self.key_to_metric.keys()) == set(domain.key_to_domain.keys())
-            and all(
-                (
-                    self.key_to_metric[k].supports_domain(domain[k])
-                    for k in self.key_to_metric
-                )
-            )
+        if not isinstance(domain, DictDomain):
+            return False
+        key_to_domain = domain.key_to_domain
+        return self._key_to_metric.keys() == key_to_domain.keys() and all(
+            metric.supports_domain(key_to_domain[k])
+            for k, metric in self._key_to_metric.items()
         )
 
     def distance(self, value1: Any, value2: Any, domain: Domain) -> Dict[Any, Any]:
@@ -1304,23 +1302,24 @@ class DictMetric(Metric):
 
         distance = {
             k: m.distance(value1[k], value2[k], domain[k])
-            for k, m in self.key_to_metric.items()
+            for k, m in self._key_to_metric.items()
         }
         self.validate(distance)
         return distance
 
     def __getitem__(self, key: Any) -> Metric:
         """Returns metric associated with given key."""
-        return self.key_to_metric[key]
+        return self._key_to_metric[key]
 
     def __len__(self) -> int:
         """Returns number of keys in the metric."""
-        return len(self.key_to_metric)
+        return len(self._key_to_metric)
 
     def __repr__(self) -> str:
         """Returns string representation."""
         sorted_key_to_metric = {
-            key: self[key] for key in sorted(self.key_to_metric, key=str)
+            key: self._key_to_metric[key]
+            for key in sorted(self._key_to_metric, key=str)
         }
         return f"{self.__class__.__name__}(key_to_metric={sorted_key_to_metric})"
 
@@ -1329,7 +1328,8 @@ class DictMetric(Metric):
         if not self._key_to_metric:
             return ""
         return format_labeled_siblings(
-            (str(key), self[key]) for key in sorted(self.key_to_metric, key=str)
+            (str(key), self._key_to_metric[key])
+            for key in sorted(self._key_to_metric, key=str)
         )
 
 
@@ -1475,23 +1475,22 @@ class AddRemoveIDs(Metric):
         """
         if isinstance(domain, DictDomain):
             column_descriptor = None
-            if set(domain.key_to_domain).symmetric_difference(
-                set(self.df_to_id_column)
-            ):
+            key_to_domain = domain.key_to_domain
+            if key_to_domain.keys() != self._df_to_id_column.keys():
                 return False
-            for table_name, element_domain in domain.key_to_domain.items():
-                id_column = self.df_to_id_column[table_name]
+            for table_name, element_domain in key_to_domain.items():
+                id_column = self._df_to_id_column[table_name]
                 if not isinstance(element_domain, SparkDataFrameDomain):
                     return False
-                if id_column not in element_domain.schema:
+                try:
+                    id_descriptor = element_domain[id_column]
+                except KeyError:
                     return False
-                if isinstance(
-                    element_domain.schema[id_column], SparkFloatColumnDescriptor
-                ):
+                if isinstance(id_descriptor, SparkFloatColumnDescriptor):
                     return False
                 if column_descriptor is None:
-                    column_descriptor = element_domain.schema[id_column]
-                elif element_domain.schema[id_column] != column_descriptor:
+                    column_descriptor = id_descriptor
+                elif id_descriptor != column_descriptor:
                     return False
             return True
         return False
@@ -1506,19 +1505,20 @@ class AddRemoveIDs(Metric):
         """
         self._validate_distance_arguments(value1, value2, domain)
         assert isinstance(domain, DictDomain)
+        key_to_domain = domain.key_to_domain
         ids_in_value1_elements = {}
         ids_in_value2_elements = {}
-        for table_name in domain.key_to_domain:
+        for table_name in key_to_domain:
             ids_in_value1_elements[table_name] = set(
                 value1[table_name]
-                .select(self.df_to_id_column[table_name])
+                .select(self._df_to_id_column[table_name])
                 .distinct()
                 .rdd.map(lambda x: x[0])
                 .collect()
             )
             ids_in_value2_elements[table_name] = set(
                 value2[table_name]
-                .select(self.df_to_id_column[table_name])
+                .select(self._df_to_id_column[table_name])
                 .distinct()
                 .rdd.map(lambda x: x[0])
                 .collect()
@@ -1530,19 +1530,14 @@ class AddRemoveIDs(Metric):
 
         # ids which may have changed
         for identifier in value1_ids & value2_ids:
-            for table_name in domain.key_to_domain:
+            for table_name, table_domain in key_to_domain.items():
                 df1 = value1[table_name].filter(
-                    sf.col(self.df_to_id_column[table_name]).eqNullSafe(identifier)
+                    sf.col(self._df_to_id_column[table_name]).eqNullSafe(identifier)
                 )
                 df2 = value2[table_name].filter(
-                    sf.col(self.df_to_id_column[table_name]).eqNullSafe(identifier)
+                    sf.col(self._df_to_id_column[table_name]).eqNullSafe(identifier)
                 )
-                if (
-                    SymmetricDifference().distance(
-                        df1, df2, domain.key_to_domain[table_name]
-                    )
-                    > 0
-                ):
+                if SymmetricDifference().distance(df1, df2, table_domain) > 0:
                     added_ids.add(identifier)
                     removed_ids.add(identifier)
                     break
@@ -1553,7 +1548,7 @@ class AddRemoveIDs(Metric):
     def __repr__(self) -> str:
         """Returns string representation."""
         return (
-            f"{self.__class__.__name__}(df_to_id_column={repr(self.df_to_id_column)})"
+            f"{self.__class__.__name__}(df_to_id_column={repr(self._df_to_id_column)})"
         )
 
     def _format_children(self) -> str:
@@ -1561,8 +1556,8 @@ class AddRemoveIDs(Metric):
         if not self._df_to_id_column:
             return ""
         labels_and_values = [
-            (str(table_name), self.df_to_id_column[table_name])
-            for table_name in sorted(self.df_to_id_column, key=str)
+            (str(table_name), self._df_to_id_column[table_name])
+            for table_name in sorted(self._df_to_id_column, key=str)
         ]
         width = max(len(label) for label, _ in labels_and_values) + 2
         return "\n".join(
