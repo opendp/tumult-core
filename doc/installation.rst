@@ -13,7 +13,7 @@ Prerequisites
 ^^^^^^^^^^^^^
 
 Tumult Core is built in `Python <https://www.python.org/>`__, so a Python installation is required to use it.
-It is compatible with Python 3.10 through 3.12.
+It is compatible with Python 3.10 through 3.14.
 Since Tumult Core uses PySpark for computation, users must have Python, Java, and PySpark versions that match the compatibility table below:
 
 +---------------+-------------------------+-------------------+
@@ -24,6 +24,10 @@ Since Tumult Core uses PySpark for computation, users must have Python, Java, an
 | 3.11          | PySpark >=3.4.0,<3.6    | Java 8, 11, 17    |
 +---------------+-------------------------+-------------------+
 | 3.12          | PySpark >=4.0.0         | Java 17 and 21    |
++---------------+-------------------------+-------------------+
+| 3.13          | PySpark >=4.0.0         | Java 17 and 21    |
++---------------+-------------------------+-------------------+
+| 3.14          | PySpark >=4.1.0         | Java 17 and 21    |
 +---------------+-------------------------+-------------------+
 
 See Apache Spark’s official PySpark and Java installation guide <https://spark.apache.org/docs/4.1.1/#downloading>__ for setup details.
