@@ -231,12 +231,22 @@ from tmlt.core.utils.testing import (
         },
         {
             "subclass": LimitRowsPerGroupPerIDValue,
-            "extra_kwargs": {"threshold": 2, "grouping_column": "B"},
+            "extra_kwargs": {"threshold": 2, "grouping_columns": ["B"]},
             "pandas_to_spark_kwargs": {},
         },
         {
             "subclass": LimitGroupsPerIDValue,
-            "extra_kwargs": {"threshold": 2, "grouping_column": "C"},
+            "extra_kwargs": {"threshold": 2, "grouping_columns": ["C"]},
+            "pandas_to_spark_kwargs": {},
+        },
+        {
+            "subclass": LimitRowsPerGroupPerIDValue,
+            "extra_kwargs": {"threshold": 2, "grouping_columns": ["B", "C"]},
+            "pandas_to_spark_kwargs": {},
+        },
+        {
+            "subclass": LimitGroupsPerIDValue,
+            "extra_kwargs": {"threshold": 2, "grouping_columns": ["B", "C"]},
             "pandas_to_spark_kwargs": {},
         },
     ]

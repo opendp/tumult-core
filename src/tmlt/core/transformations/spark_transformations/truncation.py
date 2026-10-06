@@ -16,6 +16,25 @@ from tmlt.core.utils.misc import ConciseFrozenSet
 from tmlt.core.utils.truncation import limit_groups_per_id, truncate_large_groups
 
 
+def _validate_grouping_columns(
+    grouping_columns: Collection[str], id_columns: Collection[str]
+) -> None:
+    """Raises an error if ``grouping_columns`` are not valid for the given IDs."""
+    if isinstance(grouping_columns, str):
+        raise ValueError(
+            "grouping_columns must be a collection of column names, not a single "
+            f"string, but got: {grouping_columns!r}"
+        )
+    if not grouping_columns:
+        raise ValueError("grouping_columns must contain at least one column")
+    overlapping_columns = set(grouping_columns) & set(id_columns)
+    if overlapping_columns:
+        raise ValueError(
+            "ID columns cannot be grouping columns, but these appear in both: "
+            f"{sorted(overlapping_columns)}"
+        )
+
+
 class LimitRowsPerID(Transformation):
     """Keep at most k rows per ID.
 
@@ -222,7 +241,7 @@ class LimitGroupsPerID(Transformation):
         ...     ),
         ...     output_metric=IfGroupedBy({"B"}, SumOf(IfGroupedBy({"A"}, SymmetricDifference()))),
         ...     id_columns=["A"],
-        ...     grouping_column="B",
+        ...     grouping_columns=["B"],
         ...     threshold=2,
         ... )
         >>> # Apply transformation to data
@@ -261,7 +280,7 @@ class LimitGroupsPerID(Transformation):
             :class:`~.LimitGroupsPerID` 's :meth:`~.stability_function` returns
             ``d_in`` if ``output_metric`` is ``IfGroupedBy(id_columns, SymmetricDifference())``,
             ``sqrt(threshold) * d_in`` if ``output_metric`` is
-            ``IfGroupedBy({grouping_column}, RootSumOfSquared(IfGroupedBy(id_columns, SymmetricDifference())))``,
+            ``IfGroupedBy(grouping_columns, RootSumOfSquared(IfGroupedBy(id_columns, SymmetricDifference())))``,
             and ``threshold * d_in`` otherwise.
 
             >>> truncate.stability_function(1)
@@ -276,7 +295,7 @@ class LimitGroupsPerID(Transformation):
         input_domain: SparkDataFrameDomain,
         output_metric: IfGroupedBy,
         id_columns: Collection[str],
-        grouping_column: str,
+        grouping_columns: Collection[str],
         threshold: int,
     ):
         """Constructor.
@@ -284,27 +303,26 @@ class LimitGroupsPerID(Transformation):
         Args:
             input_domain: Domain of input DataFrame.
             output_metric: Distance metric for output DataFrames. This should be
-                ``IfGroupedBy({grouping_column}, SumOf(IfGroupedBy(id_columns, SymmetricDifference())))`` or
-                ``IfGroupedBy({grouping_column}, RootSumOfSquared(IfGroupedBy(id_columns, SymmetricDifference())))``
+                ``IfGroupedBy(grouping_columns, SumOf(IfGroupedBy(id_columns, SymmetricDifference())))`` or
+                ``IfGroupedBy(grouping_columns, RootSumOfSquared(IfGroupedBy(id_columns, SymmetricDifference())))``
                 or ``IfGroupedBy(id_columns, SymmetricDifference())``.
             id_columns: Names of columns defining the ID for each row.
-            grouping_column: Name of column defining the groups to truncate.
+            grouping_columns: Names of columns defining the groups to truncate.
             threshold: The maximum number of groups per ID after truncation.
         """  # noqa: E501
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
-        if grouping_column in id_columns:
-            raise ValueError("ID column cannot be a grouping column")
+        _validate_grouping_columns(grouping_columns, id_columns)
         self._id_columns = ConciseFrozenSet(id_columns)
-        self._grouping_column = grouping_column
+        self._grouping_columns = ConciseFrozenSet(grouping_columns)
         self._threshold = threshold
         valid_output_metrics = [
             IfGroupedBy(
-                [grouping_column],
+                grouping_columns,
                 SumOf(IfGroupedBy(id_columns, SymmetricDifference())),
             ),
             IfGroupedBy(
-                [grouping_column],
+                grouping_columns,
                 RootSumOfSquared(IfGroupedBy(id_columns, SymmetricDifference())),
             ),
             IfGroupedBy(id_columns, SymmetricDifference()),
@@ -313,15 +331,16 @@ class LimitGroupsPerID(Transformation):
             raise UnsupportedMetricError(
                 output_metric,
                 (
-                    f"Output metric must be one of `IfGroupedBy(['{grouping_column}'],"
+                    f"Output metric must be one of"
+                    f" `IfGroupedBy({grouping_columns},"
                     f" SumOf(IfGroupedBy({id_columns}, SymmetricDifference())))`"
-                    f" or `IfGroupedBy(['{grouping_column}'],"
+                    f" or `IfGroupedBy({grouping_columns},"
                     f" RootSumOfSquared(IfGroupedBy({id_columns},"
                     f" SymmetricDifference())))` or `IfGroupedBy({id_columns},"
                     " SymmetricDifference())`."
                 ),
             )
-        # super init checks that id_columns and grouping_column are in the domain
+        # super init checks that id_columns and grouping_columns are in the domain
         super().__init__(
             input_domain=input_domain,
             input_metric=IfGroupedBy(id_columns, SymmetricDifference()),
@@ -335,9 +354,9 @@ class LimitGroupsPerID(Transformation):
         return self._id_columns
 
     @property
-    def grouping_column(self) -> str:
-        """Returns the column defining the groups to truncate."""
-        return self._grouping_column
+    def grouping_columns(self) -> frozenset[str]:
+        """Returns the columns defining the groups to truncate."""
+        return self._grouping_columns
 
     @property
     def threshold(self) -> int:
@@ -359,7 +378,7 @@ class LimitGroupsPerID(Transformation):
         if self.output_metric == IfGroupedBy(self.id_columns, SymmetricDifference()):
             return d_in
         if self.output_metric == IfGroupedBy(
-            [self.grouping_column],
+            self.grouping_columns,
             RootSumOfSquared(IfGroupedBy(self.id_columns, SymmetricDifference())),
         ):
             return d_in * self.threshold ** ExactNumber("1/2")
@@ -367,8 +386,10 @@ class LimitGroupsPerID(Transformation):
 
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns a truncated dataframe."""
+        # Which groups are kept depends on the order of the columns, so sort them
+        # to keep the output independent of frozenset iteration order.
         return limit_groups_per_id(
-            sdf, self.id_columns, [self.grouping_column], self.threshold
+            sdf, sorted(self.id_columns), sorted(self.grouping_columns), self.threshold
         )
 
 
@@ -418,7 +439,7 @@ class LimitRowsPerGroupPerID(Transformation):
         ...     ),
         ...     input_metric=IfGroupedBy({"B"}, SumOf(IfGroupedBy({"A"}, SymmetricDifference()))),
         ...     id_columns=["A"],
-        ...     grouping_column="B",
+        ...     grouping_columns=["B"],
         ...     threshold=2,
         ... )
         >>> # Apply transformation to data
@@ -474,7 +495,7 @@ class LimitRowsPerGroupPerID(Transformation):
         input_domain: SparkDataFrameDomain,
         input_metric: IfGroupedBy,
         id_columns: Collection[str],
-        grouping_column: str,
+        grouping_columns: Collection[str],
         threshold: int,
     ):
         """Constructor.
@@ -482,33 +503,32 @@ class LimitRowsPerGroupPerID(Transformation):
         Args:
             input_domain: Domain of input DataFrame.
             input_metric: Distance metric for input DataFrames. This should be
-                ``IfGroupedBy({grouping_column}, SumOf(IfGroupedBy(id_columns, SymmetricDifference())))`` or
-                ``IfGroupedBy({grouping_column}, RootSumOfSquared(IfGroupedBy(id_columns, SymmetricDifference())))``
+                ``IfGroupedBy(grouping_columns, SumOf(IfGroupedBy(id_columns, SymmetricDifference())))`` or
+                ``IfGroupedBy(grouping_columns, RootSumOfSquared(IfGroupedBy(id_columns, SymmetricDifference())))``
                 or ``IfGroupedBy(id_columns, SymmetricDifference())``.
             id_columns: Names of columns defining the ID for each row.
-            grouping_column: Name of column defining the groups to truncate.
+            grouping_columns: Names of columns defining the groups to truncate.
             threshold: The maximum number of rows each unique (ID, group)
                 pair may appear in after truncation.
         """  # noqa: E501
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
-        if grouping_column in id_columns:
-            raise ValueError("ID column cannot be a grouping column")
+        _validate_grouping_columns(grouping_columns, id_columns)
         self._id_columns = ConciseFrozenSet(id_columns)
-        self._grouping_column = grouping_column
+        self._grouping_columns = ConciseFrozenSet(grouping_columns)
         self._threshold = threshold
 
         output_metric: Union[SymmetricDifference, IfGroupedBy]
         if input_metric == IfGroupedBy(
-            [grouping_column], SumOf(IfGroupedBy(id_columns, SymmetricDifference()))
+            grouping_columns, SumOf(IfGroupedBy(id_columns, SymmetricDifference()))
         ):
             output_metric = SymmetricDifference()
         elif input_metric == IfGroupedBy(
-            [grouping_column],
+            grouping_columns,
             RootSumOfSquared(IfGroupedBy(id_columns, SymmetricDifference())),
         ):
             output_metric = IfGroupedBy(
-                [grouping_column], RootSumOfSquared(SymmetricDifference())
+                grouping_columns, RootSumOfSquared(SymmetricDifference())
             )
         elif input_metric == IfGroupedBy(id_columns, SymmetricDifference()):
             output_metric = input_metric
@@ -516,9 +536,10 @@ class LimitRowsPerGroupPerID(Transformation):
             raise UnsupportedMetricError(
                 input_metric,
                 (
-                    f"Input metric must be one of `IfGroupedBy(['{grouping_column}'],"
+                    f"Input metric must be one of"
+                    f" `IfGroupedBy({grouping_columns},"
                     f" SumOf(IfGroupedBy({id_columns}, SymmetricDifference())))`"
-                    f" or `IfGroupedBy(['{grouping_column}'],"
+                    f" or `IfGroupedBy({grouping_columns},"
                     f" RootSumOfSquared(IfGroupedBy({id_columns},"
                     f" SymmetricDifference())))` or `IfGroupedBy({id_columns},"
                     " SymmetricDifference())`"
@@ -539,9 +560,9 @@ class LimitRowsPerGroupPerID(Transformation):
         return self._id_columns
 
     @property
-    def grouping_column(self) -> str:
-        """Returns the column defining the groups to truncate."""
-        return self._grouping_column
+    def grouping_columns(self) -> frozenset[str]:
+        """Returns the columns defining the groups to truncate."""
+        return self._grouping_columns
 
     @property
     def threshold(self) -> int:
@@ -567,5 +588,5 @@ class LimitRowsPerGroupPerID(Transformation):
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Returns a truncated dataframe."""
         return truncate_large_groups(
-            sdf, self.id_columns | {self.grouping_column}, self.threshold
+            sdf, self.id_columns | self.grouping_columns, self.threshold
         )

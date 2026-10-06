@@ -109,7 +109,7 @@ dictionary.
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Collection, Dict, List, Optional, Tuple, cast
 
 from pyspark.sql import DataFrame
 from typeguard import typechecked
@@ -366,7 +366,7 @@ class LimitGroupsPerIDValue(TransformValue):
         input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
-        grouping_column: str,
+        grouping_columns: Collection[str],
         threshold: int,
     ):
         """Constructor.
@@ -378,7 +378,7 @@ class LimitGroupsPerIDValue(TransformValue):
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
-            grouping_column: Name of column defining the group.
+            grouping_columns: Names of columns defining the groups.
             threshold: The maximum number of groups per id after truncation.
         """
         id_column = input_metric.df_to_id_column[key]
@@ -386,7 +386,7 @@ class LimitGroupsPerIDValue(TransformValue):
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             output_metric=IfGroupedBy([id_column], SymmetricDifference()),
             id_columns=[id_column],
-            grouping_column=grouping_column,
+            grouping_columns=grouping_columns,
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
@@ -406,7 +406,7 @@ class LimitRowsPerGroupPerIDValue(TransformValue):
         input_metric: AddRemoveIDs,
         key: Any,
         new_key: Any,
-        grouping_column: str,
+        grouping_columns: Collection[str],
         threshold: int,
     ):
         """Constructor.
@@ -418,7 +418,7 @@ class LimitRowsPerGroupPerIDValue(TransformValue):
             key: The key for the DataFrame to transform.
             new_key: The key to put the transformed output in. The key must not already
                 be in the input domain.
-            grouping_column: Name of column defining the keys.
+            grouping_columns: Names of columns defining the groups.
             threshold: The maximum number of rows each unique (key, grouping column
                 value) pair may appear in after truncation.
         """
@@ -427,7 +427,7 @@ class LimitRowsPerGroupPerIDValue(TransformValue):
             input_domain=cast(SparkDataFrameDomain, input_domain.key_to_domain[key]),
             input_metric=IfGroupedBy([id_column], SymmetricDifference()),
             id_columns=[id_column],
-            grouping_column=grouping_column,
+            grouping_columns=grouping_columns,
             threshold=threshold,
         )
         super().__init__(input_domain, input_metric, transformation, key, new_key)
