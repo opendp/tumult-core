@@ -732,7 +732,6 @@ class FlatMap(Transformation):
         assert isinstance(row_transformer.input_domain, SparkRowDomain)
         assert isinstance(row_transformer.output_domain, ListDomain)
         assert isinstance(row_transformer.output_domain.element_domain, SparkRowDomain)
-        self._groupby_column: Optional[str] = None
         if isinstance(metric, IfGroupedBy):
             if metric.inner_metric not in (
                 SymmetricDifference(),
