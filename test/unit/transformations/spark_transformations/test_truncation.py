@@ -462,6 +462,14 @@ class TestLimitGroupsPerID(PySparkTest):
                 "grouping_columns must contain at least one column",
             ),
             (
+                {"grouping_columns": ["B", "C", "B"]},
+                ValueError,
+                (
+                    "grouping_columns cannot contain duplicate column names, but "
+                    r"these appear multiple times: \['B'\]"
+                ),
+            ),
+            (
                 {"id_columns": ["A", "B"], "grouping_columns": ["B", "C"]},
                 ValueError,
                 "ID columns cannot be grouping columns",
@@ -747,6 +755,14 @@ class TestLimitRowsPerGroupPerID(PySparkTest):
                 {"grouping_columns": []},
                 ValueError,
                 "grouping_columns must contain at least one column",
+            ),
+            (
+                {"grouping_columns": ["B", "C", "B"]},
+                ValueError,
+                (
+                    "grouping_columns cannot contain duplicate column names, but "
+                    r"these appear multiple times: \['B'\]"
+                ),
             ),
             (
                 {"id_columns": ["A", "B"], "grouping_columns": ["B", "C"]},
