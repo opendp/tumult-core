@@ -2067,19 +2067,19 @@ class TestIfGroupedBy(TestCase):
         columns=[],
         inner_metric=SymmetricDifference(),
         error_type=ValueError,
-        message="empty columns",
+        message="must contain at least one column",
     ),
     Case("duplicate columns")(
         columns=["A", "A"],
         inner_metric=SymmetricDifference(),
         error_type=ValueError,
-        message="duplicate grouping columns",
+        message="cannot contain duplicate column names",
     ),
     Case("bare string")(
         columns="A",
         inner_metric=SymmetricDifference(),
         error_type=ValueError,
-        message="string",
+        message="not a single string",
     ),
 )
 def test_ifgroupedby_initialization_errors(columns, inner_metric, error_type, message):

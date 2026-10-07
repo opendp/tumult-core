@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
-from collections import Counter
 from typing import Collection, Union
 
 from pyspark.sql import DataFrame
@@ -15,29 +14,14 @@ from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.misc import ConciseFrozenSet
 from tmlt.core.utils.truncation import limit_groups_per_id, truncate_large_groups
+from tmlt.core.utils.validation import validate_column_names
 
 
 def _validate_grouping_columns(
     grouping_columns: Collection[str], id_columns: Collection[str]
 ) -> None:
     """Raises an error if ``grouping_columns`` are not valid for the given IDs."""
-    # A single string counts as a Collection[str] for typeguard purposes (one per
-    # character), so we need to do this check manually.
-    if isinstance(grouping_columns, str):
-        raise ValueError(
-            "grouping_columns must be a collection of column names, not a single "
-            f"string, but got: {grouping_columns!r}"
-        )
-    if not grouping_columns:
-        raise ValueError("grouping_columns must contain at least one column")
-    duplicate_columns = sorted(
-        column for column, count in Counter(grouping_columns).items() if count > 1
-    )
-    if duplicate_columns:
-        raise ValueError(
-            "grouping_columns cannot contain duplicate column names, but these "
-            f"appear multiple times: {duplicate_columns}"
-        )
+    validate_column_names(grouping_columns, "grouping_columns")
     overlapping_columns = set(grouping_columns) & set(id_columns)
     if overlapping_columns:
         raise ValueError(
