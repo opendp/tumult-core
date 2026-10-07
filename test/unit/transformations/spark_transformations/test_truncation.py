@@ -131,6 +131,24 @@ class TestLimitRowsPerID(PySparkTest):
         [
             ({"threshold": -1}, ValueError, "Threshold must be nonnegative"),
             (
+                {"id_columns": "A"},
+                ValueError,
+                "id_columns must be a collection of column names",
+            ),
+            (
+                {"id_columns": []},
+                ValueError,
+                "id_columns must contain at least one column",
+            ),
+            (
+                {"id_columns": ["A", "A"]},
+                ValueError,
+                (
+                    "id_columns cannot contain duplicate column names, but these "
+                    r"appear multiple times: \['A'\]"
+                ),
+            ),
+            (
                 {"id_columns": ["invalid"]},
                 ValueError,
                 "Input metric .* and input domain .* are not compatible.",
@@ -405,6 +423,24 @@ class TestLimitGroupsPerID(PySparkTest):
     @parameterized.expand(
         [
             ({"threshold": -1}, ValueError, "Threshold must be nonnegative"),
+            (
+                {"id_columns": "A"},
+                ValueError,
+                "id_columns must be a collection of column names",
+            ),
+            (
+                {"id_columns": []},
+                ValueError,
+                "id_columns must contain at least one column",
+            ),
+            (
+                {"id_columns": ["A", "A"]},
+                ValueError,
+                (
+                    "id_columns cannot contain duplicate column names, but these "
+                    r"appear multiple times: \['A'\]"
+                ),
+            ),
             (
                 {
                     "id_columns": ["invalid"],
@@ -720,6 +756,24 @@ class TestLimitRowsPerGroupPerID(PySparkTest):
     @parameterized.expand(
         [
             ({"threshold": -1}, ValueError, "Threshold must be nonnegative"),
+            (
+                {"id_columns": "A"},
+                ValueError,
+                "id_columns must be a collection of column names",
+            ),
+            (
+                {"id_columns": []},
+                ValueError,
+                "id_columns must contain at least one column",
+            ),
+            (
+                {"id_columns": ["A", "A"]},
+                ValueError,
+                (
+                    "id_columns cannot contain duplicate column names, but these "
+                    r"appear multiple times: \['A'\]"
+                ),
+            ),
             (
                 {
                     "grouping_columns": ["B", "C"],

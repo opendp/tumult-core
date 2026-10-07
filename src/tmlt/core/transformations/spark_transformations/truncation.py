@@ -17,10 +17,11 @@ from tmlt.core.utils.truncation import limit_groups_per_id, truncate_large_group
 from tmlt.core.utils.validation import validate_column_names
 
 
-def _validate_grouping_columns(
-    grouping_columns: Collection[str], id_columns: Collection[str]
+def _validate_id_and_grouping_columns(
+    id_columns: Collection[str], grouping_columns: Collection[str]
 ) -> None:
-    """Raises an error if ``grouping_columns`` are not valid for the given IDs."""
+    """Raises an error if ``id_columns`` and ``grouping_columns`` are not valid."""
+    validate_column_names(id_columns, "id_columns")
     validate_column_names(grouping_columns, "grouping_columns")
     overlapping_columns = set(grouping_columns) & set(id_columns)
     if overlapping_columns:
@@ -137,6 +138,7 @@ class LimitRowsPerID(Transformation):
         """
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
+        validate_column_names(id_columns, "id_columns")
         self._id_columns = ConciseFrozenSet(id_columns)
         self._threshold = threshold
         if isinstance(output_metric, IfGroupedBy):
@@ -307,7 +309,7 @@ class LimitGroupsPerID(Transformation):
         """  # noqa: E501
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
-        _validate_grouping_columns(grouping_columns, id_columns)
+        _validate_id_and_grouping_columns(id_columns, grouping_columns)
         self._id_columns = ConciseFrozenSet(id_columns)
         self._grouping_columns = ConciseFrozenSet(grouping_columns)
         self._threshold = threshold
@@ -508,7 +510,7 @@ class LimitRowsPerGroupPerID(Transformation):
         """  # noqa: E501
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
-        _validate_grouping_columns(grouping_columns, id_columns)
+        _validate_id_and_grouping_columns(id_columns, grouping_columns)
         self._id_columns = ConciseFrozenSet(id_columns)
         self._grouping_columns = ConciseFrozenSet(grouping_columns)
         self._threshold = threshold
