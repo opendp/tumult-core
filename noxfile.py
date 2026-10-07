@@ -126,9 +126,61 @@ DEPENDENCY_MATRIX = [
              "pyarrow": "==18.1.0",
          },
      ),
+     DependencyConfiguration(
+         id="3.13-oldest",
+         python="3.13",
+         packages={
+             "pyspark[sql]": "==4.0.0",
+             "sympy": "==1.8",
+             "pandas": "==2.2.3",
+             "numpy": "==2.1.0",
+             "scipy": "==1.14.1",
+             "randomgen": "==2.0.1",
+             "pyarrow": "==23.0.1",
+         },
+     ),
+     DependencyConfiguration(
+         id="3.13-newest",
+         python="3.13",
+         packages={
+             "pyspark[sql]": "==4.2.0",
+             "sympy": "==1.12",
+             "pandas": "==2.3.3",
+             "numpy": "==2.5.3",
+             "scipy": "==1.18.1",
+             "randomgen": "==2.3.0",
+             "pyarrow": "==23.0.1",
+         },
+     ),
+     DependencyConfiguration(
+         id="3.14-oldest",
+         python="3.14",
+         packages={
+             "pyspark[sql]": "==4.1.0",
+             "sympy": "==1.12.1",
+             "pandas": "==2.3.3",
+             "numpy": "==2.3.2",
+             "scipy": "==1.16.1",
+             "randomgen": "==2.3.0",
+             "pyarrow": "==23.0.1",
+         },
+     ),
+     DependencyConfiguration(
+         id="3.14-newest",
+         python="3.14",
+         packages={
+             "pyspark[sql]": "==4.2.0",
+             "sympy": "==1.12.1",
+             "pandas": "==2.3.3",
+             "numpy": "==2.5.3",
+             "scipy": "==1.18.1",
+             "randomgen": "==2.3.0",
+             "pyarrow": "==23.0.1",
+         },
+     ),
 ]
 
-AUDIT_VERSIONS = ["3.10", "3.11", "3.12"]
+AUDIT_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 AUDIT_SUPPRESSIONS = [
     "PYSEC-2023-228",
     # Affects: pip<23.3
