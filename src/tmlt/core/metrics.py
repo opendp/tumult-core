@@ -40,7 +40,7 @@ from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.format import Formattable, format_labeled_siblings, format_siblings
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.misc import ConciseFrozenSet
-from tmlt.core.utils.validation import validate_column_names, validate_exact_number
+from tmlt.core.utils.validation import validate_column_set, validate_exact_number
 
 
 class Metric(Formattable, ABC):
@@ -1065,7 +1065,7 @@ class IfGroupedBy(ExactNumberMetric):
             inner_metric: Metric to be applied to corresponding groups in
                 the DataFrame.
         """
-        validate_column_names(columns, "IfGroupedBy columns")
+        validate_column_set(columns, "IfGroupedBy columns")
         self._columns = ConciseFrozenSet(columns)
         self._inner_metric = inner_metric
 

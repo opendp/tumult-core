@@ -14,15 +14,15 @@ from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.misc import ConciseFrozenSet
 from tmlt.core.utils.truncation import limit_groups_per_id, truncate_large_groups
-from tmlt.core.utils.validation import validate_column_names
+from tmlt.core.utils.validation import validate_column_set
 
 
 def _validate_id_and_grouping_columns(
     id_columns: Collection[str], grouping_columns: Collection[str]
 ) -> None:
     """Raises an error if ``id_columns`` and ``grouping_columns`` are not valid."""
-    validate_column_names(id_columns, "id_columns")
-    validate_column_names(grouping_columns, "grouping_columns")
+    validate_column_set(id_columns, "id_columns")
+    validate_column_set(grouping_columns, "grouping_columns")
     overlapping_columns = set(grouping_columns) & set(id_columns)
     if overlapping_columns:
         raise ValueError(
@@ -138,7 +138,7 @@ class LimitRowsPerID(Transformation):
         """
         if threshold < 0:
             raise ValueError("Threshold must be nonnegative")
-        validate_column_names(id_columns, "id_columns")
+        validate_column_set(id_columns, "id_columns")
         self._id_columns = ConciseFrozenSet(id_columns)
         self._threshold = threshold
         if isinstance(output_metric, IfGroupedBy):
@@ -329,9 +329,9 @@ class LimitGroupsPerID(Transformation):
                 output_metric,
                 (
                     f"Output metric must be one of"
-                    f" `IfGroupedBy({grouping_columns},"
+                    f" `IfGroupedBy({self.grouping_columns},"
                     f" SumOf(IfGroupedBy({id_columns}, SymmetricDifference())))`"
-                    f" or `IfGroupedBy({grouping_columns},"
+                    f" or `IfGroupedBy({self.grouping_columns},"
                     f" RootSumOfSquared(IfGroupedBy({id_columns},"
                     f" SymmetricDifference())))` or `IfGroupedBy({id_columns},"
                     " SymmetricDifference())`."
@@ -517,15 +517,15 @@ class LimitRowsPerGroupPerID(Transformation):
 
         output_metric: Union[SymmetricDifference, IfGroupedBy]
         if input_metric == IfGroupedBy(
-            grouping_columns, SumOf(IfGroupedBy(id_columns, SymmetricDifference()))
+            self.grouping_columns, SumOf(IfGroupedBy(id_columns, SymmetricDifference()))
         ):
             output_metric = SymmetricDifference()
         elif input_metric == IfGroupedBy(
-            grouping_columns,
+            self.grouping_columns,
             RootSumOfSquared(IfGroupedBy(id_columns, SymmetricDifference())),
         ):
             output_metric = IfGroupedBy(
-                grouping_columns, RootSumOfSquared(SymmetricDifference())
+                self.grouping_columns, RootSumOfSquared(SymmetricDifference())
             )
         elif input_metric == IfGroupedBy(id_columns, SymmetricDifference()):
             output_metric = input_metric
@@ -534,9 +534,9 @@ class LimitRowsPerGroupPerID(Transformation):
                 input_metric,
                 (
                     f"Input metric must be one of"
-                    f" `IfGroupedBy({grouping_columns},"
+                    f" `IfGroupedBy({self.grouping_columns},"
                     f" SumOf(IfGroupedBy({id_columns}, SymmetricDifference())))`"
-                    f" or `IfGroupedBy({grouping_columns},"
+                    f" or `IfGroupedBy({self.grouping_columns},"
                     f" RootSumOfSquared(IfGroupedBy({id_columns},"
                     f" SymmetricDifference())))` or `IfGroupedBy({id_columns},"
                     " SymmetricDifference())`"

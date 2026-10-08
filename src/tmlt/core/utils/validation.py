@@ -56,7 +56,7 @@ def validate_groupby_domains(
                 )
 
 
-def validate_column_names(columns: Collection[str], name: str) -> None:
+def validate_column_set(columns: Collection[str], name: str) -> None:
     """Raises a :class:`ValueError` if ``columns`` is not a valid set of column names.
 
     ``columns`` must be a non-empty collection of column names with no duplicates.

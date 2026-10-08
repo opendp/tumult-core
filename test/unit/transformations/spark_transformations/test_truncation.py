@@ -469,15 +469,18 @@ class TestLimitGroupsPerID(PySparkTest):
                     ),
                 },
                 ValueError,
-                r"Output metric must be one of `IfGroupedBy\(\['B', 'C'\], ",
+                (
+                    "Output metric must be one of "
+                    r"`IfGroupedBy\((\{'B', 'C'\}|\{'C', 'B'\}), "
+                ),
             ),
             (
                 {"output_metric": IfGroupedBy(["B"], SymmetricDifference())},
                 ValueError,
                 (
-                    r"Output metric must be one of `IfGroupedBy\(\['B'\], "
+                    r"Output metric must be one of `IfGroupedBy\(\{'B'\}, "
                     r"SumOf\(IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)\)\)` "
-                    r"or `IfGroupedBy\(\['B'\], RootSumOfSquared\(IfGroupedBy\(\['A'\],"
+                    r"or `IfGroupedBy\(\{'B'\}, RootSumOfSquared\(IfGroupedBy\(\['A'\],"
                     r" SymmetricDifference\(\)\)\)\)` "
                     r"or `IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)"
                 ),
@@ -782,15 +785,18 @@ class TestLimitRowsPerGroupPerID(PySparkTest):
                     ),
                 },
                 ValueError,
-                r"Input metric must be one of `IfGroupedBy\(\['B', 'C'\], ",
+                (
+                    "Input metric must be one of "
+                    r"`IfGroupedBy\((\{'B', 'C'\}|\{'C', 'B'\}), "
+                ),
             ),
             (
                 {"input_metric": IfGroupedBy(["B"], SymmetricDifference())},
                 ValueError,
                 (
-                    r"Input metric must be one of `IfGroupedBy\(\['B'\], "
+                    r"Input metric must be one of `IfGroupedBy\(\{'B'\}, "
                     r"SumOf\(IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)\)\)` "
-                    r"or `IfGroupedBy\(\['B'\], RootSumOfSquared\(IfGroupedBy\(\['A'\],"
+                    r"or `IfGroupedBy\(\{'B'\}, RootSumOfSquared\(IfGroupedBy\(\['A'\],"
                     r" SymmetricDifference\(\)\)\)\)` "
                     r"or `IfGroupedBy\(\['A'\], SymmetricDifference\(\)\)"
                 ),
