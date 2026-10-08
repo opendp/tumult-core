@@ -278,15 +278,15 @@ class TestParallelComposition(PySparkTest):
     def test_format(self):
         """ParallelComposition formats its composed measurements as siblings."""
         measurement = ParallelComposition(
-            input_domain=ListDomain(NumpyIntegerDomain(), length=2),
+            input_domain=ListDomain(NumpyFloatDomain(), length=2),
             input_metric=SumOf(AbsoluteDifference()),
             output_measure=PureDP(),
             measurements=[
                 MakeInteractive(
-                    AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+                    AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1)
                 ),
                 MakeInteractive(
-                    AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=2)
+                    AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=2)
                 ),
             ],
         )
@@ -443,7 +443,7 @@ class TestMakeInteractive(PySparkTest):
     def test_format(self):
         """MakeInteractive formats with its wrapped measurement."""
         measurement = MakeInteractive(
-            AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+            AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1)
         )
         assert measurement.format() == textwrap.dedent("""\
             MakeInteractive

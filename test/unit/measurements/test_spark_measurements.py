@@ -26,7 +26,7 @@ from tmlt.core.domains.spark_domains import (
     SparkStringColumnDescriptor,
 )
 from tmlt.core.exceptions import DomainColumnError
-from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise, AddLaplaceNoise
+from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise
 from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
 from tmlt.core.measurements.pandas_measurements.series import (
     AddNoiseToSeries,
@@ -267,9 +267,7 @@ class TestAddNoiseToColumn(PySparkTest):
         """Tests that given property is immutable."""
         measurement = AddNoiseToColumn(
             input_domain=self.input_domain,
-            measurement=AddNoiseToSeries(
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=sp.Integer(1))
-            ),
+            measurement=AddNoiseToSeries(AddGeometricNoise(alpha=sp.Integer(1))),
             measure_column="count",
         )
         assert_property_immutability(measurement, prop_name)
@@ -278,16 +276,14 @@ class TestAddNoiseToColumn(PySparkTest):
         """AddNoiseToColumn formats with its wrapped per-column measurement."""
         measurement = AddNoiseToColumn(
             input_domain=self.input_domain,
-            measurement=AddNoiseToSeries(
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=sp.Integer(1))
-            ),
+            measurement=AddNoiseToSeries(AddGeometricNoise(alpha=sp.Integer(1))),
             measure_column="count",
         )
         assert measurement.format() == textwrap.dedent(
             """\
             AddNoiseToColumn measure_column='count'
-              AddNoiseToSeries output_type=DoubleType()
-                AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
+              AddNoiseToSeries output_type=LongType()
+                AddGeometricNoise output_type=LongType() alpha=1 adds_no_noise=False"""
         )
 
     def test_correctness(self):

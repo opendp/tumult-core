@@ -11,9 +11,10 @@ from pyspark.sql import DataFrame
 from pyspark.sql.types import IntegerType, StructField, StructType
 from benchmarking_utils import write_as_html
 
-from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
+from tmlt.core.domains.numpy_domains import NumpyFloatDomain
 from tmlt.core.domains.spark_domains import (
     SparkDataFrameDomain,
+    SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
 )
 from tmlt.core.measurements.noise_mechanisms import (
@@ -49,7 +50,8 @@ def main():
     benchmark_result = pd.DataFrame(
         [], columns=["Row Number", "UDF", "Running Time (s)"]
     )
-    input_domain = SparkDataFrameDomain({"count": SparkIntegerColumnDescriptor()})
+    int_input_domain = SparkDataFrameDomain({"count": SparkIntegerColumnDescriptor()})
+    float_input_domain = SparkDataFrameDomain({"count": SparkFloatColumnDescriptor()})
     schema = StructType([StructField("count", IntegerType(), True)])
     empty_df = spark.createDataFrame([], schema=schema)
     _ = empty_df.collect()  # Help spark warm up.
@@ -58,7 +60,7 @@ def main():
         df = pd.DataFrame({"count": [0] * size})
         sdf = spark.createDataFrame(df)
         running_time = evaluate_runtime(
-            input_domain=input_domain,
+            input_domain=int_input_domain,
             measure_column="count",
             measurement=AddNoiseToSeries(AddGeometricNoise(alpha=1)),
             sdf=sdf,
@@ -71,13 +73,13 @@ def main():
         benchmark_result = pd.concat([benchmark_result, pd.DataFrame([row])], ignore_index=True)
 
     for size in [100, 400, 10000, 40000, 160000, 640000]:
-        df = pd.DataFrame({"count": [0] * size})
+        df = pd.DataFrame({"count": [0.0] * size})
         sdf = spark.createDataFrame(df)
         running_time = evaluate_runtime(
-            input_domain=input_domain,
+            input_domain=float_input_domain,
             measure_column="count",
             measurement=AddNoiseToSeries(
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1)
             ),
             sdf=sdf,
         )
@@ -92,7 +94,7 @@ def main():
         df = pd.DataFrame({"count": [0] * size})
         sdf = spark.createDataFrame(df)
         running_time = evaluate_runtime(
-            input_domain=input_domain,
+            input_domain=int_input_domain,
             measure_column="count",
             measurement=AddNoiseToSeries(AddDiscreteGaussianNoise(sigma_squared=1)),
             sdf=sdf,

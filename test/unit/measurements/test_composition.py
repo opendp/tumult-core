@@ -48,7 +48,7 @@ class TestComposition(TestComponent):
         measurement = Composition(
             [
                 AddGeometricNoiseToNumber(alpha=0),
-                AddLaplaceNoiseToNumber(scale=0, input_domain=NumpyIntegerDomain()),
+                AddGeometricNoiseToNumber(alpha=1),
                 AddGeometricNoiseToNumber(alpha=0),
             ]
         )
@@ -58,8 +58,8 @@ class TestComposition(TestComponent):
         """Composition formats its composed measurements as siblings."""
         measurement = Composition(
             [
-                AddLaplaceNoiseToNumber(scale=1, input_domain=NumpyIntegerDomain()),
-                AddLaplaceNoiseToNumber(scale=2, input_domain=NumpyIntegerDomain()),
+                AddLaplaceNoiseToNumber(scale=1, input_domain=NumpyFloatDomain()),
+                AddLaplaceNoiseToNumber(scale=2, input_domain=NumpyFloatDomain()),
             ]
         )
         assert measurement.format() == textwrap.dedent(
@@ -113,9 +113,7 @@ class TestComposition(TestComponent):
         ):
             Composition(
                 [
-                    AddLaplaceNoiseToNumber(
-                        scale=10, input_domain=NumpyIntegerDomain()
-                    ),
+                    AddGeometricNoiseToNumber(alpha=10),
                     AddLaplaceNoiseToNumber(scale=1, input_domain=NumpyFloatDomain()),
                 ]
             )
@@ -400,12 +398,12 @@ class TestComposition(TestComponent):
         measurement = Composition(
             [
                 AddGeometricNoiseToNumber(alpha=0),
-                AddLaplaceNoiseToNumber(scale=0, input_domain=NumpyIntegerDomain()),
+                AddGeometricNoiseToNumber(alpha=0),
                 AddGeometricNoiseToNumber(alpha=0),
             ]
         )
         actual_answer = measurement(2)
-        self.assertEqual(actual_answer, [2, 2.0, 2])
+        self.assertEqual(actual_answer, [2, 2, 2])
 
     @parameterized.expand(
         [
