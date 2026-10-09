@@ -65,14 +65,14 @@ def validate_column_set(columns: Collection[str], name: str) -> None:
     string.
 
     Examples:
-        >>> validate_column_names(["A", "B"], "columns")
-        >>> validate_column_names("A", "columns")
+        >>> validate_column_set(["A", "B"], "columns")
+        >>> validate_column_set("A", "columns")
         Traceback (most recent call last):
         ValueError: columns must be a collection of column names, not a single string, but got: 'A'
-        >>> validate_column_names([], "columns")
+        >>> validate_column_set([], "columns")
         Traceback (most recent call last):
         ValueError: columns must contain at least one column
-        >>> validate_column_names(["A", "B", "A"], "columns")
+        >>> validate_column_set(["A", "B", "A"], "columns")
         Traceback (most recent call last):
         ValueError: columns cannot contain duplicate column names, but these appear multiple times: ['A']
 
