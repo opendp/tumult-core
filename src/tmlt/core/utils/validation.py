@@ -6,7 +6,8 @@
 from __future__ import annotations
 
 import datetime
-from typing import List, Mapping, Optional, Union
+from collections import Counter
+from typing import Collection, List, Mapping, Optional, Union
 
 from tmlt.core.domains.spark_domains import SparkDataFrameDomain
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
@@ -53,6 +54,50 @@ def validate_groupby_domains(
                     f"Groupby key '{key}' is invalid for column's '{column}' "
                     f"domain {col_desc}."
                 )
+
+
+def validate_column_set(columns: Collection[str], name: str) -> None:
+    """Raises a :class:`ValueError` if ``columns`` is not a valid set of column names.
+
+    ``columns`` must be a non-empty collection of column names with no duplicates.
+    A single string is rejected, even though it is technically a collection of
+    strings, because it is almost certainly a mistake for a list containing that
+    string.
+
+    Examples:
+        >>> validate_column_set(["A", "B"], "columns")
+        >>> validate_column_set("A", "columns")
+        Traceback (most recent call last):
+        ValueError: columns must be a collection of column names, not a single string, but got: 'A'
+        >>> validate_column_set([], "columns")
+        Traceback (most recent call last):
+        ValueError: columns must contain at least one column
+        >>> validate_column_set(["A", "B", "A"], "columns")
+        Traceback (most recent call last):
+        ValueError: columns cannot contain duplicate column names, but these appear multiple times: ['A']
+
+    Args:
+        columns: The column names to validate.
+        name: How to refer to ``columns`` in error messages, such as the name of
+            the argument they were passed as.
+    """  # noqa: E501
+    # A single string counts as a Collection[str] for typeguard purposes (one per
+    # character), so we need to do this check manually.
+    if isinstance(columns, str):
+        raise ValueError(
+            f"{name} must be a collection of column names, not a single string, "
+            f"but got: {columns!r}"
+        )
+    if not columns:
+        raise ValueError(f"{name} must contain at least one column")
+    duplicate_columns = sorted(
+        column for column, count in Counter(columns).items() if count > 1
+    )
+    if duplicate_columns:
+        raise ValueError(
+            f"{name} cannot contain duplicate column names, but these appear "
+            f"multiple times: {duplicate_columns}"
+        )
 
 
 def validate_exact_number(

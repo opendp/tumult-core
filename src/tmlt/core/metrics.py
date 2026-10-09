@@ -40,7 +40,7 @@ from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.format import Formattable, format_labeled_siblings, format_siblings
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 from tmlt.core.utils.misc import ConciseFrozenSet
-from tmlt.core.utils.validation import validate_exact_number
+from tmlt.core.utils.validation import validate_column_set, validate_exact_number
 
 
 class Metric(Formattable, ABC):
@@ -1065,23 +1065,7 @@ class IfGroupedBy(ExactNumberMetric):
             inner_metric: Metric to be applied to corresponding groups in
                 the DataFrame.
         """
-        if not columns:
-            raise ValueError(
-                "Cannot instantiate an IfGroupedBy with empty columns, but got: "
-                f"{columns}"
-            )
-        if isinstance(columns, str):
-            raise ValueError(
-                f"IfGroupedBy columns cannot be a single string, but got: {columns}"
-            )
-        duplicate_columns = [
-            column for column, count in Counter(columns).items() if count > 1
-        ]
-        if duplicate_columns:
-            raise ValueError(
-                "IfGroupedBy cannot have duplicate grouping columns, but these "
-                f"appeared multiple times: {duplicate_columns}"
-            )
+        validate_column_set(columns, "IfGroupedBy columns")
         self._columns = ConciseFrozenSet(columns)
         self._inner_metric = inner_metric
 
