@@ -1664,7 +1664,25 @@ def test_create_scalar_measurement_errors(
         )
 
 
-_BOUNDED_B = {"lower": sp.Integer(0), "upper": sp.Integer(10), "measure_column": "B"}
+INPUT_DOMAIN = SparkDataFrameDomain(
+    {
+        "str_col": SparkStringColumnDescriptor(),
+        "int_col": SparkIntegerColumnDescriptor(),
+        "float_col": SparkFloatColumnDescriptor(),
+    }
+)
+
+
+_BOUNDED_INT = {
+    "lower": sp.Integer(0),
+    "upper": sp.Integer(10),
+    "measure_column": "int_col",
+}
+_BOUNDED_FLOAT = {
+    "lower": sp.Rational(-5, 2),
+    "upper": sp.Rational(15, 2),
+    "measure_column": "float_col",
+}
 
 
 @parametrize(
@@ -1678,24 +1696,29 @@ _BOUNDED_B = {"lower": sp.Integer(0), "upper": sp.Integer(10), "measure_column":
         extra_args={},
         noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
     ),
-    Case("sum")(
+    Case("integer sum")(
         create_measurement_method=create_sum_measurement,
-        extra_args=_BOUNDED_B,
+        extra_args=_BOUNDED_INT,
         noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
+    ),
+    Case("float sum")(
+        create_measurement_method=create_sum_measurement,
+        extra_args=_BOUNDED_FLOAT,
+        noise_mechanism=NoiseMechanism.GAUSSIAN,
     ),
     Case("average")(
         create_measurement_method=create_average_measurement,
-        extra_args=_BOUNDED_B,
+        extra_args=_BOUNDED_INT,
         noise_mechanism=NoiseMechanism.GAUSSIAN,
     ),
     Case("standard deviation")(
         create_measurement_method=create_standard_deviation_measurement,
-        extra_args=_BOUNDED_B,
+        extra_args=_BOUNDED_INT,
         noise_mechanism=NoiseMechanism.GAUSSIAN,
     ),
     Case("variance")(
         create_measurement_method=create_variance_measurement,
-        extra_args=_BOUNDED_B,
+        extra_args=_BOUNDED_INT,
         noise_mechanism=NoiseMechanism.GAUSSIAN,
     ),
 )
@@ -1703,15 +1726,12 @@ def test_unsupported_output_measure_for_noise_mechanism(
     create_measurement_method, extra_args, noise_mechanism: NoiseMechanism
 ):
     """Gaussian mechanisms reject PureDP as an output measure."""
-    input_domain = SparkDataFrameDomain(
-        {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
-    )
     with pytest.raises(
         UnsupportedMeasureError,
         match="is not supported by noise mechanism",
     ):
         create_measurement_method(
-            input_domain=input_domain,
+            input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
             output_measure=PureDP(),
             d_in=sp.Integer(1),
@@ -1847,15 +1867,6 @@ def test_bounds_measurement_d_in_less_than_one(spark):
         )
 
 
-INPUT_DOMAIN = SparkDataFrameDomain(
-    {
-        "A": SparkStringColumnDescriptor(),
-        "B": SparkIntegerColumnDescriptor(),
-        "C": SparkFloatColumnDescriptor(),
-    }
-)
-
-
 _INTEGER_NOISE_FUNCTIONS: Dict[str, Callable] = {
     "count": functools.partial(
         create_count_measurement,
@@ -1871,7 +1882,7 @@ _INTEGER_NOISE_FUNCTIONS: Dict[str, Callable] = {
         create_sum_measurement,
         input_domain=INPUT_DOMAIN,
         input_metric=SymmetricDifference(),
-        **_BOUNDED_B,
+        **_BOUNDED_INT,
     ),
 }
 _CONTINUOUS_NOISE_FUNCTIONS: Dict[str, Callable] = {
@@ -1879,27 +1890,25 @@ _CONTINUOUS_NOISE_FUNCTIONS: Dict[str, Callable] = {
         create_sum_measurement,
         input_domain=INPUT_DOMAIN,
         input_metric=SymmetricDifference(),
-        measure_column="C",
-        lower=sp.Integer(0),
-        upper=sp.Integer(10),
+        **_BOUNDED_FLOAT,
     ),
     "average": functools.partial(
         create_average_measurement,
         input_domain=INPUT_DOMAIN,
         input_metric=SymmetricDifference(),
-        **_BOUNDED_B,
+        **_BOUNDED_INT,
     ),
     "standard deviation": functools.partial(
         create_standard_deviation_measurement,
         input_domain=INPUT_DOMAIN,
         input_metric=SymmetricDifference(),
-        **_BOUNDED_B,
+        **_BOUNDED_INT,
     ),
     "variance": functools.partial(
         create_variance_measurement,
         input_domain=INPUT_DOMAIN,
         input_metric=SymmetricDifference(),
-        **_BOUNDED_B,
+        **_BOUNDED_INT,
     ),
 }
 
@@ -2026,7 +2035,7 @@ def test_gaussian_approxdp_error_messages(
                     create_bounds_measurement,
                     input_domain=INPUT_DOMAIN,
                     input_metric=SymmetricDifference(),
-                    measure_column="B",
+                    measure_column="int_col",
                     threshold=0.5,
                     output_measure=ApproxDP(),
                 ),
@@ -2037,7 +2046,7 @@ def test_gaussian_approxdp_error_messages(
                     create_quantile_measurement,
                     input_domain=INPUT_DOMAIN,
                     input_metric=SymmetricDifference(),
-                    measure_column="B",
+                    measure_column="int_col",
                     quantile=0.5,
                     upper=10,
                     lower=0,
