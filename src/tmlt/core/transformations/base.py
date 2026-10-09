@@ -52,30 +52,30 @@ class Transformation(Formattable, ABC):
                     f" {output_domain} are not compatible."
                 ),
             )
-        self._input_domain = input_domain
-        self._input_metric = input_metric
-        self._output_domain = output_domain
-        self._output_metric = output_metric
+        self.__input_domain = input_domain
+        self.__input_metric = input_metric
+        self.__output_domain = output_domain
+        self.__output_metric = output_metric
 
     @property
     def input_domain(self) -> Domain:
         """Return input domain for the measurement."""
-        return self._input_domain
+        return self.__input_domain
 
     @property
     def input_metric(self) -> Metric:
         """Distance metric on input domain."""
-        return self._input_metric
+        return self.__input_metric
 
     @property
     def output_domain(self) -> Domain:
         """Return input domain for the measurement."""
-        return self._output_domain
+        return self.__output_domain
 
     @property
     def output_metric(self) -> Metric:
         """Distance metric on input domain."""
-        return self._output_metric
+        return self.__output_metric
 
     @typechecked
     def stability_function(self, d_in: Any) -> Any:
