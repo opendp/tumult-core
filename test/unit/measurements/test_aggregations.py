@@ -5,7 +5,7 @@
 import functools
 import random
 import re
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Generator, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -1867,111 +1867,121 @@ def test_bounds_measurement_d_in_less_than_one(spark):
         )
 
 
-_INTEGER_NOISE_FUNCTIONS: Dict[str, Callable] = {
-    "count": functools.partial(
-        create_count_measurement,
-        input_domain=INPUT_DOMAIN,
-        input_metric=SymmetricDifference(),
-    ),
-    "count distinct": functools.partial(
-        create_count_distinct_measurement,
-        input_domain=INPUT_DOMAIN,
-        input_metric=SymmetricDifference(),
-    ),
-    "integer sum": functools.partial(
-        create_sum_measurement,
-        input_domain=INPUT_DOMAIN,
-        input_metric=SymmetricDifference(),
-        **_BOUNDED_INT,
-    ),
-}
-_CONTINUOUS_NOISE_FUNCTIONS: Dict[str, Callable] = {
-    "float sum": functools.partial(
-        create_sum_measurement,
-        input_domain=INPUT_DOMAIN,
-        input_metric=SymmetricDifference(),
-        **_BOUNDED_FLOAT,
-    ),
-    "average": functools.partial(
-        create_average_measurement,
-        input_domain=INPUT_DOMAIN,
-        input_metric=SymmetricDifference(),
-        **_BOUNDED_INT,
-    ),
-    "standard deviation": functools.partial(
-        create_standard_deviation_measurement,
-        input_domain=INPUT_DOMAIN,
-        input_metric=SymmetricDifference(),
-        **_BOUNDED_INT,
-    ),
-    "variance": functools.partial(
-        create_variance_measurement,
-        input_domain=INPUT_DOMAIN,
-        input_metric=SymmetricDifference(),
-        **_BOUNDED_INT,
-    ),
-}
-
-
-@parametrize(
-    *[
-        Case(f"{name}-{noise_mechanism.name.lower()}-delta={d_out[1]}")(
-            f=f, noise_mechanism=noise_mechanism, d_out=d_out
+_INTEGER_NOISE_FUNCTIONS = [
+    Case("count")(
+        f=functools.partial(
+            create_count_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
         )
-        for functions, bad_budgets in [
-            (
-                _INTEGER_NOISE_FUNCTIONS,
-                [
-                    (NoiseMechanism.GEOMETRIC, (sp.Integer(1), sp.Rational(1, 2))),
-                    (
-                        NoiseMechanism.DISCRETE_GAUSSIAN,
-                        (sp.Integer(1), sp.Rational(1, 2)),
-                    ),
-                    (NoiseMechanism.DISCRETE_GAUSSIAN, (sp.Integer(1), sp.Integer(0))),
-                ],
-            ),
-            (
-                _CONTINUOUS_NOISE_FUNCTIONS,
-                [
-                    (NoiseMechanism.LAPLACE, (sp.Integer(1), sp.Rational(1, 2))),
-                    (NoiseMechanism.GAUSSIAN, (sp.Integer(1), sp.Rational(1, 2))),
-                    (NoiseMechanism.GAUSSIAN, (sp.Integer(1), sp.Integer(0))),
-                ],
-            ),
-        ]
-        for name, f in functions.items()
-        for noise_mechanism, d_out in bad_budgets
-    ]
+    ),
+    Case("count distinct")(
+        f=functools.partial(
+            create_count_distinct_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+        )
+    ),
+    Case("integer sum")(
+        f=functools.partial(
+            create_sum_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            **_BOUNDED_INT,
+        )
+    ),
+]
+_CONTINUOUS_NOISE_FUNCTIONS = [
+    Case("float sum")(
+        f=functools.partial(
+            create_sum_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            **_BOUNDED_FLOAT,
+        )
+    ),
+    Case("average")(
+        f=functools.partial(
+            create_average_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            **_BOUNDED_INT,
+        )
+    ),
+    Case("standard deviation")(
+        f=functools.partial(
+            create_standard_deviation_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            **_BOUNDED_INT,
+        )
+    ),
+    Case("variance")(
+        f=functools.partial(
+            create_variance_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            **_BOUNDED_INT,
+        )
+    ),
+]
+
+
+@parametrize(_INTEGER_NOISE_FUNCTIONS)
+@parametrize(
+    Case("geometric-delta=1/2")(
+        noise_mechanism=NoiseMechanism.GEOMETRIC,
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+    ),
+    Case("discrete gaussian-delta=1/2")(
+        noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+    ),
+    Case("discrete gaussian-delta=0")(
+        noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
+        d_out=(sp.Integer(1), sp.Integer(0)),
+    ),
 )
-def test_bad_delta_with_noise_mechanism(
+def test_integer_noise_bad_delta(
     f: Callable, noise_mechanism: NoiseMechanism, d_out: PrivacyBudgetInput
 ):
-    """Test error is raised for invalid delta/noise mechanism combination."""
+    """Test error is raised for invalid delta/integer noise mechanism combination."""
     with pytest.raises(UnsupportedCombinationError):
         f(output_measure=ApproxDP(), d_out=d_out, noise_mechanism=noise_mechanism)
 
 
+@parametrize(_CONTINUOUS_NOISE_FUNCTIONS)
 @parametrize(
-    *[
-        Case(f"{name}-{noise_mechanism.name.lower()}")(
-            f=f, noise_mechanism=noise_mechanism
-        )
-        for functions, noise_mechanisms in [
-            (
-                _INTEGER_NOISE_FUNCTIONS,
-                [NoiseMechanism.LAPLACE, NoiseMechanism.GAUSSIAN],
-            ),
-            (
-                _CONTINUOUS_NOISE_FUNCTIONS,
-                [NoiseMechanism.GEOMETRIC, NoiseMechanism.DISCRETE_GAUSSIAN],
-            ),
-        ]
-        for name, f in functions.items()
-        for noise_mechanism in noise_mechanisms
-    ]
+    Case("laplace-delta=1/2")(
+        noise_mechanism=NoiseMechanism.LAPLACE,
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+    ),
+    Case("gaussian-delta=1/2")(
+        noise_mechanism=NoiseMechanism.GAUSSIAN,
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+    ),
+    Case("gaussian-delta=0")(
+        noise_mechanism=NoiseMechanism.GAUSSIAN,
+        d_out=(sp.Integer(1), sp.Integer(0)),
+    ),
 )
-def test_unsupported_noise_mechanism(f: Callable, noise_mechanism: NoiseMechanism):
-    """Aggregations reject noise mechanisms that don't match their output type."""
+def test_continuous_noise_bad_delta(
+    f: Callable, noise_mechanism: NoiseMechanism, d_out: PrivacyBudgetInput
+):
+    """Test error is raised for invalid delta/continuous noise mechanism combination."""
+    with pytest.raises(UnsupportedCombinationError):
+        f(output_measure=ApproxDP(), d_out=d_out, noise_mechanism=noise_mechanism)
+
+
+@parametrize(_INTEGER_NOISE_FUNCTIONS)
+@parametrize(
+    Case("laplace")(noise_mechanism=NoiseMechanism.LAPLACE),
+    Case("gaussian")(noise_mechanism=NoiseMechanism.GAUSSIAN),
+)
+def test_integer_aggregations_reject_continuous_noise(
+    f: Callable, noise_mechanism: NoiseMechanism
+):
+    """Counts and integer sums reject continuous noise mechanisms."""
     with pytest.raises(UnsupportedNoiseMechanismError):
         f(
             output_measure=RhoZCDP(),
@@ -1980,81 +1990,96 @@ def test_unsupported_noise_mechanism(f: Callable, noise_mechanism: NoiseMechanis
         )
 
 
+@parametrize(_CONTINUOUS_NOISE_FUNCTIONS)
 @parametrize(
-    *[
-        Case(f"{name}-delta={d_out[1]}")(
-            f=f, noise_mechanism=noise_mechanism, d_out=d_out, message=message
+    Case("geometric")(noise_mechanism=NoiseMechanism.GEOMETRIC),
+    Case("discrete gaussian")(noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN),
+)
+def test_continuous_aggregations_reject_integer_noise(
+    f: Callable, noise_mechanism: NoiseMechanism
+):
+    """Float sums, averages, variances, and standard deviations reject integer noise."""
+    with pytest.raises(UnsupportedNoiseMechanismError):
+        f(
+            output_measure=RhoZCDP(),
+            d_out=sp.Integer(1),
+            noise_mechanism=noise_mechanism,
         )
-        for functions, noise_mechanism, messages in [
-            (
-                _INTEGER_NOISE_FUNCTIONS,
-                NoiseMechanism.DISCRETE_GAUSSIAN,
-                [
-                    "mechanism Discrete gaussian is not yet supported. Use Geometric.",
-                    "using Discrete gaussian. Set delta > 0 or use Geometric.",
-                ],
-            ),
-            (
-                _CONTINUOUS_NOISE_FUNCTIONS,
-                NoiseMechanism.GAUSSIAN,
-                [
-                    "mechanism Gaussian is not yet supported. Use Laplace.",
-                    "delta = 0 using Gaussian. Set delta > 0 or use Laplace.",
-                ],
-            ),
-        ]
-        for name, f in functions.items()
-        for d_out, message in zip(
-            [(sp.Integer(1), sp.Rational(1, 2)), (sp.Integer(1), sp.Integer(0))],
-            messages,
+
+
+@parametrize(_INTEGER_NOISE_FUNCTIONS)
+@parametrize(
+    Case("delta=1/2")(
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+        message="mechanism Discrete gaussian is not yet supported. Use Geometric.",
+    ),
+    Case("delta=0")(
+        d_out=(sp.Integer(1), sp.Integer(0)),
+        message="using Discrete gaussian. Set delta > 0 or use Geometric.",
+    ),
+)
+def test_discrete_gaussian_approxdp_error_messages(
+    f: Callable, d_out: PrivacyBudgetInput, message: str
+):
+    """Discrete Gaussian noise with an ApproxDP budget raises an informative error."""
+    with pytest.raises(UnsupportedCombinationError, match=re.escape(message)):
+        f(
+            output_measure=ApproxDP(),
+            d_out=d_out,
+            noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
         )
-    ]
+
+
+@parametrize(_CONTINUOUS_NOISE_FUNCTIONS)
+@parametrize(
+    Case("delta=1/2")(
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+        message="mechanism Gaussian is not yet supported. Use Laplace.",
+    ),
+    Case("delta=0")(
+        d_out=(sp.Integer(1), sp.Integer(0)),
+        message="delta = 0 using Gaussian. Set delta > 0 or use Laplace.",
+    ),
 )
 def test_gaussian_approxdp_error_messages(
-    f: Callable,
-    noise_mechanism: NoiseMechanism,
-    d_out: PrivacyBudgetInput,
-    message: str,
+    f: Callable, d_out: PrivacyBudgetInput, message: str
 ):
     """Gaussian noise with an ApproxDP budget raises an informative error."""
     with pytest.raises(UnsupportedCombinationError, match=re.escape(message)):
-        f(output_measure=ApproxDP(), d_out=d_out, noise_mechanism=noise_mechanism)
+        f(
+            output_measure=ApproxDP(),
+            d_out=d_out,
+            noise_mechanism=NoiseMechanism.GAUSSIAN,
+        )
 
 
 @parametrize(
-    *[
-        Case(f"{name}-delta={d_out[1]}")(f=f, d_out=d_out)
-        for d_out in [
-            (sp.Integer(1), sp.Rational(1, 2)),
-            (sp.Integer(1), sp.Rational(1, 3)),
-        ]
-        for name, f in [
-            (
-                "bounds",
-                functools.partial(
-                    create_bounds_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    measure_column="int_col",
-                    threshold=0.5,
-                    output_measure=ApproxDP(),
-                ),
-            ),
-            (
-                "quantile",
-                functools.partial(
-                    create_quantile_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    measure_column="int_col",
-                    quantile=0.5,
-                    upper=10,
-                    lower=0,
-                    output_measure=ApproxDP(),
-                ),
-            ),
-        ]
-    ]
+    Case("bounds")(
+        f=functools.partial(
+            create_bounds_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            measure_column="int_col",
+            threshold=0.5,
+            output_measure=ApproxDP(),
+        )
+    ),
+    Case("quantile")(
+        f=functools.partial(
+            create_quantile_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            measure_column="int_col",
+            quantile=0.5,
+            upper=10,
+            lower=0,
+            output_measure=ApproxDP(),
+        )
+    ),
+)
+@parametrize(
+    Case("delta=1/2")(d_out=(sp.Integer(1), sp.Rational(1, 2))),
+    Case("delta=1/3")(d_out=(sp.Integer(1), sp.Rational(1, 3))),
 )
 def test_bad_delta_without_noise_mechanism(f: Callable, d_out: PrivacyBudgetInput):
     """Test error is raised for invalid deltas."""
