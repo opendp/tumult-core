@@ -6,7 +6,6 @@ import functools
 import random
 import re
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union, cast
-from unittest import TestCase
 
 import numpy as np
 import pandas as pd
@@ -138,7 +137,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 noise_mechanism,
             )
             for noise_mechanism, groupby_output_metric in [
-                (NoiseMechanism.LAPLACE, SumOf(SymmetricDifference())),
                 (NoiseMechanism.GEOMETRIC, SumOf(SymmetricDifference())),
                 (
                     NoiseMechanism.DISCRETE_GAUSSIAN,
@@ -206,7 +204,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 noise_mechanism,
             )
             for noise_mechanism, groupby_output_metric in [
-                (NoiseMechanism.LAPLACE, SumOf(SymmetricDifference())),
                 (NoiseMechanism.GEOMETRIC, SumOf(SymmetricDifference())),
                 (
                     NoiseMechanism.DISCRETE_GAUSSIAN,
@@ -275,7 +272,6 @@ class TestGroupByAggregationMeasurements(PySparkTest):
                 noise_mechanism,
             )
             for noise_mechanism, groupby_output_metric in [
-                (NoiseMechanism.LAPLACE, SumOf(SymmetricDifference())),
                 (NoiseMechanism.GEOMETRIC, SumOf(SymmetricDifference())),
                 (
                     NoiseMechanism.DISCRETE_GAUSSIAN,
@@ -715,14 +711,14 @@ class TestGroupByAggregationMeasurements(PySparkTest):
         create_measurement_method=create_count_measurement,
         extra_args={
             "count_column": "C",
-            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "noise_mechanism": NoiseMechanism.GEOMETRIC,
         },
     ),
     Case("count distinct")(
         create_measurement_method=create_count_distinct_measurement,
         extra_args={
             "count_column": "C",
-            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "noise_mechanism": NoiseMechanism.GEOMETRIC,
         },
     ),
     Case("sum")(
@@ -731,7 +727,7 @@ class TestGroupByAggregationMeasurements(PySparkTest):
             "lower": sp.Integer(0),
             "upper": sp.Integer(10),
             "measure_column": "C",
-            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "noise_mechanism": NoiseMechanism.GEOMETRIC,
         },
     ),
     Case("average")(
@@ -1135,10 +1131,8 @@ class TestAggregationMeasurement(PySparkTest):
             (input_metric, output_measure, d_out, noise_mechanism)
             for input_metric in [SymmetricDifference(), HammingDistance()]
             for noise_mechanism in [
-                NoiseMechanism.LAPLACE,
                 NoiseMechanism.GEOMETRIC,
                 NoiseMechanism.DISCRETE_GAUSSIAN,
-                NoiseMechanism.GAUSSIAN,
             ]
             for output_measure, d_out in [
                 (PureDP(), sp.Integer(2)),
@@ -1146,8 +1140,7 @@ class TestAggregationMeasurement(PySparkTest):
                 (ApproxDP(), (sp.Integer(2), sp.Integer(0))),
             ]
             if not (
-                noise_mechanism
-                in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
+                noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
             )
         ]
@@ -1180,10 +1173,8 @@ class TestAggregationMeasurement(PySparkTest):
             (input_metric, output_measure, d_out, noise_mechanism)
             for input_metric in [SymmetricDifference(), HammingDistance()]
             for noise_mechanism in [
-                NoiseMechanism.LAPLACE,
                 NoiseMechanism.GEOMETRIC,
                 NoiseMechanism.DISCRETE_GAUSSIAN,
-                NoiseMechanism.GAUSSIAN,
             ]
             for output_measure, d_out in [
                 (PureDP(), sp.Integer(2)),
@@ -1191,8 +1182,7 @@ class TestAggregationMeasurement(PySparkTest):
                 (ApproxDP(), (sp.Integer(2), sp.Integer(0))),
             ]
             if not (
-                noise_mechanism
-                in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
+                noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
             )
         ]
@@ -1226,10 +1216,8 @@ class TestAggregationMeasurement(PySparkTest):
             (input_metric, output_measure, d_out, noise_mechanism)
             for input_metric in [SymmetricDifference(), HammingDistance()]
             for noise_mechanism in [
-                NoiseMechanism.LAPLACE,
                 NoiseMechanism.GEOMETRIC,
                 NoiseMechanism.DISCRETE_GAUSSIAN,
-                NoiseMechanism.GAUSSIAN,
             ]
             for output_measure, d_out in [
                 (PureDP(), sp.Integer(4)),
@@ -1237,8 +1225,7 @@ class TestAggregationMeasurement(PySparkTest):
                 (ApproxDP(), (sp.Integer(4), sp.Integer(0))),
             ]
             if not (
-                noise_mechanism
-                in [NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN]
+                noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN
                 and output_measure != RhoZCDP()
             )
         ]
@@ -1593,14 +1580,14 @@ class TestAggregationMeasurement(PySparkTest):
         create_measurement_method=create_count_measurement,
         extra_args={
             "count_column": "C",
-            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "noise_mechanism": NoiseMechanism.GEOMETRIC,
         },
     ),
     Case("count distinct")(
         create_measurement_method=create_count_distinct_measurement,
         extra_args={
             "count_column": "C",
-            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "noise_mechanism": NoiseMechanism.GEOMETRIC,
         },
     ),
     Case("sum")(
@@ -1609,7 +1596,7 @@ class TestAggregationMeasurement(PySparkTest):
             "lower": sp.Integer(0),
             "upper": sp.Integer(10),
             "measure_column": "C",
-            "noise_mechanism": NoiseMechanism.LAPLACE,
+            "noise_mechanism": NoiseMechanism.GEOMETRIC,
         },
     ),
     Case("average")(
@@ -1677,72 +1664,74 @@ def test_create_scalar_measurement_errors(
         )
 
 
-_BOUNDED_B = {"lower": sp.Integer(0), "upper": sp.Integer(10), "measure_column": "B"}
+INPUT_DOMAIN = SparkDataFrameDomain(
+    {
+        "str_col": SparkStringColumnDescriptor(),
+        "int_col": SparkIntegerColumnDescriptor(),
+        "float_col": SparkFloatColumnDescriptor(),
+    }
+)
+
+
+_BOUNDED_INT_ARGS = {
+    "lower": sp.Integer(0),
+    "upper": sp.Integer(10),
+    "measure_column": "int_col",
+}
+_BOUNDED_FLOAT_ARGS = {
+    "lower": sp.Rational(-5, 2),
+    "upper": sp.Rational(15, 2),
+    "measure_column": "float_col",
+}
 
 
 @parametrize(
-    *[
-        Case(f"{name}-{mechanism.name.lower()}")(
-            create_measurement_method=method,
-            extra_args=extra_args,
-            noise_mechanism=mechanism,
-        )
-        for name, method, extra_args, mechanisms in [
-            (
-                "count",
-                create_count_measurement,
-                {},
-                (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN),
-            ),
-            (
-                "count distinct",
-                create_count_distinct_measurement,
-                {},
-                (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN),
-            ),
-            (
-                "sum",
-                create_sum_measurement,
-                _BOUNDED_B,
-                (NoiseMechanism.DISCRETE_GAUSSIAN, NoiseMechanism.GAUSSIAN),
-            ),
-            # Integer mechanisms are rejected by average, variance, and standard
-            # deviation; see test_integer_noise_mechanisms_are_rejected.
-            (
-                "average",
-                create_average_measurement,
-                _BOUNDED_B,
-                (NoiseMechanism.GAUSSIAN,),
-            ),
-            (
-                "standard deviation",
-                create_standard_deviation_measurement,
-                _BOUNDED_B,
-                (NoiseMechanism.GAUSSIAN,),
-            ),
-            (
-                "variance",
-                create_variance_measurement,
-                _BOUNDED_B,
-                (NoiseMechanism.GAUSSIAN,),
-            ),
-        ]
-        for mechanism in mechanisms
-    ]
+    Case("count")(
+        create_measurement_method=create_count_measurement,
+        extra_args={},
+        noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
+    ),
+    Case("count distinct")(
+        create_measurement_method=create_count_distinct_measurement,
+        extra_args={},
+        noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
+    ),
+    Case("integer sum")(
+        create_measurement_method=create_sum_measurement,
+        extra_args=_BOUNDED_INT_ARGS,
+        noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
+    ),
+    Case("float sum")(
+        create_measurement_method=create_sum_measurement,
+        extra_args=_BOUNDED_FLOAT_ARGS,
+        noise_mechanism=NoiseMechanism.GAUSSIAN,
+    ),
+    Case("average")(
+        create_measurement_method=create_average_measurement,
+        extra_args=_BOUNDED_INT_ARGS,
+        noise_mechanism=NoiseMechanism.GAUSSIAN,
+    ),
+    Case("standard deviation")(
+        create_measurement_method=create_standard_deviation_measurement,
+        extra_args=_BOUNDED_INT_ARGS,
+        noise_mechanism=NoiseMechanism.GAUSSIAN,
+    ),
+    Case("variance")(
+        create_measurement_method=create_variance_measurement,
+        extra_args=_BOUNDED_INT_ARGS,
+        noise_mechanism=NoiseMechanism.GAUSSIAN,
+    ),
 )
 def test_unsupported_output_measure_for_noise_mechanism(
     create_measurement_method, extra_args, noise_mechanism: NoiseMechanism
 ):
     """Gaussian mechanisms reject PureDP as an output measure."""
-    input_domain = SparkDataFrameDomain(
-        {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
-    )
     with pytest.raises(
         UnsupportedMeasureError,
         match="is not supported by noise mechanism",
     ):
         create_measurement_method(
-            input_domain=input_domain,
+            input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
             output_measure=PureDP(),
             d_in=sp.Integer(1),
@@ -1878,187 +1867,220 @@ def test_bounds_measurement_d_in_less_than_one(spark):
         )
 
 
-INPUT_DOMAIN = SparkDataFrameDomain(
-    {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
-)
-
-
-# Each function, with the error it raises for an integer noise mechanism.
-_BAD_DELTA_FUNCTIONS = [
-    (
-        functools.partial(
+_INTEGER_NOISE_FUNCTIONS = [
+    Case("count")(
+        f=functools.partial(
             create_count_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            output_measure=ApproxDP(),
-        ),
-        UnsupportedCombinationError,
+        )
     ),
-    (
-        functools.partial(
+    Case("count distinct")(
+        f=functools.partial(
             create_count_distinct_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            output_measure=ApproxDP(),
-        ),
-        UnsupportedCombinationError,
+        )
     ),
-    (
-        functools.partial(
+    Case("integer sum")(
+        f=functools.partial(
             create_sum_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            measure_column="B",
-            upper=sp.Integer(10),
-            lower=sp.Integer(0),
-            output_measure=ApproxDP(),
-        ),
-        UnsupportedCombinationError,
+            **_BOUNDED_INT_ARGS,
+        )
     ),
-    (
-        functools.partial(
+]
+_CONTINUOUS_NOISE_FUNCTIONS = [
+    Case("float sum")(
+        f=functools.partial(
+            create_sum_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            **_BOUNDED_FLOAT_ARGS,
+        )
+    ),
+    Case("average")(
+        f=functools.partial(
             create_average_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            measure_column="B",
-            upper=sp.Integer(10),
-            lower=sp.Integer(0),
-            output_measure=ApproxDP(),
-        ),
-        UnsupportedNoiseMechanismError,
+            **_BOUNDED_INT_ARGS,
+        )
     ),
-    (
-        functools.partial(
+    Case("standard deviation")(
+        f=functools.partial(
             create_standard_deviation_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            measure_column="B",
-            upper=sp.Integer(10),
-            lower=sp.Integer(0),
-            output_measure=ApproxDP(),
-        ),
-        UnsupportedNoiseMechanismError,
+            **_BOUNDED_INT_ARGS,
+        )
     ),
-    (
-        functools.partial(
+    Case("variance")(
+        f=functools.partial(
             create_variance_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            measure_column="B",
-            upper=sp.Integer(10),
-            lower=sp.Integer(0),
-            output_measure=ApproxDP(),
-        ),
-        UnsupportedNoiseMechanismError,
+            **_BOUNDED_INT_ARGS,
+        )
     ),
 ]
 
 
-class TestBadDelta(TestCase):
-    """Tests for :mod:`tmlt.core.measurements.aggregations`."""
+@parametrize(_INTEGER_NOISE_FUNCTIONS)
+@parametrize(
+    Case("geometric-delta=1/2")(
+        noise_mechanism=NoiseMechanism.GEOMETRIC,
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+    ),
+    Case("discrete gaussian-delta=1/2")(
+        noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+    ),
+    Case("discrete gaussian-delta=0")(
+        noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
+        d_out=(sp.Integer(1), sp.Integer(0)),
+    ),
+)
+def test_integer_noise_bad_delta(
+    f: Callable, noise_mechanism: NoiseMechanism, d_out: PrivacyBudgetInput
+):
+    """Test error is raised for invalid delta/integer noise mechanism combination."""
+    with pytest.raises(UnsupportedCombinationError):
+        f(output_measure=ApproxDP(), d_out=d_out, noise_mechanism=noise_mechanism)
 
-    @parameterized.expand(
-        [
-            (noise_mechanism, d_out, f, UnsupportedCombinationError)
-            for noise_mechanism, d_out in [
-                (NoiseMechanism.LAPLACE, (sp.Integer(1), sp.Rational(1, 2))),
-                (NoiseMechanism.GAUSSIAN, (sp.Integer(1), sp.Rational(1, 2))),
-                (NoiseMechanism.GAUSSIAN, (sp.Integer(1), sp.Integer(0))),
-            ]
-            for f, _ in _BAD_DELTA_FUNCTIONS
-        ]
-        + [
-            (noise_mechanism, d_out, f, integer_mechanism_error)
-            for noise_mechanism, d_out in [
-                (NoiseMechanism.GEOMETRIC, (sp.Integer(1), sp.Rational(1, 2))),
-                (NoiseMechanism.DISCRETE_GAUSSIAN, (sp.Integer(1), sp.Rational(1, 2))),
-                (NoiseMechanism.DISCRETE_GAUSSIAN, (sp.Integer(1), sp.Integer(0))),
-            ]
-            for f, integer_mechanism_error in _BAD_DELTA_FUNCTIONS
-        ]
-    )
-    def test_functions_with_noise_mechanism(
-        self,
-        noise_mechanism: NoiseMechanism,
-        d_out: PrivacyBudgetInput,
-        f: Callable,
-        expected_error: type,
-    ) -> None:
-        """Test error is raised for invalid delta/noise mechanism combination."""
-        with self.assertRaises(expected_error):
-            f(noise_mechanism=noise_mechanism, d_out=d_out)
 
-    @parameterized.expand(
-        [
-            (f, d_out, message)
-            for f in (
-                create_average_measurement,
-                create_variance_measurement,
-                create_standard_deviation_measurement,
-            )
-            for d_out, message in (
-                (
-                    (sp.Integer(1), sp.Rational(1, 2)),
-                    "mechanism Gaussian is not yet supported. Use Laplace.",
-                ),
-                (
-                    (sp.Integer(1), sp.Integer(0)),
-                    "delta = 0 using Gaussian. Set delta > 0 or use Laplace.",
-                ),
-            )
-        ]
-    )
-    def test_gaussian_approxdp_error_messages(
-        self, f: Callable, d_out: PrivacyBudgetInput, message: str
-    ) -> None:
-        """Gaussian noise with an ApproxDP budget raises an informative error."""
-        with self.assertRaisesRegex(UnsupportedCombinationError, re.escape(message)):
-            f(
-                input_domain=INPUT_DOMAIN,
-                input_metric=SymmetricDifference(),
-                output_measure=ApproxDP(),
-                d_out=d_out,
-                noise_mechanism=NoiseMechanism.GAUSSIAN,
-                measure_column="B",
-                lower=sp.Integer(0),
-                upper=sp.Integer(10),
-            )
+@parametrize(_CONTINUOUS_NOISE_FUNCTIONS)
+@parametrize(
+    Case("laplace-delta=1/2")(
+        noise_mechanism=NoiseMechanism.LAPLACE,
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+    ),
+    Case("gaussian-delta=1/2")(
+        noise_mechanism=NoiseMechanism.GAUSSIAN,
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+    ),
+    Case("gaussian-delta=0")(
+        noise_mechanism=NoiseMechanism.GAUSSIAN,
+        d_out=(sp.Integer(1), sp.Integer(0)),
+    ),
+)
+def test_continuous_noise_bad_delta(
+    f: Callable, noise_mechanism: NoiseMechanism, d_out: PrivacyBudgetInput
+):
+    """Test error is raised for invalid delta/continuous noise mechanism combination."""
+    with pytest.raises(UnsupportedCombinationError):
+        f(output_measure=ApproxDP(), d_out=d_out, noise_mechanism=noise_mechanism)
 
-    @parameterized.expand(
-        [
-            (d_out, f)
-            for d_out in [
-                (sp.Integer(1), sp.Rational(1, 2)),
-                (sp.Integer(1), sp.Rational(1, 3)),
-            ]
-            for f in [
-                functools.partial(
-                    create_bounds_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    measure_column="B",
-                    threshold=0.5,
-                    output_measure=ApproxDP(),
-                ),
-                functools.partial(
-                    create_quantile_measurement,
-                    input_domain=INPUT_DOMAIN,
-                    input_metric=SymmetricDifference(),
-                    measure_column="B",
-                    quantile=0.5,
-                    upper=10,
-                    lower=0,
-                    output_measure=ApproxDP(),
-                ),
-            ]
-        ]
-    )
-    def test_functions_without_noise_mechanism(
-        self, d_out: PrivacyBudgetInput, f: Callable
-    ) -> None:
-        """Test error is raised for invalid deltas."""
-        with self.assertRaises(ValueError):
-            f(d_out=d_out)
+
+@parametrize(_INTEGER_NOISE_FUNCTIONS)
+@parametrize(
+    Case("laplace")(noise_mechanism=NoiseMechanism.LAPLACE),
+    Case("gaussian")(noise_mechanism=NoiseMechanism.GAUSSIAN),
+)
+def test_integer_aggregations_reject_continuous_noise(
+    f: Callable, noise_mechanism: NoiseMechanism
+):
+    """Counts and integer sums reject continuous noise mechanisms."""
+    with pytest.raises(UnsupportedNoiseMechanismError):
+        f(
+            output_measure=RhoZCDP(),
+            d_out=sp.Integer(1),
+            noise_mechanism=noise_mechanism,
+        )
+
+
+@parametrize(_CONTINUOUS_NOISE_FUNCTIONS)
+@parametrize(
+    Case("geometric")(noise_mechanism=NoiseMechanism.GEOMETRIC),
+    Case("discrete gaussian")(noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN),
+)
+def test_continuous_aggregations_reject_integer_noise(
+    f: Callable, noise_mechanism: NoiseMechanism
+):
+    """Float sums, averages, variances, and standard deviations reject integer noise."""
+    with pytest.raises(UnsupportedNoiseMechanismError):
+        f(
+            output_measure=RhoZCDP(),
+            d_out=sp.Integer(1),
+            noise_mechanism=noise_mechanism,
+        )
+
+
+@parametrize(_INTEGER_NOISE_FUNCTIONS)
+@parametrize(
+    Case("delta=1/2")(
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+        message="mechanism Discrete gaussian is not yet supported. Use Geometric.",
+    ),
+    Case("delta=0")(
+        d_out=(sp.Integer(1), sp.Integer(0)),
+        message="using Discrete gaussian. Set delta > 0 or use Geometric.",
+    ),
+)
+def test_discrete_gaussian_approxdp_error_messages(
+    f: Callable, d_out: PrivacyBudgetInput, message: str
+):
+    """Discrete Gaussian noise with an ApproxDP budget raises an informative error."""
+    with pytest.raises(UnsupportedCombinationError, match=re.escape(message)):
+        f(
+            output_measure=ApproxDP(),
+            d_out=d_out,
+            noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
+        )
+
+
+@parametrize(_CONTINUOUS_NOISE_FUNCTIONS)
+@parametrize(
+    Case("delta=1/2")(
+        d_out=(sp.Integer(1), sp.Rational(1, 2)),
+        message="mechanism Gaussian is not yet supported. Use Laplace.",
+    ),
+    Case("delta=0")(
+        d_out=(sp.Integer(1), sp.Integer(0)),
+        message="delta = 0 using Gaussian. Set delta > 0 or use Laplace.",
+    ),
+)
+def test_gaussian_approxdp_error_messages(
+    f: Callable, d_out: PrivacyBudgetInput, message: str
+):
+    """Gaussian noise with an ApproxDP budget raises an informative error."""
+    with pytest.raises(UnsupportedCombinationError, match=re.escape(message)):
+        f(
+            output_measure=ApproxDP(),
+            d_out=d_out,
+            noise_mechanism=NoiseMechanism.GAUSSIAN,
+        )
+
+
+@parametrize(
+    Case("bounds")(
+        f=functools.partial(
+            create_bounds_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            measure_column="int_col",
+            threshold=0.5,
+            output_measure=ApproxDP(),
+        )
+    ),
+    Case("quantile")(
+        f=functools.partial(
+            create_quantile_measurement,
+            input_domain=INPUT_DOMAIN,
+            input_metric=SymmetricDifference(),
+            measure_column="int_col",
+            quantile=0.5,
+            upper=10,
+            lower=0,
+            output_measure=ApproxDP(),
+        )
+    ),
+)
+def test_bad_delta_without_noise_mechanism(f: Callable):
+    """Test error is raised for invalid deltas."""
+    with pytest.raises(ValueError):
+        f(d_out=(sp.Integer(1), sp.Rational(1, 2)))
 
 
 big_test_size = 1000

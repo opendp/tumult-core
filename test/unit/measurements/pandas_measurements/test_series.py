@@ -298,9 +298,7 @@ class TestAddNoiseToSeries(TestCase):
     def test_format(self):
         """AddNoiseToSeries formats with its wrapped noise measurement."""
         measurement = AddNoiseToSeries(
-            noise_measurement=AddLaplaceNoise(
-                scale=1, input_domain=NumpyIntegerDomain()
-            )
+            noise_measurement=AddLaplaceNoise(scale=1, input_domain=NumpyFloatDomain())
         )
         assert measurement.format() == textwrap.dedent(
             """\

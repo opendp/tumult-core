@@ -1215,7 +1215,7 @@ class PrivacyAccountant:
                 >>> import numpy as np
                 >>> from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
                 >>> from tmlt.core.measurements.noise_mechanisms import (
-                ...     AddLaplaceNoise,
+                ...     AddGeometricNoise,
                 ... )
                 >>> from tmlt.core.metrics import AbsoluteDifference
                 >>> from tmlt.core.utils.parameters import calculate_noise_scale
@@ -1245,10 +1245,7 @@ class PrivacyAccountant:
             ...     d_out=3,
             ...     output_measure=PureDP(),
             ... )
-            >>> measurement = AddLaplaceNoise(
-            ...     input_domain=NumpyIntegerDomain(),
-            ...     scale=noise_scale,
-            ... )
+            >>> measurement = AddGeometricNoise(alpha=noise_scale)
             >>> privacy_accountant.measure(measurement) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
             <BLANKLINE>
             ...

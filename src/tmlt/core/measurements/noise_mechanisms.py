@@ -12,11 +12,7 @@ from pyspark.sql.types import DataType, DoubleType, LongType
 from scipy import stats
 from typeguard import typechecked
 
-from tmlt.core.domains.numpy_domains import (
-    NumpyDomain,
-    NumpyFloatDomain,
-    NumpyIntegerDomain,
-)
+from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import AbsoluteDifference
@@ -41,13 +37,13 @@ class AddLaplaceNoise(Measurement):
     @typechecked
     def __init__(
         self,
-        input_domain: Union[NumpyIntegerDomain, NumpyFloatDomain],
+        input_domain: NumpyFloatDomain,
         scale: ExactNumberInput,
     ):
         """Constructor.
 
         Args:
-            input_domain: Input Domain.
+            input_domain: Input domain. Must be a float domain without infs or nans.
             scale: Noise scale.
         """
         try:
@@ -60,9 +56,7 @@ class AddLaplaceNoise(Measurement):
         except ValueError as e:
             raise ValueError(f"Invalid scale: {e}") from e
 
-        if isinstance(input_domain, NumpyFloatDomain) and (
-            input_domain.allow_nan or input_domain.allow_inf
-        ):
+        if input_domain.allow_nan or input_domain.allow_inf:
             raise ValueError("Input domain must not contain infs or nans")
         super().__init__(
             input_domain=input_domain,
@@ -74,9 +68,9 @@ class AddLaplaceNoise(Measurement):
         self._output_type = DoubleType()
 
     @property
-    def input_domain(self) -> NumpyDomain:
+    def input_domain(self) -> NumpyFloatDomain:
         """Return input domain for the measurement."""
-        return cast(NumpyDomain, super().input_domain)
+        return cast(NumpyFloatDomain, super().input_domain)
 
     @property
     def scale(self) -> ExactNumber:
@@ -116,12 +110,10 @@ class AddLaplaceNoise(Measurement):
             return ExactNumber(float("inf"))
         return d_in / self.scale
 
-    def __call__(
-        self, val: Union[np.int32, np.int64, np.float32, np.float64, float, int]
-    ) -> float:
-        r"""Returns the value with laplace noise added.
+    def __call__(self, val: Union[np.float32, np.float64, float]) -> float:
+        r"""Returns the value with Laplace noise added.
 
-        The added laplace noise has the probability density function
+        The added Laplace noise has the probability density function
 
         :math:`f(x) = \frac{1}{2 b} e ^ {\frac{-\mid x \mid}{b}}`
 
@@ -465,13 +457,13 @@ class AddGaussianNoise(Measurement):
     @typechecked
     def __init__(
         self,
-        input_domain: Union[NumpyIntegerDomain, NumpyFloatDomain],
+        input_domain: NumpyFloatDomain,
         sigma_squared: ExactNumberInput,
     ):
         """Constructor.
 
         Args:
-            input_domain: Domain of the input.
+            input_domain: Input domain. Must be a float domain without infs or nans.
             sigma_squared: Noise scale. This is the variance of the Gaussian
                 distribution to be used for sampling noise.
         """
@@ -487,9 +479,7 @@ class AddGaussianNoise(Measurement):
         except ValueError as e:
             raise ValueError(f"Invalid sigma_squared: {e}") from e
 
-        if isinstance(input_domain, NumpyFloatDomain) and (
-            input_domain.allow_nan or input_domain.allow_inf
-        ):
+        if input_domain.allow_nan or input_domain.allow_inf:
             raise ValueError("Input domain must not contain infs or nans")
 
         super().__init__(
@@ -502,9 +492,9 @@ class AddGaussianNoise(Measurement):
         self._output_type = DoubleType()
 
     @property
-    def input_domain(self) -> NumpyDomain:
+    def input_domain(self) -> NumpyFloatDomain:
         """Return input domain for the measurement."""
-        return cast(NumpyDomain, super().input_domain)
+        return cast(NumpyFloatDomain, super().input_domain)
 
     @property
     def output_type(self) -> DataType:
@@ -546,9 +536,7 @@ class AddGaussianNoise(Measurement):
             return ExactNumber(float("inf"))
         return (d_in**2) / (2 * self._sigma_squared)
 
-    def __call__(
-        self, value: Union[np.int32, np.int64, np.float32, np.float64, float, int]
-    ) -> float:
+    def __call__(self, value: Union[np.float32, np.float64, float]) -> float:
         r"""Adds Gaussian noise with specified scale.
 
         The added noise has the probability density function

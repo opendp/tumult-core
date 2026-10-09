@@ -123,7 +123,7 @@ class TestPostProcess(TestComponent):
             return x
 
         measurement = PostProcess(
-            measurement=AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1),
+            measurement=AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
             f=post,
         )
         assert measurement.format() == textwrap.dedent(

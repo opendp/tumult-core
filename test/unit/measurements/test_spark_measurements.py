@@ -15,7 +15,7 @@ from parameterized import parameterized
 from pyspark.sql import functions as sf
 from pyspark.sql.types import IntegerType, StringType, StructField, StructType
 
-from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
+from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
 from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeriesDomain
 from tmlt.core.domains.spark_domains import (
     SparkColumnDescriptor,
@@ -25,8 +25,12 @@ from tmlt.core.domains.spark_domains import (
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
 )
-from tmlt.core.exceptions import DomainColumnError
-from tmlt.core.measurements.noise_mechanisms import AddGeometricNoise, AddLaplaceNoise
+from tmlt.core.exceptions import DomainColumnError, DomainMismatchError
+from tmlt.core.measurements.noise_mechanisms import (
+    AddGaussianNoise,
+    AddGeometricNoise,
+    AddLaplaceNoise,
+)
 from tmlt.core.measurements.pandas_measurements.dataframe import AggregateByColumn
 from tmlt.core.measurements.pandas_measurements.series import (
     AddNoiseToSeries,
@@ -267,9 +271,7 @@ class TestAddNoiseToColumn(PySparkTest):
         """Tests that given property is immutable."""
         measurement = AddNoiseToColumn(
             input_domain=self.input_domain,
-            measurement=AddNoiseToSeries(
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=sp.Integer(1))
-            ),
+            measurement=AddNoiseToSeries(AddGeometricNoise(alpha=sp.Integer(1))),
             measure_column="count",
         )
         assert_property_immutability(measurement, prop_name)
@@ -278,16 +280,14 @@ class TestAddNoiseToColumn(PySparkTest):
         """AddNoiseToColumn formats with its wrapped per-column measurement."""
         measurement = AddNoiseToColumn(
             input_domain=self.input_domain,
-            measurement=AddNoiseToSeries(
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=sp.Integer(1))
-            ),
+            measurement=AddNoiseToSeries(AddGeometricNoise(alpha=sp.Integer(1))),
             measure_column="count",
         )
         assert measurement.format() == textwrap.dedent(
             """\
             AddNoiseToColumn measure_column='count'
-              AddNoiseToSeries output_type=DoubleType()
-                AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"""
+              AddNoiseToSeries output_type=LongType()
+                AddGeometricNoise output_type=LongType() alpha=1 adds_no_noise=False"""
         )
 
     def test_correctness(self):
@@ -301,6 +301,24 @@ class TestAddNoiseToColumn(PySparkTest):
         )
         actual = measurement(sdf)
         assert_dataframe_equal(actual, expected)
+
+    @parameterized.expand(
+        [
+            ("laplace", AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1)),
+            (
+                "gaussian",
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
+            ),
+        ]
+    )
+    def test_continuous_noise_on_integer_column(self, _, noise_measurement):
+        """Continuous noise cannot be added to an integer column."""
+        with self.assertRaisesRegex(DomainMismatchError, "incompatible"):
+            AddNoiseToColumn(
+                input_domain=self.input_domain,
+                measurement=AddNoiseToSeries(noise_measurement),
+                measure_column="count",
+            )
 
 
 class TestGeometricPartitionSelection(PySparkTest):

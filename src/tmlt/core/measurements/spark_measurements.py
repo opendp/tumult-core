@@ -81,12 +81,11 @@ class AddNoiseToColumn(SparkMeasurement):
             >>> import pandas as pd
             >>> from pyspark.sql import SparkSession
             >>> from tmlt.core.measurements.noise_mechanisms import (
-            ...     AddLaplaceNoise,
+            ...     AddGeometricNoise,
             ... )
             >>> from tmlt.core.measurements.pandas_measurements.series import (
             ...     AddNoiseToSeries,
             ... )
-            >>> from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
             >>> from tmlt.core.domains.spark_domains import (
             ...     SparkDataFrameDomain,
             ...     SparkIntegerColumnDescriptor,
@@ -112,12 +111,9 @@ class AddNoiseToColumn(SparkMeasurement):
         2  a2  b1      1
         3  a2  b2      0
         >>> # Create a measurement that can add noise to a pd.Series
-        >>> add_laplace_noise = AddLaplaceNoise(
-        ...     scale="0.5",
-        ...     input_domain=NumpyIntegerDomain(),
-        ... )
+        >>> add_geometric_noise = AddGeometricNoise(alpha="0.5")
         >>> # Create a measurement that can add noise to a Spark DataFrame
-        >>> add_laplace_noise_to_column = AddNoiseToColumn(
+        >>> add_geometric_noise_to_column = AddNoiseToColumn(
         ...     input_domain=SparkDataFrameDomain(
         ...         schema={
         ...             "A": SparkStringColumnDescriptor(),
@@ -125,11 +121,11 @@ class AddNoiseToColumn(SparkMeasurement):
         ...             "count": SparkIntegerColumnDescriptor(),
         ...         },
         ...     ),
-        ...     measurement=AddNoiseToSeries(add_laplace_noise),
+        ...     measurement=AddNoiseToSeries(add_geometric_noise),
         ...     measure_column="count",
         ... )
         >>> # Apply measurement to data
-        >>> noisy_spark_dataframe = add_laplace_noise_to_column(spark_dataframe)
+        >>> noisy_spark_dataframe = add_geometric_noise_to_column(spark_dataframe)
         >>> print_sdf(noisy_spark_dataframe)  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
             A   B   count
         0  a1  b1 ...
@@ -146,18 +142,18 @@ class AddNoiseToColumn(SparkMeasurement):
           column.
         * Output measure - :class:`~.PureDP` or :class:`~.RhoZCDP`
 
-        >>> add_laplace_noise_to_column.input_domain
+        >>> add_geometric_noise_to_column.input_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
-        >>> add_laplace_noise_to_column.input_metric
+        >>> add_geometric_noise_to_column.input_metric
         OnColumn(column='count', metric=SumOf(inner_metric=AbsoluteDifference()))
-        >>> add_laplace_noise_to_column.output_measure
+        >>> add_geometric_noise_to_column.output_measure
         PureDP()
 
         Privacy Guarantee:
             :class:`~.AddNoiseToColumn`'s :meth:`~.privacy_function` returns the output
             of privacy function on the :class:`~.AddNoiseToSeries` measurement.
 
-            >>> add_laplace_noise_to_column.privacy_function(1)
+            >>> add_geometric_noise_to_column.privacy_function(1)
             2
     """  # noqa: E501
 

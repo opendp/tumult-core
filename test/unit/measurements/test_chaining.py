@@ -184,8 +184,8 @@ class TestChainTM(TestComponent):
     def test_format(self):
         """A ChainTM formats its transformation and measurement as a chain."""
         measurement = Identity(
-            AbsoluteDifference(), NumpyIntegerDomain()
-        ) | AddLaplaceNoise(scale=1, input_domain=NumpyIntegerDomain())
+            AbsoluteDifference(), NumpyFloatDomain()
+        ) | AddLaplaceNoise(scale=1, input_domain=NumpyFloatDomain())
         assert measurement.format() == textwrap.dedent(
             """\
             ┌ Identity

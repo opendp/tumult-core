@@ -159,6 +159,24 @@ def _total_groupby_for_scalar(
     )
 
 
+def _validate_integer_noise_mechanism(
+    noise_mechanism: NoiseMechanism, aggregation: str
+) -> None:
+    """Raises an error unless ``noise_mechanism`` is GEOMETRIC or DISCRETE_GAUSSIAN."""
+    if noise_mechanism not in (
+        NoiseMechanism.GEOMETRIC,
+        NoiseMechanism.DISCRETE_GAUSSIAN,
+    ):
+        raise UnsupportedNoiseMechanismError(
+            noise_mechanism,
+            (
+                f"The {aggregation} measurement adds noise to integers and only"
+                f" supports integer noise. Use {NoiseMechanism.GEOMETRIC} or"
+                f" {NoiseMechanism.DISCRETE_GAUSSIAN}, not {noise_mechanism}."
+            ),
+        )
+
+
 @typechecked
 def create_count_measurement(
     input_domain: SparkDataFrameDomain,
@@ -197,7 +215,9 @@ def create_count_measurement(
             interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
             is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
             :class:`~.ApproxDP`.
-        noise_mechanism: Noise mechanism to apply to count(s).
+        noise_mechanism: Noise mechanism to apply to count(s). Must be
+            :attr:`~.NoiseMechanism.GEOMETRIC` or
+            :attr:`~.NoiseMechanism.DISCRETE_GAUSSIAN`.
         d_in: Distance between inputs under the ``input_metric``. The returned
             measurement is guaranteed to have output distributions that are ``d_out``
             apart for inputs that are ``d_in`` apart. Defaults to 1.
@@ -208,6 +228,7 @@ def create_count_measurement(
             name to be used for counts in the dataframe output by the measurement. If
             None, this column will be named "count".
     """
+    _validate_integer_noise_mechanism(noise_mechanism, "count")
     if groupby_transformation is None:
         groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
         grouped_count = create_count_measurement(
@@ -225,7 +246,7 @@ def create_count_measurement(
 
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
-        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+        if noise_mechanism == NoiseMechanism.GEOMETRIC:
             if delta > 0:
                 raise UnsupportedCombinationError(
                     (noise_mechanism, output_measure, d_out),
@@ -246,31 +267,25 @@ def create_count_measurement(
                     count_column=count_column,
                 )
             )
-        elif noise_mechanism in (
-            NoiseMechanism.GAUSSIAN,
-            NoiseMechanism.DISCRETE_GAUSSIAN,
-        ):
-            if delta > 0:
-                # Once supported, we will compute the corresponding zCDP budget and set
-                # the output measure to zCDP.
-                raise UnsupportedCombinationError(
-                    (noise_mechanism, output_measure, d_out),
-                    (
-                        "Spending an ApproxDP budget with delta > 0 using mechanism"
-                        f" {noise_mechanism} is not yet supported. Use either"
-                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
-                    ),
-                )
+        if delta > 0:
+            # Once supported, we will compute the corresponding zCDP budget and set
+            # the output measure to zCDP.
             raise UnsupportedCombinationError(
                 (noise_mechanism, output_measure, d_out),
                 (
-                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {NoiseMechanism.DISCRETE_GAUSSIAN} is not yet supported. Use"
                     f" {NoiseMechanism.GEOMETRIC}."
                 ),
             )
-        else:
-            assert False
+        raise UnsupportedCombinationError(
+            (noise_mechanism, output_measure, d_out),
+            (
+                f"Cannot spend a budget with delta = 0 using"
+                f" {NoiseMechanism.DISCRETE_GAUSSIAN}. Set delta > 0 or use"
+                f" {NoiseMechanism.GEOMETRIC}."
+            ),
+        )
     elif isinstance(output_measure, (RhoZCDP, PureDP)):
         d_out = PrivacyBudget.cast(output_measure, d_out).value
     else:
@@ -311,31 +326,11 @@ def create_count_measurement(
         d_in=d_mid, d_out=d_out, output_measure=output_measure
     )
     add_noise_to_series: AddNoiseToSeries
-    if noise_mechanism == NoiseMechanism.LAPLACE:
-        add_noise_to_series = AddNoiseToSeries(
-            AddLaplaceNoise(scale=noise_scale, input_domain=NumpyIntegerDomain())
-        )
-    elif noise_mechanism == NoiseMechanism.GEOMETRIC:
+    if noise_mechanism == NoiseMechanism.GEOMETRIC:
         add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
-    elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
+    else:
         add_noise_to_series = AddNoiseToSeries(
             AddDiscreteGaussianNoise(sigma_squared=noise_scale**2)
-        )
-    elif noise_mechanism == NoiseMechanism.GAUSSIAN:
-        add_noise_to_series = AddNoiseToSeries(
-            AddGaussianNoise(
-                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
-            )
-        )
-
-    else:
-        raise UnsupportedNoiseMechanismError(
-            noise_mechanism,
-            (
-                f"Unrecognized noise mechanism {noise_mechanism}. "
-                "Supported noise mechanisms are LAPLACE, "
-                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
-            ),
         )
 
     assert isinstance(groupby_count.output_domain, SparkDataFrameDomain)
@@ -394,7 +389,9 @@ def create_count_distinct_measurement(
             interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
             is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
             :class:`~.ApproxDP`.
-        noise_mechanism: Noise mechanism to apply to count(s).
+        noise_mechanism: Noise mechanism to apply to count(s). Must be
+            :attr:`~.NoiseMechanism.GEOMETRIC` or
+            :attr:`~.NoiseMechanism.DISCRETE_GAUSSIAN`.
         d_in: Distance between inputs under the ``input_metric``. The returned
             measurement is guaranteed to have output distributions that are
             ``d_out`` apart for inputs that are ``d_in`` apart. Defaults to 1.
@@ -406,6 +403,7 @@ def create_count_distinct_measurement(
             column name to be used for counts in the dataframe output by the
             measurement. If None, this column will be named "count_distinct".
     """
+    _validate_integer_noise_mechanism(noise_mechanism, "count distinct")
     if groupby_transformation is None:
         groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
         groupby_count = create_count_distinct_measurement(
@@ -422,7 +420,7 @@ def create_count_distinct_measurement(
         return PostProcess(groupby_count, lambda x: x.head()[column])
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
-        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+        if noise_mechanism == NoiseMechanism.GEOMETRIC:
             if delta > 0:
                 raise UnsupportedCombinationError(
                     (noise_mechanism, output_measure, d_out),
@@ -443,31 +441,25 @@ def create_count_distinct_measurement(
                     count_column=count_column,
                 )
             )
-        elif noise_mechanism in (
-            NoiseMechanism.GAUSSIAN,
-            NoiseMechanism.DISCRETE_GAUSSIAN,
-        ):
-            if delta > 0:
-                # Once supported, we will compute the corresponding zCDP budget and set
-                # the output measure to zCDP.
-                raise UnsupportedCombinationError(
-                    (noise_mechanism, output_measure, d_out),
-                    (
-                        "Spending an ApproxDP budget with delta > 0 using mechanism"
-                        f" {noise_mechanism} is not yet supported. Use either"
-                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
-                    ),
-                )
+        if delta > 0:
+            # Once supported, we will compute the corresponding zCDP budget and set
+            # the output measure to zCDP.
             raise UnsupportedCombinationError(
                 (noise_mechanism, output_measure, d_out),
                 (
-                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {NoiseMechanism.DISCRETE_GAUSSIAN} is not yet supported. Use"
                     f" {NoiseMechanism.GEOMETRIC}."
                 ),
             )
-        else:
-            assert False
+        raise UnsupportedCombinationError(
+            (noise_mechanism, output_measure, d_out),
+            (
+                f"Cannot spend a budget with delta = 0 using"
+                f" {NoiseMechanism.DISCRETE_GAUSSIAN}. Set delta > 0 or use"
+                f" {NoiseMechanism.GEOMETRIC}."
+            ),
+        )
     elif isinstance(output_measure, (RhoZCDP, PureDP)):
         d_out = PrivacyBudget.cast(output_measure, d_out).value
     else:
@@ -524,30 +516,11 @@ def create_count_distinct_measurement(
         d_in=d_mid, d_out=d_out, output_measure=output_measure
     )
     add_noise_to_series: AddNoiseToSeries
-    if noise_mechanism == NoiseMechanism.LAPLACE:
-        add_noise_to_series = AddNoiseToSeries(
-            AddLaplaceNoise(scale=noise_scale, input_domain=NumpyIntegerDomain())
-        )
-    elif noise_mechanism == NoiseMechanism.GEOMETRIC:
+    if noise_mechanism == NoiseMechanism.GEOMETRIC:
         add_noise_to_series = AddNoiseToSeries(AddGeometricNoise(alpha=noise_scale))
-    elif noise_mechanism == NoiseMechanism.DISCRETE_GAUSSIAN:
+    else:
         add_noise_to_series = AddNoiseToSeries(
             AddDiscreteGaussianNoise(sigma_squared=noise_scale**2)
-        )
-    elif noise_mechanism == NoiseMechanism.GAUSSIAN:
-        add_noise_to_series = AddNoiseToSeries(
-            AddGaussianNoise(
-                sigma_squared=noise_scale**2, input_domain=NumpyIntegerDomain()
-            )
-        )
-    else:
-        raise UnsupportedNoiseMechanismError(
-            noise_mechanism,
-            (
-                f"Unrecognized noise mechanism {noise_mechanism}. "
-                "Supported noise mechanisms are LAPLACE, "
-                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
-            ),
         )
     assert isinstance(groupby_count_distinct.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -616,7 +589,11 @@ def create_sum_measurement(
             interpreted as "epsilon" if output_measure is :class:`~.PureDP`, "rho" if it
             is :class:`~.RhoZCDP`, and ("epsilon", "delta") if it is
             :class:`~.ApproxDP`.
-        noise_mechanism: Noise mechanism to be applied to the sum(s).
+        noise_mechanism: Noise mechanism to be applied to the sum(s). Must be
+            :attr:`~.NoiseMechanism.GEOMETRIC` or
+            :attr:`~.NoiseMechanism.DISCRETE_GAUSSIAN` for integer measure columns,
+            and :attr:`~.NoiseMechanism.LAPLACE` or :attr:`~.NoiseMechanism.GAUSSIAN`
+            for float measure columns.
         measure_column: Column to be summed.
         lower: Lower clipping bound on ``measure_column``.
         upper: Upper clipping bound on ``measure_column``.
@@ -631,6 +608,12 @@ def create_sum_measurement(
             None, this column will be named "sum(<measure_column>)".
     """
     _validate_numeric_measure_column(input_domain, measure_column)
+    if isinstance(input_domain[measure_column], SparkIntegerColumnDescriptor):
+        _validate_integer_noise_mechanism(noise_mechanism, "integer sum")
+        pure_dp_mechanism = NoiseMechanism.GEOMETRIC
+    else:
+        _validate_continuous_noise_mechanism(noise_mechanism, "float sum")
+        pure_dp_mechanism = NoiseMechanism.LAPLACE
     if groupby_transformation is None:
         groupby = _total_groupby_for_scalar(input_domain, input_metric, noise_mechanism)
         grouped_sum = create_sum_measurement(
@@ -650,7 +633,7 @@ def create_sum_measurement(
         return PostProcess(grouped_sum, lambda x: x.head()[column])
     if isinstance(output_measure, ApproxDP):
         epsilon, delta = ApproxDPBudget(d_out).value
-        if noise_mechanism in (NoiseMechanism.LAPLACE, NoiseMechanism.GEOMETRIC):
+        if noise_mechanism == pure_dp_mechanism:
             if delta > 0:
                 raise UnsupportedCombinationError(
                     (noise_mechanism, output_measure, d_out),
@@ -674,31 +657,24 @@ def create_sum_measurement(
                     sum_column=sum_column,
                 )
             )
-        elif noise_mechanism in (
-            NoiseMechanism.GAUSSIAN,
-            NoiseMechanism.DISCRETE_GAUSSIAN,
-        ):
-            if delta > 0:
-                # Once supported, we will compute the corresponding zCDP budget and set
-                # the output measure to zCDP.
-                raise UnsupportedCombinationError(
-                    (noise_mechanism, output_measure, d_out),
-                    (
-                        "Spending an ApproxDP budget with delta > 0 using mechanism"
-                        f" {noise_mechanism} is not yet supported. Use either"
-                        f" {NoiseMechanism.LAPLACE} or {NoiseMechanism.GEOMETRIC}."
-                    ),
-                )
+        if delta > 0:
+            # Once supported, we will compute the corresponding zCDP budget and set
+            # the output measure to zCDP.
             raise UnsupportedCombinationError(
                 (noise_mechanism, output_measure, d_out),
                 (
-                    f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
-                    f" delta > 0 or use either {NoiseMechanism.LAPLACE} or"
-                    f" {NoiseMechanism.GEOMETRIC}."
+                    "Spending an ApproxDP budget with delta > 0 using mechanism"
+                    f" {noise_mechanism} is not yet supported. Use"
+                    f" {pure_dp_mechanism}."
                 ),
             )
-        else:
-            assert False
+        raise UnsupportedCombinationError(
+            (noise_mechanism, output_measure, d_out),
+            (
+                f"Cannot spend a budget with delta = 0 using {noise_mechanism}. Set"
+                f" delta > 0 or use {pure_dp_mechanism}."
+            ),
+        )
     elif isinstance(output_measure, (RhoZCDP, PureDP)):
         d_out = PrivacyBudget.cast(output_measure, d_out).value
     else:
@@ -747,6 +723,7 @@ def create_sum_measurement(
     measure_column_domain = input_domain[measure_column].to_numpy_domain()
     assert isinstance(measure_column_domain, (NumpyIntegerDomain, NumpyFloatDomain))
     if noise_mechanism == NoiseMechanism.LAPLACE:
+        assert isinstance(measure_column_domain, NumpyFloatDomain)
         add_noise_to_series = AddNoiseToSeries(
             AddLaplaceNoise(scale=noise_scale, input_domain=measure_column_domain)
         )
@@ -756,20 +733,12 @@ def create_sum_measurement(
         add_noise_to_series = AddNoiseToSeries(
             AddDiscreteGaussianNoise(sigma_squared=noise_scale**2)
         )
-    elif noise_mechanism == NoiseMechanism.GAUSSIAN:
+    else:
+        assert isinstance(measure_column_domain, NumpyFloatDomain)
         add_noise_to_series = AddNoiseToSeries(
             AddGaussianNoise(
                 sigma_squared=noise_scale**2, input_domain=measure_column_domain
             )
-        )
-    else:
-        raise UnsupportedNoiseMechanismError(
-            noise_mechanism,
-            (
-                f"Unrecognized noise mechanism {noise_mechanism}. "
-                "Supported noise mechanisms are LAPLACE, "
-                "GEOMETRIC, GAUSSIAN, and DISCRETE_GAUSSIAN."
-            ),
         )
     assert isinstance(sum_aggregation.output_domain, SparkDataFrameDomain)
     add_noise_to_column = AddNoiseToColumn(
@@ -961,17 +930,23 @@ def create_average_measurement(
         input_domain, measure_column, lower, upper
     )
     deviations_column = get_nonconflicting_string(list(input_domain.schema))
+    ones_column = get_nonconflicting_string([*input_domain.schema, deviations_column])
     deviations_map = Map(
         row_transformer=RowToRowTransformation(
             input_domain=SparkRowDomain(input_domain.schema),
             output_domain=SparkRowDomain(
-                {**input_domain.schema, deviations_column: SparkFloatColumnDescriptor()}
+                {
+                    **input_domain.schema,
+                    deviations_column: SparkFloatColumnDescriptor(),
+                    ones_column: SparkFloatColumnDescriptor(),
+                }
             ),
             trusted_f=lambda row: {
                 deviations_column: float(
                     min(max(row[measure_column], lower_clamp), upper_clamp)
                 )
-                - midpoint_of_measure_column
+                - midpoint_of_measure_column,
+                ones_column: 1.0,
             },
             augment=True,
         ),
@@ -982,62 +957,6 @@ def create_average_measurement(
         deviations_map.output_metric,
         (SymmetricDifference, HammingDistance, IfGroupedBy),
     )
-    if groupby_transformation is None:
-        sod_measurement = create_sum_measurement(
-            input_domain=deviations_map.output_domain,
-            input_metric=deviations_map.output_metric,
-            measure_column=deviations_column,
-            lower=lower - exact_midpoint_of_measure_column,
-            upper=upper - exact_midpoint_of_measure_column,
-            noise_mechanism=noise_mechanism,
-            d_in=d_in,
-            d_out=d_out / 2,
-            groupby_transformation=None,
-            sum_column=None,
-            output_measure=output_measure,
-        )
-        count_measurement = create_count_measurement(
-            input_domain=deviations_map.output_domain,
-            input_metric=deviations_map.output_metric,
-            noise_mechanism=noise_mechanism,
-            d_in=d_in,
-            d_out=d_out / 2,
-            groupby_transformation=None,
-            count_column=None,
-            output_measure=output_measure,
-        )
-        sum_and_count = deviations_map | Composition(
-            measurements=[sod_measurement, count_measurement]
-        )
-
-        def postprocess_sod_and_count(
-            answers: List[Union[np.int64, np.float64]],
-        ) -> Union[
-            np.int64,
-            np.float64,
-            Dict[str, Union[Union[float, np.int64], Union[int, np.float64]]],
-        ]:
-            """Computes average from noisy count and sum of deviations."""
-            sod, count = answers
-            average = sod / max(1, count) + midpoint_of_measure_column
-            if keep_intermediates:
-                assert average_column is not None
-                assert sum_column is not None
-                assert count_column is not None
-                assert midpoint_column is not None
-                return {
-                    average_column: average,
-                    sum_column: sod,
-                    count_column: count,
-                    midpoint_column: midpoint_of_measure_column,
-                }
-            return average
-
-        average_measurement = PostProcess(
-            measurement=sum_and_count, f=postprocess_sod_and_count
-        )
-        assert average_measurement.privacy_function(d_in) == d_out
-        return average_measurement
     assert isinstance(groupby_transformation.output_metric, (SumOf, RootSumOfSquared))
     if groupby_transformation.input_metric != input_metric:
         raise MetricMismatchError(
@@ -1078,14 +997,17 @@ def create_average_measurement(
         sum_column=sum_column,
         output_measure=output_measure,
     )
-    count_measurement = create_count_measurement(
+    count_measurement = create_sum_measurement(
         input_domain=deviations_map.output_domain,
         input_metric=deviations_map.output_metric,
+        measure_column=ones_column,
+        lower=1,
+        upper=1,
         noise_mechanism=noise_mechanism,
         d_in=d_in,
         d_out=d_out / 2,
         groupby_transformation=groupby,
-        count_column=count_column,
+        sum_column=count_column,
         output_measure=output_measure,
     )
     sum_and_count = deviations_map | Composition(
@@ -1307,6 +1229,7 @@ def create_variance_measurement(
         deviations_map,
         deviations_column,
         squared_deviations_column,
+        ones_column,
     ) = _create_map_to_compute_deviations(
         input_domain=input_domain,
         input_metric=input_metric,
@@ -1369,21 +1292,24 @@ def create_variance_measurement(
         sum_column=sum_of_squared_deviations_column,
         output_measure=output_measure,
     )
-    count_measurement = create_count_measurement(
-        input_domain=input_domain,
-        input_metric=input_metric,
+    count_measurement = create_sum_measurement(
+        input_domain=deviations_map.output_domain,
+        input_metric=deviations_map.output_metric,
+        measure_column=ones_column,
+        lower=1,
+        upper=1,
         noise_mechanism=noise_mechanism,
         d_in=d_in,
         d_out=d_out / 3,
-        groupby_transformation=groupby_transformation,
-        count_column=count_column,
+        groupby_transformation=groupby,
+        sum_column=count_column,
         output_measure=output_measure,
     )
     sums_and_count = Composition(
         measurements=[
             deviations_map | sod_measurement,
             deviations_map | sos_measurement,
-            count_measurement,
+            deviations_map | count_measurement,
         ]
     )
 
@@ -1870,8 +1796,8 @@ def _create_map_to_compute_deviations(
     measure_column: str,
     lower: ExactNumber,
     upper: ExactNumber,
-) -> Tuple[Map, str, str]:
-    """Returns a map to produce deviations and squared deviations of measure column."""
+) -> Tuple[Map, str, str, str]:
+    """Returns a map adding deviations, squared deviations, and a column of ones."""
     midpoint_of_measure_column, _ = get_midpoint(lower, upper)
 
     lower_after_squaring: ExactNumber = (
@@ -1889,12 +1815,16 @@ def _create_map_to_compute_deviations(
     squared_deviations_column = get_nonconflicting_string(
         [*input_domain.schema, deviations_column]
     )
+    ones_column = get_nonconflicting_string(
+        [*input_domain.schema, deviations_column, squared_deviations_column]
+    )
 
     def compute_deviations(row: Row) -> Dict[str, float]:
         clamped = float(min(max(row[measure_column], lower_clamp), upper_clamp))
         return {
             deviations_column: clamped - midpoint_of_measure_column,
             squared_deviations_column: clamped**2 - midpoint_of_squared_measure_column,
+            ones_column: 1.0,
         }
 
     return (
@@ -1906,6 +1836,7 @@ def _create_map_to_compute_deviations(
                         **input_domain.schema,
                         deviations_column: SparkFloatColumnDescriptor(),
                         squared_deviations_column: SparkFloatColumnDescriptor(),
+                        ones_column: SparkFloatColumnDescriptor(),
                     }
                 ),
                 trusted_f=compute_deviations,
@@ -1915,6 +1846,7 @@ def _create_map_to_compute_deviations(
         ),
         deviations_column,
         squared_deviations_column,
+        ones_column,
     )
 
 

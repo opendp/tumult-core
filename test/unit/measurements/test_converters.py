@@ -11,7 +11,7 @@ from unittest.mock import call
 import sympy as sp
 from parameterized import parameterized
 
-from tmlt.core.domains.numpy_domains import NumpyIntegerDomain
+from tmlt.core.domains.numpy_domains import NumpyFloatDomain
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.converters import (
     PureDPToApproxDP,
@@ -82,7 +82,7 @@ class TestPureDPToZCDP(TestCase):
     def test_format(self):
         """PureDPToRhoZCDP formats with its wrapped measurement."""
         measurement = PureDPToRhoZCDP(
-            AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+            AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1)
         )
         assert measurement.format() == textwrap.dedent(
             """\
@@ -149,7 +149,7 @@ class TestPureDPToApproxDP(TestCase):
     def test_format(self):
         """PureDPToApproxDP formats with its wrapped measurement."""
         measurement = PureDPToApproxDP(
-            AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+            AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1)
         )
         assert measurement.format() == textwrap.dedent(
             """\
@@ -226,7 +226,7 @@ class TestRhoZCDPToApproxDP(TestCase):
     def test_format(self):
         """RhoZCDPToApproxDP formats with its wrapped measurement."""
         measurement = RhoZCDPToApproxDP(
-            AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=1)
+            AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1)
         )
         gaussian_fmt = (
             "AddGaussianNoise output_type=DoubleType() sigma_squared=1"

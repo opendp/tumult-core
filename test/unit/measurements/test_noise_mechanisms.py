@@ -41,7 +41,7 @@ class TestAddLaplaceNoise(MeasurementTests):
 
     def test_format(self):
         """AddLaplaceNoise formats as its class name with its inline attrs."""
-        measurement = AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)
+        measurement = AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1)
         assert (
             measurement.format()
             == "AddLaplaceNoise scale=1 output_type=DoubleType() adds_no_noise=False"
@@ -51,15 +51,8 @@ class TestAddLaplaceNoise(MeasurementTests):
         "measurement_args, expectation",
         [
             (
-                {"input_domain": NumpyIntegerDomain(), "scale": sp.Rational("0.3")},
-                does_not_raise(),
-            ),
-            (
-                {
-                    "input_domain": NumpyIntegerDomain(size=32),
-                    "scale": sp.Rational("0.3"),
-                },
-                does_not_raise(),
+                {"input_domain": NumpyIntegerDomain(), "scale": 1},
+                pytest.raises(TypeCheckError, match=re.escape('"input_domain"')),
             ),
             (
                 {"input_domain": NumpyStringDomain(), "scale": 1},
@@ -69,13 +62,13 @@ class TestAddLaplaceNoise(MeasurementTests):
                 ),
             ),
             (
-                {"input_domain": NumpyIntegerDomain(), "scale": "x"},
+                {"input_domain": NumpyFloatDomain(), "scale": "x"},
                 pytest.raises(
                     ValueError, match="Invalid scale: x contains free symbols"
                 ),
             ),
             (
-                {"input_domain": NumpyIntegerDomain(), "scale": -1},
+                {"input_domain": NumpyFloatDomain(), "scale": -1},
                 pytest.raises(
                     ValueError,
                     match="Invalid scale: -1 is not greater than or equal to 0",
@@ -128,7 +121,7 @@ class TestAddLaplaceNoise(MeasurementTests):
         "measurement, input_data",
         [
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=float("inf")),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=float("inf")),
                 np.int64(1),
             ),
             (
@@ -169,7 +162,7 @@ class TestAddLaplaceNoise(MeasurementTests):
         "measurement, input_data, expected_output",
         [
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=0),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
                 np.int64(10),
                 10.0,
             ),
@@ -196,7 +189,7 @@ class TestAddLaplaceNoise(MeasurementTests):
         "measurement, input_data, expected_output_type",
         [
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
                 np.int64(10),
                 float,
             ),
@@ -223,13 +216,13 @@ class TestAddLaplaceNoise(MeasurementTests):
         "measurement, d_in, expected_d_out, expectation",
         [
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
                 1,
                 1,
                 does_not_raise(),
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=2),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=2),
                 1,
                 "0.5",
                 does_not_raise(),
@@ -257,19 +250,19 @@ class TestAddLaplaceNoise(MeasurementTests):
                 ),
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=0),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
                 1,
                 float("inf"),
                 does_not_raise(),
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=0),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
                 0,
                 0,
                 does_not_raise(),
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=float("inf")),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=float("inf")),
                 1,
                 0,
                 does_not_raise(),
@@ -300,21 +293,21 @@ class TestAddLaplaceNoise(MeasurementTests):
         "measurement, d_in, d_out, expected, expectation",
         [
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
                 1,
                 1,
                 True,
                 does_not_raise(),
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
                 1,
                 2,
                 True,
                 does_not_raise(),
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
                 1,
                 "0.5",
                 False,
@@ -379,21 +372,21 @@ class TestAddLaplaceNoise(MeasurementTests):
                 ),
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=0),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
                 1,
                 float("inf"),
                 True,
                 does_not_raise(),
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=0),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
                 0,
                 0,
                 True,
                 does_not_raise(),
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=float("inf")),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=float("inf")),
                 1,
                 0,
                 True,
@@ -427,9 +420,9 @@ class TestAddLaplaceNoise(MeasurementTests):
         "measurement, expected_properties",
         [
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
                 {
-                    "input_domain": NumpyIntegerDomain(),
+                    "input_domain": NumpyFloatDomain(),
                     "scale": 1,
                     "input_metric": AbsoluteDifference(),
                     "output_type": DoubleType(),
@@ -451,9 +444,9 @@ class TestAddLaplaceNoise(MeasurementTests):
                 },
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=0),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
                 {
-                    "input_domain": NumpyIntegerDomain(),
+                    "input_domain": NumpyFloatDomain(),
                     "scale": 0,
                     "input_metric": AbsoluteDifference(),
                     "output_type": DoubleType(),
@@ -477,7 +470,7 @@ class TestAddLaplaceNoise(MeasurementTests):
         super().test_properties(measurement, expected_properties)
 
     @pytest.mark.parametrize(
-        "measurement", [AddLaplaceNoise(input_domain=NumpyIntegerDomain(), scale=1)]
+        "measurement", [AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1)]
     )
     def test_property_immutability(self, measurement: Measurement):
         """The properties return copies for mutable values.
@@ -939,9 +932,7 @@ class TestAddGaussianNoise(MeasurementTests):
 
     def test_format(self):
         """AddGaussianNoise formats as its class name with its inline attrs."""
-        measurement = AddGaussianNoise(
-            input_domain=NumpyIntegerDomain(), sigma_squared=1
-        )
+        measurement = AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1)
         assert (
             measurement.format()
             == "AddGaussianNoise output_type=DoubleType() sigma_squared=1"
@@ -952,18 +943,8 @@ class TestAddGaussianNoise(MeasurementTests):
         "measurement_args, expectation",
         [
             (
-                {
-                    "input_domain": NumpyIntegerDomain(),
-                    "sigma_squared": sp.Rational("0.3"),
-                },
-                does_not_raise(),
-            ),
-            (
-                {
-                    "input_domain": NumpyIntegerDomain(size=32),
-                    "sigma_squared": sp.Rational("0.3"),
-                },
-                does_not_raise(),
+                {"input_domain": NumpyIntegerDomain(), "sigma_squared": 1},
+                pytest.raises(TypeCheckError, match=re.escape('"input_domain"')),
             ),
             (
                 {"input_domain": NumpyStringDomain(), "sigma_squared": 1},
@@ -973,13 +954,13 @@ class TestAddGaussianNoise(MeasurementTests):
                 ),
             ),
             (
-                {"input_domain": NumpyIntegerDomain(), "sigma_squared": "x"},
+                {"input_domain": NumpyFloatDomain(), "sigma_squared": "x"},
                 pytest.raises(
                     ValueError, match="Invalid sigma_squared: x contains free symbols"
                 ),
             ),
             (
-                {"input_domain": NumpyIntegerDomain(), "sigma_squared": -1},
+                {"input_domain": NumpyFloatDomain(), "sigma_squared": -1},
                 pytest.raises(
                     ValueError,
                     match="Invalid sigma_squared: -1 is not greater than or equal to 0",
@@ -1039,7 +1020,7 @@ class TestAddGaussianNoise(MeasurementTests):
         [
             (
                 AddGaussianNoise(
-                    input_domain=NumpyIntegerDomain(), sigma_squared=float("inf")
+                    input_domain=NumpyFloatDomain(), sigma_squared=float("inf")
                 ),
                 np.int64(1),
             ),
@@ -1083,7 +1064,7 @@ class TestAddGaussianNoise(MeasurementTests):
         "measurement, input_data, expected_output",
         [
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=0),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
                 np.int64(10),
                 10.0,
             ),
@@ -1112,7 +1093,7 @@ class TestAddGaussianNoise(MeasurementTests):
         "measurement, input_data, expected_output_type",
         [
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=1),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
                 np.int64(10),
                 float,
             ),
@@ -1141,13 +1122,13 @@ class TestAddGaussianNoise(MeasurementTests):
         "measurement, d_in, expected_d_out, expectation",
         [
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=1),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
                 1,
                 "0.5",
                 does_not_raise(),
             ),
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=2),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=2),
                 1,
                 "0.25",
                 does_not_raise(),
@@ -1175,20 +1156,20 @@ class TestAddGaussianNoise(MeasurementTests):
                 ),
             ),
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=0),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
                 1,
                 float("inf"),
                 does_not_raise(),
             ),
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=0),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
                 0,
                 0,
                 does_not_raise(),
             ),
             (
                 AddGaussianNoise(
-                    input_domain=NumpyIntegerDomain(), sigma_squared=float("inf")
+                    input_domain=NumpyFloatDomain(), sigma_squared=float("inf")
                 ),
                 1,
                 0,
@@ -1220,21 +1201,21 @@ class TestAddGaussianNoise(MeasurementTests):
         "measurement, d_in, d_out, expected, expectation",
         [
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=1),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
                 1,
                 "1/2",
                 True,
                 does_not_raise(),
             ),
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=1),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
                 1,
                 2,
                 True,
                 does_not_raise(),
             ),
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=1),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
                 1,
                 "0.3",
                 False,
@@ -1299,14 +1280,14 @@ class TestAddGaussianNoise(MeasurementTests):
                 ),
             ),
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=0),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
                 1,
                 float("inf"),
                 True,
                 does_not_raise(),
             ),
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=0),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
                 0,
                 0,
                 True,
@@ -1314,7 +1295,7 @@ class TestAddGaussianNoise(MeasurementTests):
             ),
             (
                 AddGaussianNoise(
-                    input_domain=NumpyIntegerDomain(), sigma_squared=float("inf")
+                    input_domain=NumpyFloatDomain(), sigma_squared=float("inf")
                 ),
                 1,
                 0,
@@ -1349,9 +1330,9 @@ class TestAddGaussianNoise(MeasurementTests):
         "measurement, expected_properties",
         [
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=1),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
                 {
-                    "input_domain": NumpyIntegerDomain(),
+                    "input_domain": NumpyFloatDomain(),
                     "sigma_squared": 1,
                     "input_metric": AbsoluteDifference(),
                     "output_type": DoubleType(),
@@ -1375,9 +1356,9 @@ class TestAddGaussianNoise(MeasurementTests):
                 },
             ),
             (
-                AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=0),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
                 {
-                    "input_domain": NumpyIntegerDomain(),
+                    "input_domain": NumpyFloatDomain(),
                     "sigma_squared": 0,
                     "input_metric": AbsoluteDifference(),
                     "output_type": DoubleType(),
@@ -1402,7 +1383,7 @@ class TestAddGaussianNoise(MeasurementTests):
 
     @pytest.mark.parametrize(
         "measurement",
-        [AddGaussianNoise(input_domain=NumpyIntegerDomain(), sigma_squared=1)],
+        [AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1)],
     )
     def test_property_immutability(self, measurement: Measurement):
         """The properties return copies for mutable values.
