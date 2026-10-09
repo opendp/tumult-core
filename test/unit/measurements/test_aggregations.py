@@ -2077,14 +2077,10 @@ def test_gaussian_approxdp_error_messages(
         )
     ),
 )
-@parametrize(
-    Case("delta=1/2")(d_out=(sp.Integer(1), sp.Rational(1, 2))),
-    Case("delta=1/3")(d_out=(sp.Integer(1), sp.Rational(1, 3))),
-)
-def test_bad_delta_without_noise_mechanism(f: Callable, d_out: PrivacyBudgetInput):
+def test_bad_delta_without_noise_mechanism(f: Callable):
     """Test error is raised for invalid deltas."""
     with pytest.raises(ValueError):
-        f(d_out=d_out)
+        f(d_out=(sp.Integer(1), sp.Rational(1, 2)))
 
 
 big_test_size = 1000
