@@ -1673,12 +1673,12 @@ INPUT_DOMAIN = SparkDataFrameDomain(
 )
 
 
-_BOUNDED_INT = {
+_BOUNDED_INT_ARGS = {
     "lower": sp.Integer(0),
     "upper": sp.Integer(10),
     "measure_column": "int_col",
 }
-_BOUNDED_FLOAT = {
+_BOUNDED_FLOAT_ARGS = {
     "lower": sp.Rational(-5, 2),
     "upper": sp.Rational(15, 2),
     "measure_column": "float_col",
@@ -1698,27 +1698,27 @@ _BOUNDED_FLOAT = {
     ),
     Case("integer sum")(
         create_measurement_method=create_sum_measurement,
-        extra_args=_BOUNDED_INT,
+        extra_args=_BOUNDED_INT_ARGS,
         noise_mechanism=NoiseMechanism.DISCRETE_GAUSSIAN,
     ),
     Case("float sum")(
         create_measurement_method=create_sum_measurement,
-        extra_args=_BOUNDED_FLOAT,
+        extra_args=_BOUNDED_FLOAT_ARGS,
         noise_mechanism=NoiseMechanism.GAUSSIAN,
     ),
     Case("average")(
         create_measurement_method=create_average_measurement,
-        extra_args=_BOUNDED_INT,
+        extra_args=_BOUNDED_INT_ARGS,
         noise_mechanism=NoiseMechanism.GAUSSIAN,
     ),
     Case("standard deviation")(
         create_measurement_method=create_standard_deviation_measurement,
-        extra_args=_BOUNDED_INT,
+        extra_args=_BOUNDED_INT_ARGS,
         noise_mechanism=NoiseMechanism.GAUSSIAN,
     ),
     Case("variance")(
         create_measurement_method=create_variance_measurement,
-        extra_args=_BOUNDED_INT,
+        extra_args=_BOUNDED_INT_ARGS,
         noise_mechanism=NoiseMechanism.GAUSSIAN,
     ),
 )
@@ -1887,7 +1887,7 @@ _INTEGER_NOISE_FUNCTIONS = [
             create_sum_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            **_BOUNDED_INT,
+            **_BOUNDED_INT_ARGS,
         )
     ),
 ]
@@ -1897,7 +1897,7 @@ _CONTINUOUS_NOISE_FUNCTIONS = [
             create_sum_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            **_BOUNDED_FLOAT,
+            **_BOUNDED_FLOAT_ARGS,
         )
     ),
     Case("average")(
@@ -1905,7 +1905,7 @@ _CONTINUOUS_NOISE_FUNCTIONS = [
             create_average_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            **_BOUNDED_INT,
+            **_BOUNDED_INT_ARGS,
         )
     ),
     Case("standard deviation")(
@@ -1913,7 +1913,7 @@ _CONTINUOUS_NOISE_FUNCTIONS = [
             create_standard_deviation_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            **_BOUNDED_INT,
+            **_BOUNDED_INT_ARGS,
         )
     ),
     Case("variance")(
@@ -1921,7 +1921,7 @@ _CONTINUOUS_NOISE_FUNCTIONS = [
             create_variance_measurement,
             input_domain=INPUT_DOMAIN,
             input_metric=SymmetricDifference(),
-            **_BOUNDED_INT,
+            **_BOUNDED_INT_ARGS,
         )
     ),
 ]
