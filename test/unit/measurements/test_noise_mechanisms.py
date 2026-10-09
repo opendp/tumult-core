@@ -19,6 +19,7 @@ from tmlt.core.domains.numpy_domains import (
     NumpyIntegerDomain,
     NumpyStringDomain,
 )
+from tmlt.core.exceptions import OutOfDomainError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measurements.noise_mechanisms import (
     AddDiscreteGaussianNoise,
@@ -122,7 +123,7 @@ class TestAddLaplaceNoise(MeasurementTests):
         [
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=float("inf")),
-                np.int64(1),
+                np.float64(1),
             ),
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=float("inf")),
@@ -163,7 +164,7 @@ class TestAddLaplaceNoise(MeasurementTests):
         [
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
-                np.int64(10),
+                np.float64(10),
                 10.0,
             ),
             (
@@ -190,7 +191,7 @@ class TestAddLaplaceNoise(MeasurementTests):
         [
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
-                np.int64(10),
+                np.float64(10),
                 float,
             ),
             (
@@ -1022,7 +1023,7 @@ class TestAddGaussianNoise(MeasurementTests):
                 AddGaussianNoise(
                     input_domain=NumpyFloatDomain(), sigma_squared=float("inf")
                 ),
-                np.int64(1),
+                np.float64(1),
             ),
             (
                 AddGaussianNoise(
@@ -1065,7 +1066,7 @@ class TestAddGaussianNoise(MeasurementTests):
         [
             (
                 AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
-                np.int64(10),
+                np.float64(10),
                 10.0,
             ),
             (
@@ -1094,7 +1095,7 @@ class TestAddGaussianNoise(MeasurementTests):
         [
             (
                 AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
-                np.int64(10),
+                np.float64(10),
                 float,
             ),
             (
@@ -1810,3 +1811,30 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
                 assert actual == pytest.approx(expected), (
                     f"Expected {expected}, got {actual}"
                 )
+
+
+@pytest.mark.parametrize(
+    "measurement",
+    [
+        AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
+        AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
+    ],
+    ids=["laplace", "gaussian"],
+)
+@pytest.mark.parametrize("value", [1, np.int64(1)], ids=["int", "np.int64"])
+def test_continuous_noise_rejects_integers(measurement: Measurement, value: Any):
+    """Continuous noise mechanisms reject integer inputs."""
+    with pytest.raises(OutOfDomainError, match="only accepts floats"):
+        measurement(value)
+
+
+@pytest.mark.parametrize(
+    "measurement",
+    [AddGeometricNoise(alpha=1), AddDiscreteGaussianNoise(sigma_squared=1)],
+    ids=["geometric", "discrete gaussian"],
+)
+@pytest.mark.parametrize("value", [1.0, np.float64(1)], ids=["float", "np.float64"])
+def test_integer_noise_rejects_floats(measurement: Measurement, value: Any):
+    """Integer noise mechanisms reject float inputs."""
+    with pytest.raises(OutOfDomainError, match="only accepts integers"):
+        measurement(value)

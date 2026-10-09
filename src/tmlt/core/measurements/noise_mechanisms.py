@@ -13,6 +13,7 @@ from scipy import stats
 from typeguard import typechecked
 
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
+from tmlt.core.exceptions import OutOfDomainError
 from tmlt.core.measurements.base import Measurement
 from tmlt.core.measures import PureDP, RhoZCDP
 from tmlt.core.metrics import AbsoluteDifference
@@ -125,6 +126,13 @@ class AddLaplaceNoise(Measurement):
         Args:
             val: Value to add Laplace noise to.
         """
+        if not isinstance(val, (float, np.floating)):
+            raise OutOfDomainError(
+                self.input_domain,
+                val,
+                f"{self.__class__.__name__} only accepts floats, not"
+                f" {type(val).__name__}.",
+            )
         if not self.scale.is_finite:
             return random.choice([float("inf"), -float("inf")])
         if self.scale == 0:
@@ -236,7 +244,7 @@ class AddGeometricNoise(Measurement):
             return ExactNumber(float("inf"))
         return d_in / self.alpha
 
-    def __call__(self, value: Union[np.int32, np.int64, float, int]) -> int:
+    def __call__(self, value: Union[np.int32, np.int64, int]) -> int:
         r"""Returns the value with double sided geometric noise added.
 
         The added noise has the probability mass function
@@ -267,6 +275,13 @@ class AddGeometricNoise(Measurement):
         Args:
             value: Value to add geometric noise to.
         """
+        if not isinstance(value, (int, np.integer)):
+            raise OutOfDomainError(
+                self.input_domain,
+                value,
+                f"{self.__class__.__name__} only accepts integers, not"
+                f" {type(value).__name__}.",
+            )
         if self.alpha == 0:
             return int(value)
         float_scale = self.alpha.to_float(round_up=True)
@@ -392,7 +407,7 @@ class AddDiscreteGaussianNoise(Measurement):
             return ExactNumber(float("inf"))
         return (d_in**2) / (2 * self._sigma_squared)
 
-    def __call__(self, value: Union[np.int32, np.int64, float, int]) -> int:
+    def __call__(self, value: Union[np.int32, np.int64, int]) -> int:
         r"""Adds discrete Gaussian noise with specified scale.
 
         The added noise has the probability mass function
@@ -414,6 +429,13 @@ class AddDiscreteGaussianNoise(Measurement):
         See :cite:`Canonne0S20` for more information. The formula above is based on
         Definition 1.
         """
+        if not isinstance(value, (int, np.integer)):
+            raise OutOfDomainError(
+                self.input_domain,
+                value,
+                f"{self.__class__.__name__} only accepts integers, not"
+                f" {type(value).__name__}.",
+            )
         if self.sigma_squared == 0:
             return int(value)
         float_scale = self.sigma_squared.to_float(round_up=True)
@@ -551,6 +573,13 @@ class AddGaussianNoise(Measurement):
         value returned is (:math:`\infty` with probability 1/2 and
         :math:`-\infty` with probability 1/2
         """
+        if not isinstance(value, (float, np.floating)):
+            raise OutOfDomainError(
+                self.input_domain,
+                value,
+                f"{self.__class__.__name__} only accepts floats, not"
+                f" {type(value).__name__}.",
+            )
         if not self.sigma_squared.is_finite:
             return random.choice([float("inf"), -float("inf")])
         if self.sigma_squared == 0:
