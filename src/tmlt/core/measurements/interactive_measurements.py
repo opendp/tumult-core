@@ -1229,6 +1229,9 @@ class PrivacyAccountant:
                 ...     ),
                 ...     data=np.int64(20),
                 ... )
+                >>> import doctest
+                >>> doctest.ELLIPSIS_MARKER = '...'
+
 
             >>> privacy_accountant.input_domain
             NumpyIntegerDomain(size=64)
