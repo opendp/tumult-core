@@ -1037,7 +1037,7 @@ class SumGrouped(Transformation):
     @property
     def input_domain(self) -> SparkGroupedDataFrameDomain:
         """Returns input domain."""
-        return cast(SparkGroupedDataFrameDomain, self._input_domain)
+        return cast(SparkGroupedDataFrameDomain, super().input_domain)
 
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:

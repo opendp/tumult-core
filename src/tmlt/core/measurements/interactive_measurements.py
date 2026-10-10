@@ -700,7 +700,7 @@ class ParallelComposition(Measurement):
                 :meth:`~.Measurement.privacy_relation` raise
                 :class:`NotImplementedError`.
         """
-        if isinstance(self._output_measure, ApproxDP):
+        if isinstance(self.output_measure, ApproxDP):
             privacy_functions = [
                 measurement.privacy_function(d_in) for measurement in self.measurements
             ]
@@ -1229,6 +1229,9 @@ class PrivacyAccountant:
                 ...     ),
                 ...     data=np.int64(20),
                 ... )
+                >>> import doctest
+                >>> doctest.ELLIPSIS_MARKER = '...'
+
 
             >>> privacy_accountant.input_domain
             NumpyIntegerDomain(size=64)

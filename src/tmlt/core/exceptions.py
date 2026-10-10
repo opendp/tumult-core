@@ -1,13 +1,13 @@
 """Special exceptions raised by Core in certain situations."""
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Collection, Iterable, Union
 
 import sympy as sp
-
-# SPDX-License-Identifier: Apache-2.0
-# Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
 # TYPE_CHECKING is True when MyPy analyzes this file, but False at runtime
 # (see: https://docs.python.org/3/library/typing.html)
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     import tmlt.core.measurements.aggregations
     import tmlt.core.measures
     import tmlt.core.metrics
+    from tmlt.core.measurements.base import Measurement
+    from tmlt.core.transformations.base import Transformation
 
 
 class OutOfDomainError(Exception):
@@ -268,4 +270,28 @@ class UnsupportedSympyExprError(ValueError):
             msg: The error message.
         """
         self.expr = expr
+        super().__init__(msg)
+
+
+class InvalidComponentError(Exception):
+    """Error raised when a custom component is defined incorrectly.
+
+    This error is indicates that a component is defined in a way that violates
+    the expectations of its parent class, for example by failing to initialize
+    expected fields. It reflects an error in the component's definition, not a
+    problem with the parameters passed to its constructor.
+
+    Attributes:
+        component: The component class object.
+        msg: The error message.
+    """
+
+    def __init__(self, component: type[Transformation | Measurement], msg: str):
+        """Constructor.
+
+        Args:
+            component: The component class object.
+            msg: The error message.
+        """
+        self.component = component
         super().__init__(msg)

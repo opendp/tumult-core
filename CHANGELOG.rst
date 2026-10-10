@@ -10,6 +10,7 @@ Added
 ~~~~~
 
 - Support for Python 3.13 and 3.14.
+- :class:`.DerivedTransformation` and :class:`.DerivedMeasurement`, which allow defining named components built from existing transformations and measurements.
 - :class:`.Transformation`\s, :class:`.Measurement`\ s, and :class:`.Domain`\ s have a new ``format`` method, which renders a human-readable string showing the structure of the object to aid in visualization and debugging.
 
 Changed
