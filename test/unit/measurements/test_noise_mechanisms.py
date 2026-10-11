@@ -77,7 +77,7 @@ class TestAddLaplaceNoise(MeasurementTests):
             ),
             ({"input_domain": NumpyFloatDomain(), "scale": "52/3"}, does_not_raise()),
             (
-                {"input_domain": NumpyFloatDomain(size=32), "scale": "52/3"},
+                {"input_domain": NumpyFloatDomain(), "scale": "52/3"},
                 does_not_raise(),
             ),
             (
@@ -123,11 +123,11 @@ class TestAddLaplaceNoise(MeasurementTests):
         [
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=float("inf")),
-                np.float64(1),
+                1.0,
             ),
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=float("inf")),
-                np.float64(-1),
+                -1.0,
             ),
         ],
     )
@@ -164,12 +164,12 @@ class TestAddLaplaceNoise(MeasurementTests):
         [
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
-                np.float64(10),
+                10.0,
                 10.0,
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyFloatDomain(size=32), scale=0),
-                np.float32(-0.1234567),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
+                float(np.float32(-0.1234567)),
                 float(np.float32(-0.1234567)),
             ),
         ],
@@ -191,12 +191,12 @@ class TestAddLaplaceNoise(MeasurementTests):
         [
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
-                np.float64(10),
+                10.0,
                 float,
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyFloatDomain(size=32), scale=1),
-                np.float32(-0.1234567),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
+                float(np.float32(-0.1234567)),
                 float,
             ),
         ],
@@ -433,9 +433,9 @@ class TestAddLaplaceNoise(MeasurementTests):
                 },
             ),
             (
-                AddLaplaceNoise(input_domain=NumpyFloatDomain(size=32), scale=2),
+                AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=2),
                 {
-                    "input_domain": NumpyFloatDomain(size=32),
+                    "input_domain": NumpyFloatDomain(),
                     "scale": 2,
                     "input_metric": AbsoluteDifference(),
                     "output_type": DoubleType(),
@@ -644,8 +644,8 @@ class TestAddGeometricNoise(MeasurementTests):
     @pytest.mark.parametrize(
         "measurement, input_data, expected_output",
         [
-            (AddGeometricNoise(alpha=0), np.int64(10), 10),
-            (AddGeometricNoise(alpha=0), np.int64(-10), -10),
+            (AddGeometricNoise(alpha=0), 10, 10),
+            (AddGeometricNoise(alpha=0), -10, -10),
         ],
     )
     def test_no_protection(
@@ -662,7 +662,7 @@ class TestAddGeometricNoise(MeasurementTests):
 
     @pytest.mark.parametrize(
         "measurement, input_data, expected_output_type",
-        [(AddGeometricNoise(alpha=3), np.int64(0), int)],
+        [(AddGeometricNoise(alpha=3), 0, int)],
     )
     def test_output(
         self, measurement: Measurement, input_data: Any, expected_output_type: type
@@ -972,7 +972,7 @@ class TestAddGaussianNoise(MeasurementTests):
                 does_not_raise(),
             ),
             (
-                {"input_domain": NumpyFloatDomain(size=32), "sigma_squared": "52/3"},
+                {"input_domain": NumpyFloatDomain(), "sigma_squared": "52/3"},
                 does_not_raise(),
             ),
             (
@@ -1023,13 +1023,13 @@ class TestAddGaussianNoise(MeasurementTests):
                 AddGaussianNoise(
                     input_domain=NumpyFloatDomain(), sigma_squared=float("inf")
                 ),
-                np.float64(1),
+                1.0,
             ),
             (
                 AddGaussianNoise(
                     input_domain=NumpyFloatDomain(), sigma_squared=float("inf")
                 ),
-                np.float64(-1),
+                -1.0,
             ),
         ],
     )
@@ -1066,14 +1066,12 @@ class TestAddGaussianNoise(MeasurementTests):
         [
             (
                 AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
-                np.float64(10),
+                10.0,
                 10.0,
             ),
             (
-                AddGaussianNoise(
-                    input_domain=NumpyFloatDomain(size=32), sigma_squared=0
-                ),
-                np.float32(-0.1234567),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
+                float(np.float32(-0.1234567)),
                 float(np.float32(-0.1234567)),
             ),
         ],
@@ -1095,14 +1093,12 @@ class TestAddGaussianNoise(MeasurementTests):
         [
             (
                 AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
-                np.float64(10),
+                10.0,
                 float,
             ),
             (
-                AddGaussianNoise(
-                    input_domain=NumpyFloatDomain(size=32), sigma_squared=1
-                ),
-                np.float32(-0.1234567),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
+                float(np.float32(-0.1234567)),
                 float,
             ),
         ],
@@ -1343,11 +1339,9 @@ class TestAddGaussianNoise(MeasurementTests):
                 },
             ),
             (
-                AddGaussianNoise(
-                    input_domain=NumpyFloatDomain(size=32), sigma_squared=2
-                ),
+                AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=2),
                 {
-                    "input_domain": NumpyFloatDomain(size=32),
+                    "input_domain": NumpyFloatDomain(),
                     "sigma_squared": 2,
                     "input_metric": AbsoluteDifference(),
                     "output_type": DoubleType(),
@@ -1494,8 +1488,8 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
     @pytest.mark.parametrize(
         "measurement, input_data, expected_output",
         [
-            (AddDiscreteGaussianNoise(sigma_squared=0), np.int64(10), 10),
-            (AddDiscreteGaussianNoise(sigma_squared=0), np.int64(-10), -10),
+            (AddDiscreteGaussianNoise(sigma_squared=0), 10, 10),
+            (AddDiscreteGaussianNoise(sigma_squared=0), -10, -10),
         ],
     )
     def test_no_protection(
@@ -1512,7 +1506,7 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
 
     @pytest.mark.parametrize(
         "measurement, input_data, expected_output_type",
-        [(AddDiscreteGaussianNoise(sigma_squared=3), np.int64(0), int)],
+        [(AddDiscreteGaussianNoise(sigma_squared=3), 0, int)],
     )
     def test_output(
         self, measurement: Measurement, input_data: Any, expected_output_type: type
@@ -1821,10 +1815,18 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
     ],
     ids=["laplace", "gaussian"],
 )
-@pytest.mark.parametrize("value", [1, np.int64(1)], ids=["int", "np.int64"])
-def test_continuous_noise_rejects_integers(measurement: Measurement, value: Any):
-    """Continuous noise mechanisms reject integer inputs."""
-    with pytest.raises(OutOfDomainError, match="only accepts floats"):
+@pytest.mark.parametrize(
+    "value",
+    [1, np.int64(1), np.float32(1), np.longdouble(1)],
+    ids=["int", "np.int64", "np.float32", "np.longdouble"],
+)
+def test_continuous_noise_rejects_non_64_bit_floats(
+    measurement: Measurement, value: Any
+):
+    """Continuous noise mechanisms only accept floats and 64-bit NumPy floats."""
+    with pytest.raises(
+        OutOfDomainError, match=re.escape("only accepts float or numpy.float64 values")
+    ):
         measurement(value)
 
 
@@ -1833,8 +1835,48 @@ def test_continuous_noise_rejects_integers(measurement: Measurement, value: Any)
     [AddGeometricNoise(alpha=1), AddDiscreteGaussianNoise(sigma_squared=1)],
     ids=["geometric", "discrete gaussian"],
 )
-@pytest.mark.parametrize("value", [1.0, np.float64(1)], ids=["float", "np.float64"])
-def test_integer_noise_rejects_floats(measurement: Measurement, value: Any):
-    """Integer noise mechanisms reject float inputs."""
-    with pytest.raises(OutOfDomainError, match="only accepts integers"):
+@pytest.mark.parametrize(
+    "value",
+    [1.0, np.float64(1), np.int32(1), np.uint64(1)],
+    ids=["float", "np.float64", "np.int32", "np.uint64"],
+)
+def test_integer_noise_rejects_non_64_bit_ints(measurement: Measurement, value: Any):
+    """Integer noise mechanisms only accept ints and 64-bit NumPy ints."""
+    with pytest.raises(
+        OutOfDomainError, match=re.escape("only accepts int or numpy.int64 values")
+    ):
         measurement(value)
+
+
+@pytest.mark.parametrize(
+    "measurement, value, output_type",
+    [
+        (AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1), 1.0, float),
+        (
+            AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
+            np.float64(1),
+            float,
+        ),
+        (
+            AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
+            np.float64(1),
+            float,
+        ),
+        (AddGeometricNoise(alpha=1), 1, int),
+        (AddGeometricNoise(alpha=1), np.int64(1), int),
+        (AddDiscreteGaussianNoise(sigma_squared=1), np.int64(1), int),
+    ],
+    ids=[
+        "laplace-float",
+        "laplace-np.float64",
+        "gaussian-np.float64",
+        "geometric-int",
+        "geometric-np.int64",
+        "discrete gaussian-np.int64",
+    ],
+)
+def test_noise_accepts_64_bit_values(
+    measurement: Measurement, value: Any, output_type: type
+):
+    """Noise mechanisms accept 64-bit values and return Python numbers."""
+    assert type(measurement(value)) is output_type

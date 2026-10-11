@@ -16,7 +16,6 @@ from pyspark.sql import DataFrame
 from pyspark.sql.types import (
     DateType,
     DoubleType,
-    IntegerType,
     LongType,
     StringType,
     StructField,
@@ -416,21 +415,6 @@ JOIN_VALIDATION_CASES: Any = [
             ),
         ),
     ),
-    (
-        StructType([StructField("a", IntegerType())]),
-        StructType([StructField("a", LongType())]),
-        ["a"],
-        "inner",
-        pytest.raises(
-            ValueError,
-            match=re.escape(
-                (
-                    "'a' has different data types in left (IntegerType) and right "
-                    "(LongType) domains."
-                )
-            ),
-        ),
-    ),
 ]
 
 ANTI_JOIN_VALIDATION_CASES: Any = [
@@ -625,21 +609,6 @@ ANTI_JOIN_VALIDATION_CASES: Any = [
                 (
                     "'a' has different data types in left (LongType) and"
                     " right (StringType) domains."
-                )
-            ),
-        ),
-    ),
-    (
-        StructType([StructField("a", IntegerType())]),
-        StructType([StructField("a", LongType())]),
-        ["a"],
-        "left_anti",
-        pytest.raises(
-            ValueError,
-            match=re.escape(
-                (
-                    "'a' has different data types in left (IntegerType) and right "
-                    "(LongType) domains."
                 )
             ),
         ),

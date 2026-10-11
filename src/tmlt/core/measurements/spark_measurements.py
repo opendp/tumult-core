@@ -14,7 +14,7 @@ from typing import Any, List, Optional, Tuple, Union, cast
 import sympy as sp
 from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as sf
-from pyspark.sql.types import IntegerType
+from pyspark.sql.types import LongType
 from typeguard import typechecked
 
 # cleanup is imported just so its cleanup function runs at exit
@@ -143,7 +143,7 @@ class AddNoiseToColumn(SparkMeasurement):
         * Output measure - :class:`~.PureDP` or :class:`~.RhoZCDP`
 
         >>> add_geometric_noise_to_column.input_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> add_geometric_noise_to_column.input_metric
         OnColumn(column='count', metric=SumOf(inner_metric=AbsoluteDifference()))
         >>> add_geometric_noise_to_column.output_measure
@@ -656,7 +656,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
         * Output measure - :class:`~.PureDP`
 
         >>> measurement.input_domain
-        SparkDataFrameDomain(schema={'grouping': SparkStringColumnDescriptor(allow_null=False), 'rank': SparkIntegerColumnDescriptor(allow_null=False, size=64), 'count': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'grouping': SparkStringColumnDescriptor(allow_null=False), 'rank': SparkIntegerColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> measurement.input_metric
         OnColumn(column='count', metric=SumOf(inner_metric=AbsoluteDifference()))
         >>> measurement.output_measure
@@ -812,7 +812,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
 
         add_threshold_noise = sf.pandas_udf(
             AddNoiseToSeries(AddGeometricNoise(self.alpha / 2)),
-            IntegerType(),
+            LongType(),
             sf.PandasUDFType.SCALAR,
         ).asNondeterministic()
         thresholds = (
@@ -822,7 +822,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
                 threshold_column,
                 add_threshold_noise(
                     (sf.col("total_count") * sf.lit(self.threshold_fraction)).cast(
-                        "int"
+                        "long"
                     )
                 ),
             )
@@ -831,7 +831,7 @@ class SparseVectorPrefixSums(SparkMeasurement):
 
         add_bin_noise = sf.pandas_udf(
             AddNoiseToSeries(AddGeometricNoise(self.alpha)),
-            IntegerType(),
+            LongType(),
             sf.PandasUDFType.SCALAR,
         ).asNondeterministic()
         df = df.withColumn(self.count_column, add_bin_noise(sf.col(self.count_column)))

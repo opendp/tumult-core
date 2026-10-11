@@ -78,9 +78,9 @@ class AddUniqueColumn(Transformation):
             * Output metric - :class:`~.IfGroupedBy` over :class:`~.SymmetricDifference`
 
             >>> add_unique_column.input_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=False, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=False)})
             >>> add_unique_column.output_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=False, size=64), 'ID': SparkStringColumnDescriptor(allow_null=False)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=False), 'ID': SparkStringColumnDescriptor(allow_null=False)})
             >>> add_unique_column.input_metric
             SymmetricDifference()
             >>> add_unique_column.output_metric

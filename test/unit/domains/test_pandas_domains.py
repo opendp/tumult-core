@@ -24,14 +24,10 @@ from tmlt.core.domains.pandas_domains import PandasDataFrameDomain, PandasSeries
 from tmlt.core.utils.misc import get_fullname
 
 _pandas_series_domains = {
-    "int32_series_domain": PandasSeriesDomain(
-        element_domain=NumpyIntegerDomain(size=32)
-    ),
-    "int64_series_domain": PandasSeriesDomain(
-        element_domain=NumpyIntegerDomain(size=64)
-    ),
-    "float32_inf_series_domain": PandasSeriesDomain(
-        element_domain=NumpyFloatDomain(size=32, allow_inf=True)
+    "int64_series_domain": PandasSeriesDomain(element_domain=NumpyIntegerDomain()),
+    "float64_series_domain": PandasSeriesDomain(element_domain=NumpyFloatDomain()),
+    "float64_inf_series_domain": PandasSeriesDomain(
+        element_domain=NumpyFloatDomain(allow_inf=True)
     ),
 }
 
@@ -128,16 +124,16 @@ class TestPandasSeriesDomain(DomainTests):
         "domain, expected_properties",
         [
             (
-                PandasSeriesDomain(NumpyIntegerDomain(size=32)),
+                PandasSeriesDomain(NumpyIntegerDomain()),
                 {
-                    "element_domain": NumpyIntegerDomain(size=32),
+                    "element_domain": NumpyIntegerDomain(),
                     "carrier_type": pd.Series,
                 },
             ),
             (
-                PandasSeriesDomain(NumpyFloatDomain(size=32, allow_inf=True)),
+                PandasSeriesDomain(NumpyFloatDomain(allow_inf=True)),
                 {
-                    "element_domain": NumpyFloatDomain(size=32, allow_inf=True),
+                    "element_domain": NumpyFloatDomain(allow_inf=True),
                     "carrier_type": pd.Series,
                 },
             ),
@@ -156,9 +152,8 @@ class TestPandasSeriesDomain(DomainTests):
     @pytest.mark.parametrize(
         "domain",
         [
-            PandasSeriesDomain(NumpyIntegerDomain(size=32)),
-            PandasSeriesDomain(NumpyIntegerDomain(size=64)),
-            PandasSeriesDomain(NumpyFloatDomain(size=32, allow_inf=True)),
+            PandasSeriesDomain(NumpyIntegerDomain()),
+            PandasSeriesDomain(NumpyFloatDomain(allow_inf=True)),
         ],
     )
     def test_property_immutability(self, domain: Domain):
@@ -174,39 +169,33 @@ class TestPandasSeriesDomain(DomainTests):
         [
             # Success cases
             (
-                PandasSeriesDomain(NumpyIntegerDomain(size=32)),
-                pd.Series([1, 2], dtype=np.dtype("int32")),
-                does_not_raise(),
-                None,
-            ),
-            (
                 PandasSeriesDomain(NumpyIntegerDomain()),
                 pd.Series([1, 2], dtype=np.dtype("int64")),
                 does_not_raise(),
                 None,
             ),
             (
-                PandasSeriesDomain(NumpyFloatDomain(size=32, allow_inf=True)),
-                pd.Series([1, 2], dtype=np.dtype("float32")),
+                PandasSeriesDomain(NumpyFloatDomain(allow_inf=True)),
+                pd.Series([1, 2], dtype=np.dtype("float64")),
                 does_not_raise(),
                 None,
             ),
             # Failure cases
             (
-                PandasSeriesDomain(NumpyIntegerDomain(size=32)),
-                pd.Series([1, 2], dtype=np.dtype("int64")),
+                PandasSeriesDomain(NumpyFloatDomain()),
+                pd.Series([1, 2], dtype=np.dtype("float32")),
                 pytest.raises(OutOfDomainError),
                 {
-                    "domain": PandasSeriesDomain(NumpyIntegerDomain(size=32)),
-                    "value": pd.Series([1, 2], dtype=np.dtype("int64")),
+                    "domain": PandasSeriesDomain(NumpyFloatDomain()),
+                    "value": pd.Series([1, 2], dtype=np.dtype("float32")),
                 },
             ),
             (
-                PandasSeriesDomain(NumpyIntegerDomain(size=32)),
+                PandasSeriesDomain(NumpyIntegerDomain()),
                 "not a series",
                 pytest.raises(OutOfDomainError),
                 {
-                    "domain": PandasSeriesDomain(NumpyIntegerDomain(size=32)),
+                    "domain": PandasSeriesDomain(NumpyIntegerDomain()),
                     "value": "not a series",
                 },
             ),
@@ -262,20 +251,15 @@ class TestPandasSeriesDomain(DomainTests):
         [
             (
                 np.dtype(dtype),
-                PandasSeriesDomain(NumpyIntegerDomain(size=32)),
-                does_not_raise(),
+                None,
+                pytest.raises(ValueError, match="Unsupported dtype"),
             )
-            for dtype in [np.int8, np.int16, np.int32, np.bool_]
+            for dtype in [np.int8, np.int16, np.int32, np.uint64, np.bool_, np.float32]
         ]
         + [
             (
-                np.dtype(np.float32),
-                PandasSeriesDomain(NumpyFloatDomain(size=32)),
-                does_not_raise(),
-            ),
-            (
                 np.dtype(np.float64),
-                PandasSeriesDomain(NumpyFloatDomain(size=64)),
+                PandasSeriesDomain(NumpyFloatDomain()),
                 does_not_raise(),
             ),
             (
@@ -285,10 +269,10 @@ class TestPandasSeriesDomain(DomainTests):
             ),
             (
                 np.dtype(np.int64),
-                PandasSeriesDomain(NumpyIntegerDomain(size=64)),
+                PandasSeriesDomain(NumpyIntegerDomain()),
                 does_not_raise(),
             ),
-            (np.dtype([("f1", np.int16)]), None, pytest.raises(KeyError)),
+            (np.dtype([("f1", np.int16)]), None, pytest.raises(ValueError)),
         ],
     )
     def test_from_numpy_type(
@@ -396,7 +380,7 @@ class TestPandasDataFrameDomain(DomainTests):
             (
                 PandasDataFrameDomain(
                     {
-                        "A": PandasSeriesDomain(NumpyIntegerDomain(size=32)),
+                        "A": PandasSeriesDomain(NumpyFloatDomain()),
                         "B": PandasSeriesDomain(NumpyFloatDomain(allow_inf=True)),
                         "C": PandasSeriesDomain(NumpyStringDomain()),
                     }
@@ -651,30 +635,25 @@ class TestPandasDataFrameDomain(DomainTests):
         [
             # Success cases
             (
-                {"A": np.dtype("int32"), "B": np.dtype("float32")},
+                {"A": np.dtype("int64"), "B": np.dtype("float64")},
                 PandasDataFrameDomain(
                     {
-                        "A": PandasSeriesDomain(NumpyIntegerDomain(size=32)),
-                        "B": PandasSeriesDomain(NumpyFloatDomain(size=32)),
-                    }
-                ),
-                does_not_raise(),
-            ),
-            (
-                {"A": np.dtype("int64"), "B": np.dtype("bool")},
-                PandasDataFrameDomain(
-                    {
-                        "A": PandasSeriesDomain(NumpyIntegerDomain(size=64)),
-                        "B": PandasSeriesDomain(NumpyIntegerDomain(size=32)),
+                        "A": PandasSeriesDomain(NumpyIntegerDomain()),
+                        "B": PandasSeriesDomain(NumpyFloatDomain()),
                     }
                 ),
                 does_not_raise(),
             ),
             # Failure cases
             (
-                {"A": np.dtype("int32"), "B": np.dtype([("f1", np.int16)])},
+                {"A": np.dtype("int64"), "B": np.dtype("float32")},
                 None,
-                pytest.raises(KeyError),
+                pytest.raises(ValueError, match="Unsupported dtype float32"),
+            ),
+            (
+                {"A": np.dtype("int64"), "B": np.dtype([("f1", np.int16)])},
+                None,
+                pytest.raises(ValueError),
             ),
         ],
     )

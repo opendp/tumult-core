@@ -125,7 +125,7 @@ class GroupedDataFrame:
         nonempty_groups_output = (
             self._dataframe.groupBy(self.groupby_columns)
             .agg(func)
-            .withColumn(empty_indicator, sf.lit(0))
+            .withColumn(empty_indicator, sf.lit(0).cast("long"))
         )
         all_groups_output = join(
             left=self.group_keys,
@@ -169,7 +169,7 @@ class GroupedDataFrame:
             )
 
         empty_indicator = get_nonconflicting_string(self._dataframe.columns)
-        sdf = self._dataframe.withColumn(empty_indicator, sf.lit(0))
+        sdf = self._dataframe.withColumn(empty_indicator, sf.lit(0).cast("long"))
 
         sdf = join(
             left=self.group_keys,

@@ -111,7 +111,7 @@ class AddLaplaceNoise(Measurement):
             return ExactNumber(float("inf"))
         return d_in / self.scale
 
-    def __call__(self, val: Union[np.float32, np.float64, float]) -> float:
+    def __call__(self, val: Union[float, np.float64]) -> float:
         r"""Returns the value with Laplace noise added.
 
         The added Laplace noise has the probability density function
@@ -126,12 +126,12 @@ class AddLaplaceNoise(Measurement):
         Args:
             val: Value to add Laplace noise to.
         """
-        if not isinstance(val, (float, np.floating)):
+        if not isinstance(val, float):
             raise OutOfDomainError(
                 self.input_domain,
                 val,
-                f"{self.__class__.__name__} only accepts floats, not"
-                f" {type(val).__name__}.",
+                f"{self.__class__.__name__} only accepts float or numpy.float64 values,"
+                f" not {type(val).__name__}.",
             )
         if not self.scale.is_finite:
             return random.choice([float("inf"), -float("inf")])
@@ -244,7 +244,7 @@ class AddGeometricNoise(Measurement):
             return ExactNumber(float("inf"))
         return d_in / self.alpha
 
-    def __call__(self, value: Union[np.int32, np.int64, int]) -> int:
+    def __call__(self, value: Union[int, np.int64]) -> int:
         r"""Returns the value with double sided geometric noise added.
 
         The added noise has the probability mass function
@@ -275,12 +275,12 @@ class AddGeometricNoise(Measurement):
         Args:
             value: Value to add geometric noise to.
         """
-        if not isinstance(value, (int, np.integer)):
+        if not isinstance(value, (int, np.int64)):
             raise OutOfDomainError(
                 self.input_domain,
                 value,
-                f"{self.__class__.__name__} only accepts integers, not"
-                f" {type(value).__name__}.",
+                f"{self.__class__.__name__} only accepts int or numpy.int64 values,"
+                f" not {type(value).__name__}.",
             )
         if self.alpha == 0:
             return int(value)
@@ -296,7 +296,7 @@ class AddGeometricNoise(Measurement):
             # _sample_dlaplace produces a noise distribution that
             # matches the equation above.
             noise = _sample_dlaplace(float_scale)
-        return int(value + noise)
+        return int(value) + noise
 
     @classmethod
     def inverse_cdf(cls, alpha: float, probability: float) -> float:
@@ -407,7 +407,7 @@ class AddDiscreteGaussianNoise(Measurement):
             return ExactNumber(float("inf"))
         return (d_in**2) / (2 * self._sigma_squared)
 
-    def __call__(self, value: Union[np.int32, np.int64, int]) -> int:
+    def __call__(self, value: Union[int, np.int64]) -> int:
         r"""Adds discrete Gaussian noise with specified scale.
 
         The added noise has the probability mass function
@@ -429,17 +429,17 @@ class AddDiscreteGaussianNoise(Measurement):
         See :cite:`Canonne0S20` for more information. The formula above is based on
         Definition 1.
         """
-        if not isinstance(value, (int, np.integer)):
+        if not isinstance(value, (int, np.int64)):
             raise OutOfDomainError(
                 self.input_domain,
                 value,
-                f"{self.__class__.__name__} only accepts integers, not"
-                f" {type(value).__name__}.",
+                f"{self.__class__.__name__} only accepts int or numpy.int64 values,"
+                f" not {type(value).__name__}.",
             )
         if self.sigma_squared == 0:
             return int(value)
         float_scale = self.sigma_squared.to_float(round_up=True)
-        return int(value + sample_dgauss(float_scale))
+        return int(value) + sample_dgauss(float_scale)
 
     @classmethod
     def inverse_cdf(cls, sigma_squared: float, probability: float) -> float:
@@ -558,7 +558,7 @@ class AddGaussianNoise(Measurement):
             return ExactNumber(float("inf"))
         return (d_in**2) / (2 * self._sigma_squared)
 
-    def __call__(self, value: Union[np.float32, np.float64, float]) -> float:
+    def __call__(self, value: Union[float, np.float64]) -> float:
         r"""Adds Gaussian noise with specified scale.
 
         The added noise has the probability density function
@@ -573,12 +573,12 @@ class AddGaussianNoise(Measurement):
         value returned is (:math:`\infty` with probability 1/2 and
         :math:`-\infty` with probability 1/2
         """
-        if not isinstance(value, (float, np.floating)):
+        if not isinstance(value, float):
             raise OutOfDomainError(
                 self.input_domain,
                 value,
-                f"{self.__class__.__name__} only accepts floats, not"
-                f" {type(value).__name__}.",
+                f"{self.__class__.__name__} only accepts float or numpy.float64 values,"
+                f" not {type(value).__name__}.",
             )
         if not self.sigma_squared.is_finite:
             return random.choice([float("inf"), -float("inf")])
@@ -586,4 +586,4 @@ class AddGaussianNoise(Measurement):
             return float(value)
 
         float_scale = self.sigma_squared.to_float(round_up=True)
-        return float(value + gaussian(u=0, sigma_squared=float_scale))
+        return float(value) + gaussian(u=0, sigma_squared=float_scale)

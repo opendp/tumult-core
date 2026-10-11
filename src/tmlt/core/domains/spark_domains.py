@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, ClassVar, Collection, Mapping, Optional, Sequence
+from typing import Any, Collection, Mapping, Sequence
 
 import numpy as np
 from pyspark import Row
@@ -89,28 +89,14 @@ SparkColumnsDescriptor = Mapping[str, SparkColumnDescriptor]
 
 @dataclass(frozen=True)
 class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
-    """Describes an integer attribute in Spark."""
-
-    SIZE_TO_TYPE: ClassVar = {32: IntegerType(), 64: LongType()}
-    """Mapping from size to Spark type."""
-
-    SIZE_TO_MIN_MAX: ClassVar = {
-        32: (-2147483648, 2147483647),
-        64: (-9223372036854775808, 9223372036854775807),
-    }
-    """Mapping from size to tuple of minimum and maximum value allowed."""
+    """Describes a 64-bit integer attribute in Spark."""
 
     allow_null: bool = False
     """If True, null values are permitted in the domain."""
-    size: int = 64
-    """Number of bits a member of the domain occupies. Must be 32 or 64."""
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type(self.allow_null, bool)
-        check_type(self.size, int)
-        if self.size not in [32, 64]:
-            raise ValueError(f"size must be 32 or 64, not {self.size}")
 
     def to_numpy_domain(self) -> NumpyDomain:
         """Returns corresponding NumPy domain."""
@@ -118,27 +104,23 @@ class SparkIntegerColumnDescriptor(SparkColumnDescriptor):
             raise RuntimeError(
                 "Nullable column does not have corresponding NumPy domain."
             )
-        return NumpyIntegerDomain(self.size)
+        return NumpyIntegerDomain()
 
     def valid_py_value(self, val: Any) -> bool:
         """Returns True if value is a valid python value for the descriptor."""
         if isinstance(val, int):
-            min_, max_ = self.SIZE_TO_MIN_MAX[self.size]
-            return min_ <= val <= max_
+            return -(2**63) <= val < 2**63
         return self.allow_null and val is None
 
     @property
     def data_type(self) -> DataType:
         """Returns data type associated with Spark column."""
-        return self.SIZE_TO_TYPE[self.size]
+        return LongType()
 
 
 @dataclass(frozen=True)
 class SparkFloatColumnDescriptor(SparkColumnDescriptor):
-    """Describes a float attribute in Spark."""
-
-    SIZE_TO_TYPE: ClassVar = {32: FloatType(), 64: DoubleType()}
-    """Mapping from size to Spark type."""
+    """Describes a 64-bit float attribute in Spark."""
 
     allow_nan: bool = False
     """If True, NaNs are permitted in the domain."""
@@ -150,17 +132,12 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
     Note:
         Nulls aren't supported in pd.
     """
-    size: int = 64
-    """Number of bits a member of the domain occupies. Must be 32 or 64."""
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type(self.allow_nan, bool)
         check_type(self.allow_inf, bool)
         check_type(self.allow_null, bool)
-        check_type(self.size, int)
-        if self.size not in [32, 64]:
-            raise ValueError(f"size must be 32 or 64, not {self.size}")
 
     def to_numpy_domain(self) -> NumpyDomain:
         """Returns corresponding NumPy domain."""
@@ -169,9 +146,7 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
                 "Null values in nullable Spark column are converted to nans in Pandas",
                 RuntimeWarning,
             )
-        return NumpyFloatDomain(
-            allow_nan=self.allow_nan, allow_inf=self.allow_inf, size=self.size
-        )
+        return NumpyFloatDomain(allow_nan=self.allow_nan, allow_inf=self.allow_inf)
 
     def validate_column(self, sdf: DataFrame, col_name: str) -> None:
         """Raises error if not all values in given DataFrame column match descriptor.
@@ -200,7 +175,7 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
 
         - val is ``float("nan")`` and NaN is allowed.
         - val is ``float("inf")`` or ``float("-inf")``, and inf values are allowed.
-        - val is a float that can be represented in ``size`` bits.
+        - val is a finite float.
         - val is None and nulls are allowed in the domain.
         """
         if isinstance(val, float):
@@ -208,13 +183,13 @@ class SparkFloatColumnDescriptor(SparkColumnDescriptor):
                 return self.allow_inf
             if np.isnan(val):
                 return self.allow_nan
-            return self.to_numpy_domain().carrier_type(val) == val
+            return True
         return self.allow_null and val is None
 
     @property
     def data_type(self) -> DataType:
         """Returns data type associated with Spark column."""
-        return self.SIZE_TO_TYPE[self.size]
+        return DoubleType()
 
 
 @dataclass(frozen=True)
@@ -497,23 +472,24 @@ class SparkDataFrameDomain(Domain):
 
 
 def _spark_type_to_descriptor(
-    spark_type: DataType, nullable: bool, size: Optional[int] = None
+    spark_type: DataType, nullable: bool
 ) -> SparkColumnDescriptor:
     """Returns Spark type to descriptor.
 
     Args:
         spark_type: Spark datatype to be converted.
         nullable: If True, Spark column descriptor allows null values.
-        size: If SparkType is numeric, this is the number of bits for each value.
-            Must be either 32 or 64.
     """
-    if spark_type in [LongType(), IntegerType()]:
-        assert size is not None
-        return SparkIntegerColumnDescriptor(allow_null=nullable, size=size)
-    if spark_type in [FloatType(), DoubleType()]:
-        assert size is not None
+    if spark_type == LongType():
+        return SparkIntegerColumnDescriptor(allow_null=nullable)
+    if spark_type == DoubleType():
         return SparkFloatColumnDescriptor(
-            allow_null=nullable, allow_nan=True, allow_inf=True, size=size
+            allow_null=nullable, allow_nan=True, allow_inf=True
+        )
+    if spark_type in [IntegerType(), FloatType()]:
+        raise ValueError(
+            f"Unsupported spark_type: {spark_type}. Integers and floats must be"
+            " 64-bit; cast them to LongType or DoubleType first."
         )
     if spark_type == StringType():
         return SparkStringColumnDescriptor(allow_null=nullable)
@@ -674,18 +650,12 @@ class SparkGroupedDataFrameDomain(Domain):
 
 def convert_spark_schema(spark_schema: StructType) -> SparkColumnsDescriptor:
     """Returns mapping from column name to SparkColumnDescriptor."""
-    spark_type_to_size: Mapping[DataType, int] = {
-        IntegerType(): 32,
-        LongType(): 64,
-        FloatType(): 32,
-        DoubleType(): 64,
-    }
     column_to_descriptor = {}
     for field in spark_schema:
         if field.name in column_to_descriptor:
             raise ValueError(f"Schema contains duplicate column name {field.name}.")
         column_to_descriptor[field.name] = _spark_type_to_descriptor(
-            field.dataType, field.nullable, spark_type_to_size.get(field.dataType)
+            field.dataType, field.nullable
         )
 
     return column_to_descriptor
@@ -704,10 +674,9 @@ def convert_pandas_domain(
 def convert_numpy_domain(numpy_domain: NumpyDomain) -> SparkColumnDescriptor:
     """Returns a SparkColumnDescriptor for a NumpyDomain."""
     if isinstance(numpy_domain, NumpyIntegerDomain):
-        return SparkIntegerColumnDescriptor(size=numpy_domain.size, allow_null=False)
+        return SparkIntegerColumnDescriptor(allow_null=False)
     elif isinstance(numpy_domain, NumpyFloatDomain):
         return SparkFloatColumnDescriptor(
-            size=numpy_domain.size,
             allow_nan=numpy_domain.allow_nan,
             allow_inf=numpy_domain.allow_inf,
             allow_null=False,

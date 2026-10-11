@@ -8,6 +8,8 @@ from itertools import combinations_with_replacement
 from test.unit.domains.abstract import DomainTests
 from typing import Any, Callable, ContextManager, Dict, Optional, Type
 
+import re
+
 import numpy as np
 import pytest
 from typeguard import TypeCheckError
@@ -23,7 +25,6 @@ from tmlt.core.utils.misc import get_fullname
 
 _float_domains = {
     "base_float_domain": NumpyFloatDomain(),
-    "size_float_domain": NumpyFloatDomain(size=32),
     "nan_float_domain": NumpyFloatDomain(allow_nan=True),
     "inf_float_domain": NumpyFloatDomain(allow_inf=True),
     "nan_inf_float_domain": NumpyFloatDomain(allow_nan=True, allow_inf=True),
@@ -42,27 +43,7 @@ class TestNumpyIntegerDomain(DomainTests):
         "domain_args, expectation, exception_properties",
         [
             ({}, does_not_raise(), None),
-            ({"size": 32}, does_not_raise(), None),
-            ({"size": 64}, does_not_raise(), None),
-            (
-                {"size": 43},
-                pytest.raises(ValueError, match=f"size must be {32} or {64}, not {43}"),
-                None,
-            ),
-            (
-                {"size": 32.0},
-                pytest.raises(
-                    TypeCheckError,
-                ),
-                None,
-            ),
-            (
-                {"size": "32"},
-                pytest.raises(
-                    TypeCheckError,
-                ),
-                None,
-            ),
+            ({"size": 64}, pytest.raises(TypeError, match="size"), None),
         ],
     )
     def test_construct_component(
@@ -94,9 +75,7 @@ class TestNumpyIntegerDomain(DomainTests):
         "domain, other_domain, expected",
         [
             (NumpyIntegerDomain(), NumpyFloatDomain(), False),
-            (NumpyIntegerDomain(size=32), NumpyFloatDomain(), False),
             (NumpyIntegerDomain(), NumpyIntegerDomain(), True),
-            (NumpyIntegerDomain(size=32), NumpyIntegerDomain(), False),
         ],
     )
     def test_eq(self, domain: Domain, other_domain: Domain, expected: bool):
@@ -131,9 +110,7 @@ class TestNumpyIntegerDomain(DomainTests):
     @pytest.mark.parametrize(
         "domain, expected_properties",
         [
-            (NumpyIntegerDomain(), {"size": 64, "carrier_type": np.int64}),
-            (NumpyIntegerDomain(size=32), {"size": 32, "carrier_type": np.int32}),
-            (NumpyIntegerDomain(size=64), {"size": 64, "carrier_type": np.int64}),
+            (NumpyIntegerDomain(), {"carrier_type": np.int64}),
         ],
     )
     def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
@@ -146,9 +123,7 @@ class TestNumpyIntegerDomain(DomainTests):
         """
         super().test_properties(domain, expected_properties)
 
-    @pytest.mark.parametrize(
-        "domain", [NumpyIntegerDomain(), NumpyIntegerDomain(size=32)]
-    )
+    @pytest.mark.parametrize("domain", [NumpyIntegerDomain()])
     def test_property_immutability(self, domain: Domain):
         """The properties return copies for mutable values.
 
@@ -182,35 +157,14 @@ class TestNumpyIntegerDomain(DomainTests):
                 {"domain": NumpyIntegerDomain(), "value": np.float64(1)},
             ),
             (
-                NumpyIntegerDomain(size=32),
-                np.int64(1),
-                pytest.raises(
-                    OutOfDomainError,
-                    match=f"Value must be {get_fullname(np.int32)}, instead it is "
-                    f"{get_fullname(np.int64)}",
-                ),
-                {"domain": NumpyIntegerDomain(size=32), "value": np.int64(1)},
-            ),
-            (
-                NumpyIntegerDomain(size=32),
+                NumpyIntegerDomain(),
                 1,
                 pytest.raises(
                     OutOfDomainError,
-                    match=f"Value must be {get_fullname(np.int32)}, instead it is "
+                    match=f"Value must be {get_fullname(np.int64)}, instead it is "
                     f"{get_fullname(int)}",
                 ),
-                {"domain": NumpyIntegerDomain(size=32), "value": 1},
-            ),
-            (NumpyIntegerDomain(size=32), np.int32(1), does_not_raise(), None),
-            (
-                NumpyIntegerDomain(size=32),
-                np.float64(1),
-                pytest.raises(
-                    OutOfDomainError,
-                    match=f"Value must be {get_fullname(np.int32)}, instead it is "
-                    f"{get_fullname(np.float64)}",
-                ),
-                {"domain": NumpyIntegerDomain(size=32), "value": np.float64(1)},
+                {"domain": NumpyIntegerDomain(), "value": 1},
             ),
         ],
     )
@@ -238,11 +192,17 @@ class TestNumpyIntegerDomain(DomainTests):
         "dtype, expected, expectation",
         [
             (np.dtype(np.int64), NumpyIntegerDomain(), does_not_raise()),
-            (np.dtype(np.int32), NumpyIntegerDomain(size=32), does_not_raise()),
+            (
+                np.dtype(np.int32),
+                None,
+                pytest.raises(ValueError, match="Unsupported dtype int32"),
+            ),
             (
                 np.dtype([("f1", np.int64)]),
                 None,
-                pytest.raises(KeyError, match=f"{np.dtype([('f1', np.int64)])}"),
+                pytest.raises(
+                    ValueError, match=re.escape(str(np.dtype([("f1", np.int64)])))
+                ),
             ),
         ],
     )
@@ -278,15 +238,7 @@ class TestNumpyFloatDomain(DomainTests):
         "domain_args, expectation, exception_properties",
         [
             ({}, does_not_raise(), None),
-            ({"size": 32}, does_not_raise(), None),
-            ({"size": 64}, does_not_raise(), None),
-            (
-                {"size": 128},
-                pytest.raises(
-                    ValueError, match=f"size must be {32} or {64}, not {128}"
-                ),
-                None,
-            ),
+            ({"size": 64}, pytest.raises(TypeError, match="size"), None),
             ({"allow_inf": True, "allow_nan": True}, does_not_raise(), None),
             (
                 {"allow_inf": True, "allow_nan": None},
@@ -306,27 +258,6 @@ class TestNumpyFloatDomain(DomainTests):
                 {"allow_inf": True, "allow_nan": 0.1},
                 pytest.raises(
                     TypeCheckError,
-                ),
-                None,
-            ),
-            (
-                {"allow_inf": True, "allow_nan": True, "size": "tom"},
-                pytest.raises(
-                    TypeCheckError,
-                ),
-                None,
-            ),
-            (
-                {"allow_inf": True, "allow_nan": True, "size": np.int64(32)},
-                pytest.raises(
-                    TypeCheckError,
-                ),
-                None,
-            ),
-            (
-                {"allow_inf": True, "allow_nan": True, "size": 128},
-                pytest.raises(
-                    ValueError, match=f"size must be {32} or {64}, not {128}"
                 ),
                 None,
             ),
@@ -401,25 +332,14 @@ class TestNumpyFloatDomain(DomainTests):
             (
                 NumpyFloatDomain(),
                 {
-                    "size": 64,
                     "allow_nan": False,
                     "allow_inf": False,
                     "carrier_type": np.float64,
                 },
             ),
             (
-                NumpyFloatDomain(size=32),
-                {
-                    "size": 32,
-                    "allow_nan": False,
-                    "allow_inf": False,
-                    "carrier_type": np.float32,
-                },
-            ),
-            (
                 NumpyFloatDomain(allow_nan=True),
                 {
-                    "size": 64,
                     "allow_nan": True,
                     "allow_inf": False,
                     "carrier_type": np.float64,
@@ -428,7 +348,6 @@ class TestNumpyFloatDomain(DomainTests):
             (
                 NumpyFloatDomain(allow_inf=True),
                 {
-                    "size": 64,
                     "allow_nan": False,
                     "allow_inf": True,
                     "carrier_type": np.float64,
@@ -450,7 +369,6 @@ class TestNumpyFloatDomain(DomainTests):
         "domain",
         [
             NumpyFloatDomain(),
-            NumpyFloatDomain(size=32),
             NumpyFloatDomain(allow_nan=True),
             NumpyFloatDomain(allow_inf=True),
             NumpyFloatDomain(allow_nan=True, allow_inf=True),
@@ -467,35 +385,6 @@ class TestNumpyFloatDomain(DomainTests):
     @pytest.mark.parametrize(
         "domain, candidate, expectation, exception_properties",
         [
-            # 32 bit float cases
-            (
-                NumpyFloatDomain(size=32),
-                to_validate,
-                pytest.raises(OutOfDomainError, match=match),
-                {"domain": NumpyFloatDomain(size=32), "value": to_validate},
-            )
-            for to_validate, match in [
-                (
-                    np.float64(1.0),
-                    (
-                        f"Value must be {get_fullname(np.float32)}, instead it is "
-                        f"{get_fullname(np.float64)}."
-                    ),
-                ),
-                (np.float32(float("inf")), "Value is infinite."),
-                (np.float32(-float("inf")), "Value is infinite."),
-                # nan != nan, so we ignore the value
-                # (np.float32(float("nan")), "Value is NaN."),
-                (
-                    1,
-                    (
-                        f"Value must be {get_fullname(np.float32)}, instead it is "
-                        f"{get_fullname(int)}."
-                    ),
-                ),
-            ]
-        ]
-        + [
             # 64 should not accept 32
             (
                 domain,
@@ -608,11 +497,17 @@ class TestNumpyFloatDomain(DomainTests):
         "dtype, expected, expectation",
         [
             (np.dtype(np.float64), NumpyFloatDomain(), does_not_raise()),
-            (np.dtype(np.float32), NumpyFloatDomain(size=32), does_not_raise()),
+            (
+                np.dtype(np.float32),
+                None,
+                pytest.raises(ValueError, match="Unsupported dtype float32"),
+            ),
             (
                 np.dtype([("f1", np.int64)]),
                 None,
-                pytest.raises(KeyError, match=f"{np.dtype([('f1', np.int64)])}"),
+                pytest.raises(
+                    ValueError, match=re.escape(str(np.dtype([("f1", np.int64)])))
+                ),
             ),
         ],
     )
@@ -809,7 +704,9 @@ class TestNumpyStringDomain(DomainTests):
             (
                 np.dtype([("f1", np.int64)]),
                 None,
-                pytest.raises(KeyError, match=f"{np.dtype([('f1', np.int64)])}"),
+                pytest.raises(
+                    ValueError, match=re.escape(str(np.dtype([("f1", np.int64)])))
+                ),
             ),
         ],
     )

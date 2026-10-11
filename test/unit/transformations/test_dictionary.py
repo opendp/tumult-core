@@ -326,7 +326,7 @@ class TestGetValue(TestCase):
                 (
                     "Input metric DictMetric(key_to_metric={'B': AbsoluteDifference()})"
                     " and input domain DictDomain(key_to_domain={'A':"
-                    " NumpyIntegerDomain(size=64)}) are not compatible."
+                    " NumpyIntegerDomain()}) are not compatible."
                 ),
                 DictDomain({"A": NumpyIntegerDomain()}),
                 DictMetric({"B": AbsoluteDifference()}),
@@ -551,7 +551,7 @@ class TestSubset(TestCase):
                 (
                     "Input metric AddRemoveIDs(df_to_id_column={'A': 'B'}) and input"
                     " domain DictDomain(key_to_domain={'A':"
-                    " NumpyIntegerDomain(size=64)}) are not compatible."
+                    " NumpyIntegerDomain()}) are not compatible."
                 ),
                 DictDomain({"A": NumpyIntegerDomain()}),
                 AddRemoveIDs({"A": "B"}),

@@ -61,7 +61,7 @@ output domain, and output metric.
 .. testcode::
 
    spark_schema = StructType(
-       [StructField("Name", StringType()), StructField("Age", IntegerType())]
+       [StructField("Name", StringType()), StructField("Age", LongType())]
    )
    df = spark.createDataFrame([("Alice", 30), ("Bob", 15), ("Carlos", 50)], schema=spark_schema)
    tumult_schema = SparkDataFrameDomain(convert_spark_schema(spark_schema))
@@ -74,8 +74,8 @@ output domain, and output metric.
 
 .. testoutput::
 
-   SparkDataFrameDomain(schema={'Name': SparkStringColumnDescriptor(allow_null=True), 'Age': SparkIntegerColumnDescriptor(allow_null=True, size=32)})
-   SparkDataFrameDomain(schema={'Name': SparkStringColumnDescriptor(allow_null=True), 'Age': SparkIntegerColumnDescriptor(allow_null=True, size=32)})
+   SparkDataFrameDomain(schema={'Name': SparkStringColumnDescriptor(allow_null=True), 'Age': SparkIntegerColumnDescriptor(allow_null=True)})
+   SparkDataFrameDomain(schema={'Name': SparkStringColumnDescriptor(allow_null=True), 'Age': SparkIntegerColumnDescriptor(allow_null=True)})
    SymmetricDifference()
    SymmetricDifference()
 
@@ -125,7 +125,7 @@ is the Rényi divergence of infinite order.
 
 .. testoutput::
 
-   NumpyIntegerDomain(size=64)
+   NumpyIntegerDomain()
    AbsoluteDifference()
    PureDP()
 
@@ -255,8 +255,8 @@ transformation with a new ``count`` transformation.
 
 .. testoutput::
 
-   SparkDataFrameDomain(schema={'Name': SparkStringColumnDescriptor(allow_null=True), 'Age': SparkIntegerColumnDescriptor(allow_null=True, size=32)})
-   NumpyIntegerDomain(size=64)
+   SparkDataFrameDomain(schema={'Name': SparkStringColumnDescriptor(allow_null=True), 'Age': SparkIntegerColumnDescriptor(allow_null=True)})
+   NumpyIntegerDomain()
    SymmetricDifference()
    AbsoluteDifference()
    1
@@ -275,7 +275,7 @@ using :class:`~.ChainTM` to create a new measurement.
 
 .. testoutput::
 
-   SparkDataFrameDomain(schema={'Name': SparkStringColumnDescriptor(allow_null=True), 'Age': SparkIntegerColumnDescriptor(allow_null=True, size=32)})
+   SparkDataFrameDomain(schema={'Name': SparkStringColumnDescriptor(allow_null=True), 'Age': SparkIntegerColumnDescriptor(allow_null=True)})
    SymmetricDifference()
    PureDP()
    1/2
