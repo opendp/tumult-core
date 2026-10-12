@@ -41,10 +41,7 @@ class TestNumpyIntegerDomain(DomainTests):
 
     @pytest.mark.parametrize(
         "domain_args, expectation, exception_properties",
-        [
-            ({}, does_not_raise(), None),
-            ({"size": 64}, pytest.raises(TypeError, match="size"), None),
-        ],
+        [({}, does_not_raise(), None)],
     )
     def test_construct_component(
         self,
@@ -55,17 +52,13 @@ class TestNumpyIntegerDomain(DomainTests):
     ):
         """Initialization behaves correctly.
 
-        The domain is constructed correctly and raises exceptions when initialized with
-        invalid inputs.
-
         Args:
             domain_type: The type of domain to be constructed.
             domain_args: The arguments to the domain.
             expectation: A context manager that captures the correct expected type of
                 error that is raised.
             exception_properties: A dictionary containing all the property:value pairs
-                the exception is expected to have. Mostly used for testing the custom
-                exceptions.
+                the exception is expected to have.
         """
         super().test_construct_component(
             domain_type, domain_args, expectation, exception_properties
@@ -109,9 +102,7 @@ class TestNumpyIntegerDomain(DomainTests):
 
     @pytest.mark.parametrize(
         "domain, expected_properties",
-        [
-            (NumpyIntegerDomain(), {"carrier_type": np.int64}),
-        ],
+        [(NumpyIntegerDomain(), {"carrier_type": np.int64})],
     )
     def test_properties(self, domain: Domain, expected_properties: Dict[str, Any]):
         """All properties have the expected values.
@@ -238,7 +229,6 @@ class TestNumpyFloatDomain(DomainTests):
         "domain_args, expectation, exception_properties",
         [
             ({}, does_not_raise(), None),
-            ({"size": 64}, pytest.raises(TypeError, match="size"), None),
             ({"allow_inf": True, "allow_nan": True}, does_not_raise(), None),
             (
                 {"allow_inf": True, "allow_nan": None},

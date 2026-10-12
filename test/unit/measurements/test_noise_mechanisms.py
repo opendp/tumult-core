@@ -123,11 +123,11 @@ class TestAddLaplaceNoise(MeasurementTests):
         [
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=float("inf")),
-                1.0,
+                np.float64(1),
             ),
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=float("inf")),
-                -1.0,
+                np.float64(-1),
             ),
         ],
     )
@@ -164,12 +164,12 @@ class TestAddLaplaceNoise(MeasurementTests):
         [
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
-                10.0,
+                np.float64(10),
                 10.0,
             ),
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=0),
-                float(np.float32(-0.1234567)),
+                np.float64(np.float32(-0.1234567)),
                 float(np.float32(-0.1234567)),
             ),
         ],
@@ -191,12 +191,12 @@ class TestAddLaplaceNoise(MeasurementTests):
         [
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
-                10.0,
+                np.float64(10),
                 float,
             ),
             (
                 AddLaplaceNoise(input_domain=NumpyFloatDomain(), scale=1),
-                float(np.float32(-0.1234567)),
+                np.float64(np.float32(-0.1234567)),
                 float,
             ),
         ],
@@ -644,8 +644,8 @@ class TestAddGeometricNoise(MeasurementTests):
     @pytest.mark.parametrize(
         "measurement, input_data, expected_output",
         [
-            (AddGeometricNoise(alpha=0), 10, 10),
-            (AddGeometricNoise(alpha=0), -10, -10),
+            (AddGeometricNoise(alpha=0), np.int64(10), 10),
+            (AddGeometricNoise(alpha=0), np.int64(-10), -10),
         ],
     )
     def test_no_protection(
@@ -662,7 +662,7 @@ class TestAddGeometricNoise(MeasurementTests):
 
     @pytest.mark.parametrize(
         "measurement, input_data, expected_output_type",
-        [(AddGeometricNoise(alpha=3), 0, int)],
+        [(AddGeometricNoise(alpha=3), np.int64(0), int)],
     )
     def test_output(
         self, measurement: Measurement, input_data: Any, expected_output_type: type
@@ -1023,13 +1023,13 @@ class TestAddGaussianNoise(MeasurementTests):
                 AddGaussianNoise(
                     input_domain=NumpyFloatDomain(), sigma_squared=float("inf")
                 ),
-                1.0,
+                np.float64(1),
             ),
             (
                 AddGaussianNoise(
                     input_domain=NumpyFloatDomain(), sigma_squared=float("inf")
                 ),
-                -1.0,
+                np.float64(-1),
             ),
         ],
     )
@@ -1066,12 +1066,12 @@ class TestAddGaussianNoise(MeasurementTests):
         [
             (
                 AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
-                10.0,
+                np.float64(10),
                 10.0,
             ),
             (
                 AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=0),
-                float(np.float32(-0.1234567)),
+                np.float64(np.float32(-0.1234567)),
                 float(np.float32(-0.1234567)),
             ),
         ],
@@ -1093,12 +1093,12 @@ class TestAddGaussianNoise(MeasurementTests):
         [
             (
                 AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
-                10.0,
+                np.float64(10),
                 float,
             ),
             (
                 AddGaussianNoise(input_domain=NumpyFloatDomain(), sigma_squared=1),
-                float(np.float32(-0.1234567)),
+                np.float64(np.float32(-0.1234567)),
                 float,
             ),
         ],
@@ -1488,8 +1488,8 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
     @pytest.mark.parametrize(
         "measurement, input_data, expected_output",
         [
-            (AddDiscreteGaussianNoise(sigma_squared=0), 10, 10),
-            (AddDiscreteGaussianNoise(sigma_squared=0), -10, -10),
+            (AddDiscreteGaussianNoise(sigma_squared=0), np.int64(10), 10),
+            (AddDiscreteGaussianNoise(sigma_squared=0), np.int64(-10), -10),
         ],
     )
     def test_no_protection(
@@ -1506,7 +1506,7 @@ class TestAddDiscreteGaussianNoise(MeasurementTests):
 
     @pytest.mark.parametrize(
         "measurement, input_data, expected_output_type",
-        [(AddDiscreteGaussianNoise(sigma_squared=3), 0, int)],
+        [(AddDiscreteGaussianNoise(sigma_squared=3), np.int64(0), int)],
     )
     def test_output(
         self, measurement: Measurement, input_data: Any, expected_output_type: type
