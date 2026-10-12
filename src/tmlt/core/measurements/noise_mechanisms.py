@@ -126,7 +126,7 @@ class AddLaplaceNoise(Measurement):
         Args:
             val: Value to add Laplace noise to.
         """
-        if not isinstance(val, float):
+        if not isinstance(val, (float, np.float64)):
             raise OutOfDomainError(
                 self.input_domain,
                 val,
@@ -573,7 +573,7 @@ class AddGaussianNoise(Measurement):
         value returned is (:math:`\infty` with probability 1/2 and
         :math:`-\infty` with probability 1/2
         """
-        if not isinstance(value, float):
+        if not isinstance(value, (float, np.float64)):
             raise OutOfDomainError(
                 self.input_domain,
                 value,
