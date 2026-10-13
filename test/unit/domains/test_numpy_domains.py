@@ -3,12 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
+import re
 from contextlib import nullcontext as does_not_raise
 from itertools import combinations_with_replacement
 from test.unit.domains.abstract import DomainTests
 from typing import Any, Callable, ContextManager, Dict, Optional, Type
-
-import re
 
 import numpy as np
 import pytest
