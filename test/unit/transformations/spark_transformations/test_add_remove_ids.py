@@ -510,12 +510,12 @@ class TestTransformValue(PySparkTest):
                     " SparkDataFrameDomain(schema={'A':"
                     " SparkStringColumnDescriptor(allow_null=False), 'B':"
                     " SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True,"
-                    " allow_null=True, size=64), 'C':"
+                    " allow_null=True), 'C':"
                     " SparkStringColumnDescriptor(allow_null=False)}), 'key2':"
                     " SparkDataFrameDomain(schema={'D':"
                     " SparkStringColumnDescriptor(allow_null=False), 'E':"
-                    " SparkIntegerColumnDescriptor(allow_null=False, size=64)}),"
-                    " 'key3': NumpyIntegerDomain(size=64)}) are not compatible."
+                    " SparkIntegerColumnDescriptor(allow_null=False)}),"
+                    " 'key3': NumpyIntegerDomain()}) are not compatible."
                 ),
                 ValueError,
                 {},

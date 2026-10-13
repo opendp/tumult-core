@@ -913,7 +913,7 @@ class GroupingFlatMap(Transformation):
         >>> add_i_flat_map.input_domain
         SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})
         >>> add_i_flat_map.output_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'i': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False), 'i': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> add_i_flat_map.input_metric
         SymmetricDifference()
         >>> add_i_flat_map.output_metric
@@ -1296,9 +1296,9 @@ class FlatMapByID(Transformation):
         * Output metric - :class:`~.IfGroupedBy` (matches input metric)
 
         >>> sum_by_id.input_domain
-        SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'v': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'v': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> sum_by_id.output_domain
-        SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'sum': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'id': SparkStringColumnDescriptor(allow_null=False), 'sum': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> sum_by_id.input_metric
         IfGroupedBy(columns={'id'}, inner_metric=SymmetricDifference())
         >>> sum_by_id.output_metric

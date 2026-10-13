@@ -12,7 +12,7 @@ import sympy as sp
 from numpy.typing import ArrayLike
 from pyspark.sql import DataFrame, Row, SparkSession
 from pyspark.sql import functions as sf
-from pyspark.sql.types import IntegerType, StructField, StructType
+from pyspark.sql.types import LongType, StructField, StructType
 from typeguard import typechecked
 
 from tmlt.core.domains.numpy_domains import NumpyFloatDomain, NumpyIntegerDomain
@@ -1035,8 +1035,8 @@ def create_average_measurement(
         else:
             temp_column = get_nonconflicting_string(sod_df.columns + count_df.columns)
             df_with_sod_and_count = join(
-                left=sod_df.withColumn(temp_column, sf.lit(1)),
-                right=count_df.withColumn(temp_column, sf.lit(1)),
+                left=sod_df.withColumn(temp_column, sf.lit(1).cast("long")),
+                right=count_df.withColumn(temp_column, sf.lit(1).cast("long")),
                 on=[temp_column],
                 how="inner",  # only one row
                 nulls_are_equal=False,  # no nulls
@@ -1343,13 +1343,13 @@ def create_variance_measurement(
             temp_column = get_nonconflicting_string(sod_df.columns + sos_df.columns)
             df_with_sums_and_count = join(
                 left=join(
-                    left=sod_df.withColumn(temp_column, sf.lit(1)),
-                    right=sos_df.withColumn(temp_column, sf.lit(1)),
+                    left=sod_df.withColumn(temp_column, sf.lit(1).cast("long")),
+                    right=sos_df.withColumn(temp_column, sf.lit(1).cast("long")),
                     on=[temp_column],
                     how="inner",  # only one row
                     nulls_are_equal=False,  # no nulls
                 ),
-                right=count_df.withColumn(temp_column, sf.lit(1)),
+                right=count_df.withColumn(temp_column, sf.lit(1).cast("long")),
                 on=[temp_column],
                 how="inner",
                 nulls_are_equal=False,
@@ -2066,11 +2066,11 @@ def create_bounds_measurement(
 
     bucket_group_keys = spark.createDataFrame(
         (
-            [(i,) for i in range(element_type.size - 1)]
+            [(i,) for i in range(63)]
             if isinstance(element_type, SparkIntegerColumnDescriptor)
             else [(i,) for i in range(-100, 101)]
         ),
-        schema=StructType([StructField(rank_column, IntegerType(), False)]),
+        schema=StructType([StructField(rank_column, LongType(), False)]),
     )
 
     def _add_bucket_index(row: Row) -> Union[Dict[str, int], Dict[str, float]]:

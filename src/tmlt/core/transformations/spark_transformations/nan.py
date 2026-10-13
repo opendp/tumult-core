@@ -86,9 +86,9 @@ class DropInfs(Transformation):
             * Output metric - :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`
 
             >>> drop_b_infs.input_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=False, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=False)})
             >>> drop_b_infs.output_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=False, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=False)})
             >>> drop_b_infs.input_metric
             SymmetricDifference()
             >>> drop_b_infs.output_metric
@@ -265,9 +265,9 @@ class DropNaNs(Transformation):
             * Output metric - :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`
 
             >>> drop_b_nans.input_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=False, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=False)})
             >>> drop_b_nans.output_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=False, allow_inf=True, allow_null=False, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=False, allow_inf=True, allow_null=False)})
             >>> drop_b_nans.input_metric
             SymmetricDifference()
             >>> drop_b_nans.output_metric
@@ -442,9 +442,9 @@ class DropNulls(Transformation):
             * Output metric - :class:`~.SymmetricDifference` or :class:`~.IfGroupedBy`
 
             >>> drop_b_nulls.input_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True)})
             >>> drop_b_nulls.output_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=False, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=False)})
             >>> drop_b_nulls.input_metric
             SymmetricDifference()
             >>> drop_b_nulls.output_metric
@@ -617,9 +617,9 @@ class ReplaceInfs(Transformation):
               or :class:`~.IfGroupedBy`
 
             >>> replace_infs.input_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=True, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, allow_null=True)})
             >>> replace_infs.output_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True)})
             >>> replace_infs.input_metric
             SymmetricDifference()
             >>> replace_infs.output_metric
@@ -813,9 +813,9 @@ class ReplaceNaNs(Transformation):
               or :class:`~.IfGroupedBy`
 
             >>> replace_nans.input_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True)})
             >>> replace_nans.output_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=False, allow_inf=False, allow_null=True, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=False, allow_inf=False, allow_null=True)})
             >>> replace_nans.input_metric
             SymmetricDifference()
             >>> replace_nans.output_metric
@@ -996,9 +996,9 @@ class ReplaceNulls(Transformation):
               or :class:`~.IfGroupedBy`
 
             >>> replace_nulls.input_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=True), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=True)})
             >>> replace_nulls.output_domain
-            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=False, size=64)})
+            SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'B': SparkFloatColumnDescriptor(allow_nan=True, allow_inf=False, allow_null=False)})
             >>> replace_nulls.input_metric
             HammingDistance()
             >>> replace_nulls.output_metric

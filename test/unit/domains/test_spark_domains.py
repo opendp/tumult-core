@@ -167,7 +167,7 @@ class TestSparkDataFrameDomain(DomainTests):
                     {
                         "A": SparkStringColumnDescriptor(),
                         "B": SparkStringColumnDescriptor(),
-                        "C": SparkFloatColumnDescriptor(size=32),
+                        "C": SparkIntegerColumnDescriptor(),
                     }
                 ),
                 False,
@@ -838,7 +838,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                     },
                     "group_keys": {
                         "data": [(1,)],
-                        "schema": StructType([StructField("A", IntegerType())]),
+                        "schema": StructType([StructField("A", LongType())]),
                     },
                 },
                 pytest.raises(
@@ -861,7 +861,7 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
                         },
                         "group_keys": {
                             "data": [(1,)],
-                            "schema": StructType([StructField("A", IntegerType())]),
+                            "schema": StructType([StructField("A", LongType())]),
                         },
                     },
                 },
@@ -975,8 +975,8 @@ class TestSparkGroupedDataFrameDomain(DomainTests):
         """Tests that __repr__ works correctly."""
         expected = (
             "SparkGroupedDataFrameDomain(schema={'A': SparkIntegerColumnDescriptor("
-            "allow_null=True, size=64), 'B': SparkStringColumnDescriptor(allow_null="
-            "True), 'C': SparkIntegerColumnDescriptor(allow_null=True, size=64)},"
+            "allow_null=True), 'B': SparkStringColumnDescriptor(allow_null="
+            "True), 'C': SparkIntegerColumnDescriptor(allow_null=True)},"
             f" groupby_columns={groupby_str})"
             for groupby_str in ["{'A', 'B'}", "{'B', 'A'}"]
         )
@@ -1230,32 +1230,29 @@ class TestSparkRowDomain(DomainTests):
     def test_repr(self, domain: Domain):
         """Tests that __repr__ works correctly."""
         expected = (
-            "SparkRowDomain(schema={'A': SparkIntegerColumnDescriptor(allow_null=False,"
-            " size=64), 'B': SparkStringColumnDescriptor(allow_null=False)})"
+            "SparkRowDomain(schema={'A': SparkIntegerColumnDescriptor("
+            "allow_null=False), 'B': SparkStringColumnDescriptor(allow_null=False)})"
         )
         assert repr(domain) == expected
 
 
 _column_descriptors = {
-    "int32": SparkIntegerColumnDescriptor(size=32),
-    "int64": SparkIntegerColumnDescriptor(size=64),
-    "float32": SparkFloatColumnDescriptor(size=32),
+    "int64": SparkIntegerColumnDescriptor(),
+    "float64": SparkFloatColumnDescriptor(),
     "str": SparkStringColumnDescriptor(allow_null=True),
     "date": SparkDateColumnDescriptor(),
     "timestamp": SparkTimestampColumnDescriptor(),
 }
 _col_name_to_type: Dict[str, str] = {
-    "A": "int32",
     "B": "int64",
-    "C": "float32",
+    "C": "float64",
     "D": "str",
     "E": "date",
     "F": "timestamp",
 }
 _type_to_spark_type: Dict[str, DataType] = {
-    "int32": IntegerType(),
     "int64": LongType(),
-    "float32": FloatType(),
+    "float64": DoubleType(),
     "str": StringType(),
     "date": DateType(),
     "timestamp": TimestampType(),
@@ -1278,7 +1275,6 @@ class TestSparkColumnDescriptors:
         return self.spark.createDataFrame(
             [
                 (
-                    1,
                     2,
                     1.0,
                     "X",
@@ -1286,7 +1282,6 @@ class TestSparkColumnDescriptors:
                     datetime.datetime.fromisoformat("1970-01-01 00:00:00.000+00:00"),
                 ),
                 (
-                    11,
                     239,
                     2.0,
                     None,
@@ -1296,9 +1291,8 @@ class TestSparkColumnDescriptors:
             ],
             schema=StructType(
                 [
-                    StructField("A", IntegerType(), False),
                     StructField("B", LongType(), False),
-                    StructField("C", FloatType(), False),
+                    StructField("C", DoubleType(), False),
                     StructField("D", StringType(), True),
                     StructField("E", DateType(), True),
                     StructField("F", TimestampType(), True),
@@ -1309,16 +1303,15 @@ class TestSparkColumnDescriptors:
     @pytest.mark.parametrize(
         "descriptor, expected_domain",
         [
-            (SparkIntegerColumnDescriptor(size=32), NumpyIntegerDomain(size=32)),
-            (SparkIntegerColumnDescriptor(size=64), NumpyIntegerDomain(size=64)),
-            (SparkFloatColumnDescriptor(size=64), NumpyFloatDomain(size=64)),
+            (SparkIntegerColumnDescriptor(), NumpyIntegerDomain()),
+            (SparkFloatColumnDescriptor(), NumpyFloatDomain()),
             (
-                SparkFloatColumnDescriptor(size=64, allow_inf=True),
-                NumpyFloatDomain(size=64, allow_inf=True),
+                SparkFloatColumnDescriptor(allow_inf=True),
+                NumpyFloatDomain(allow_inf=True),
             ),
             (
-                SparkFloatColumnDescriptor(size=64, allow_nan=True),
-                NumpyFloatDomain(size=64, allow_nan=True),
+                SparkFloatColumnDescriptor(allow_nan=True),
+                NumpyFloatDomain(allow_nan=True),
             ),
             (
                 SparkStringColumnDescriptor(allow_null=True),
@@ -1416,8 +1409,8 @@ class TestSparkColumnDescriptors:
         ]
         + [
             (
-                SparkIntegerColumnDescriptor(size=32),
-                SparkIntegerColumnDescriptor(size=32, allow_null=True),
+                SparkIntegerColumnDescriptor(),
+                SparkIntegerColumnDescriptor(allow_null=True),
                 False,
             )
         ],
@@ -1440,32 +1433,38 @@ class TestSparkUtilityFunctions:
         [
             (StructType(), {}, does_not_raise()),
             (
-                StructType([StructField("A", IntegerType(), False)]),
-                {"A": SparkIntegerColumnDescriptor(size=32)},
+                StructType([StructField("A", LongType(), False)]),
+                {"A": SparkIntegerColumnDescriptor()},
                 does_not_raise(),
             ),
             (
                 StructType(
                     [
-                        StructField("A", IntegerType(), False),
                         StructField("B", LongType(), False),
-                        StructField("C", FloatType(), False),
+                        StructField("C", DoubleType(), False),
                         StructField("D", StringType(), True),
                         StructField("E", DateType(), True),
                         StructField("F", TimestampType(), True),
                     ]
                 ),
                 {
-                    "A": SparkIntegerColumnDescriptor(size=32),
-                    "B": SparkIntegerColumnDescriptor(size=64),
-                    "C": SparkFloatColumnDescriptor(
-                        allow_nan=True, allow_inf=True, size=32
-                    ),
+                    "B": SparkIntegerColumnDescriptor(),
+                    "C": SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True),
                     "D": SparkStringColumnDescriptor(allow_null=True),
                     "E": SparkDateColumnDescriptor(allow_null=True),
                     "F": SparkTimestampColumnDescriptor(allow_null=True),
                 },
                 does_not_raise(),
+            ),
+            (
+                StructType([StructField("A", IntegerType(), False)]),
+                None,
+                pytest.raises(ValueError, match="cast them to LongType or DoubleType"),
+            ),
+            (
+                StructType([StructField("A", FloatType(), False)]),
+                None,
+                pytest.raises(ValueError, match="cast them to LongType or DoubleType"),
             ),
         ],
     )
@@ -1493,20 +1492,16 @@ class TestSparkUtilityFunctions:
             (
                 PandasDataFrameDomain(
                     {
-                        "A": PandasSeriesDomain(NumpyIntegerDomain(size=32)),
-                        "B": PandasSeriesDomain(NumpyIntegerDomain(size=64)),
+                        "B": PandasSeriesDomain(NumpyIntegerDomain()),
                         "C": PandasSeriesDomain(
-                            NumpyFloatDomain(allow_nan=True, allow_inf=True, size=32)
+                            NumpyFloatDomain(allow_nan=True, allow_inf=True)
                         ),
                         "D": PandasSeriesDomain(NumpyStringDomain()),
                     }
                 ),
                 {
-                    "A": SparkIntegerColumnDescriptor(size=32),
-                    "B": SparkIntegerColumnDescriptor(size=64),
-                    "C": SparkFloatColumnDescriptor(
-                        allow_nan=True, allow_inf=True, size=32
-                    ),
+                    "B": SparkIntegerColumnDescriptor(),
+                    "C": SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True),
                     "D": SparkStringColumnDescriptor(),
                 },
                 does_not_raise(),
@@ -1534,18 +1529,18 @@ class TestSparkUtilityFunctions:
         "numpy_domain, expected, expectation",
         [
             (
-                NumpyIntegerDomain(size=32),
-                SparkIntegerColumnDescriptor(size=32),
+                NumpyIntegerDomain(),
+                SparkIntegerColumnDescriptor(),
                 does_not_raise(),
             ),
             (
                 NumpyFloatDomain(),
-                SparkFloatColumnDescriptor(allow_nan=False, allow_inf=False, size=64),
+                SparkFloatColumnDescriptor(allow_nan=False, allow_inf=False),
                 does_not_raise(),
             ),
             (
-                NumpyFloatDomain(allow_nan=True, allow_inf=True, size=32),
-                SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True, size=32),
+                NumpyFloatDomain(allow_nan=True, allow_inf=True),
+                SparkFloatColumnDescriptor(allow_nan=True, allow_inf=True),
                 does_not_raise(),
             ),
             (NumpyStringDomain(), SparkStringColumnDescriptor(), does_not_raise()),

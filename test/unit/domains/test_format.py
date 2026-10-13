@@ -27,14 +27,14 @@ from tmlt.core.domains.spark_domains import (
 
 def test_numpy_integer_domain():
     """Leaf dataclass domain renders fields inline."""
-    assert NumpyIntegerDomain().format() == "NumpyIntegerDomain size=64"
+    assert NumpyIntegerDomain().format() == "NumpyIntegerDomain"
 
 
 def test_numpy_float_domain_multiple_fields():
     """Multiple dataclass fields render in declaration order."""
     assert (
-        NumpyFloatDomain(allow_nan=True, allow_inf=True, size=32).format()
-        == "NumpyFloatDomain allow_nan=True allow_inf=True size=32"
+        NumpyFloatDomain(allow_nan=True, allow_inf=True).format()
+        == "NumpyFloatDomain allow_nan=True allow_inf=True"
     )
 
 
@@ -48,7 +48,7 @@ def test_list_domain_with_single_child():
     assert ListDomain(NumpyIntegerDomain(), length=3).format() == textwrap.dedent(
         """\
         ListDomain length=3
-          NumpyIntegerDomain size=64"""
+          NumpyIntegerDomain"""
     )
 
 
@@ -58,7 +58,7 @@ def test_list_domain_nested():
         """\
         ListDomain length=None
           ListDomain length=None
-            NumpyIntegerDomain size=64"""
+            NumpyIntegerDomain"""
     )
 
 
@@ -69,7 +69,7 @@ def test_dict_domain_renders_as_labeled_siblings():
     ).format() == textwrap.dedent(
         """\
         DictDomain
-        * a:          NumpyIntegerDomain size=64
+        * a:          NumpyIntegerDomain
         * longer_key: NumpyStringDomain allow_null=False"""
     )
 
@@ -84,7 +84,7 @@ def test_pandas_series_domain():
     assert PandasSeriesDomain(NumpyIntegerDomain()).format() == textwrap.dedent(
         """\
         PandasSeriesDomain
-          NumpyIntegerDomain size=64"""
+          NumpyIntegerDomain"""
     )
 
 
@@ -100,7 +100,7 @@ def test_pandas_dataframe_domain_multi_line_columns():
         PandasDataFrameDomain
         * x:
           PandasSeriesDomain
-            NumpyIntegerDomain size=64
+            NumpyIntegerDomain
         * y:
           PandasSeriesDomain
             NumpyStringDomain allow_null=False"""
@@ -111,12 +111,12 @@ def test_spark_column_descriptors_format():
     """Spark column descriptors are formattable as single lines."""
     assert (
         SparkIntegerColumnDescriptor().format()
-        == "SparkIntegerColumnDescriptor allow_null=False size=64"
+        == "SparkIntegerColumnDescriptor allow_null=False"
     )
     assert (
         SparkFloatColumnDescriptor(allow_nan=True).format()
         == "SparkFloatColumnDescriptor allow_nan=True allow_inf=False"
-        " allow_null=False size=64"
+        " allow_null=False"
     )
     assert (
         SparkStringColumnDescriptor(allow_null=True).format()
@@ -131,7 +131,7 @@ def test_spark_row_domain():
     ).format() == textwrap.dedent(
         """\
         SparkRowDomain
-        * a: SparkIntegerColumnDescriptor allow_null=False size=64"""
+        * a: SparkIntegerColumnDescriptor allow_null=False"""
     )
 
 
@@ -145,7 +145,7 @@ def test_spark_dataframe_domain_compact_columns():
     ).format() == textwrap.dedent(
         """\
         SparkDataFrameDomain
-        * a:    SparkIntegerColumnDescriptor allow_null=False size=64
+        * a:    SparkIntegerColumnDescriptor allow_null=False
         * name: SparkStringColumnDescriptor allow_null=False"""
     )
 
@@ -163,7 +163,7 @@ def test_spark_grouped_dataframe_domain():
     ).format() == textwrap.dedent(
         """\
         SparkGroupedDataFrameDomain groupby_columns={'a'}
-        * a: SparkIntegerColumnDescriptor allow_null=False size=64
+        * a: SparkIntegerColumnDescriptor allow_null=False
         * b: SparkStringColumnDescriptor allow_null=False"""
     )
 
@@ -176,7 +176,7 @@ def test_dict_domain_nested_in_list_domain():
         """\
         ListDomain length=None
           DictDomain
-          * a: NumpyIntegerDomain size=64"""
+          * a: NumpyIntegerDomain"""
     )
 
 

@@ -19,63 +19,45 @@ class NumpyDomain(Domain):
     def from_np_type(cls, dtype: np.dtype) -> "NumpyDomain":
         """Returns a NumPy domain from a Pandas type."""
         pd_to_numpy_domain = {
-            np.dtype("int8"): NumpyIntegerDomain(size=32),
-            np.dtype("int16"): NumpyIntegerDomain(size=32),
-            np.dtype("int32"): NumpyIntegerDomain(size=32),
-            np.dtype("int64"): NumpyIntegerDomain(size=64),
-            np.dtype("float32"): NumpyFloatDomain(size=32),
-            np.dtype("float64"): NumpyFloatDomain(size=64),
+            np.dtype("int64"): NumpyIntegerDomain(),
+            np.dtype("float64"): NumpyFloatDomain(),
             np.dtype("object"): NumpyStringDomain(),
-            np.dtype("bool"): NumpyIntegerDomain(size=32),
         }
+        if dtype not in pd_to_numpy_domain:
+            raise ValueError(
+                f"Unsupported dtype {dtype}. Integers and floats must be 64-bit; cast"
+                " them to int64 or float64 first."
+            )
         return pd_to_numpy_domain[dtype]
 
 
 @dataclass(frozen=True)
 class NumpyIntegerDomain(NumpyDomain):
-    """Domain of NumPy integers."""
-
-    size: int = 64
-    """Number of bits a member of the domain occupies. Must be 32 or 64."""
-
-    def __post_init__(self) -> None:
-        """Checks arguments to constructor."""
-        check_type(self.size, int)
-        if self.size not in [32, 64]:
-            raise ValueError(f"size must be 32 or 64, not {self.size}")
+    """Domain of 64-bit NumPy integers."""
 
     @property
     def carrier_type(self) -> type:
         """Returns carrier type for elements in the domain."""
-        if self.size == 32:
-            return np.int32
         return np.int64
 
 
 @dataclass(frozen=True)
 class NumpyFloatDomain(NumpyDomain):
-    """Domain of NumPy floats."""
+    """Domain of 64-bit NumPy floats."""
 
     allow_nan: bool = False
     """If True, NaNs are permitted in the domain."""
     allow_inf: bool = False
     """If True, infs are permitted in the domain."""
-    size: int = 64
-    """Number of bits a member of the domain occupies. Must be 32 or 64."""
 
     def __post_init__(self) -> None:
         """Checks arguments to constructor."""
         check_type(self.allow_nan, bool)
         check_type(self.allow_inf, bool)
-        check_type(self.size, int)
-        if self.size not in [32, 64]:
-            raise ValueError(f"size must be 32 or 64, not {self.size}")
 
     @property
     def carrier_type(self) -> type:
         """Returns carrier type for elements in the domain."""
-        if self.size == 32:
-            return np.float32
         return np.float64
 
     def validate(self, value: Any) -> None:

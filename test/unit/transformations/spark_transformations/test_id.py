@@ -6,7 +6,7 @@
 import pandas as pd
 from parameterized import parameterized
 from pyspark.sql import functions as sf
-from pyspark.sql.types import IntegerType, StringType, StructField, StructType
+from pyspark.sql.types import LongType, StringType, StructField, StructType
 
 from tmlt.core.domains.spark_domains import (
     SparkColumnsDescriptor,
@@ -201,12 +201,12 @@ class TestAddUniqueColumn(PySparkTest):
         """
         domain = SparkDataFrameDomain(
             {
-                "A": SparkIntegerColumnDescriptor(allow_null=True, size=32),
+                "A": SparkIntegerColumnDescriptor(allow_null=True),
                 "B": SparkStringColumnDescriptor(allow_null=True),
             }
         )
         simple_sdf_schema = StructType(
-            [StructField("A", IntegerType()), StructField("B", StringType())]
+            [StructField("A", LongType()), StructField("B", StringType())]
         )
         transformation = AddUniqueColumn(input_domain=domain, column="ID")
         df1 = self.spark.createDataFrame(df1_rows, schema=simple_sdf_schema)

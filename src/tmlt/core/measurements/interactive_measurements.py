@@ -1105,7 +1105,7 @@ class PrivacyAccountant:
                 ... )
 
             >>> privacy_accountant.input_domain
-            NumpyIntegerDomain(size=64)
+            NumpyIntegerDomain()
             >>> privacy_accountant.input_metric
             AbsoluteDifference()
             >>> privacy_accountant.output_measure
@@ -1121,7 +1121,7 @@ class PrivacyAccountant:
             ... )
             >>> privacy_accountant.transform_in_place(transformation)
             >>> privacy_accountant.input_domain
-            DictDomain(key_to_domain={'A': NumpyIntegerDomain(size=64)})
+            DictDomain(key_to_domain={'A': NumpyIntegerDomain()})
             >>> privacy_accountant.input_metric
             DictMetric(key_to_metric={'A': AbsoluteDifference()})
             >>> privacy_accountant.output_measure
@@ -1231,7 +1231,7 @@ class PrivacyAccountant:
                 ... )
 
             >>> privacy_accountant.input_domain
-            NumpyIntegerDomain(size=64)
+            NumpyIntegerDomain()
             >>> privacy_accountant.input_metric
             AbsoluteDifference()
             >>> privacy_accountant.output_measure
@@ -1250,7 +1250,7 @@ class PrivacyAccountant:
             <BLANKLINE>
             ...
             >>> privacy_accountant.input_domain
-            NumpyIntegerDomain(size=64)
+            NumpyIntegerDomain()
             >>> privacy_accountant.input_metric
             AbsoluteDifference()
             >>> privacy_accountant.output_measure
@@ -1429,7 +1429,7 @@ class PrivacyAccountant:
                 ... )
 
             >>> privacy_accountant.input_domain
-            DictDomain(key_to_domain={'A': ListDomain(element_domain=NumpyIntegerDomain(size=64), length=3)})
+            DictDomain(key_to_domain={'A': ListDomain(element_domain=NumpyIntegerDomain(), length=3)})
             >>> privacy_accountant.input_metric
             DictMetric(key_to_metric={'A': SumOf(inner_metric=AbsoluteDifference())})
             >>> privacy_accountant.output_measure
@@ -1459,7 +1459,7 @@ class PrivacyAccountant:
             ...     privacy_budget=3,
             ... )
             >>> privacy_accountant.input_domain
-            DictDomain(key_to_domain={'A': ListDomain(element_domain=NumpyIntegerDomain(size=64), length=3)})
+            DictDomain(key_to_domain={'A': ListDomain(element_domain=NumpyIntegerDomain(), length=3)})
             >>> privacy_accountant.input_metric
             DictMetric(key_to_metric={'A': SumOf(inner_metric=AbsoluteDifference())})
             >>> privacy_accountant.output_measure
@@ -1471,7 +1471,7 @@ class PrivacyAccountant:
             >>> privacy_accountant.state
             <PrivacyAccountantState.WAITING_FOR_CHILDREN: 3>
             >>> children[0].input_domain
-            NumpyIntegerDomain(size=64)
+            NumpyIntegerDomain()
             >>> children[0].input_metric
             AbsoluteDifference()
             >>> children[0].output_measure

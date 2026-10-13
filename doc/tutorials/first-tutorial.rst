@@ -29,7 +29,7 @@ This creates an Core-ready Spark Session. For more details on using Spark sessio
    from pyspark.sql.types import *
 
    spark_schema = StructType(
-       [StructField("Name", StringType()), StructField("Age", IntegerType())]
+       [StructField("Name", StringType()), StructField("Age", LongType())]
    )
    df = spark.createDataFrame([("Alice", 30), ("Bob", 15), ("Carlos", 50)], schema=spark_schema)
 

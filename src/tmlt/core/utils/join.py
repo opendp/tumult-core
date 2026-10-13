@@ -296,10 +296,7 @@ def domain_after_join(
         new_descriptor: SparkColumnDescriptor
         if isinstance(left_descriptor, SparkIntegerColumnDescriptor):
             assert isinstance(right_descriptor, SparkIntegerColumnDescriptor)
-            assert left_descriptor.size == right_descriptor.size
-            new_descriptor = SparkIntegerColumnDescriptor(
-                allow_null=allow_null, size=left_descriptor.size
-            )
+            new_descriptor = SparkIntegerColumnDescriptor(allow_null=allow_null)
         elif isinstance(left_descriptor, SparkFloatColumnDescriptor):
             assert isinstance(right_descriptor, SparkFloatColumnDescriptor)
             allow_nan = None
@@ -318,12 +315,10 @@ def domain_after_join(
                 allow_inf = left_descriptor.allow_inf or right_descriptor.allow_inf
             assert allow_nan is not None
             assert allow_inf is not None
-            assert left_descriptor.size == right_descriptor.size
             new_descriptor = SparkFloatColumnDescriptor(
                 allow_nan=allow_nan,
                 allow_inf=allow_inf,
                 allow_null=allow_null,
-                size=left_descriptor.size,
             )
         elif isinstance(
             left_descriptor,

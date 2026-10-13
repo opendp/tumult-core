@@ -94,9 +94,9 @@ class Count(Transformation):
         * Output metric - :class:`~.AbsoluteDifference`
 
         >>> count_dataframe.input_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> count_dataframe.output_domain
-        NumpyIntegerDomain(size=64)
+        NumpyIntegerDomain()
         >>> count_dataframe.input_metric
         SymmetricDifference()
         >>> count_dataframe.output_metric
@@ -199,9 +199,9 @@ class CountDistinct(Transformation):
         * Output metric - :class:`~.AbsoluteDifference`
 
         >>> count_distinct_dataframe.input_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> count_distinct_dataframe.output_domain
-        NumpyIntegerDomain(size=64)
+        NumpyIntegerDomain()
         >>> count_distinct_dataframe.input_metric
         SymmetricDifference()
         >>> count_distinct_dataframe.output_metric
@@ -331,9 +331,9 @@ class CountGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False)}, groupby_columns={'A'})
         >>> count_by_A.output_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> count_by_A.input_metric
         SumOf(inner_metric=SymmetricDifference())
         >>> count_by_A.output_metric
@@ -506,9 +506,9 @@ class CountDistinctGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> count_distinct_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False)}, groupby_columns={'A'})
         >>> count_distinct_by_A.output_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count_distinct': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'count_distinct': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> count_distinct_by_A.input_metric
         SumOf(inner_metric=SymmetricDifference())
         >>> count_distinct_by_A.output_metric
@@ -600,18 +600,11 @@ class CountDistinctGrouped(Transformation):
     def __call__(self, grouped_data: GroupedDataFrame) -> DataFrame:
         """Returns a DataFrame containing counts for each group."""
         # Note: This cannot use sf.count_distinct since it ignores rows with nulls.
-        result = grouped_data.agg(
-            sf.size(sf.collect_set(sf.struct("*"))).alias(self.count_column),
+        return grouped_data.agg(
+            sf.size(sf.collect_set(sf.struct("*")))
+            .cast("long")
+            .alias(self.count_column),
             fill_value=0,
-        )
-        # Ensure the new column has the expected output type.
-        return result.withColumn(
-            self.count_column,
-            result[self.count_column].cast(
-                cast(SparkDataFrameDomain, self.output_domain)[
-                    self.count_column
-                ].data_type
-            ),
         )
 
 
@@ -672,9 +665,9 @@ class Sum(Transformation):
         * Output metric - :class:`~.AbsoluteDifference`
 
         >>> sum_X.input_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> sum_X.output_domain
-        NumpyIntegerDomain(size=64)
+        NumpyIntegerDomain()
         >>> sum_X.input_metric
         SymmetricDifference()
         >>> sum_X.output_metric
@@ -898,9 +891,9 @@ class SumGrouped(Transformation):
         * Output metric - :class:`~.OnColumn`
 
         >>> sum_X_by_A.input_domain
-        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False, size=64)}, groupby_columns={'A'})
+        SparkGroupedDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'X': SparkIntegerColumnDescriptor(allow_null=False)}, groupby_columns={'A'})
         >>> sum_X_by_A.output_domain
-        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'sum(X)': SparkIntegerColumnDescriptor(allow_null=False, size=64)})
+        SparkDataFrameDomain(schema={'A': SparkStringColumnDescriptor(allow_null=False), 'sum(X)': SparkIntegerColumnDescriptor(allow_null=False)})
         >>> sum_X_by_A.input_metric
         SumOf(inner_metric=SymmetricDifference())
         >>> sum_X_by_A.output_metric
