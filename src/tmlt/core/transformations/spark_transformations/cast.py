@@ -34,7 +34,7 @@ class CastToFloat(Transformation):
     """Casts one or more integer columns of a Spark DataFrame to floats.
 
     The grouping columns of an :class:`~.IfGroupedBy` metric cannot be cast, since
-    Core does not support grouping by floating-point columns.
+    Tumult Core does not support grouping by floating-point columns.
 
     Example:
         ..
@@ -190,9 +190,6 @@ class CastToFloat(Transformation):
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
-
-        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
-        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.
