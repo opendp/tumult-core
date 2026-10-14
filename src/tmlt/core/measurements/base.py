@@ -48,30 +48,30 @@ class Measurement(Formattable, ABC):
                     " not compatible."
                 ),
             )
-        self._input_domain = input_domain
-        self._input_metric = input_metric
-        self._output_measure = output_measure
-        self._is_interactive = is_interactive
+        self.__input_domain = input_domain
+        self.__input_metric = input_metric
+        self.__output_measure = output_measure
+        self.__is_interactive = is_interactive
 
     @property
     def input_domain(self) -> Domain:
         """Return input domain for the measurement."""
-        return self._input_domain
+        return self.__input_domain
 
     @property
     def input_metric(self) -> Metric:
         """Distance metric on input domain."""
-        return self._input_metric
+        return self.__input_metric
 
     @property
     def output_measure(self) -> Measure:
         """Distance measure on output."""
-        return self._output_measure
+        return self.__output_measure
 
     @property
     def is_interactive(self) -> bool:
         """Returns true iff the measurement is interactive."""
-        return self._is_interactive
+        return self.__is_interactive
 
     @typechecked
     def privacy_function(self, d_in: Any) -> Any:

@@ -1045,9 +1045,9 @@ class GroupingFlatMap(Transformation):
             return distinct_rows
 
         mapped_rdd = sdf.rdd.flatMap(stable_row_map)
-        assert isinstance(self._output_domain, SparkDataFrameDomain)
+        assert isinstance(self.output_domain, SparkDataFrameDomain)
         spark = SparkSession.builder.getOrCreate()
-        mapped_sdf = spark.createDataFrame(mapped_rdd, self._output_domain.spark_schema)
+        mapped_sdf = spark.createDataFrame(mapped_rdd, self.output_domain.spark_schema)
         return mapped_sdf
 
 
@@ -1212,9 +1212,9 @@ class Map(Transformation):
     def __call__(self, sdf: DataFrame) -> DataFrame:
         """Return mapped DataFrame."""
         mapped_rdd = sdf.rdd.map(self._row_transformer)
-        assert isinstance(self._output_domain, SparkDataFrameDomain)
+        assert isinstance(self.output_domain, SparkDataFrameDomain)
         spark = SparkSession.builder.getOrCreate()
-        mapped_sdf = spark.createDataFrame(mapped_rdd, self._output_domain.spark_schema)
+        mapped_sdf = spark.createDataFrame(mapped_rdd, self.output_domain.spark_schema)
         return mapped_sdf
 
 
