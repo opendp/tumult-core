@@ -11,6 +11,7 @@ Added
 
 - Support for Python 3.13 and 3.14.
 - :class:`.Transformation`\s, :class:`.Measurement`\ s, and :class:`.Domain`\ s have a new ``format`` method, which renders a human-readable string showing the structure of the object to aid in visualization and debugging.
+- Added :class:`~.CastToFloat`, a transformation casting integer columns of a Spark DataFrame to floats.
 
 Changed
 ~~~~~~~
