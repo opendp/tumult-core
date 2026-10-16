@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright the Tumult Core Contributors 2026-present
 
-from typing import List, Union
+from typing import Collection, Union
 
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as sf
@@ -28,13 +28,15 @@ from tmlt.core.metrics import (
 )
 from tmlt.core.transformations.base import Transformation
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
+from tmlt.core.utils.misc import ConciseFrozenSet
+from tmlt.core.utils.validation import validate_column_set
 
 
 class CastToFloat(Transformation):
     """Casts one or more integer columns of a Spark DataFrame to floats.
 
     The grouping columns of an :class:`~.IfGroupedBy` metric cannot be cast, since
-    Tumult Core does not support grouping by floating-point columns.
+    Core does not support grouping by floating-point columns.
 
     Example:
         ..
@@ -108,7 +110,7 @@ class CastToFloat(Transformation):
         self,
         input_domain: SparkDataFrameDomain,
         metric: Union[SymmetricDifference, HammingDistance, IfGroupedBy],
-        columns: List[str],
+        columns: Collection[str],
     ):
         """Constructor.
 
@@ -121,6 +123,7 @@ class CastToFloat(Transformation):
                 its grouping columns.
             columns: Integer columns to cast to floats.
         """
+        validate_column_set(columns, "columns")
         if isinstance(metric, IfGroupedBy):
             if metric.inner_metric not in (
                 SymmetricDifference(),
@@ -135,14 +138,6 @@ class CastToFloat(Transformation):
                         " RootSumOfSquared(SymmetricDifference())"
                     ),
                 )
-        if not columns:
-            raise ValueError("At least one column must be specified.")
-        if len(columns) != len(set(columns)):
-            duplicates = set(col for col in columns if columns.count(col) > 1)
-            raise ValueError(
-                "`columns` must not contain duplicate names. The column(s)"
-                f" ({duplicates}) appear more than once."
-            )
         if not set(columns) <= set(input_domain.schema):
             raise DomainColumnError(
                 input_domain,
@@ -180,16 +175,19 @@ class CastToFloat(Transformation):
             output_domain=output_domain,
             output_metric=metric,
         )
-        self._columns = columns.copy()
+        self._columns = ConciseFrozenSet(columns)
 
     @property
-    def columns(self) -> List[str]:
+    def columns(self) -> frozenset[str]:
         """Returns the columns to cast to floats."""
-        return self._columns.copy()
+        return self._columns
 
     @typechecked
     def stability_function(self, d_in: ExactNumberInput) -> ExactNumber:
         """Returns the smallest d_out satisfied by the transformation.
+
+        See `the architecture overview <https://docs.tmlt.dev/core/latest/topic-guides/architecture.html>`_
+        for more information.
 
         Args:
             d_in: Distance between inputs under input_metric.

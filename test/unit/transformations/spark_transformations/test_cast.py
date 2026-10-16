@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright the Tumult Core Contributors 2026-present
 
-from typing import List, Type, Union
+from typing import Collection, Type, Union
 
 import pandas as pd
 import pytest
@@ -78,7 +78,7 @@ def test_properties(metric: Union[SymmetricDifference, HammingDistance, IfGroupe
     )
     assert transformation.input_metric == metric
     assert transformation.output_metric == metric
-    assert transformation.columns == ["int_col", "nullable_int_col"]
+    assert transformation.columns == frozenset({"int_col", "nullable_int_col"})
     assert transformation.stability_function(3) == 3
     assert transformation.stability_relation(3, 3)
     assert not transformation.stability_relation(3, 2)
@@ -100,7 +100,7 @@ def test_constructor_mutable_arguments():
         input_domain=INPUT_DOMAIN, metric=SymmetricDifference(), columns=columns
     )
     columns.append("nullable_int_col")
-    assert transformation.columns == ["int_col"]
+    assert transformation.columns == frozenset({"int_col"})
 
 
 def test_correctness(spark):
@@ -120,7 +120,7 @@ def test_correctness(spark):
     transformation = CastToFloat(
         input_domain=INPUT_DOMAIN,
         metric=SymmetricDifference(),
-        columns=["int_col", "nullable_int_col"],
+        columns={"int_col", "nullable_int_col"},
     )
     actual = transformation(sdf)
     assert actual.schema == StructType(
@@ -154,13 +154,19 @@ def test_correctness(spark):
             metric=SymmetricDifference(),
             columns=[],
             error=ValueError,
-            message="At least one column must be specified",
+            message="columns must contain at least one column",
         ),
         Case("duplicate-columns")(
             metric=SymmetricDifference(),
             columns=["int_col", "int_col"],
             error=ValueError,
-            message="must not contain duplicate names",
+            message="columns cannot contain duplicate column names",
+        ),
+        Case("single-string")(
+            metric=SymmetricDifference(),
+            columns="int_col",
+            error=ValueError,
+            message="columns must be a collection of column names, not a single string",
         ),
         Case("missing-column")(
             metric=SymmetricDifference(),
@@ -196,7 +202,7 @@ def test_correctness(spark):
 )
 def test_invalid_arguments(
     metric: Union[SymmetricDifference, IfGroupedBy],
-    columns: List[str],
+    columns: Collection[str],
     error: Type[Exception],
     message: str,
 ):
