@@ -8,7 +8,7 @@ Unreleased
 
 This release adds support for Python 3.13 and 3.14. 
 It adds a human-readable ``format`` method for Core components, new classes to define derived components, and a new transformation to cast integer columns to floating-point.
-It also simplifies its dependency tree, completes support for truncation using multiple columns as grouping columns, renames a number of objects to unify the terminology with Tumult Analytics, and fixes several privacy-impacting issues.
+It also simplifies the library's dependency tree, completes support for truncation using multiple columns as grouping columns, renames a number of objects to improve terminology consistency with Tumult Analytics, and fixes several privacy-impacting issues.
 
 Added
 ~~~~~
