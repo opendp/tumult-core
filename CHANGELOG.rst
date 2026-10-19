@@ -3,8 +3,11 @@
 Changelog
 =========
 
-Unreleased
-----------
+
+.. _v0.20.0:
+
+0.20.0 - 2026-10-19
+-------------------
 
 This release adds support for Python 3.13 and 3.14. 
 It adds a human-readable ``format`` method for Core components, new classes to define derived components, and a new transformation to cast integer columns to floating-point.
