@@ -6,6 +6,10 @@ Changelog
 Unreleased
 ----------
 
+This release adds support for Python 3.13 and 3.14. 
+It adds a human-readable ``format`` method for Core components, new classes to define derived components, and a new transformation to cast integer columns to floating-point.
+It also simplifies the library's dependency tree, completes support for truncation using multiple columns as grouping columns, renames a number of objects to improve terminology consistency with Tumult Analytics, and fixes several privacy-impacting issues.
+
 Added
 ~~~~~
 
@@ -31,6 +35,9 @@ Changed
   - ``AddRemoveKeys`` -> :class:`~tmlt.core.metrics.AddRemoveIDs`
   - ``PrivateJoinOnKey`` -> :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnIDs`
   - ``FlatMapByKey`` -> :class:`~tmlt.core.transformations.spark_transformations.map.FlatMapByID`
+  - In :class:`~tmlt.core.metrics.AddRemoveIDs`, ``df_to_key_column`` -> ``df_to_id_column``
+  - In :class:`~tmlt.core.transformations.dictionary.CreateDictFromValue`, ``use_add_remove_keys`` -> ``use_add_remove_ids``.
+  - Throughout many Core components' constructor arguments and properties, ``grouping_columns`` -> ``id_columns``, and ``key_column`` -> ``grouping_columns``
 - We now allow grouping by multiple columns in more places: :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitGroupsPerID`, :class:`~tmlt.core.transformations.spark_transformations.truncation.LimitRowsPerGroupPerID`, :class:`~tmlt.core.transformations.spark_transformations.add_remove_ids.LimitGroupsPerIDValue`, and :class:`~tmlt.core.transformations.spark_transformations.add_remove_ids.LimitRowsPerGroupPerIDValue` now take a ``grouping_columns`` collection.
 - :func:`~tmlt.core.measurements.aggregations.create_average_measurement`, :func:`~tmlt.core.measurements.aggregations.create_variance_measurement`, and :func:`~tmlt.core.measurements.aggregations.create_standard_deviation_measurement` now only accept the ``LAPLACE`` and ``GAUSSIAN`` noise mechanisms, so large integer values can no longer overflow the intermediate aggregations. The ``integer_midpoint`` argument of :func:`~tmlt.core.measurements.aggregations.get_midpoint` was removed.
 - :class:`~tmlt.core.measurements.noise_mechanisms.AddLaplaceNoise` and :class:`~tmlt.core.measurements.noise_mechanisms.AddGaussianNoise` now only accept float input domains, so counts, distinct counts, and integer sums only accept the ``GEOMETRIC`` and ``DISCRETE_GAUSSIAN`` noise mechanisms.
