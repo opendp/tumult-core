@@ -78,7 +78,8 @@ def test_properties(metric: Union[SymmetricDifference, HammingDistance, IfGroupe
     )
     assert transformation.input_metric == metric
     assert transformation.output_metric == metric
-    assert transformation.columns == frozenset({"int_col", "nullable_int_col"})
+    assert transformation.columns == {"int_col", "nullable_int_col"}
+    assert isinstance(transformation.columns, frozenset)
     assert transformation.stability_function(3) == 3
     assert transformation.stability_relation(3, 3)
     assert not transformation.stability_relation(3, 2)
@@ -100,7 +101,7 @@ def test_constructor_mutable_arguments():
         input_domain=INPUT_DOMAIN, metric=SymmetricDifference(), columns=columns
     )
     columns.append("nullable_int_col")
-    assert transformation.columns == frozenset({"int_col"})
+    assert transformation.columns == {"int_col"}
 
 
 def test_correctness(spark):
