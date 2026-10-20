@@ -402,7 +402,7 @@ def discrete_gaussian_pmf(
         }
 
     See :cite:`Canonne0S20` for more information. The formula above is based on
-    Definition 1 in the paper. TEST PLEASE IGNORE
+    Definition 1 in the paper.
 
     .. note:
 
