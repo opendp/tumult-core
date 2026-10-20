@@ -836,17 +836,26 @@ def _run_chi_squared_tests(
     cmf: Callable,
     pmf: Callable,
     fudge_factor: float,
-) -> Tuple[float, float, float]:
+) -> Tuple[float, float, float, str]:
     """Performs a Chi-squared test on the sample.
 
-    Since chi2 tests don't work well for infinite bins, this test groups all values
-    of k with an expected number of samples less than 5 into one of two bins:
-    one bin is for small k values, and the other is for large k values.
+    Chi-squared tests are only accurate when every bin has an expected number of samples
+    of at least 5, so we group the values of k in each tail into a single bin to make
+    sure that all bins (including the two tail bins) satisfy this condition.
+
+    This returns the p-values for the conjectured scale, a smaller scale, and a larger
+    scale, followed by a description of the sample and of each bin, for use in error
+    messages.
     """
     sample_size = len(sample)
-    # Find the minimum/maximum k values where the expected number of counts is > 5.
+    # Find the largest max_k such that k = max_k - 1 and the tail bin k >= max_k
+    # both have an expected number of counts of at least 5. The distributions are
+    # symmetric around loc, so the same holds for min_k.
     max_k = loc
-    while sample_size * pmf(max_k, conjectured_scale) >= 5:
+    while (
+        sample_size * pmf(max_k, conjectured_scale) >= 5
+        and sample_size * (1 - cmf(max_k, conjectured_scale)) >= 5
+    ):
         max_k += 1
     min_k = loc - (max_k - loc)
 
@@ -892,7 +901,20 @@ def _run_chi_squared_tests(
     (_, good_p) = chisquare(actual_counts, good_expected_counts)
     (_, less_noise_p) = chisquare(actual_counts, less_noise_expected_counts)
     (_, more_noise_p) = chisquare(actual_counts, more_noise_expected_counts)
-    return good_p, less_noise_p, more_noise_p
+
+    bin_labels = [f"<= {min_k}", *map(str, range(min_k + 1, max_k)), f">= {max_k}"]
+    details = (
+        f"loc={loc}, scale={conjectured_scale}, sample size={sample_size}, "
+        f"sample mean={np.mean(sample)}, sample variance={np.var(sample)}\n"
+        "bin: actual count (expected count)\n"
+        + "\n".join(
+            f"  {label}: {actual} ({expected:.2f})"
+            for label, actual, expected in zip(
+                bin_labels, actual_counts, good_expected_counts
+            )
+        )
+    )
+    return good_p, less_noise_p, more_noise_p, details
 
 
 @pytest.mark.skip()
@@ -922,7 +944,7 @@ def run_test_using_chi_squared_test(
     """Runs given :class:`~.ChiSquaredTestCase`."""
     samples = case.sampler()
     for sample_name, sample in samples.items():
-        good_p, less_noise_p, more_noise_p = _run_chi_squared_tests(
+        good_p, less_noise_p, more_noise_p, details = _run_chi_squared_tests(
             sample=sample,
             loc=case.locations[sample_name],
             conjectured_scale=ExactNumber(case.scales[sample_name]).to_float(
@@ -932,9 +954,14 @@ def run_test_using_chi_squared_test(
             pmf=case.pmfs[sample_name],
             fudge_factor=noise_scale_fudge_factor,
         )
-        assert good_p > p_threshold, f"{p_threshold}, {good_p}"
-        assert less_noise_p < p_threshold, f"{p_threshold}, {less_noise_p}"
-        assert more_noise_p < p_threshold, f"{p_threshold}, {more_noise_p}"
+        p_values = (
+            f"sample {sample_name!r}: p={good_p} for the conjectured scale, "
+            f"{less_noise_p} for less noise, {more_noise_p} for more noise "
+            f"(threshold {p_threshold})\n{details}"
+        )
+        assert good_p > p_threshold, f"Rejected the conjectured scale, {p_values}"
+        assert less_noise_p < p_threshold, f"Did not reject less noise, {p_values}"
+        assert more_noise_p < p_threshold, f"Did not reject more noise, {p_values}"
 
 
 @overload
