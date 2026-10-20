@@ -318,7 +318,7 @@ class TestCorrelationDetection(PySparkTest):
             p, size=SAMPLE_SIZE // 200
         )
         sample = np.concatenate([noise for _ in range(200)])
-        (p_value, _, _) = _run_chi_squared_tests(
+        (p_value, _, _, details) = _run_chi_squared_tests(
             sample,
             loc=0,
             conjectured_scale=scale,
@@ -326,4 +326,6 @@ class TestCorrelationDetection(PySparkTest):
             pmf=_create_two_sided_geometric_pmf(0),
             fudge_factor=NOISE_SCALE_FUDGE_FACTOR,
         )
-        self.assertLess(p_value, P_THRESHOLD)
+        self.assertLess(
+            p_value, P_THRESHOLD, f"Did not reject samples with duplicates\n{details}"
+        )
