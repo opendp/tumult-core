@@ -631,6 +631,17 @@ DOMAIN_AFTER_JOIN_ERROR_TEST_CASES = [
         {"right_domain": NumpyIntegerDomain()},
         "Right join input domain must be a SparkDataFrameDomain.",
     ),
+    (
+        {
+            "left_domain": SparkDataFrameDomain(
+                {"column": SparkFloatColumnDescriptor()}
+            ),
+            "right_domain": SparkDataFrameDomain(
+                {"column": SparkFloatColumnDescriptor()}
+            ),
+        },
+        "Cannot join on a floating point column: column",
+    ),
 ]
 
 
@@ -683,68 +694,6 @@ class TestDomainAfterJoin(TestCase):
         )
 
     @parameterized.expand(
-        [how, left_allow_nan, left_allow_inf, right_allow_nan, right_allow_inf]
-        for how in ["inner", "left", "right", "outer"]
-        for left_allow_nan in [True, False]
-        for left_allow_inf in [True, False]
-        for right_allow_nan in [True, False]
-        for right_allow_inf in [True, False]
-    )
-    def test_floating_point_special_values(
-        self,
-        how: str,
-        left_allow_nan: bool,
-        left_allow_inf: bool,
-        right_allow_nan: bool,
-        right_allow_inf: bool,
-    ):
-        """Test that special values in floating point columns are handled correctly."""
-        left_domain = SparkDataFrameDomain(
-            {
-                "joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=left_allow_nan, allow_inf=left_allow_inf
-                )
-            }
-        )
-        right_domain = SparkDataFrameDomain(
-            {
-                "joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=right_allow_nan, allow_inf=right_allow_inf
-                ),
-                "not_joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=left_allow_nan, allow_inf=left_allow_inf
-                ),
-            }
-        )
-        if how == "left":
-            allow_inf = left_allow_inf
-            allow_nan = left_allow_nan
-        elif how == "right":
-            allow_inf = right_allow_inf
-            allow_nan = right_allow_nan
-        elif how == "inner":
-            allow_inf = left_allow_inf and right_allow_inf
-            allow_nan = left_allow_nan and right_allow_nan
-        else:
-            allow_inf = left_allow_inf or right_allow_inf
-            allow_nan = left_allow_nan or right_allow_nan
-        expected_domain = SparkDataFrameDomain(
-            {
-                "joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=allow_nan, allow_inf=allow_inf
-                ),
-                "not_joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=left_allow_nan,
-                    allow_inf=left_allow_inf,
-                    allow_null=how in ["left", "outer"],
-                ),
-            }
-        )
-        self.assertEqual(
-            domain_after_join(left_domain, right_domain, how=how), expected_domain
-        )
-
-    @parameterized.expand(
         [how, left_allow_null, right_allow_null, nulls_are_equal, descriptor_class]
         for how in ["inner", "left", "right", "outer"]
         for left_allow_null in [True, False]
@@ -752,7 +701,6 @@ class TestDomainAfterJoin(TestCase):
         for nulls_are_equal in [True, False]
         for descriptor_class in [
             SparkStringColumnDescriptor,
-            SparkFloatColumnDescriptor,
             SparkIntegerColumnDescriptor,
             SparkDateColumnDescriptor,
             SparkTimestampColumnDescriptor,

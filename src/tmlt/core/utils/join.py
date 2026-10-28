@@ -216,6 +216,7 @@ def domain_after_join(
         - All checks from :func:`~.columns_after_join`.
         - ``how`` is one of "left", "right", "inner", or "outer".
         - Join columns have the same data type.
+        - Join columns are not floating-point columns.
         - Left and right domains are SparkDataFrameDomains.
 
     .. note::
@@ -250,6 +251,9 @@ def domain_after_join(
             f" '{how}'."
         )
     _validate_join(left_domain.schema, right_domain.schema, on=on, how=how)
+    for column in on:
+        if isinstance(left_domain[column], SparkFloatColumnDescriptor):
+            raise ValueError(f"Cannot join on a floating point column: {column}")
     output_columns = columns_after_join(
         left_columns=list(left_domain.schema),
         right_columns=list(right_domain.schema),
@@ -297,29 +301,6 @@ def domain_after_join(
         if isinstance(left_descriptor, SparkIntegerColumnDescriptor):
             assert isinstance(right_descriptor, SparkIntegerColumnDescriptor)
             new_descriptor = SparkIntegerColumnDescriptor(allow_null=allow_null)
-        elif isinstance(left_descriptor, SparkFloatColumnDescriptor):
-            assert isinstance(right_descriptor, SparkFloatColumnDescriptor)
-            allow_nan = None
-            allow_inf = None
-            if how == "left":
-                allow_nan = left_descriptor.allow_nan
-                allow_inf = left_descriptor.allow_inf
-            elif how == "right":
-                allow_nan = right_descriptor.allow_nan
-                allow_inf = right_descriptor.allow_inf
-            elif how == "inner":
-                allow_nan = left_descriptor.allow_nan and right_descriptor.allow_nan
-                allow_inf = left_descriptor.allow_inf and right_descriptor.allow_inf
-            elif how == "outer":
-                allow_nan = left_descriptor.allow_nan or right_descriptor.allow_nan
-                allow_inf = left_descriptor.allow_inf or right_descriptor.allow_inf
-            assert allow_nan is not None
-            assert allow_inf is not None
-            new_descriptor = SparkFloatColumnDescriptor(
-                allow_nan=allow_nan,
-                allow_inf=allow_inf,
-                allow_null=allow_null,
-            )
         elif isinstance(
             left_descriptor,
             (
