@@ -1930,4 +1930,4 @@ def test_continuous_noise_is_correctly_rounded(
     # the mean so the magnitude of the noise and the scale is similar (if they're too
     # different, the check below is either false or trivially true).
     outputs = [measurement(scale) for _ in range(200)]
-    assert not all(_is_float_noise_sum(output, value) for output in outputs)
+    assert not all(_is_float_noise_sum(output, scale) for output in outputs)
