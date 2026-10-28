@@ -1902,20 +1902,20 @@ def _is_float_noise_sum(output: float, value: float) -> bool:
 @pytest.mark.parametrize(
     "create_measurement",
     [
-        lambda value: AddLaplaceNoise(
+        lambda scale: AddLaplaceNoise(
             input_domain=NumpyFloatDomain(),
-            scale=ExactNumber.from_float(abs(value), round_up=True),
+            scale=ExactNumber.from_float(abs(scale), round_up=True),
         ),
-        lambda value: AddGaussianNoise(
+        lambda scale: AddGaussianNoise(
             input_domain=NumpyFloatDomain(),
-            sigma_squared=ExactNumber.from_float(abs(value), round_up=True) ** 2,
+            sigma_squared=ExactNumber.from_float(abs(scale), round_up=True) ** 2,
         ),
     ],
     ids=["laplace", "gaussian"],
 )
-@pytest.mark.parametrize("value", [1.0, -1.0, 3.7, 1e-150, 1e150])
+@pytest.mark.parametrize("scale", [1.0, -1.0, 3.7, 1e-150, 1e150])
 def test_continuous_noise_is_correctly_rounded(
-    create_measurement: Callable[[float], Measurement], value: float
+    create_measurement: Callable[[float], Measurement], scale: float
 ):
     """Checks that the failure mode of precision-based attacks doesn't happen.
 
@@ -1924,8 +1924,10 @@ def test_continuous_noise_is_correctly_rounded(
     this doesn't happen, we add noise to the input value many times, and check that some
     of these outputs couldn't have been reached in the vulnerable way.
     """
-    measurement = create_measurement(value)
+    measurement = create_measurement(scale)
     # About 20% of outputs are not sums of the input and a float, so this fails
-    # spuriously with probability below 1e-17.
-    outputs = [measurement(value) for _ in range(200)]
+    # spuriously with probability below 1e-17. We use the same value for the scale and
+    # the mean so the magnitude of the noise and the scale is similar (if they're too
+    # different, the check below is either false or trivially true).
+    outputs = [measurement(scale) for _ in range(200)]
     assert not all(_is_float_noise_sum(output, value) for output in outputs)
