@@ -586,4 +586,4 @@ class AddGaussianNoise(Measurement):
             return float(value)
 
         float_scale = self.sigma_squared.to_float(round_up=True)
-        return float(value) + gaussian(u=0, sigma_squared=float_scale)
+        return gaussian(u=float(value), sigma_squared=float_scale)

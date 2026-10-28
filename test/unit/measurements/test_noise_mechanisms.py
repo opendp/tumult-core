@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
+import math
 import re
 from contextlib import nullcontext as does_not_raise
+from fractions import Fraction
 from test.unit.measurements.abstract import MeasurementTests
 from typing import Any, Callable, ContextManager, Dict, Type
 
@@ -1880,3 +1882,50 @@ def test_noise_accepts_64_bit_values(
 ):
     """Noise mechanisms accept 64-bit values and return Python numbers."""
     assert type(measurement(value)) is output_type
+
+
+def _is_float_noise_sum(output: float, value: float) -> bool:
+    """Returns whether ``output == value + noise`` for some float ``noise``."""
+    exact_noise = Fraction(output) - Fraction(value)
+    noise = float(exact_noise)
+    if Fraction(noise) == exact_noise:
+        return True
+    # Float addition is monotonic, so if neither of the two floats closest to the
+    # exact noise produces the output, no other float does.
+    if Fraction(noise) < exact_noise:
+        low, high = noise, math.nextafter(noise, math.inf)
+    else:
+        low, high = math.nextafter(noise, -math.inf), noise
+    return value + low == output or value + high == output
+
+
+@pytest.mark.parametrize(
+    "create_measurement",
+    [
+        lambda value: AddLaplaceNoise(
+            input_domain=NumpyFloatDomain(),
+            scale=ExactNumber.from_float(abs(value), round_up=True),
+        ),
+        lambda value: AddGaussianNoise(
+            input_domain=NumpyFloatDomain(),
+            sigma_squared=ExactNumber.from_float(abs(value), round_up=True) ** 2,
+        ),
+    ],
+    ids=["laplace", "gaussian"],
+)
+@pytest.mark.parametrize("value", [1.0, -1.0, 3.7, 1e-150, 1e150])
+def test_continuous_noise_is_correctly_rounded(
+    create_measurement: Callable[[float], Measurement], value: float
+):
+    """Checks that the failure mode of precision-based attacks doesn't happen.
+
+    If the noise is added to the true value in floating-point space, some values cannot
+    be reached with certain inputs, so observing them can reveal the input. To test that
+    this doesn't happen, we add noise to the input value many times, and check that some
+    of these outputs couldn't have been reached in the vulnerable way.
+    """
+    measurement = create_measurement(value)
+    # About 20% of outputs are not sums of the input and a float, so this fails
+    # spuriously with probability below 1e-17.
+    outputs = [measurement(value) for _ in range(200)]
+    assert not all(_is_float_noise_sum(output, value) for output in outputs)

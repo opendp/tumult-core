@@ -7,6 +7,10 @@ Changelog
 Unreleased
 ----------
 
+Fixed
+~~~~~
+- Fixed a floating-point precision-based vulnerability in :class:`~tmlt.core.measurements.noise_mechanisms.AddGaussianNoise`.
+
 .. _v0.20.0:
 
 0.20.0 - 2026-10-19
