@@ -312,16 +312,17 @@ class SequentialQueryable(Queryable):
                     ),
                 )
 
-            self._data = query.transformation(self._data)
             if query.d_out:
                 if not query.transformation.stability_relation(self._d_in, query.d_out):
                     raise ValueError(
                         "Transformation's stability relation cannot be satisfied with"
                         f" given d_out ({query.d_out})"
                     )
-                self._d_in = query.d_out
+                new_d_in = query.d_out
             else:
-                self._d_in = query.transformation.stability_function(self._d_in)
+                new_d_in = query.transformation.stability_function(self._d_in)
+            self._data = query.transformation(self._data)
+            self._d_in = new_d_in
             self._input_domain = query.transformation.output_domain
             self._input_metric = query.transformation.output_metric
             return None

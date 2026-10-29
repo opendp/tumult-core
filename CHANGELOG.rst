@@ -11,6 +11,7 @@ Fixed
 ~~~~~
 - Fixed a floating-point precision-based vulnerability in :class:`~tmlt.core.measurements.noise_mechanisms.AddGaussianNoise`.
 - Fixed a bug where hash-based truncation distinguished ``-0.0`` from ``0.0``, which could cause stability underestimation in :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoin` with :attr:`~tmlt.core.transformations.spark_transformations.join.TruncationStrategy.TRUNCATE`.
+- :class:`~tmlt.core.measurements.interactive_measurements.SequentialQueryable` no longer transforms its data when a transformation query is rejected.
 
 .. _v0.20.0:
 

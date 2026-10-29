@@ -765,23 +765,39 @@ class TestSequentialQueryable(PySparkTest):
         )
         self.assertEqual(queryable._d_in, 3)  # noqa: SLF001
 
-    def test_transformation_query_stability_relation_returns_false(self):
-        """SequentialQueryable raises error if stability relation is not True."""
+    @parameterized.expand(
+        [
+            (
+                3,
+                ValueError,
+                "Transformation's stability relation cannot be satisfied with given"
+                r" d_out \(3\)",
+            ),
+            (None, NotImplementedError, ""),
+        ]
+    )
+    def test_rejected_transformation_query(
+        self, d_out: Optional[int], error_type: Type[Exception], error_message: str
+    ):
+        """SequentialQueryable raises an error and keeps its state if checks fail."""
         queryable = self.construct_queryable()
-        with self.assertRaisesRegex(
-            ValueError,
-            "Transformation's stability relation cannot be satisfied with given"
-            r" d_out \(3\)",
-        ):
+        with self.assertRaisesRegex(error_type, error_message):
             queryable(
                 TransformationQuery(
                     create_mock_transformation(
+                        return_value=np.float64(100.0),
+                        output_domain=NumpyFloatDomain(),
+                        output_metric=SymmetricDifference(),
                         stability_function_implemented=False,
                         stability_relation_return_value=False,
                     ),
-                    d_out=3,
+                    d_out=d_out,
                 )
             )
+        self.assertEqual(queryable._data, np.int64(10))  # noqa: SLF001
+        self.assertEqual(queryable._d_in, 1)  # noqa: SLF001
+        self.assertEqual(queryable._input_domain, NumpyIntegerDomain())  # noqa: SLF001
+        self.assertEqual(queryable._input_metric, AbsoluteDifference())  # noqa: SLF001
 
     def test_transformation_query(self):
         """SequentialQueryable processes TransformationQuery correctly."""
