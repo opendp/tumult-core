@@ -10,6 +10,8 @@ Unreleased
 Fixed
 ~~~~~
 - Fixed a floating-point precision-based vulnerability in :class:`~tmlt.core.measurements.noise_mechanisms.AddGaussianNoise`.
+- :class:`~tmlt.core.transformations.spark_transformations.agg.Sum` and :class:`~tmlt.core.transformations.spark_transformations.agg.SumGrouped` now require clamping bounds of integer columns to be at most :math:`2^{23}` in absolute value, so the sum cannot overflow. Larger bounds can be used after casting the column to floating-point with :class:`~tmlt.core.transformations.spark_transformations.cast.CastToFloat`.
+- :class:`~tmlt.core.transformations.spark_transformations.agg.SumGrouped` now requires clamping bounds to be in :math:`[-2^{970}, 2^{970}]`, like :class:`~tmlt.core.transformations.spark_transformations.agg.Sum`.
 
 .. _v0.20.0:
 

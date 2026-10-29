@@ -142,7 +142,7 @@ Sum and SumGrouped
 :class:`~.Sum` and :class:`~.SumGrouped` aggregations require NaNs and nulls to be disallowed
 from the measure column. Consequently, derived measurements (requiring sums) like :func:`~.create_average_measurement`, :func:`~.create_standard_deviation_measurement` and :func:`~.create_variance_measurement` also require that the measure column disallow NaNs and nulls.
 
-+/- :code:`inf` values are correctly clipped to the upper and lower clipping bounds specified
++/- :code:`inf` values are correctly clamped to the upper and lower clamping bounds specified
 on the aggregations.
 
 
