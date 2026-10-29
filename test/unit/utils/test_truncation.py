@@ -27,7 +27,12 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from tmlt.core.utils.testing import PySparkTest, assert_dataframe_equal
+from tmlt.core.utils.testing import (
+    Case,
+    PySparkTest,
+    assert_dataframe_equal,
+    parametrize,
+)
 from tmlt.core.utils.truncation import (
     _hash_column,
     drop_large_groups,
@@ -152,6 +157,59 @@ class TestLimitGroupsPerID(PySparkTest):
         with patch("pyspark.sql.functions.hash", hash_collision_mock):
             actual = limit_groups_per_id(df, ["A"], ["B"], 1)
         self.assertEqual(actual.count(), 3)
+
+
+@parametrize(
+    Case("float")(data_type=FloatType()), Case("double")(data_type=DoubleType())
+)
+def test_hash_column_float_equality(data_type, subtests: pytest.Subtests):
+    """Hash equality agrees with Spark equality for floating-point special values.
+
+    Regression test for opendp/tumult-core#152.
+    """
+    spark = SparkSession.builder.getOrCreate()
+    cases = {
+        # Test case : left, right, expected_equal
+        "signed_zero": (-0.0, 0.0, True),
+        "positive_infinity": (float("inf"), float("inf"), True),
+        "negative_infinity": (float("-inf"), float("-inf"), True),
+        "opposite_infinities": (float("inf"), float("-inf"), False),
+        "infinity_and_finite": (float("inf"), 1.0, False),
+        "negative_infinity_and_finite": (float("-inf"), -1.0, False),
+        "signed_nan": (float("nan"), float("-nan"), True),
+        "nan_and_infinity": (float("nan"), float("inf"), False),
+        "nan_and_finite": (float("nan"), 0.0, False),
+        "nulls": (None, None, True),
+        "null_and_zero": (None, 0.0, False),
+        "null_and_nan": (None, float("nan"), False),
+    }
+    df = spark.createDataFrame(
+        [(name, left, right) for name, (left, right, _) in cases.items()],
+        StructType(
+            [
+                StructField("case", StringType(), False),
+                StructField("left", data_type, True),
+                StructField("right", data_type, True),
+            ]
+        ),
+    )
+    df, left_hash = _hash_column(df, "left")
+    df, right_hash = _hash_column(df, "right")
+    results = df.select(
+        "case",
+        df["left"].eqNullSafe(df["right"]).alias("spark_equal"),
+        df[left_hash].alias("left_hash"),
+        df[right_hash].alias("right_hash"),
+    ).collect()
+
+    for row in results:
+        with subtests.test(msg=row.case):
+            assert row.spark_equal == cases[row.case][2], (
+                "Spark equality does not match expected"
+            )
+            assert (row.left_hash == row.right_hash) == row.spark_equal, (
+                "Hash equality does not match value equality"
+            )
 
 
 # Note: The values in these tests are arbitrary and not meaningful.
