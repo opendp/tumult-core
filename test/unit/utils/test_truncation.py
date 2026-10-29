@@ -6,7 +6,7 @@
 import copy
 import datetime
 import itertools
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 from unittest.mock import patch
 
 import pandas as pd
@@ -251,10 +251,35 @@ def test_hash_column(test_rows: List[Any], schema: StructType):
 
 
 @pytest.mark.parametrize("data_type", [DoubleType(), FloatType()])
-def test_hash_column_signed_zeros(spark, data_type):
-    """Signed zeros, which Spark considers equal, have the same hash."""
+@pytest.mark.parametrize(
+    "left, right, equal",
+    [
+        (-0.0, 0.0, True),
+        (float("inf"), float("inf"), True),
+        (float("-inf"), float("-inf"), True),
+        (float("inf"), float("-inf"), False),
+        (float("inf"), 1.0, False),
+        (float("-inf"), -1.0, False),
+        (float("nan"), -float("nan"), True),
+        (float("nan"), float("inf"), False),
+        (float("nan"), 0.0, False),
+        (None, None, True),
+        (None, 0.0, False),
+        (None, float("nan"), False),
+    ],
+)
+def test_hash_column_float_equality(
+    spark, data_type, left: Optional[float], right: Optional[float], equal: bool
+):
+    """Floats have equal hashes exactly when Spark considers them equal."""
     df = spark.createDataFrame(
-        [(-0.0,), (0.0,)], StructType([StructField("A", data_type)])
+        [(left, right)],
+        StructType([StructField("left", data_type), StructField("right", data_type)]),
     )
-    hashed_df, hash_column = _hash_column(df, "A")
-    assert hashed_df.select(hash_column).distinct().count() == 1
+    df, left_hash = _hash_column(df, "left")
+    df, right_hash = _hash_column(df, "right")
+    row = df.select(
+        df["left"].eqNullSafe(df["right"]).alias("spark_equal"), left_hash, right_hash
+    ).collect()[0]
+    assert row.spark_equal == equal
+    assert (row[left_hash] == row[right_hash]) == equal
