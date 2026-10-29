@@ -248,3 +248,13 @@ def test_hash_column(test_rows: List[Any], schema: StructType):
                 f"Result field type ({result.dataType}) didn't match "
                 f"expected field type ({expectation.dataType})."
             )
+
+
+@pytest.mark.parametrize("data_type", [DoubleType(), FloatType()])
+def test_hash_column_signed_zeros(spark, data_type):
+    """Signed zeros, which Spark considers equal, have the same hash."""
+    df = spark.createDataFrame(
+        [(-0.0,), (0.0,)], StructType([StructField("A", data_type)])
+    )
+    hashed_df, hash_column = _hash_column(df, "A")
+    assert hashed_df.select(hash_column).distinct().count() == 1
