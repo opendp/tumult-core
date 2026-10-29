@@ -36,6 +36,7 @@ def _hash_column(df: DataFrame, column: str) -> Tuple[DataFrame, str]:
                 sf.when(sf.col(column) == float("-inf"), "-inf")
                 .when(sf.col(column) == float("inf"), "inf")
                 .when(sf.isnan(column), "nan")
+                .when(sf.col(column) == 0, "0.0")
                 .otherwise(sf.col(column).cast("string")),
                 256,
             ),
