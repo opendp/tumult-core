@@ -16,7 +16,6 @@ from tmlt.core.domains.spark_domains import (
     SparkColumnsDescriptor,
     SparkDataFrameDomain,
     SparkDateColumnDescriptor,
-    SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
     SparkTimestampColumnDescriptor,
@@ -216,7 +215,7 @@ def domain_after_join(
         - All checks from :func:`~.columns_after_join`.
         - ``how`` is one of "left", "right", "inner", or "outer".
         - Join columns have the same data type.
-        - Join columns are not floating-point columns.
+        - Join columns are integer, string, date, or timestamp columns.
         - Left and right domains are SparkDataFrameDomains.
 
     .. note::
@@ -251,9 +250,6 @@ def domain_after_join(
             f" '{how}'."
         )
     _validate_join(left_domain.schema, right_domain.schema, on=on, how=how)
-    for column in on:
-        if isinstance(left_domain[column], SparkFloatColumnDescriptor):
-            raise ValueError(f"Cannot join on a floating point column: {column}")
     output_columns = columns_after_join(
         left_columns=list(left_domain.schema),
         right_columns=list(right_domain.schema),
@@ -314,7 +310,8 @@ def domain_after_join(
             new_descriptor = descriptor_class(allow_null=allow_null)
         else:
             raise NotImplementedError(
-                f"Unsupported column descriptor {left_descriptor}."
+                f"Cannot join on column '{output_column}' of type"
+                f" {left_descriptor.data_type}."
             )
         output_descriptors[output_column] = new_descriptor
     return SparkDataFrameDomain(output_descriptors)

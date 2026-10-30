@@ -1552,7 +1552,8 @@ def test_public_join_rejects_float_join_columns(spark):
         schema=st.StructType([st.StructField("float_col", st.DoubleType(), False)]),
     )
     with pytest.raises(
-        ValueError, match="Cannot join on a floating point column: float_col"
+        NotImplementedError,
+        match=re.escape("Cannot join on column 'float_col' of type DoubleType()."),
     ):
         PublicJoin(
             input_domain=FLOAT_KEY_DOMAIN,
@@ -1564,7 +1565,8 @@ def test_public_join_rejects_float_join_columns(spark):
 def test_private_join_rejects_float_join_columns():
     """PrivateJoin does not join on floating-point columns."""
     with pytest.raises(
-        ValueError, match="Cannot join on a floating point column: float_col"
+        NotImplementedError,
+        match=re.escape("Cannot join on column 'float_col' of type DoubleType()."),
     ):
         PrivateJoin(
             input_domain=DictDomain(
@@ -1583,7 +1585,8 @@ def test_private_join_rejects_float_join_columns():
 def test_private_join_on_ids_rejects_float_join_columns():
     """PrivateJoinOnIDs does not join on floating-point columns."""
     with pytest.raises(
-        ValueError, match="Cannot join on a floating point column: float_col"
+        NotImplementedError,
+        match=re.escape("Cannot join on column 'float_col' of type DoubleType()."),
     ):
         PrivateJoinOnIDs(
             input_domain=DictDomain(

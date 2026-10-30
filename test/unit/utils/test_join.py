@@ -640,7 +640,7 @@ DOMAIN_AFTER_JOIN_ERROR_TEST_CASES = [
                 {"column": SparkFloatColumnDescriptor()}
             ),
         },
-        "Cannot join on a floating point column: column",
+        "Cannot join on column 'column' of type DoubleType().",
     ),
 ]
 
