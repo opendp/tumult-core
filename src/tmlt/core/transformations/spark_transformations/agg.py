@@ -39,6 +39,37 @@ from tmlt.core.transformations.spark_transformations import nan
 from tmlt.core.utils.exact_number import ExactNumber, ExactNumberInput
 from tmlt.core.utils.grouped_dataframe import GroupedDataFrame
 
+# Clamping bounds of integer sums must be at most this value in absolute value.
+# Assuming fewer than 2**40 summed records, the sum is then below 2**63 in absolute
+# value, so it cannot overflow.
+MAX_INTEGER_SUM_BOUND = 2**23
+
+
+def _validate_sum_bounds(
+    lower: ExactNumber, upper: ExactNumber, measure_column_is_integral: bool
+) -> None:
+    """Raises an error if the clamping bounds of a sum are invalid."""
+    if measure_column_is_integral and not (lower.is_integer and upper.is_integer):
+        raise ValueError("Clamping bounds must be integral")
+    if not lower.is_finite or not upper.is_finite:
+        raise ValueError("Clamping bounds must be finite")
+    if lower > upper:
+        raise ValueError("Lower clamping bound is larger than upper clamping bound.")
+    if upper > 2**970:
+        raise ValueError("Upper clamping bound should be at most 2^970.")
+    if lower < -(2**970):
+        raise ValueError("Lower clamping bound should be at least -2^970.")
+    if measure_column_is_integral and upper > MAX_INTEGER_SUM_BOUND:
+        raise ValueError(
+            "Upper clamping bound of integer columns should be at most 2^23. To use"
+            " larger bounds, cast the column to floating-point with CastToFloat."
+        )
+    if measure_column_is_integral and lower < -MAX_INTEGER_SUM_BOUND:
+        raise ValueError(
+            "Lower clamping bound of integer columns should be at least -2^23. To use"
+            " smaller bounds, cast the column to floating-point with CastToFloat."
+        )
+
 
 class Count(Transformation):
     r"""Counts the number of records in a spark DataFrame.
@@ -704,8 +735,10 @@ class Sum(Transformation):
             input_metric: Metric on input DataFrames.
             measure_column: Name of the column to be summed. This must be
                 a numeric column.
-            lower: Lower clipping bound for measure column.
-            upper: Upper clipping bound for measure column.
+            lower: Lower clamping bound for measure column. For integer columns,
+                this must be at least -2^23.
+            upper: Upper clamping bound for measure column. For integer columns,
+                this must be at most 2^23.
         """
         if measure_column not in input_domain.schema:
             raise DomainColumnError(
@@ -737,19 +770,7 @@ class Sum(Transformation):
         )
         self._lower = ExactNumber(lower)
         self._upper = ExactNumber(upper)
-        if not measure_column_nonintegral:
-            if not self._lower.is_integer or not self._upper.is_integer:
-                raise ValueError("Clipping bounds must be integral")
-        if not self._lower.is_finite or not self._upper.is_finite:
-            raise ValueError("Clipping bounds must be finite")
-        if self._lower > self._upper:
-            raise ValueError(
-                "Lower clipping bound is larger than upper clipping bound."
-            )
-        if self._upper > 2**970:
-            raise ValueError("Upper clipping bound should be at most 2^970.")
-        if self._lower < -(2**970):
-            raise ValueError("Lower clipping bound should be at least -2^970.")
+        _validate_sum_bounds(self._lower, self._upper, not measure_column_nonintegral)
 
         self._measure_column = measure_column
         output_domain = (
@@ -764,12 +785,12 @@ class Sum(Transformation):
 
     @property
     def upper(self) -> ExactNumber:
-        """Returns upper clipping bound."""
+        """Returns upper clamping bound."""
         return self._upper
 
     @property
     def lower(self) -> ExactNumber:
-        """Returns lower clipping bound."""
+        """Returns lower clamping bound."""
         return self._lower
 
     @property
@@ -801,13 +822,13 @@ class Sum(Transformation):
             else self.upper.to_float(round_up=False)
         )
 
-        clipped_df = df.withColumn(
+        clamped_df = df.withColumn(
             self.measure_column,
             sf.when(sf.col(self.measure_column) < lower_ceil, lower_ceil)
             .when(sf.col(self.measure_column) > upper_floor, upper_floor)
             .otherwise(sf.col(self.measure_column)),
         )
-        column_sum = clipped_df.agg(sf.sum(self.measure_column).alias("sum")).collect()[
+        column_sum = clamped_df.agg(sf.sum(self.measure_column).alias("sum")).collect()[
             0
         ]["sum"]
         if column_sum is None:  # This happens if there are 0 rows in the df.
@@ -928,8 +949,10 @@ class SumGrouped(Transformation):
             input_metric: Distance metric on inputs. This should be one of
                 SumOf(SymmetricDifference()) or RootSumOfSquared(SymmetricDifference())
             measure_column: Name of column to be summed.
-            lower: Lower clipping bound for the measure column.
-            upper: Upper clipping bound for the measure column.
+            lower: Lower clamping bound for the measure column. For integer
+                columns, this must be at least -2^23.
+            upper: Upper clamping bound for the measure column. For integer
+                columns, this must be at most 2^23.
             sum_column: Name of the output sum column. If None, output column
                 will be named 'sum(<measure_column>)'.
         """
@@ -969,15 +992,7 @@ class SumGrouped(Transformation):
         )
         self._lower = ExactNumber(lower)
         self._upper = ExactNumber(upper)
-        if measure_column_is_integral:
-            if not self._lower.is_integer or not self._upper.is_integer:
-                raise ValueError("Clipping bounds must be integral")
-        if not self._lower.is_finite or not self._upper.is_finite:
-            raise ValueError("Clipping bounds must be finite")
-        if self._lower > self._upper:
-            raise ValueError(
-                "Lower clipping bound is larger than upper clipping bound."
-            )
+        _validate_sum_bounds(self._lower, self._upper, measure_column_is_integral)
         if not isinstance(input_metric.inner_metric, SymmetricDifference):
             raise ValueError(
                 "Input metric must be SumOf(SymmetricDifference()) or"
@@ -1009,12 +1024,12 @@ class SumGrouped(Transformation):
 
     @property
     def upper(self) -> ExactNumber:
-        """Returns upper clipping bound."""
+        """Returns upper clamping bound."""
         return self._upper
 
     @property
     def lower(self) -> ExactNumber:
-        """Returns lower clipping bound."""
+        """Returns lower clamping bound."""
         return self._lower
 
     @property
@@ -1213,8 +1228,8 @@ def create_sum_aggregation(
         input_metric: Distance metric on inputs.
             name of the output sum column.
         measure_column: Column to be summed.
-        lower: Lower clipping bound for measure column.
-        upper: Upper clipping bound for measure column.
+        lower: Lower clamping bound for measure column.
+        upper: Upper clamping bound for measure column.
         sum_column: If ``input_domain`` is a SparkGroupedDataFrameDomain, this is the
             column name to be used for sums in the DataFrame output by the
             measurement. If None, this column will be named “sum(<measure_column>)”.

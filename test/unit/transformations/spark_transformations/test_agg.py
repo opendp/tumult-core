@@ -697,12 +697,16 @@ class TestSum(PySparkTest):
     def setUp(self):
         """Test Setup."""
         self.domain = SparkDataFrameDomain(
-            {"A": SparkStringColumnDescriptor(), "B": SparkIntegerColumnDescriptor()}
+            {
+                "str_col": SparkStringColumnDescriptor(),
+                "int_col": SparkIntegerColumnDescriptor(),
+                "float_col": SparkFloatColumnDescriptor(),
+            }
         )
-        self.sum_B = Sum(
+        self.sum_int_col = Sum(
             input_domain=self.domain,
             input_metric=SymmetricDifference(),
-            measure_column="B",
+            measure_column="int_col",
             upper=4,
             lower=2,
         )
@@ -710,36 +714,48 @@ class TestSum(PySparkTest):
     @parameterized.expand(get_all_props(Sum))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""
-        assert_property_immutability(self.sum_B, prop_name)
+        assert_property_immutability(self.sum_int_col, prop_name)
 
     def test_properties(self):
         """Tests that Sum has expected properties."""
-        self.assertEqual(self.sum_B.input_domain, self.domain)
-        self.assertEqual(self.sum_B.input_metric, SymmetricDifference())
-        self.assertEqual(self.sum_B.output_domain, NumpyIntegerDomain())
-        self.assertEqual(self.sum_B.output_metric, AbsoluteDifference())
-        self.assertEqual(self.sum_B.measure_column, "B")
-        self.assertEqual(self.sum_B.lower, 2)
-        self.assertEqual(self.sum_B.upper, 4)
+        self.assertEqual(self.sum_int_col.input_domain, self.domain)
+        self.assertEqual(self.sum_int_col.input_metric, SymmetricDifference())
+        self.assertEqual(self.sum_int_col.output_domain, NumpyIntegerDomain())
+        self.assertEqual(self.sum_int_col.output_metric, AbsoluteDifference())
+        self.assertEqual(self.sum_int_col.measure_column, "int_col")
+        self.assertEqual(self.sum_int_col.lower, 2)
+        self.assertEqual(self.sum_int_col.upper, 4)
 
     @parameterized.expand(
         [
-            (pd.DataFrame({"A": ["x1", "x2"], "B": [2, 4]}), np.int64(6)),
-            (pd.DataFrame({"A": ["x1", "x2"], "B": [1, 3]}), np.int64(5)),
-            (pd.DataFrame({"A": ["x1", "x2"], "B": [6, 5]}), np.int64(8)),
-            (pd.DataFrame({"A": [None, "x2"], "B": [2, 4]}), np.int64(6)),
+            (pd.DataFrame({"str_col": ["x1", "x2"], "int_col": [2, 4]}), np.int64(6)),
+            (pd.DataFrame({"str_col": ["x1", "x2"], "int_col": [1, 3]}), np.int64(5)),
+            (pd.DataFrame({"str_col": ["x1", "x2"], "int_col": [6, 5]}), np.int64(8)),
+            (pd.DataFrame({"str_col": [None, "x2"], "int_col": [2, 4]}), np.int64(6)),
         ]
     )
     def test_correctness(self, input_df: pd.DataFrame, expected_sum: pd.DataFrame):
         """Tests that sum transformation returns expected answer."""
-        actual = self.sum_B(self.spark.createDataFrame(input_df))
+        actual = self.sum_int_col(self.spark.createDataFrame(input_df))
         self.assertEqual(actual, expected_sum)
-        self.assertIn(actual, self.sum_B.output_domain)
+        self.assertIn(actual, self.sum_int_col.output_domain)
 
-    @parameterized.expand([(SymmetricDifference(), 4), (HammingDistance(), 2)])
+    @parameterized.expand(
+        [
+            (SymmetricDifference(), "int_col", 2, 4, 4),
+            (HammingDistance(), "int_col", 2, 4, 2),
+            (SymmetricDifference(), "int_col", -(2**23), 0, 2**23),
+            (SymmetricDifference(), "int_col", 0, 2**23, 2**23),
+            (SymmetricDifference(), "float_col", -(2**970), 0, 2**970),
+            (SymmetricDifference(), "float_col", 0, 2**970, 2**970),
+        ]
+    )
     def test_stability_function(
         self,
         input_metric: Union[SymmetricDifference, HammingDistance],
+        measure_column: str,
+        lower: ExactNumberInput,
+        upper: ExactNumberInput,
         expected_d_out: ExactNumberInput,
     ):
         """Tests that the stability function is correct."""
@@ -747,9 +763,9 @@ class TestSum(PySparkTest):
             Sum(
                 input_domain=self.domain,
                 input_metric=input_metric,
-                measure_column="B",
-                lower=2,
-                upper=4,
+                measure_column=measure_column,
+                lower=lower,
+                upper=upper,
             ).stability_function(1),
             expected_d_out,
         )
@@ -768,23 +784,23 @@ class TestSum(PySparkTest):
                 40,
                 r"Measure column \(A\) must be numeric",
             ),
-            (  # Non-integral clipping bounds for integral measure column
+            (  # Non-integral clamping bounds for integral measure column
                 "B",
                 "1.1",
                 40,
-                "Clipping bounds must be integral",
+                "Clamping bounds must be integral",
             ),
-            (  # non-finite clipping bounds for integral measure column
+            (  # non-finite clamping bounds for integral measure column
                 "E",
                 -float("inf"),
                 40,
-                "Clipping bounds must be finite",
+                "Clamping bounds must be finite",
             ),
             (  # lower > upper
                 "B",
                 40,
                 1,
-                "Lower clipping bound is larger than upper clipping bound.",
+                "Lower clamping bound is larger than upper clamping bound.",
             ),
             (  # measure column permits nans
                 "C",
@@ -804,12 +820,24 @@ class TestSum(PySparkTest):
                     r" \(D\)"
                 ),
             ),
-            ("E", 0, 2**970 + 1, r"Upper clipping bound should be at most 2\^970."),
+            (
+                "B",
+                0,
+                2**23 + 1,
+                r"Upper clamping bound of integer columns should be at most 2\^23\.",
+            ),
+            (
+                "B",
+                -(2**23) - 1,
+                0,
+                r"Lower clamping bound of integer columns should be at least -2\^23\.",
+            ),
+            ("E", 0, 2**970 + 1, r"Upper clamping bound should be at most 2\^970."),
             (
                 "E",
                 -(2**970) - 1,
                 0,
-                r"Lower clipping bound should be at least -2\^970.",
+                r"Lower clamping bound should be at least -2\^970.",
             ),
         ]
     )
@@ -843,7 +871,7 @@ class TestSum(PySparkTest):
         sum_transformation = Sum(
             input_domain=self.domain,
             input_metric=SymmetricDifference(),
-            measure_column="B",
+            measure_column="int_col",
             upper=4,
             lower=2,
         )
@@ -882,16 +910,17 @@ class TestSumGrouped(PySparkTest):
         """Test setup."""
         self.domain = SparkGroupedDataFrameDomain(
             schema={
-                "A": SparkStringColumnDescriptor(allow_null=True),
-                "B": SparkIntegerColumnDescriptor(),
+                "str_col": SparkStringColumnDescriptor(allow_null=True),
+                "int_col": SparkIntegerColumnDescriptor(),
+                "float_col": SparkFloatColumnDescriptor(),
             },
-            groupby_columns=["A"],
+            groupby_columns=["str_col"],
         )
 
-        self.groupby_A_sum_B = SumGrouped(
+        self.sum_int_col_by_str_col = SumGrouped(
             input_domain=self.domain,
             input_metric=SumOf(SymmetricDifference()),
-            measure_column="B",
+            measure_column="int_col",
             upper=4,
             lower=2,
             sum_column="sum",
@@ -900,53 +929,63 @@ class TestSumGrouped(PySparkTest):
     @parameterized.expand(get_all_props(SumGrouped))
     def test_property_immutability(self, prop_name: str):
         """Tests that given property is immutable."""
-        assert_property_immutability(self.groupby_A_sum_B, prop_name)
+        assert_property_immutability(self.sum_int_col_by_str_col, prop_name)
 
     def test_properties(self):
         """Tests that SumGrouped has expected properties.."""
-        self.assertEqual(self.groupby_A_sum_B.input_domain, self.domain)
+        self.assertEqual(self.sum_int_col_by_str_col.input_domain, self.domain)
         self.assertEqual(
-            self.groupby_A_sum_B.input_metric, SumOf(SymmetricDifference())
+            self.sum_int_col_by_str_col.input_metric, SumOf(SymmetricDifference())
         )
-        self.assertEqual(self.groupby_A_sum_B.measure_column, "B")
-        self.assertEqual(self.groupby_A_sum_B.upper, 4)
-        self.assertEqual(self.groupby_A_sum_B.lower, 2)
+        self.assertEqual(self.sum_int_col_by_str_col.measure_column, "int_col")
+        self.assertEqual(self.sum_int_col_by_str_col.upper, 4)
+        self.assertEqual(self.sum_int_col_by_str_col.lower, 2)
         self.assertEqual(
-            self.groupby_A_sum_B.output_domain,
+            self.sum_int_col_by_str_col.output_domain,
             SparkDataFrameDomain(
                 {
-                    "A": SparkStringColumnDescriptor(allow_null=True),
+                    "str_col": SparkStringColumnDescriptor(allow_null=True),
                     "sum": SparkIntegerColumnDescriptor(),
                 }
             ),
         )
         self.assertEqual(
-            self.groupby_A_sum_B.output_metric,
+            self.sum_int_col_by_str_col.output_metric,
             OnColumn("sum", SumOf(AbsoluteDifference())),
         )
-        self.assertEqual(self.groupby_A_sum_B.sum_column, "sum")
+        self.assertEqual(self.sum_int_col_by_str_col.sum_column, "sum")
 
     @parameterized.expand(
         [
             (
-                pd.DataFrame({"A": ["x1", "x2"], "B": [2, 4]}),
-                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [0, 2, 4, 0]}),
+                pd.DataFrame({"str_col": ["x1", "x2"], "int_col": [2, 4]}),
+                pd.DataFrame(
+                    {"str_col": [None, "x1", "x2", "x3"], "sum": [0, 2, 4, 0]}
+                ),
             ),
             (  # value exceeds upper clamping bound
-                pd.DataFrame({"A": ["x1", "x2"], "B": [20, 4]}),
-                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [0, 4, 4, 0]}),
+                pd.DataFrame({"str_col": ["x1", "x2"], "int_col": [20, 4]}),
+                pd.DataFrame(
+                    {"str_col": [None, "x1", "x2", "x3"], "sum": [0, 4, 4, 0]}
+                ),
             ),
             (  # value below lower clamping bound
-                pd.DataFrame({"A": ["x1", "x2"], "B": [2, 0]}),
-                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [0, 2, 2, 0]}),
+                pd.DataFrame({"str_col": ["x1", "x2"], "int_col": [2, 0]}),
+                pd.DataFrame(
+                    {"str_col": [None, "x1", "x2", "x3"], "sum": [0, 2, 2, 0]}
+                ),
             ),
             (  # extra key 'x4' shouldn't appear
-                pd.DataFrame({"A": ["x1", "x4"], "B": [2, 3]}),
-                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [0, 2, 0, 0]}),
+                pd.DataFrame({"str_col": ["x1", "x4"], "int_col": [2, 3]}),
+                pd.DataFrame(
+                    {"str_col": [None, "x1", "x2", "x3"], "sum": [0, 2, 0, 0]}
+                ),
             ),
             (  # grouping on nulls should work
-                pd.DataFrame({"A": [None, "x1"], "B": [2, 3]}),
-                pd.DataFrame({"A": [None, "x1", "x2", "x3"], "sum": [2, 3, 0, 0]}),
+                pd.DataFrame({"str_col": [None, "x1"], "int_col": [2, 3]}),
+                pd.DataFrame(
+                    {"str_col": [None, "x1", "x2", "x3"], "sum": [2, 3, 0, 0]}
+                ),
             ),
         ]
     )
@@ -955,22 +994,29 @@ class TestSumGrouped(PySparkTest):
         grouped_dataframe = GroupedDataFrame(
             dataframe=self.spark.createDataFrame(input_df),
             group_keys=self.spark.createDataFrame(
-                [(None,), ("x1",), ("x2",), ("x3",)], schema=["A"]
+                [(None,), ("x1",), ("x2",), ("x3",)], schema=["str_col"]
             ),
         )
-        actual = self.groupby_A_sum_B(grouped_dataframe)
+        actual = self.sum_int_col_by_str_col(grouped_dataframe)
         assert_dataframe_equal(actual, expected_df)
-        self.assertIn(actual, self.groupby_A_sum_B.output_domain)
+        self.assertIn(actual, self.sum_int_col_by_str_col.output_domain)
 
     @parameterized.expand(
         [
-            (SumOf(SymmetricDifference()), 4),
-            (RootSumOfSquared(SymmetricDifference()), 4),
+            (SumOf(SymmetricDifference()), "int_col", 2, 4, 4),
+            (RootSumOfSquared(SymmetricDifference()), "int_col", 2, 4, 4),
+            (SumOf(SymmetricDifference()), "int_col", -(2**23), 0, 2**23),
+            (SumOf(SymmetricDifference()), "int_col", 0, 2**23, 2**23),
+            (SumOf(SymmetricDifference()), "float_col", -(2**970), 0, 2**970),
+            (SumOf(SymmetricDifference()), "float_col", 0, 2**970, 2**970),
         ]
     )
     def test_stability_function(
         self,
         input_metric: Union[SumOf, RootSumOfSquared],
+        measure_column: str,
+        lower: ExactNumberInput,
+        upper: ExactNumberInput,
         expected_d_out: ExactNumberInput,
     ):
         """SumGrouped's stability function is correct."""
@@ -978,9 +1024,9 @@ class TestSumGrouped(PySparkTest):
             SumGrouped(
                 input_domain=self.domain,
                 input_metric=input_metric,
-                measure_column="B",
-                upper=4,
-                lower=2,
+                measure_column=measure_column,
+                upper=upper,
+                lower=lower,
                 sum_column="sum",
             ).stability_function(1),
             expected_d_out,
@@ -1014,7 +1060,41 @@ class TestSumGrouped(PySparkTest):
                 "sum(B)",
                 40,
                 1,
-                "Lower clipping bound is larger than upper clipping bound.",
+                "Lower clamping bound is larger than upper clamping bound.",
+            ),
+            (  # Upper clamping bound too large
+                SumOf(SymmetricDifference()),
+                "E",
+                "sum(E)",
+                0,
+                2**970 + 1,
+                r"Upper clamping bound should be at most 2\^970.",
+                {"A": SparkStringColumnDescriptor(), "E": SparkFloatColumnDescriptor()},
+            ),
+            (  # Lower clamping bound too small
+                SumOf(SymmetricDifference()),
+                "E",
+                "sum(E)",
+                -(2**970) - 1,
+                0,
+                r"Lower clamping bound should be at least -2\^970.",
+                {"A": SparkStringColumnDescriptor(), "E": SparkFloatColumnDescriptor()},
+            ),
+            (  # Integer clamping bounds too large
+                SumOf(SymmetricDifference()),
+                "B",
+                "sum(B)",
+                0,
+                2**23 + 1,
+                r"Upper clamping bound of integer columns should be at most 2\^23\.",
+            ),
+            (  # Integer clamping bounds too small
+                SumOf(SymmetricDifference()),
+                "B",
+                "sum(B)",
+                -(2**23) - 1,
+                0,
+                r"Lower clamping bound of integer columns should be at least -2\^23\.",
             ),
             (  # Sum column already exists
                 SumOf(SymmetricDifference()),

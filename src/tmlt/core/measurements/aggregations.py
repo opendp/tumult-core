@@ -595,8 +595,8 @@ def create_sum_measurement(
             and :attr:`~.NoiseMechanism.LAPLACE` or :attr:`~.NoiseMechanism.GAUSSIAN`
             for float measure columns.
         measure_column: Column to be summed.
-        lower: Lower clipping bound on ``measure_column``.
-        upper: Upper clipping bound on ``measure_column``.
+        lower: Lower clamping bound on ``measure_column``.
+        upper: Upper clamping bound on ``measure_column``.
         d_in: Distance between inputs under the ``input_metric``. The returned
             measurement is guaranteed to have output distributions that are ``d_out``
             apart for inputs that are ``d_in`` apart. Defaults to 1.
@@ -818,8 +818,8 @@ def create_average_measurement(
         noise_mechanism: Noise mechanism to apply. Must be
             :attr:`~.NoiseMechanism.LAPLACE` or :attr:`~.NoiseMechanism.GAUSSIAN`.
         measure_column: Name to column to compute average of.
-        lower: Lower clipping bound for ``measure_column``.
-        upper: Upper clipping bound for ``measure_column``.
+        lower: Lower clamping bound for ``measure_column``.
+        upper: Upper clamping bound for ``measure_column``.
         d_in: Distance between inputs under the ``input_metric``. The returned
             measurement is guaranteed to have output distributions that are ``d_out``
             apart for inputs that are ``d_in`` apart. Defaults to 1.
@@ -1105,8 +1105,8 @@ def create_variance_measurement(
         noise_mechanism: Noise mechanism to apply. Must be
             :attr:`~.NoiseMechanism.LAPLACE` or :attr:`~.NoiseMechanism.GAUSSIAN`.
         measure_column: Name to column to compute variance of.
-        lower: Lower clipping bound for ``measure_column``.
-        upper: Upper clipping bound for ``measure_column``.
+        lower: Lower clamping bound for ``measure_column``.
+        upper: Upper clamping bound for ``measure_column``.
         d_in: Distance between inputs under the ``input_metric``. The returned
             measurement is guaranteed to have output distributions that are ``d_out``
             apart for inputs that are ``d_in`` apart. Defaults to 1.
@@ -1461,8 +1461,8 @@ def create_standard_deviation_measurement(
         noise_mechanism: Noise mechanism to apply. Must be
             :attr:`~.NoiseMechanism.LAPLACE` or :attr:`~.NoiseMechanism.GAUSSIAN`.
         measure_column: Name to column to compute standard deviation of.
-        lower: Lower clipping bound for ``measure_column``.
-        upper: Upper clipping bound for ``measure_column``.
+        lower: Lower clamping bound for ``measure_column``.
+        upper: Upper clamping bound for ``measure_column``.
         d_in: Distance between inputs under the ``input_metric``. The returned
             measurement is guaranteed to have output distributions that are ``d_out``
             apart for inputs that are ``d_in`` apart. Defaults to 1.
@@ -1627,8 +1627,8 @@ def create_quantile_measurement(
             :class:`~.ApproxDP`.
         measure_column: Name to column to compute quantile of.
         quantile: The quantile to produce.
-        lower: Lower clipping bound for ``measure_column``.
-        upper: Upper clipping bound for ``measure_column``.
+        lower: Lower clamping bound for ``measure_column``.
+        upper: Upper clamping bound for ``measure_column``.
         d_in: Distance between inputs under the ``input_metric``. The returned
             measurement is guaranteed to have output distributions that are ``d_out``
             apart for inputs that are ``d_in`` apart. Defaults to 1.
