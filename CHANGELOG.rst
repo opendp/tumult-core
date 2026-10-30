@@ -7,6 +7,10 @@ Changelog
 Unreleased
 ----------
 
+Removed
+~~~~~~~
+- :class:`~tmlt.core.transformations.spark_transformations.join.PublicJoin`, :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoin`, and :class:`~tmlt.core.transformations.spark_transformations.join.PrivateJoinOnIDs` no longer support joining on floating-point columns.
+
 Fixed
 ~~~~~
 - Fixed a floating-point precision-based vulnerability in :class:`~tmlt.core.measurements.noise_mechanisms.AddGaussianNoise`.

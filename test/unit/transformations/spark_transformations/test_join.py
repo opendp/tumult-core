@@ -7,6 +7,7 @@ import re
 from typing import List, Optional, Union, cast
 
 import pandas as pd
+import pytest
 from parameterized import parameterized
 from pyspark.sql import types as st
 
@@ -162,37 +163,6 @@ class TestPublicJoin(TestComponent):
                 SparkDataFrameDomain(
                     {
                         "A": SparkFloatColumnDescriptor(
-                            allow_null=True, allow_inf=True, allow_nan=True
-                        ),
-                        "B": SparkStringColumnDescriptor(allow_null=True),
-                    }
-                ),
-                pd.DataFrame({"A": [1.2, 1.3], "B": ["X", "X"]}),
-                SparkDataFrameDomain(
-                    {
-                        "A": SparkFloatColumnDescriptor(
-                            allow_null=True, allow_inf=True, allow_nan=False
-                        ),
-                        "B": SparkStringColumnDescriptor(allow_null=False),
-                    }
-                ),
-                ["A"],
-                True,
-                "inner",
-                SparkDataFrameDomain(
-                    {
-                        "A": SparkFloatColumnDescriptor(
-                            allow_null=True, allow_inf=True, allow_nan=False
-                        ),
-                        "B_left": SparkStringColumnDescriptor(allow_null=True),
-                        "B_right": SparkStringColumnDescriptor(allow_null=False),
-                    }
-                ),
-            ),
-            (
-                SparkDataFrameDomain(
-                    {
-                        "A": SparkFloatColumnDescriptor(
                             allow_null=False, allow_inf=True, allow_nan=False
                         ),
                         "B": SparkStringColumnDescriptor(allow_null=True),
@@ -219,37 +189,6 @@ class TestPublicJoin(TestComponent):
                         "C": SparkFloatColumnDescriptor(
                             allow_null=True, allow_inf=False, allow_nan=True
                         ),
-                    }
-                ),
-            ),
-            (
-                SparkDataFrameDomain(
-                    {
-                        "A": SparkFloatColumnDescriptor(
-                            allow_null=True, allow_inf=True, allow_nan=True
-                        ),
-                        "B": SparkStringColumnDescriptor(allow_null=True),
-                    }
-                ),
-                pd.DataFrame({"A": [1.2, 1.3], "B": ["X", "X"]}),
-                SparkDataFrameDomain(
-                    {
-                        "A": SparkFloatColumnDescriptor(
-                            allow_null=True, allow_inf=True, allow_nan=False
-                        ),
-                        "B": SparkStringColumnDescriptor(allow_null=False),
-                    }
-                ),
-                ["A"],
-                True,
-                "left",
-                SparkDataFrameDomain(
-                    {
-                        "A": SparkFloatColumnDescriptor(
-                            allow_null=True, allow_inf=True, allow_nan=True
-                        ),
-                        "B_left": SparkStringColumnDescriptor(allow_null=True),
-                        "B_right": SparkStringColumnDescriptor(allow_null=True),
                     }
                 ),
             ),
@@ -1196,35 +1135,6 @@ class TestPrivateJoin(PySparkTest):
                     }
                 ),
             ),
-            (
-                SparkDataFrameDomain(
-                    {
-                        "A": SparkFloatColumnDescriptor(
-                            allow_null=True, allow_inf=True, allow_nan=True
-                        ),
-                        "B": SparkStringColumnDescriptor(allow_null=True),
-                    }
-                ),
-                SparkDataFrameDomain(
-                    {
-                        "A": SparkFloatColumnDescriptor(
-                            allow_null=True, allow_inf=True, allow_nan=False
-                        ),
-                        "B": SparkStringColumnDescriptor(allow_null=False),
-                    }
-                ),
-                ["A"],
-                True,
-                SparkDataFrameDomain(
-                    {
-                        "A": SparkFloatColumnDescriptor(
-                            allow_null=True, allow_inf=True, allow_nan=False
-                        ),
-                        "B_left": SparkStringColumnDescriptor(allow_null=True),
-                        "B_right": SparkStringColumnDescriptor(allow_null=False),
-                    }
-                ),
-            ),
         ]
     )
     def test_output_domain_special_values(
@@ -1624,4 +1534,67 @@ class TestPrivateJoinOnIDs(PySparkTest):
         assert transformation.format() == (
             "PrivateJoinOnIDs left_key='left' right_key='right' new_key='joined' "
             "join_cols=['B'] join_on_nulls=False"
+        )
+
+
+FLOAT_KEY_DOMAIN = SparkDataFrameDomain(
+    {
+        "float_col": SparkFloatColumnDescriptor(allow_nan=True),
+        "str_col": SparkStringColumnDescriptor(),
+    }
+)
+
+
+def test_public_join_rejects_float_join_columns(spark):
+    """PublicJoin does not join on floating-point columns."""
+    public_df = spark.createDataFrame(
+        [(float("nan"),)],
+        schema=st.StructType([st.StructField("float_col", st.DoubleType(), False)]),
+    )
+    with pytest.raises(
+        NotImplementedError,
+        match=re.escape("Cannot join on column 'float_col' of type DoubleType()."),
+    ):
+        PublicJoin(
+            input_domain=FLOAT_KEY_DOMAIN,
+            metric=SymmetricDifference(),
+            public_df=public_df,
+        )
+
+
+def test_private_join_rejects_float_join_columns():
+    """PrivateJoin does not join on floating-point columns."""
+    with pytest.raises(
+        NotImplementedError,
+        match=re.escape("Cannot join on column 'float_col' of type DoubleType()."),
+    ):
+        PrivateJoin(
+            input_domain=DictDomain(
+                {"left": FLOAT_KEY_DOMAIN, "right": FLOAT_KEY_DOMAIN}
+            ),
+            left_key="left",
+            right_key="right",
+            left_truncation_strategy=TruncationStrategy.TRUNCATE,
+            right_truncation_strategy=TruncationStrategy.TRUNCATE,
+            left_truncation_threshold=1,
+            right_truncation_threshold=1,
+            join_cols=["float_col"],
+        )
+
+
+def test_private_join_on_ids_rejects_float_join_columns():
+    """PrivateJoinOnIDs does not join on floating-point columns."""
+    with pytest.raises(
+        NotImplementedError,
+        match=re.escape("Cannot join on column 'float_col' of type DoubleType()."),
+    ):
+        PrivateJoinOnIDs(
+            input_domain=DictDomain(
+                {"left": FLOAT_KEY_DOMAIN, "right": FLOAT_KEY_DOMAIN}
+            ),
+            input_metric=AddRemoveIDs({"left": "str_col", "right": "str_col"}),
+            left_key="left",
+            right_key="right",
+            new_key="joined",
+            join_cols=["float_col", "str_col"],
         )

@@ -631,6 +631,17 @@ DOMAIN_AFTER_JOIN_ERROR_TEST_CASES = [
         {"right_domain": NumpyIntegerDomain()},
         "Right join input domain must be a SparkDataFrameDomain.",
     ),
+    (
+        {
+            "left_domain": SparkDataFrameDomain(
+                {"column": SparkFloatColumnDescriptor()}
+            ),
+            "right_domain": SparkDataFrameDomain(
+                {"column": SparkFloatColumnDescriptor()}
+            ),
+        },
+        "Cannot join on column 'column' of type DoubleType().",
+    ),
 ]
 
 
@@ -683,60 +694,37 @@ class TestDomainAfterJoin(TestCase):
         )
 
     @parameterized.expand(
-        [how, left_allow_nan, left_allow_inf, right_allow_nan, right_allow_inf]
-        for how in ["inner", "left", "right", "outer"]
-        for left_allow_nan in [True, False]
-        for left_allow_inf in [True, False]
-        for right_allow_nan in [True, False]
-        for right_allow_inf in [True, False]
+        [
+            ("inner", False, False),
+            ("left", False, True),
+            ("right", True, False),
+            ("outer", True, True),
+        ]
     )
-    def test_floating_point_special_values(
-        self,
-        how: str,
-        left_allow_nan: bool,
-        left_allow_inf: bool,
-        right_allow_nan: bool,
-        right_allow_inf: bool,
+    def test_float_columns_not_joined_on(
+        self, how: str, left_float_allow_null: bool, right_float_allow_null: bool
     ):
-        """Test that special values in floating point columns are handled correctly."""
+        """Floating-point columns that are not joined on keep their special values."""
         left_domain = SparkDataFrameDomain(
             {
-                "joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=left_allow_nan, allow_inf=left_allow_inf
-                )
+                "joined_on": SparkIntegerColumnDescriptor(),
+                "left_float": SparkFloatColumnDescriptor(allow_nan=True),
             }
         )
         right_domain = SparkDataFrameDomain(
             {
-                "joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=right_allow_nan, allow_inf=right_allow_inf
-                ),
-                "not_joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=left_allow_nan, allow_inf=left_allow_inf
-                ),
+                "joined_on": SparkIntegerColumnDescriptor(),
+                "right_float": SparkFloatColumnDescriptor(allow_inf=True),
             }
         )
-        if how == "left":
-            allow_inf = left_allow_inf
-            allow_nan = left_allow_nan
-        elif how == "right":
-            allow_inf = right_allow_inf
-            allow_nan = right_allow_nan
-        elif how == "inner":
-            allow_inf = left_allow_inf and right_allow_inf
-            allow_nan = left_allow_nan and right_allow_nan
-        else:
-            allow_inf = left_allow_inf or right_allow_inf
-            allow_nan = left_allow_nan or right_allow_nan
         expected_domain = SparkDataFrameDomain(
             {
-                "joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=allow_nan, allow_inf=allow_inf
+                "joined_on": SparkIntegerColumnDescriptor(),
+                "left_float": SparkFloatColumnDescriptor(
+                    allow_nan=True, allow_null=left_float_allow_null
                 ),
-                "not_joined_on": SparkFloatColumnDescriptor(
-                    allow_nan=left_allow_nan,
-                    allow_inf=left_allow_inf,
-                    allow_null=how in ["left", "outer"],
+                "right_float": SparkFloatColumnDescriptor(
+                    allow_inf=True, allow_null=right_float_allow_null
                 ),
             }
         )
@@ -752,7 +740,6 @@ class TestDomainAfterJoin(TestCase):
         for nulls_are_equal in [True, False]
         for descriptor_class in [
             SparkStringColumnDescriptor,
-            SparkFloatColumnDescriptor,
             SparkIntegerColumnDescriptor,
             SparkDateColumnDescriptor,
             SparkTimestampColumnDescriptor,
