@@ -694,6 +694,45 @@ class TestDomainAfterJoin(TestCase):
         )
 
     @parameterized.expand(
+        [
+            ("inner", False, False),
+            ("left", False, True),
+            ("right", True, False),
+            ("outer", True, True),
+        ]
+    )
+    def test_float_columns_not_joined_on(
+        self, how: str, left_float_allow_null: bool, right_float_allow_null: bool
+    ):
+        """Floating-point columns that are not joined on keep their special values."""
+        left_domain = SparkDataFrameDomain(
+            {
+                "joined_on": SparkIntegerColumnDescriptor(),
+                "left_float": SparkFloatColumnDescriptor(allow_nan=True),
+            }
+        )
+        right_domain = SparkDataFrameDomain(
+            {
+                "joined_on": SparkIntegerColumnDescriptor(),
+                "right_float": SparkFloatColumnDescriptor(allow_inf=True),
+            }
+        )
+        expected_domain = SparkDataFrameDomain(
+            {
+                "joined_on": SparkIntegerColumnDescriptor(),
+                "left_float": SparkFloatColumnDescriptor(
+                    allow_nan=True, allow_null=left_float_allow_null
+                ),
+                "right_float": SparkFloatColumnDescriptor(
+                    allow_inf=True, allow_null=right_float_allow_null
+                ),
+            }
+        )
+        self.assertEqual(
+            domain_after_join(left_domain, right_domain, how=how), expected_domain
+        )
+
+    @parameterized.expand(
         [how, left_allow_null, right_allow_null, nulls_are_equal, descriptor_class]
         for how in ["inner", "left", "right", "outer"]
         for left_allow_null in [True, False]
