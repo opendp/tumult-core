@@ -16,7 +16,6 @@ from tmlt.core.domains.spark_domains import (
     SparkColumnsDescriptor,
     SparkDataFrameDomain,
     SparkDateColumnDescriptor,
-    SparkFloatColumnDescriptor,
     SparkIntegerColumnDescriptor,
     SparkStringColumnDescriptor,
     SparkTimestampColumnDescriptor,
@@ -216,6 +215,7 @@ def domain_after_join(
         - All checks from :func:`~.columns_after_join`.
         - ``how`` is one of "left", "right", "inner", or "outer".
         - Join columns have the same data type.
+        - Join columns are integer, string, date, or timestamp columns.
         - Left and right domains are SparkDataFrameDomains.
 
     .. note::
@@ -297,29 +297,6 @@ def domain_after_join(
         if isinstance(left_descriptor, SparkIntegerColumnDescriptor):
             assert isinstance(right_descriptor, SparkIntegerColumnDescriptor)
             new_descriptor = SparkIntegerColumnDescriptor(allow_null=allow_null)
-        elif isinstance(left_descriptor, SparkFloatColumnDescriptor):
-            assert isinstance(right_descriptor, SparkFloatColumnDescriptor)
-            allow_nan = None
-            allow_inf = None
-            if how == "left":
-                allow_nan = left_descriptor.allow_nan
-                allow_inf = left_descriptor.allow_inf
-            elif how == "right":
-                allow_nan = right_descriptor.allow_nan
-                allow_inf = right_descriptor.allow_inf
-            elif how == "inner":
-                allow_nan = left_descriptor.allow_nan and right_descriptor.allow_nan
-                allow_inf = left_descriptor.allow_inf and right_descriptor.allow_inf
-            elif how == "outer":
-                allow_nan = left_descriptor.allow_nan or right_descriptor.allow_nan
-                allow_inf = left_descriptor.allow_inf or right_descriptor.allow_inf
-            assert allow_nan is not None
-            assert allow_inf is not None
-            new_descriptor = SparkFloatColumnDescriptor(
-                allow_nan=allow_nan,
-                allow_inf=allow_inf,
-                allow_null=allow_null,
-            )
         elif isinstance(
             left_descriptor,
             (
@@ -333,7 +310,8 @@ def domain_after_join(
             new_descriptor = descriptor_class(allow_null=allow_null)
         else:
             raise NotImplementedError(
-                f"Unsupported column descriptor {left_descriptor}."
+                f"Cannot join on column '{output_column}' of type"
+                f" {left_descriptor.data_type}."
             )
         output_descriptors[output_column] = new_descriptor
     return SparkDataFrameDomain(output_descriptors)
