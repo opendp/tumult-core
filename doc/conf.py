@@ -4,7 +4,6 @@
 import datetime
 import logging
 import os
-import sys
 from pathlib import Path
 
 _logger = logging.getLogger(__name__)
@@ -16,27 +15,39 @@ author = "Tumult Labs and the Tumult Core Contributors"
 copyright = "2022-2025 Tumult Labs, and the Tumult Core Contributors 2025-present"
 # Note that this is the name of the module provided by the package, not
 # necessarily the name of the package as pip understands it.
-package_name = "tmlt.core"
+package_name = "tmlt"
 
+default_branch = "main"
 
 ### Build information
 
-ci_tag = os.getenv("CI_COMMIT_TAG")
-ci_branch = os.getenv("CI_COMMIT_BRANCH")
+pipeline_type = os.getenv("GITHUB_REF_TYPE")
+ref_name = os.getenv("GITHUB_REF_NAME")
 
 # For non-prerelease tags, make the version "vX.Y" to match how we show it in
 # the version switcher and the docs URLs. Sphinx's nomenclature around versions
 # can be a bit confusing -- "version" means sort of the documentation version
 # (for us, the minor release), while "release" is the full version number of the
 # package on which the docs were built.
-if ci_tag and "-" not in ci_tag:
-    release = ci_tag
-    version = "v" + ".".join(ci_tag.split(".")[:2])
+if pipeline_type and pipeline_type == "tag" and "-" not in ref_name:
+    release = ref_name
+    version = "v" + ".".join(ref_name.split(".")[:2])
+elif ref_name and ref_name == default_branch:
+    release = version = "dev"
 else:
-    release = version = ci_tag or ci_branch or "HEAD"
+    release = version = ref_name or "HEAD"
 
-commit_hash = os.getenv("CI_COMMIT_SHORT_SHA") or "unknown version"
+commit_sha = os.getenv("GITHUB_SHA")
+
+commit_hash = commit_sha[:8] if commit_sha else "unknown version"
 build_time = datetime.datetime.utcnow().isoformat(sep=" ", timespec="minutes")
+
+# The ACM website seems to have some sort of protection that foils the linkchecker.
+linkcheck_ignore = [
+    "https://doi.org/10.1145/2382196.2382264",
+    "https://gmplib.org/",
+    "https://join.slack.com/t/opendp/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w",
+]
 
 ### Sphinx configuration
 
@@ -135,21 +146,39 @@ nitpick_ignore = [
     ("py:class", "T"),
 ]
 
+json_url = "https://docs.tmlt.dev/core/versions.json"
+
 # Theme settings
 templates_path = ["_templates"]
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
-    "header_links_before_dropdown": 6,
+    "back_to_top_button": False,
     "collapse_navigation": True,
-    "navigation_depth": 4,
-    "navbar_end": ["navbar-icon-links"],
     "footer_start": ["copyright", "build-info"],
     "footer_end": ["sphinx-version", "theme-version"],
+    "header_links_before_dropdown": 6,
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/opendp/tumult-core",
+            "icon": "fab fa-github",
+            "type": "fontawesome",
+        },
+        {
+            "name": "Slack",
+            "url": "https://join.slack.com/t/opendp/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w",
+            "icon": "fab fa-slack",
+            "type": "fontawesome",
+        },
+    ],
+    "navigation_depth": 4,
+    "navbar_end": ["navbar-icon-links"],
     "switcher": {
-        "json_url": "https://docs.tmlt.dev/core/versions.json",
+        "json_url": json_url,
         "version_match": version,
     },
-    "github_url": "https://github.com/opendp/tumult-core",
+    "show_nav_level": 2,
+    "show_toc_level": 3,
 }
 html_context = {
     "default_mode": "light",
@@ -162,10 +191,9 @@ html_js_files = ["js/version-banner.js"]
 html_logo = "_static/logo.png"
 html_favicon = "_static/favicon.ico"
 html_show_sourcelink = False
-html_sidebars = {"**": ["package-name", "version-switcher", "sidebar-nav-bs"]}
+html_sidebars = {"**": ["package-name", "version-switcher", "left-sidebar"]}
 
 # Intersphinx mapping
-
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/1.18/", None),
@@ -174,13 +202,6 @@ intersphinx_mapping = {
     "pyspark": ("https://downloads.apache.org/spark/docs/3.5.7/api/python/", None),
     "flint": ("https://python-flint.readthedocs.io/en/latest/", None),
 }
-
-# The ACM website seems to have some sort of protection that foils the linkchecker.
-linkcheck_ignore = [
-    r"https://doi.org/10.1145/2382196.2382264",
-    r"https://gmplib.org/",
-    r"https://join.slack.com/t/opendp/shared_invite/zt-1aca9bm7k-hG7olKz6CiGm8htI2lxE8w",
-]
 
 
 def skip_members(app, what, name, obj, skip, options):

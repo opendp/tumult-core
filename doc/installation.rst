@@ -30,7 +30,7 @@ Since Tumult Core uses PySpark for computation, users must have Python, Java, an
 | 3.14          | PySpark >=4.1.0         | Java 17 and 21    |
 +---------------+-------------------------+-------------------+
 
-See Apache Spark’s official PySpark and Java installation guide <https://spark.apache.org/docs/4.1.1/#downloading>__ for setup details.
+See Apache Spark's `installation guide <https://spark.apache.org/docs/4.1.1/#downloading>`__ for setup details.
 
 Below are instructions for installing these prerequisites on several common platforms.
 If none of these apply to you, install Python 3 and Java from your OS package manager.
