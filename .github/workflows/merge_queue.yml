@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@6cf847ba14aab81eb8c92b8946e09f92fc4cac99
+        uses: opendp/tumult-tools/actions/setup@32bc0f0057965be136de0d438858ee58af190015
       - run: uv run --only-group scripting nox -s build
       - name: Archive packaged library
         uses: actions/upload-artifact@v4
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@6cf847ba14aab81eb8c92b8946e09f92fc4cac99
+        uses: opendp/tumult-tools/actions/setup@32bc0f0057965be136de0d438858ee58af190015
       - name: Download dist
         uses: actions/download-artifact@v4
         with:
@@ -45,7 +45,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@6cf847ba14aab81eb8c92b8946e09f92fc4cac99
+        uses: opendp/tumult-tools/actions/setup@32bc0f0057965be136de0d438858ee58af190015
       - name: Download dist
         uses: actions/download-artifact@v4
         with:
@@ -59,7 +59,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Set up runner
-        uses: opendp/tumult-tools/actions/setup@6cf847ba14aab81eb8c92b8946e09f92fc4cac99
+        uses: opendp/tumult-tools/actions/setup@32bc0f0057965be136de0d438858ee58af190015
       - name: Download dist
         uses: actions/download-artifact@v4
         with:
