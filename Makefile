@@ -19,20 +19,20 @@ lint:
 test:
 	nox --no-venv -s test
 test-fast:
-	nox --no-venv -s test_fast
+	nox --no-venv -s test-fast
 test-slow:
-	nox --no-venv -s test_slow
+	nox --no-venv -s test-slow
 test-doctest:
-	nox --no-venv -s test_doctest
+	nox --no-venv -s test-doctest
 test-examples:
-	nox --no-venv -s test_examples
+	nox --no-venv -s test-examples
 
 docs:
 	nox --no-venv -s docs
 docs-linkcheck:
-	nox --no-venv -s docs_linkcheck
+	nox --no-venv -s docs-linkcheck
 docs-doctest:
-	nox --no-venv -s docs_doctest
+	nox --no-venv -s docs-doctest
 
 package:
 	nox --no-venv -s build
