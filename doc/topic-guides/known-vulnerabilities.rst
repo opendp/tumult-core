@@ -7,11 +7,12 @@ Known Vulnerabilities
     SPDX-License-Identifier: CC-BY-SA-4.0
     Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
-This page describes known vulnerabilities in Tumult Core.
+This page describes known vulnerabilities in Tumult Core, and complements the
+:ref:`privacy-guarantee` topic guide.
 
-In general, Tumult Core is meant to be used in situations where the user of the
-library is not adversarial. Its API is designed to help users build correct
-differential privacy programs.
+At a high level, Tumult Core is meant to be used by legitimate users who want to
+build correct differentially private programs. It is not designed to protect
+against ill-intentioned users who attempt to build adversarial queries.
 
 Stability imprecision
 ---------------------
