@@ -7,34 +7,44 @@ Known Vulnerabilities
     SPDX-License-Identifier: CC-BY-SA-4.0
     Copyright Tumult Labs 2022-2025, and the Tumult Core Contributors 2025-present
 
-This page describes known vulnerabilities in Tumult Core that we intend to fix.
+This page describes known vulnerabilities in Tumult Core.
 
-Stability imprecision bug
--------------------------
+In general, Tumult Core is meant to be used in situations where the user of the
+library is not adversarial. Its API is designed to help users build correct
+differential privacy programs.
 
-Tumult Core is susceptible to the class of vulnerabilities described in Section
-6 of :cite:`Mironov12`. In particular, when summing floating point numbers, the
-claimed sensitivity may be smaller than the true sensitivity. This vulnerability
-affects the :class:`~.Sum` transformation when the domain of the
-`measure_column` is :class:`~.SparkFloatColumnDescriptor`. Measurements that
-involve a :class:`~.Sum` transformation on floating point numbers may have a
-privacy loss that is larger than the claimed privacy loss.
+Stability imprecision
+---------------------
 
-Floating point overflow/underflow
----------------------------------
+Summing floating-point numbers may incur a slight loss in precision, which can
+lead the claimed sensitivity to be smaller than the true sensitivity. This issue
+is described in Section 6 of :cite:`Mironov12` and in :cite:`CasacubertaSVW22`.
+Tumult Core does not mitigate against this vulnerability; in particular,
+measurements that involve a :class:`~.Sum` transformation for which the domain
+of `measure_column` is :class:`~.SparkFloatColumnDescriptor` may have a privacy
+loss that is larger than the claimed privacy loss. 
 
-Tumult Core is susceptible to privacy leakage from floating point overflow and
-underflow. Users should not perform operations that may cause
-overflow/underflow.
+We believe that this issue only leads to non-negligible real-world risk if the
+attacker is able to either construct adversarial queries, and/or to control
+almost all data values and their order.
 
-Tumult Core does have some basic measures to protect users from certain
-floating point overflow and underflow vulnerabilities: for :class:`~.Sum` and
-:class:`~.SumGrouped` aggregations, values must be clamped to :math:`[-2^{970}, 2^{970}]`, so an overflow
-or underflow can only happen when the number of values summed is more than
-:math:`2^{52}`. Similarly, integer values must be clamped to :math:`[-2^{23}, 2^{23}]`,
-so an integer overflow can only happen when the number of values summed is at least
-:math:`2^{40}`. We expect users to hit performance bottlenecks before this
-happens.
+Overflows and underflows
+------------------------
+
+Summing floating-point numbers can lead to the result overflowing or
+underflowing to infinity values; summing integer values can also overflow (or
+underflow) can incur privacy leakage
+
+Tumult Core mitigates this issue by setting limits to clamping bounds used in
+numeric aggregations. For example, for :class:`~.Sum` and :class:`~.SumGrouped`
+aggregations, floating-point values must be clamped to bounds within
+:math:`[-2^{970}, 2^{970}]`, and integer values within :math:`[-2^{23},
+2^{23}]`. This guarantees that overflows can only happen when summing more than
+:math:`2^{52}` floating-point values or :math:`2^{40}` integer values. We expect
+users to hit performance bottlenecks before this happens. 
+
+Nonetheless, this does not fully mitigate this issue, as overflows or underflows
+may occur when performing sums on very large databases.
 
 Parallel composition
 --------------------
@@ -86,15 +96,19 @@ add new Core measurements whose privacy functions violate this assumption of lin
 will not actually provide the privacy guarantee it claims. Note that no existing Core component violates the implicit assumption made by
 the privacy function of :class:`~.ParallelComposition`.
 
-
 Evaluating privacy and stability relations using SymPy
 ------------------------------------------------------
 
-Tumult Core uses `SymPy <https://www.sympy.org/>`_ to evaluate privacy and stability
-relations for all measurements and transformations. Real numbers are represented using symbolic expressions,
-and inequalities relevant to evaluating the privacy relation of a measurement for a given 
-pair of inputs are solved using SymPy. In most cases, these inequalities are evaluated analytically;
-however, this isn't always possible and SymPy occassionally resorts to numerical methods of
-approximating the expressions. In such cases, SymPy does not provide any correctness guarantees.
-In some cases, SymPy may fail to solve the inequality altogether, making it
-impossible to verify the privacy properties of Core measurements.
+Tumult Core uses `SymPy <https://www.sympy.org/>`_ to evaluate privacy and
+stability relations for all measurements and transformations. Real numbers are
+represented using symbolic expressions, and inequalities relevant to evaluating
+the privacy relation of a measurement for a given pair of inputs are solved
+using SymPy. In most cases, these inequalities are evaluated analytically;
+however, this isn't always possible and SymPy occassionally resorts to numerical
+methods of approximating the expressions. In such cases, SymPy does not provide
+formal correctness guarantees. In some cases, SymPy may fail to solve the
+inequality altogether, making it impossible to verify the privacy properties of
+Core measurements.
+
+If you encounter such an issue in practice, please let us know and we will try
+to help.
