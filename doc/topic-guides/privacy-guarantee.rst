@@ -35,8 +35,11 @@ Tumult Core's privacy guarantee only covers *static* data: data that may change
 over time is not covered by the interface promise. The implementation assumes
 that the input datasets (both private and public) stay unchanged over the course
 of all computations. It does not check this assumption at runtime, so it is the
-responsibility of the user to ensure that all input Spark DataFrames (both
-private and public) are not modified between library calls.
+responsibility of the user to ensure that the plans underlying all input Spark
+DataFrames (both private and public) always produce the same records when
+evaluated multiple times. In particular, input DataFrames should not be backed
+by mutable data sources, and they should not depend on time-dependent,
+environment-dependent, nor nondeterministic expressions.
 
 .. _pseudo-side-channel:
 
@@ -119,7 +122,7 @@ SQL expression that can be passed in a ``WHERE`` clause. However, its privacy
 guarantee only holds if this filter is a pure deterministic function of each
 row's values. Using functions that are either nondeterministic (like ``rand`` or
 ``uuid``), or depend on the environment (like ``now()`` or ``current_date()``),
-or on pseudo side-channel information (like ``spark_partition_id()``), breaks
+or on pseudo-side channel information (like ``spark_partition_id()``), breaks
 this assumption and may lead to incorrect privacy guarantees. Tumult Core does
 not currently attempt to mitigate this issue, and does not provide any
 guarantee for such filters.

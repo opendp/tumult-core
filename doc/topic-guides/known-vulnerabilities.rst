@@ -10,9 +10,9 @@ Known Vulnerabilities
 This page describes known vulnerabilities in Tumult Core, and complements the
 :ref:`privacy-guarantee` topic guide.
 
-At a high level, Tumult Core is meant to be used by legitimate users who want to
-build correct differentially private programs. It is not designed to protect
-against ill-intentioned users who attempt to build adversarial queries.
+At a high level, Tumult Core is meant for users who want to build correct
+differentially private programs. It is not designed to protect against
+ill-intentioned users who attempt to build adversarial queries.
 
 Stability imprecision
 ---------------------
@@ -22,8 +22,8 @@ lead the claimed sensitivity to be smaller than the true sensitivity. This issue
 is described in Section 6 of :cite:`Mironov12` and in :cite:`CasacubertaSVW22`.
 Tumult Core does not mitigate against this vulnerability; in particular,
 measurements that involve a :class:`~.Sum` transformation for which the domain
-of `measure_column` is :class:`~.SparkFloatColumnDescriptor` may have a privacy
-loss that is larger than the claimed privacy loss. 
+of ``measure_column`` is :class:`~.SparkFloatColumnDescriptor` may have a
+privacy loss that is larger than the claimed privacy loss. 
 
 We believe that this issue only leads to non-negligible real-world risk if the
 attacker is able to either construct adversarial queries, and/or to control
@@ -34,7 +34,7 @@ Overflows and underflows
 
 Summing floating-point numbers can lead to the result overflowing or
 underflowing to infinity values; summing integer values can also overflow (or
-underflow) can incur privacy leakage
+underflow). Either of these can cause privacy leakage.
 
 Tumult Core mitigates this issue by setting limits to clamping bounds used in
 numeric aggregations. For example, for :class:`~.Sum` and :class:`~.SumGrouped`
